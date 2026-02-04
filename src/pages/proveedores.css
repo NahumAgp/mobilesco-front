@@ -1,0 +1,28 @@
+/* Estilos para la tabla de proveedores */
+.table-responsive.table-proveedores {
+  width: 100%;
+  max-height: calc(100vh - 300px);
+  overflow-y: auto;
+}
+
+.table-proveedores table {
+  min-width: 1200px;
+}
+
+.table-proveedores thead th {
+  position: sticky;
+  top: 0;
+  background-color: #f8f9fa;
+  z-index: 10;
+}
+
+.table-proveedores td {
+  vertical-align: middle;
+}
+
+/* Para pantallas grandes */
+@media (min-width: 1400px) {
+  .table-proveedores table {
+    min-width: 100%;
+  }
+}
