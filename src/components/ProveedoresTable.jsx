@@ -1,89 +1,30 @@
-import { useEffect, useState } from 'react';
-import { obtenerProveedores, crearProveedor, eliminarProveedor, actualizarProveedor} from '../services/proveedores.Js';
-import ProveedorForm from '../components/ProveedorForm';
-import Sidebar from '../components/Sidebar';
-import ProveedoresTable from '../components/ProveedoresTable';
-import PageHeader from '../components/PageHeader';
-
-
-export default function Proveedores() {
-  
-  const [proveedores, setProveedores] = useState([]);
-  const [error, setError] = useState('');
-  const [erroresForm, setErroresForm] = useState({});
-  const [mostrarForm, setMostrarForm] = useState(false);
-  const [proveedorEditando, setProveedorEditando] = useState(null);
-
-  // ---- cargar lista ----
-  async function recargar() {
-    try {
-      setError('');
-      const data = await obtenerProveedores();
-      setProveedores(data);
-    } catch (e) {
-      setError(e?.message || 'Error cargando proveedores');
-    }
-  }
-
-  // ---- cargar al iniciar ----
-  useEffect(() => {
-    async function initData() {
-      await recargar(); // Llamamos a recargar datos aquí
-    }
-    initData();
-  }, []); // Ejecutamos una vez al inicio
-
-  // ---- eliminar ----
-  async function handleEliminar(id) {
-    const ok = window.confirm('¿Seguro que deseas eliminar este proveedor?');
-    if (!ok) return;
-
-    try {
-      setError('');
-      await eliminarProveedor(id);
-      await recargar(); // Recargar la lista después de eliminar
-    } catch (e) {
-      setError(e?.message || 'Error eliminando proveedor');
-    }
-  }
-
-  // ---- editar ----
-  function handleEditar(proveedor) {
-    setErroresForm({});
-    setProveedorEditando(proveedor);
-    setMostrarForm(true);
-  }
-
-  // ---- nuevo ----
-  function handleNuevo() {
-    setErroresForm({});
-    setProveedorEditando(null);
-    setMostrarForm(true);
-  }
-
-   return (
-      <div>
-    <PageHeader
-      title="Directorio de Proveedores"
-      subtitle="Base de datos centralizada de proveedores."
-      actions={
-    <button
-      className="btn btn-success"
-      onClick={() => {
-        setProveedorEditando(null); // por si venías de editar
-        setMostrarForm(true);       // abre el form
-      }}
-    >
-      Nuevo Proveedor
-    </button>
-  }
-    />
-    <div className="container-fluid mt-4">
+export default function ProveedoresTable() {
+  return (   
+  <div className="container-fluid mt-4">
     <div className="row justify-content-center">
       <div className="col-12 col-xxl-10">
         <div className="card shadow-sm">
           <div className="card-body">
-           
+            {/* Header */}
+            <div className="d-flex justify-content-between align-items-center mb-3">
+              <h2 className="m-0">Proveedores</h2>
+
+              <button className="btn btn-primary btn-lg" onClick={handleNuevo}>
+                Nuevo proveedor
+              </button>
+
+            </div>
+            <div className="table-toolbar">
+              <div className="search-box">
+                <input
+                  className="form-control"
+                  placeholder="Buscar por nombre o contacto..."
+                  onChange={(e) => setFiltro(e.target.value)}
+                />
+              </div>
+            </div>
+
+
             {/* Formulario */}
             {mostrarForm && (
               <div className="mb-4">
@@ -198,8 +139,6 @@ export default function Proveedores() {
         </div>
       </div>
     </div>
-  </div>
-
   </div>
   );
 }

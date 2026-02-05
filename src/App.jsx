@@ -1,16 +1,23 @@
-//import { useState } from 'react'
-//import reactLogo from './assets/react.svg'
-//import viteLogo from '/vite.svg'
-//import './App.css'
-import Proveedores from "./pages/proveedores";
+import { Navigate, Route, Routes } from "react-router-dom";
+import AppLayout from "./layout/AppLayout";
+import Tablero from "./pages/Tablero";
+import Productos from "./pages/Productos";
+import Proveedores from "./pages/proveedores.jsx";
 
-function App() {
+export default function App() {
   return (
-    <div className="container mt-4">
-      <Proveedores />
-    </div>
-  );
- 
-}
+    <Routes>
+      <Route element={<AppLayout />}>
+        {/* Al entrar a /, manda a /tablero */}
+        <Route path="/" element={<Navigate to="/tablero" replace />} />
 
-export default App
+        <Route path="/tablero" element={<Tablero />} />
+        <Route path="/productos" element={<Productos />} />
+        <Route path="/proveedores" element={<Proveedores />} />
+
+        {/* opcional: 404 */}
+        <Route path="*" element={<Navigate to="/tablero" replace />} />
+      </Route>
+    </Routes>
+  );
+}

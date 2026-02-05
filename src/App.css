@@ -1,8 +1,8 @@
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
 }
 
 .logo {
@@ -40,3 +40,90 @@
 .read-the-docs {
   color: #888;
 }
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+  background: #f5f6f8;
+}
+
+/* SIDEBAR */
+.sidebar {
+  width: 260px;
+  background: #2f4f4f;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 30px;
+}
+
+.logo {
+  background: #1f7a6b;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-weight: bold;
+}
+
+.sidebar-menu a {
+  display: block;
+  padding: 10px;
+  color: #dfeeee;
+  text-decoration: none;
+  border-radius: 8px;
+}
+
+.sidebar-menu a.active,
+.sidebar-menu a:hover {
+  background: #1f7a6b;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+}
+
+.logout {
+  color: #ff6b6b;
+}
+
+/* CONTENT */
+.content {
+  flex: 1;
+  padding: 30px;
+}
+
+/* HEADER */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+}
+
+.page-header h1 {
+  margin: 0;
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* TABLE CARD */
+.table-card {
+  padding: 20px;
+  border-radius: 12px;
+}
+
+.table-toolbar {
+  margin-bottom: 15px;
+}
+

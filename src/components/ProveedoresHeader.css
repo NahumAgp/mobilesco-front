@@ -1,0 +1,33 @@
+/* CONTENIDO PRINCIPAL */
+.content {
+  padding: 32px;
+  background-color: #f5f7f8;
+  min-height: 100vh;
+}
+
+/* HEADER DE PÁGINA */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.page-title {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 800;
+  color: #1f2937;
+}
+
+.page-subtitle {
+  margin-top: 6px;
+  color: #6b7280;
+  font-size: 15px;
+}
+
+/* ACCIONES DEL HEADER */
+.header-actions {
+  display: flex;
+  gap: 12px;
+}
