@@ -55,11 +55,11 @@ export default function Proveedores() {
   }
 
   // ---- nuevo ----
-  function handleNuevo() {
+  /*function handleNuevo() {
     setErroresForm({});
     setProveedorEditando(null);
     setMostrarForm(true);
-  }
+  }*/
 
    return (
       <div>
@@ -151,7 +151,7 @@ export default function Proveedores() {
                     <th style={{ width: '18%', minWidth: '150px' }}>Contacto</th>
                     <th style={{ width: '25%', minWidth: '200px' }}>Correo</th>
                     <th style={{ width: '14%', minWidth: '120px' }}>Teléfono</th>
-                    <th style={{ width: '10%', minWidth: '80px' }}>Activo</th>
+                    <th style={{ width: '10%', minWidth: '80px' }}>Estado</th>
                     <th style={{ width: '170px', minWidth: '170px', maxWidth: '170px' }}>Acciones</th>
                   </tr>
                 </thead>
@@ -163,7 +163,7 @@ export default function Proveedores() {
                       <td className="text-truncate" title={p.contacto}>{p.contacto}</td>
                       <td className="text-truncate" title={p.correo}>{p.correo}</td>
                       <td className="text-truncate" title={p.telefono}>{p.telefono}</td>
-                      <td>{p.activo ? 'Sí' : 'No'}</td>
+                      <td>{p.activo ? 'Activo' : 'Inactivo'}</td>
                       <td>
                         <div className="d-flex gap-2 justify-content-center">
                           <button
