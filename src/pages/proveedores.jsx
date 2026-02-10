@@ -115,6 +115,7 @@ export default function Proveedores() {
                         e.errors.forEach((msg) => {
                           const m = msg.toLowerCase();
                           if (m.includes('nombre')) errs.nombre = msg;
+                          else if (m.includes('razón social')) errs.razonSocial = msg;
                           else if (m.includes('contacto')) errs.contacto = msg;
                           else if (m.includes('correo')) errs.correo = msg;
                           else if (m.includes('teléfono') || m.includes('telefono')) errs.telefono = msg;
@@ -147,7 +148,7 @@ export default function Proveedores() {
                 <thead className="table-light" style={{ position: 'sticky', top: 0, zIndex: 1 }}>
                   <tr>
                     <th style={{ width: '8%', minWidth: '80px' }}>ID</th>
-                    <th style={{ width: '25%', minWidth: '200px' }}>Nombre</th>
+                    <th style={{ width: '25%', minWidth: '200px' }}>Razon Social</th>
                     <th style={{ width: '18%', minWidth: '150px' }}>Contacto</th>
                     <th style={{ width: '25%', minWidth: '200px' }}>Correo</th>
                     <th style={{ width: '14%', minWidth: '120px' }}>Teléfono</th>
@@ -159,8 +160,8 @@ export default function Proveedores() {
                   {proveedores.map((p) => (
                     <tr key={p.id}>
                       <td className="text-truncate" title={p.id}>{p.id}</td>
+                      <td className="text-truncate" title={p.razonSocial}>{p.razonSocial}</td>
                       <td className="text-truncate" title={p.nombre}>{p.nombre}</td>
-                      <td className="text-truncate" title={p.contacto}>{p.contacto}</td>
                       <td className="text-truncate" title={p.correo}>{p.correo}</td>
                       <td className="text-truncate" title={p.telefono}>{p.telefono}</td>
                       <td>{p.activo ? 'Activo' : 'Inactivo'}</td>
