@@ -33,7 +33,7 @@ export default function FamiliasTable({ data, onEditar, onEliminar }) {
                   <td>{familia.nombre}</td>
                   <td>{familia.descripcion}</td>
                   <td>
-                    {new Date(familia.fechaRegistro).toLocaleString('es-MX', {
+                    {new Date(familia.createdAt).toLocaleString('es-MX', {
                       dateStyle: 'short',
                       timeStyle: 'short'
                     })}

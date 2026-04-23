@@ -75,7 +75,7 @@ export default function LineaProductoTable({ data, onEditar, onEliminar }) {
                   </td>
 
                   <td>
-                    {new Date(linea.fechaRegistro).toLocaleString('es-MX', {
+                    {new Date(linea.createdAt).toLocaleString('es-MX', {
                       dateStyle: 'short',
                       timeStyle: 'short'
                     })}

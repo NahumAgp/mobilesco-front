@@ -215,6 +215,28 @@ export default function Sidebar() {
 
           <div className="collapse sidebar-submenu" id="menuProductoS">
 
+            {/* Lineas */}
+            <div>
+              <button className="sidebar-parent sidebar-parent--sub" data-bs-toggle="collapse" data-bs-target="#menuLineas">
+                <div className="sidebar-parent-content">
+                  <i className="bi bi-collection me-2"></i>
+                  <span>Lineas</span>
+                </div>
+                <i className="bi bi-chevron-down sidebar-chevron"></i>
+              </button>
+
+              <div className="collapse sidebar-submenu" id="menuLineas">
+                <NavLink to="/lineas-producto" className="sidebar-link sidebar-link--sub">
+                  <i className="bi bi-list-ul me-2"></i>
+                  Lista de Lineas
+                </NavLink>
+                <NavLink to="/lineas-producto/nuevo" className="sidebar-link sidebar-link--sub">
+                  <i className="bi bi-plus-circle me-2"></i>
+                  Nueva Linea
+                </NavLink>
+              </div>
+            </div>
+
             {/* Familias */}
             <div>
               <button className="sidebar-parent sidebar-parent--sub" data-bs-toggle="collapse" data-bs-target="#menuFamilias">
@@ -237,27 +259,7 @@ export default function Sidebar() {
               </div>
             </div>
 
-            {/* Estilos */}
-            <div>
-              <button className="sidebar-parent sidebar-parent--sub" data-bs-toggle="collapse" data-bs-target="#menuEstilos">
-                <div className="sidebar-parent-content">
-                  <i className="bi bi-palette me-2"></i>
-                  <span>Estilos</span>
-                </div>
-                <i className="bi bi-chevron-down sidebar-chevron"></i>
-              </button>
-
-              <div className="collapse sidebar-submenu" id="menuEstilos">
-                <NavLink to="/lineas-producto" className="sidebar-link sidebar-link--sub">
-                  <i className="bi bi-list-ul me-2"></i>
-                  Lista de Estilos
-                </NavLink>
-                <NavLink to="/lineas-producto/nuevo" className="sidebar-link sidebar-link--sub">
-                  <i className="bi bi-plus-circle me-2"></i>
-                  Nuevo Estilo
-                </NavLink>
-              </div>
-            </div>
+            
 
             {/* Categorías */}
             <div>

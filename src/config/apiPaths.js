@@ -15,7 +15,7 @@ export const API_PATHS = {
   // Productos
   PRODUCTOS: `${API_VERSION}/productos`,
   FAMILIAS: `${API_VERSION}/familias`,
-  LINEA_PRODUCTO: `${API_VERSION}/lineas-producto`,
+  LINEAS: `${API_VERSION}/lineas`,
   CATEGORIAS: `${API_VERSION}/categorias`,
   MATERIALES: `${API_VERSION}/materiales`,
   TIPO_PRODUCTO: `${API_VERSION}/tipos-producto`,
