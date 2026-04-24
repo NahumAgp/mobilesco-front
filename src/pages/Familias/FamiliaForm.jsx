@@ -1,121 +1,145 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import {
-  obtenerFamiliaPorId,
-  crearFamilia,
-  actualizarFamilia
-} from "../../services/familias";
+import { obtenerFamiliaPorId, crearFamilia, actualizarFamilia } from "../../services/familias";
+import { obtenerLineasProducto } from "../../services/lineaProducto";
 
 export default function FamiliaForm({ familiaId }) {
-
   const navigate = useNavigate();
   const esEdicion = Boolean(familiaId);
 
   const [formData, setFormData] = useState({
+    codigo: "",
     nombre: "",
     descripcion: "",
+    lineaId: "",
     activo: true
   });
+  const [lineas, setLineas] = useState([]);
 
   useEffect(() => {
+    const cargarLineas = async () => {
+      try {
+        const data = await obtenerLineasProducto();
 
+        if (data?.content) {
+          setLineas(data.content);
+        } else if (Array.isArray(data)) {
+          setLineas(data);
+        } else {
+          setLineas([]);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    cargarLineas();
+  }, []);
+
+  useEffect(() => {
     const cargar = async () => {
-
       if (!familiaId) return;
 
       try {
-
         const data = await obtenerFamiliaPorId(familiaId);
-        setFormData(data);
-
+        setFormData({
+          codigo: data.codigo || "",
+          nombre: data.nombre || "",
+          descripcion: data.descripcion || "",
+          lineaId: data.lineaId || data.linea?.id || "",
+          activo: data.activo ?? true
+        });
       } catch (error) {
-
         console.error(error);
-
       }
     };
 
     cargar();
-
   }, [familiaId]);
 
   function handleChange(e) {
-
     const { name, value, type, checked } = e.target;
 
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value
     }));
-
   }
 
   async function handleSubmit(e) {
-
     e.preventDefault();
 
     try {
+      const payload = {
+        codigo: formData.codigo?.toString().trim() || "",
+        nombre: formData.nombre?.trim() || "",
+        descripcion: formData.descripcion?.trim() || "",
+        lineaId: formData.lineaId ? Number(formData.lineaId) : null,
+        activo: Boolean(formData.activo)
+      };
 
       if (esEdicion) {
-        await actualizarFamilia(familiaId, formData);
+        await actualizarFamilia(familiaId, payload);
       } else {
-        await crearFamilia(formData);
+        await crearFamilia(payload);
       }
 
       navigate("/familias");
-
     } catch (error) {
-
       console.error(error);
-
     }
   }
 
   return (
     <form onSubmit={handleSubmit}>
+      <div className="row g-3">
+        <div className="col-md-4">
+          <label className="form-label">Codigo</label>
+          <input type="text" name="codigo" className="form-control" value={formData.codigo} onChange={handleChange} />
+        </div>
 
-      <div className="mb-3">
-        <label className="form-label">Nombre</label>
-        <input
-          type="text"
-          name="nombre"
-          className="form-control"
-          value={formData.nombre}
-          onChange={handleChange}
-        />
+        <div className="col-md-8">
+          <label className="form-label">Nombre</label>
+          <input type="text" name="nombre" className="form-control" value={formData.nombre} onChange={handleChange} />
+        </div>
+
+        <div className="col-md-12">
+          <label className="form-label">Descripcion</label>
+          <textarea name="descripcion" className="form-control" value={formData.descripcion} onChange={handleChange} />
+        </div>
+
+        <div className="col-md-12">
+          <label className="form-label">Linea</label>
+          <select name="lineaId" className="form-select" value={formData.lineaId} onChange={handleChange}>
+            <option value="">Selecciona una linea...</option>
+            {lineas.map((linea) => (
+              <option key={linea.id} value={linea.id}>
+                {linea.nombre}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="col-md-12">
+          <div className="form-check form-switch mb-3">
+            <input
+              className="form-check-input"
+              type="checkbox"
+              name="activo"
+              checked={formData.activo}
+              onChange={handleChange}
+            />
+            <label className="form-check-label">Activo</label>
+          </div>
+        </div>
+
+        <div className="col-md-12">
+          <button type="submit" className="btn btn-primary">
+            Guardar
+          </button>
+        </div>
       </div>
-
-      <div className="mb-3">
-        <label className="form-label">Descripción</label>
-        <textarea
-          name="descripcion"
-          className="form-control"
-          value={formData.descripcion}
-          onChange={handleChange}
-        />
-      </div>
-
-      <div className="form-check form-switch mb-3">
-
-        <input
-          className="form-check-input"
-          type="checkbox"
-          name="activo"
-          checked={formData.activo}
-          onChange={handleChange}
-        />
-
-        <label className="form-check-label">
-          Activo
-        </label>
-
-      </div>
-
-      <button type="submit" className="btn btn-primary">
-        Guardar
-      </button>
-
     </form>
   );
 }

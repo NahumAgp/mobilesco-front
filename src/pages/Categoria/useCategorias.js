@@ -1,38 +1,22 @@
-// src/pages/Categoria/useCategorias.js
 import { useEffect, useState } from "react";
-import {
-  obtenerCategorias,
-  eliminarCategoria as eliminarService
-} from "../../services/categorias.js";
-export function useCategorias() {
+import { obtenerCategorias, eliminarCategoria as eliminarService } from "../../services/categorias.js";
 
+export function useCategorias() {
   const [categorias, setCategorias] = useState([]);
   const [loadingLista, setLoadingLista] = useState(false);
   const [error, setError] = useState("");
 
   async function cargar() {
     try {
-
-      console.log("🔍 Iniciando llamada a obtenerCategorias...");
-      const data1 = await obtenerCategorias();
-      console.log("✅ Datos recibidos del backend:", data1);
-
       setLoadingLista(true);
       setError("");
 
       const data = await obtenerCategorias();
-      
-
-      // 🔥 IMPORTANTE
-      // Si backend devuelve paginado
-      if (data.content) {
-        setCategorias(data.content);
-      } else {
-        setCategorias(data);
-      }
-
+      const lista = data?.content || data || [];
+      setCategorias(Array.isArray(lista) ? lista : []);
     } catch (e) {
-      setError("Error cargando categorías");
+      setError("Error cargando categorias");
+      setCategorias([]);
     } finally {
       setLoadingLista(false);
     }

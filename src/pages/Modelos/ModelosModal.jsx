@@ -1,9 +1,9 @@
-// pages/TiposProducto/TipoProductoModal.jsx
-import TipoProductoForm from "./components/TipoProductoForm.jsx";
+// pages/Modelos/ModelosModal.jsx
+import ModelosForm from "./ModelosForm.jsx";
 
-export default function TipoProductoModal({
+export default function ModelosModal({
   show,
-  tipo,
+  modelo,
   onClose,
   onSave,
   errores = {}
@@ -20,13 +20,13 @@ export default function TipoProductoModal({
         <div className="modal-content">
           <div className="modal-header">
             <h5 className="modal-title">
-              {tipo ? "Editar Tipo de Producto" : "Nuevo Tipo de Producto"}
+              {modelo ? "Editar Modelo" : "Nuevo Modelo"}
             </h5>
             <button type="button" className="btn-close" onClick={onClose}></button>
           </div>
           <div className="modal-body">
-            <TipoProductoForm
-              tipo={tipo}
+            <ModelosForm
+              modelo={modelo}
               onSave={onSave}
               onCancel={onClose}
               errores={errores}

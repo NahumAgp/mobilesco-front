@@ -13,10 +13,13 @@ export const API_PATHS = {
   EMPLEADOS_ME_FOTO: `${API_VERSION}/empleados/me/foto`,
   
   // Productos
-  PRODUCTOS: `${API_VERSION}/productos`,
-  FAMILIAS: `${API_VERSION}/familias`,
   LINEAS: `${API_VERSION}/lineas`,
-  CATEGORIAS: `${API_VERSION}/categorias`,
+  FAMILIAS: `${API_VERSION}/familias`,
+  MODELOS: `${API_VERSION}/productos-base`,
+
+  PRODUCTOS: `${API_VERSION}/productos`,
+  CATEGORIAS: `${API_VERSION}/niveles`,
+  COLORES: `${API_VERSION}/colores`,
   MATERIALES: `${API_VERSION}/materiales`,
   TIPO_PRODUCTO: `${API_VERSION}/tipos-producto`,
 

@@ -122,11 +122,17 @@ async function request(endpoint, options = {}, retry = true) {
     }
 
     if (!response.ok) {
-      throw new Error(
+      const requestError = new Error(
         data?.message ||
         data?.error ||
         "Error del servidor"
       );
+      if (data && typeof data === "object") {
+        requestError.data = data;
+        requestError.errors = data.errors;
+        requestError.status = data.status || response.status;
+      }
+      throw requestError;
     }
 
     return data;

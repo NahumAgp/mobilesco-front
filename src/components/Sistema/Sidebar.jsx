@@ -259,7 +259,28 @@ export default function Sidebar() {
               </div>
             </div>
 
-            
+            {/* Modelos */}
+            <div>
+              <button className="sidebar-parent sidebar-parent--sub" data-bs-toggle="collapse" data-bs-target="#menuModelos">
+                <div className="sidebar-parent-content">
+                  <i className="bi bi-boxes me-2"></i>
+                  
+                  <span>Modelos</span>
+                </div>
+                <i className="bi bi-chevron-down sidebar-chevron"></i>
+              </button>
+
+              <div className="collapse sidebar-submenu" id="menuModelos">
+                <NavLink to="/modelos" className="sidebar-link sidebar-link--sub">
+                  <i className="bi bi-list-ul me-2"></i>
+                  Lista Modelos
+                </NavLink>
+                <NavLink to="/modelos/nuevo" className="sidebar-link sidebar-link--sub">
+                  <i className="bi bi-plus-circle me-2"></i>
+                  Nuevo Modelo
+                </NavLink>
+              </div>
+            </div>
 
             {/* Categorías */}
             <div>
@@ -279,6 +300,28 @@ export default function Sidebar() {
                 <NavLink to="/categorias/nuevo" className="sidebar-link sidebar-link--sub">
                   <i className="bi bi-plus-circle me-2"></i>
                   Nueva Categoria
+                </NavLink>
+              </div>
+            </div>
+
+            {/* Colores */}
+            <div>
+              <button className="sidebar-parent sidebar-parent--sub" data-bs-toggle="collapse" data-bs-target="#menuColores">
+                <div className="sidebar-parent-content">
+                  <i className="bi bi-palette me-2"></i>
+                  <span>Colores</span>
+                </div>
+                <i className="bi bi-chevron-down sidebar-chevron"></i>
+              </button>
+
+              <div className="collapse sidebar-submenu" id="menuColores">
+                <NavLink to="/colores" className="sidebar-link sidebar-link--sub">
+                  <i className="bi bi-list-ul me-2"></i>
+                  Lista de Colores
+                </NavLink>
+                <NavLink to="/colores/nuevo" className="sidebar-link sidebar-link--sub">
+                  <i className="bi bi-plus-circle me-2"></i>
+                  Nuevo Color
                 </NavLink>
               </div>
             </div>
@@ -327,28 +370,7 @@ export default function Sidebar() {
               </div>
             </div>
 
-            {/* Tipo Productos */}
-            <div>
-              <button className="sidebar-parent sidebar-parent--sub" data-bs-toggle="collapse" data-bs-target="#menuTiposProd">
-                <div className="sidebar-parent-content">
-                  <i className="bi bi-boxes me-2"></i>
-                  
-                  <span>Tipo Productos</span>
-                </div>
-                <i className="bi bi-chevron-down sidebar-chevron"></i>
-              </button>
-
-              <div className="collapse sidebar-submenu" id="menuTiposProd">
-                <NavLink to="/tipos-producto" className="sidebar-link sidebar-link--sub">
-                  <i className="bi bi-list-ul me-2"></i>
-                  Lista Tipos de Productos
-                </NavLink>
-                <NavLink to="/tipos-producto/nuevo" className="sidebar-link sidebar-link--sub">
-                  <i className="bi bi-plus-circle me-2"></i>
-                  Nuevo Tipo de producto
-                </NavLink>
-              </div>
-            </div>
+            
 
             <NavLink to="/productos" className="sidebar-link">
               <i className="bi bi-box-seam me-2"></i>

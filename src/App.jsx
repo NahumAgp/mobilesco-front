@@ -23,18 +23,26 @@ import PerfilPage from "./pages/Perfil/PerfilPage.jsx";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import FamiliasPage from "./pages/Familias/FamiliasPage.jsx";
 import FamiliaFormPage from "./pages/Familias/FamiliaFormPage.jsx";
+
 import LineaProductoForm from "./pages/LineaProducto/LineaProductoFormPage.jsx";
 import LineaProductoFormPage from "./pages/LineaProducto/LineaProductoFormPage.jsx";
 import LineaProductoPage from "./pages/LineaProducto/LineaProductoPage.jsx";
+
 import CategoriaPage from "./pages/Categoria/CategoriaPage.jsx";
 import CategoriaFromPage from "./pages/Categoria/CategoriaFormPage.jsx";
 import CategoriaFormPage from "./pages/Categoria/CategoriaFormPage.jsx";
+
 import MaterialesPage from "./pages/Materiales/MaterialesPage.jsx";
 import MaterialFormPage from "./pages/Materiales/MaterialFormPage.jsx";
-import TiposProductoPage from"./pages/TiposProducto/TiposProductoPage.jsx";
-import TiposProductoFromPage from"./pages/TiposProducto/TipoProductoFormPage.jsx";
+
+import ModelosPage from "./pages/Modelos/ModelosPage.jsx";
+import ModelosFormPage from "./pages/Modelos/ModelosFormPage.jsx";
+import ColorPage from "./pages/colores/ColorPage.jsx";
+import ColorFormPage from "./pages/colores/ColorFormPage.jsx";
+
 import  InsumosPage from "./pages/Insumos/InsumosPage.jsx";
 import  InsumosFormPage from "./pages/Insumos/InsumoFormPage.jsx";
+
 import CentrosTrabajoPage from "./pages/CentrosTrabajo/CentrosTrabajoPage.jsx";
 import CentrosTrabajoFormPage from "./pages/CentrosTrabajo/CentroTrabajoFormPage.jsx";
 
@@ -121,10 +129,15 @@ export default function App() {
         <Route path="/materiales/nuevo" element={<MaterialFormPage />} />
         <Route path="/materiales/:id" element={<MaterialFormPage />} />
 
-        {/* TIPOS PRODUCTO */}
-        <Route path="/tipos-producto" element={<TiposProductoPage />} />
-        <Route path="/tipos-producto/nuevo" element={<TiposProductoFromPage />} />
-        <Route path="/tipos-producto/:id" element={<TiposProductoFromPage />} />
+        {/* MODELOS */}
+        <Route path="/modelos" element={<ModelosPage />} />
+        <Route path="/modelos/nuevo" element={<ModelosFormPage />} />
+        <Route path="/modelos/:id" element={<ModelosFormPage />} />
+
+        {/* COLORES */}
+        <Route path="/colores" element={<ColorPage />} />
+        <Route path="/colores/nuevo" element={<ColorFormPage />} />
+        <Route path="/colores/:id" element={<ColorFormPage />} />
 
          {/* Inusmos */}
         <Route path="/insumos" element={<InsumosPage />} />
@@ -145,7 +158,7 @@ export default function App() {
         <Route path="/compras" element={<ComprasPage />} />
         <Route path="/compras/nueva" element={<ComprasFormPage />} />
         <Route path="/compras/:id" element={<ComprasFormPage />} />
-        <Route path="/compras/:id/ver" element={<CompraDetallePage />} /> {/* 👈 ESTA ES LA QUE FALTA 
+        <Route path="/compras/:id/ver" element={<CompraDetallePage />} />
 
          {/*Kardex */}
         <Route path="/kardex" element={<KardexPage />} />

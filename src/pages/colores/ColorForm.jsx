@@ -1,15 +1,9 @@
 ﻿import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { obtenerLineaProductoPorId, crearLineaProducto, actualizarLineaProducto } from "../../services/lineaProducto.js";
+import { obtenerColorPorId, crearColor, actualizarColor } from "../../services/color.js";
 import Toast from "../../components/ui/Toast.jsx";
 
-export default function LineaProductoForm({
-  lineaProductoId,
-  lineaProducto,
-  onSave,
-  onCancel,
-  errores: erroresExternos = {}
-}) {
+export default function ColorForm({ colorId, color, onSave, onCancel, errores: erroresExternos = {} }) {
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
   const [erroresBackend, setErroresBackend] = useState({});
@@ -17,33 +11,31 @@ export default function LineaProductoForm({
   const navigate = useNavigate();
 
   const esModal = Boolean(onSave);
-  const esEdicion = Boolean(lineaProductoId) || Boolean(lineaProducto);
+  const esEdicion = Boolean(colorId) || Boolean(color);
 
   const [formData, setFormData] = useState({
     codigo: "",
     nombre: "",
-    descripcion: "",
-    activo: true
+    hex: "#FF107A"
   });
 
-  const mapLineaToForm = (data = {}) => ({
+  const mapColorToForm = (data = {}) => ({
     codigo: data.codigo || "",
     nombre: data.nombre || "",
-    descripcion: data.descripcion || "",
-    activo: data.activo ?? true
+    hex: data.hex || "#FF107A"
   });
 
   useEffect(() => {
     const cargar = async () => {
-      if (esModal && lineaProducto) {
-        setFormData(mapLineaToForm(lineaProducto));
+      if (esModal && color) {
+        setFormData(mapColorToForm(color));
         return;
       }
 
-      if (!esModal && lineaProductoId) {
+      if (!esModal && colorId) {
         try {
-          const data = await obtenerLineaProductoPorId(lineaProductoId);
-          setFormData(mapLineaToForm(data));
+          const data = await obtenerColorPorId(colorId);
+          setFormData(mapColorToForm(data));
         } catch (e) {
           console.error("Error cargando:", e);
         }
@@ -51,14 +43,14 @@ export default function LineaProductoForm({
     };
 
     cargar();
-  }, [lineaProductoId, lineaProducto, esModal]);
+  }, [colorId, color, esModal]);
 
   function handleChange(e) {
-    const { name, value, type, checked } = e.target;
+    const { name, value } = e.target;
 
     setFormData((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value
+      [name]: value
     }));
 
     if (erroresBackend[name]) {
@@ -79,24 +71,23 @@ export default function LineaProductoForm({
       const dataToSend = {
         codigo: formData.codigo?.toString().trim() || "",
         nombre: formData.nombre?.trim() || "",
-        descripcion: formData.descripcion?.trim() || "",
-        activo: Boolean(formData.activo)
+        hex: formData.hex?.trim() || ""
       };
 
       let respuesta;
       if (esEdicion) {
-        const id = lineaProducto?.id || lineaProductoId;
-        respuesta = await actualizarLineaProducto(id, dataToSend);
+        const id = color?.id || colorId;
+        respuesta = await actualizarColor(id, dataToSend);
       } else {
-        respuesta = await crearLineaProducto(dataToSend);
+        respuesta = await crearColor(dataToSend);
       }
 
       if (esModal) {
         onSave(respuesta);
       } else {
         setToastType("success");
-        setToastMessage(esEdicion ? "Linea de producto actualizada con exito" : "Linea de producto registrada con exito");
-        setTimeout(() => navigate("/lineas-producto"), 1500);
+        setToastMessage(esEdicion ? "Color actualizado con exito" : "Color registrado con exito");
+        setTimeout(() => navigate("/colores"), 1500);
       }
     } catch (error) {
       if (error.errors) {
@@ -117,7 +108,7 @@ export default function LineaProductoForm({
     if (esModal) {
       onCancel();
     } else {
-      navigate("/lineas-producto");
+      navigate("/colores");
     }
   };
 
@@ -127,10 +118,7 @@ export default function LineaProductoForm({
 
       {!esModal && (
         <div className="d-flex justify-content-between align-items-center mb-4">
-          <h2 className="fw-bold text-primary">{esEdicion ? "Editar Linea de Producto" : "Nueva Linea de Producto"}</h2>
-          <span className={`badge ${formData.activo ? "bg-success" : "bg-secondary"}`}>
-            {formData.activo ? "Activa" : "Inactiva"}
-          </span>
+          <h2 className="fw-bold text-primary">{esEdicion ? "Editar Color" : "Nuevo Color"}</h2>
         </div>
       )}
 
@@ -138,7 +126,7 @@ export default function LineaProductoForm({
         <div className="card shadow-sm border-0 mb-4">
           <div className="card-header bg-white py-3">
             <h5 className="mb-0 text-secondary">
-              <i className="bi bi-tag me-2"></i>Informacion de la Linea
+              <i className="bi bi-palette me-2"></i>Informacion del Color
             </h5>
           </div>
           <div className="card-body">
@@ -153,14 +141,14 @@ export default function LineaProductoForm({
                   className={inputClass("codigo")}
                   value={formData.codigo}
                   onChange={handleChange}
-                  placeholder="Ej: LN-01"
+                  placeholder="Ej: ISV3ZXTEOR"
                 />
                 <div className="invalid-feedback">{erroresBackend.codigo || erroresExternos.codigo}</div>
               </div>
 
-              <div className="col-md-8">
+              <div className="col-md-4">
                 <label className="form-label fw-semibold">
-                  Nombre de la Linea <span className="text-danger">*</span>
+                  Nombre <span className="text-danger">*</span>
                 </label>
                 <input
                   type="text"
@@ -168,64 +156,39 @@ export default function LineaProductoForm({
                   className={inputClass("nombre")}
                   value={formData.nombre}
                   onChange={handleChange}
-                  placeholder="Ej: ISO, STACK"
+                  placeholder="Ej: Rosa Intenso"
                 />
                 <div className="invalid-feedback">{erroresBackend.nombre || erroresExternos.nombre}</div>
               </div>
 
-              <div className="col-md-12">
-                <label className="form-label fw-semibold">Descripcion</label>
-                <textarea
-                  name="descripcion"
-                  className={inputClass("descripcion")}
-                  value={formData.descripcion || ""}
-                  onChange={handleChange}
-                  rows="4"
-                  placeholder="Descripcion detallada de la linea de producto"
-                />
-                <div className="invalid-feedback">{erroresBackend.descripcion || erroresExternos.descripcion}</div>
-                <div className="form-text text-muted">Maximo 500 caracteres</div>
+              <div className="col-md-4">
+                <label className="form-label fw-semibold">
+                  HEX <span className="text-danger">*</span>
+                </label>
+                <div className="input-group">
+                  <input
+                    type="text"
+                    name="hex"
+                    className={inputClass("hex")}
+                    value={formData.hex}
+                    onChange={handleChange}
+                    placeholder="#FF107A"
+                  />
+                  <input
+                    type="color"
+                    value={/^#[0-9A-Fa-f]{6}$/.test(formData.hex) ? formData.hex : "#FF107A"}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, hex: e.target.value.toUpperCase() }))}
+                    style={{ width: 52, border: "1px solid #ced4da", borderRadius: "0 .375rem .375rem 0" }}
+                  />
+                </div>
+                <div className="invalid-feedback d-block">{erroresBackend.hex || erroresExternos.hex}</div>
               </div>
             </div>
           </div>
         </div>
 
-        {!esModal && (
-          <div className="d-flex justify-content-between align-items-center bg-white p-3 rounded shadow-sm mb-4">
-            <div className="form-check form-switch">
-              <input
-                className="form-check-input"
-                type="checkbox"
-                name="activo"
-                checked={formData.activo}
-                onChange={handleChange}
-                id="switchActivo"
-              />
-              <label className="form-check-label fw-semibold" htmlFor="switchActivo">
-                Linea de producto habilitada
-              </label>
-            </div>
-          </div>
-        )}
-
-        <div className="d-flex justify-content-between align-items-center bg-white p-3 rounded shadow-sm">
-          {esModal && (
-            <div className="form-check form-switch">
-              <input
-                className="form-check-input"
-                type="checkbox"
-                name="activo"
-                checked={formData.activo}
-                onChange={handleChange}
-                id="switchActivoModal"
-              />
-              <label className="form-check-label fw-semibold" htmlFor="switchActivoModal">
-                Linea habilitada
-              </label>
-            </div>
-          )}
-
-          <div className={`gap-2 d-flex ${esModal ? "ms-auto" : ""}`}>
+        <div className="d-flex justify-content-end align-items-center bg-white p-3 rounded shadow-sm">
+          <div className="gap-2 d-flex">
             <button type="button" className="btn btn-light px-4" onClick={handleCancel}>
               Cancelar
             </button>

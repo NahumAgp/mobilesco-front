@@ -24,6 +24,7 @@ export default function TiposProductoTable({ data, onEditar, onEliminar }) {
               <th>Nombre</th>
               <th>Descripción</th>
               <th>Familia</th>
+              <th>Codigo</th>
               <th>Estado</th>
               <th>Fecha Creación</th>
               <th>Acciones</th>
@@ -47,6 +48,7 @@ export default function TiposProductoTable({ data, onEditar, onEliminar }) {
                       : tipo.descripcion || "-"}
                   </td>
                   <td>{tipo.familiaNombre || "-"}</td>
+                  <td>{tipo.codigo || "-"}</td>
                   <td>
                     <span
                       className={
@@ -59,8 +61,8 @@ export default function TiposProductoTable({ data, onEditar, onEliminar }) {
                     </span>
                   </td>
                   <td>
-                    {tipo.fechaCreacion
-                      ? new Date(tipo.fechaCreacion).toLocaleDateString("es-MX", {
+                    {tipo.createdAt
+                      ? new Date(tipo.createdAt).toLocaleDateString("es-MX", {
                           year: "numeric",
                           month: "2-digit",
                           day: "2-digit"
@@ -93,7 +95,7 @@ export default function TiposProductoTable({ data, onEditar, onEliminar }) {
               ))
             ) : (
               <tr>
-                <td colSpan="7" className="text-center text-muted py-5">
+                <td colSpan="8" className="text-center text-muted py-5">
                   <i className="bi bi-tags fs-1 d-block mb-3 text-secondary"></i>
                   <span className="fs-5">No hay tipos de producto registrados</span>
                   <p className="text-secondary mt-2">Comienza creando un nuevo tipo</p>

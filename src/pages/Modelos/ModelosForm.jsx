@@ -1,11 +1,12 @@
 ﻿import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { obtenerLineaProductoPorId, crearLineaProducto, actualizarLineaProducto } from "../../services/lineaProducto.js";
+import { obtenerModeloPorId, crearModelo, actualizarModelo } from "../../services/modelos.js";
+import { obtenerFamilias } from "../../services/familias.js";
 import Toast from "../../components/ui/Toast.jsx";
 
-export default function LineaProductoForm({
-  lineaProductoId,
-  lineaProducto,
+export default function ModeloForm({
+  modeloId,
+  modelo,
   onSave,
   onCancel,
   errores: erroresExternos = {}
@@ -13,37 +14,61 @@ export default function LineaProductoForm({
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
   const [erroresBackend, setErroresBackend] = useState({});
+  const [familias, setFamilias] = useState([]);
 
   const navigate = useNavigate();
 
   const esModal = Boolean(onSave);
-  const esEdicion = Boolean(lineaProductoId) || Boolean(lineaProducto);
+  const esEdicion = Boolean(modeloId) || Boolean(modelo);
 
   const [formData, setFormData] = useState({
     codigo: "",
     nombre: "",
     descripcion: "",
+    familiaId: "",
     activo: true
   });
 
-  const mapLineaToForm = (data = {}) => ({
-    codigo: data.codigo || "",
-    nombre: data.nombre || "",
-    descripcion: data.descripcion || "",
-    activo: data.activo ?? true
-  });
+  useEffect(() => {
+    const cargarFamilias = async () => {
+      try {
+        const data = await obtenerFamilias();
+        if (data.content) {
+          setFamilias(data.content);
+        } else if (Array.isArray(data)) {
+          setFamilias(data);
+        }
+      } catch (e) {
+        console.error("Error cargando familias:", e);
+      }
+    };
+
+    cargarFamilias();
+  }, []);
 
   useEffect(() => {
     const cargar = async () => {
-      if (esModal && lineaProducto) {
-        setFormData(mapLineaToForm(lineaProducto));
+      if (esModal && modelo) {
+        setFormData({
+          codigo: modelo.codigo || modelo.sku || "",
+          nombre: modelo.nombre || "",
+          descripcion: modelo.descripcion || "",
+          familiaId: modelo.familiaId || modelo.familia_id || modelo.familia?.id || "",
+          activo: modelo.activo ?? true
+        });
         return;
       }
 
-      if (!esModal && lineaProductoId) {
+      if (!esModal && modeloId) {
         try {
-          const data = await obtenerLineaProductoPorId(lineaProductoId);
-          setFormData(mapLineaToForm(data));
+          const data = await obtenerModeloPorId(modeloId);
+          setFormData({
+            codigo: data.codigo || data.sku || "",
+            nombre: data.nombre || "",
+            descripcion: data.descripcion || "",
+            familiaId: data.familiaId || data.familia_id || data.familia?.id || "",
+            activo: data.activo ?? true
+          });
         } catch (e) {
           console.error("Error cargando:", e);
         }
@@ -51,7 +76,7 @@ export default function LineaProductoForm({
     };
 
     cargar();
-  }, [lineaProductoId, lineaProducto, esModal]);
+  }, [modeloId, modelo, esModal]);
 
   function handleChange(e) {
     const { name, value, type, checked } = e.target;
@@ -75,28 +100,39 @@ export default function LineaProductoForm({
 
     try {
       setErroresBackend({});
+      const rawFamiliaId = formData.familiaId?.toString().trim();
+      const familiaIdNormalizado = rawFamiliaId && /^\d+$/.test(rawFamiliaId) ? Number(rawFamiliaId) : null;
+
+      if (!familiaIdNormalizado) {
+        setErroresBackend((prev) => ({
+          ...prev,
+          familiaId: "La familia es obligatoria"
+        }));
+        return;
+      }
 
       const dataToSend = {
         codigo: formData.codigo?.toString().trim() || "",
         nombre: formData.nombre?.trim() || "",
         descripcion: formData.descripcion?.trim() || "",
+        familia_id: familiaIdNormalizado,
         activo: Boolean(formData.activo)
       };
 
       let respuesta;
       if (esEdicion) {
-        const id = lineaProducto?.id || lineaProductoId;
-        respuesta = await actualizarLineaProducto(id, dataToSend);
+        const id = modelo?.id || modeloId;
+        respuesta = await actualizarModelo(id, dataToSend);
       } else {
-        respuesta = await crearLineaProducto(dataToSend);
+        respuesta = await crearModelo(dataToSend);
       }
 
       if (esModal) {
         onSave(respuesta);
       } else {
         setToastType("success");
-        setToastMessage(esEdicion ? "Linea de producto actualizada con exito" : "Linea de producto registrada con exito");
-        setTimeout(() => navigate("/lineas-producto"), 1500);
+        setToastMessage(esEdicion ? "Modelo actualizado con exito" : "Modelo registrado con exito");
+        setTimeout(() => navigate("/modelos"), 1500);
       }
     } catch (error) {
       if (error.errors) {
@@ -112,12 +148,14 @@ export default function LineaProductoForm({
 
   const inputClass = (field) =>
     `form-control ${(erroresBackend[field] || erroresExternos[field]) ? "is-invalid" : "border-soft"}`;
+  const selectClass = (field) =>
+    `form-select ${(erroresBackend[field] || erroresExternos[field]) ? "is-invalid" : "border-soft"}`;
 
   const handleCancel = () => {
     if (esModal) {
       onCancel();
     } else {
-      navigate("/lineas-producto");
+      navigate("/modelos");
     }
   };
 
@@ -127,9 +165,9 @@ export default function LineaProductoForm({
 
       {!esModal && (
         <div className="d-flex justify-content-between align-items-center mb-4">
-          <h2 className="fw-bold text-primary">{esEdicion ? "Editar Linea de Producto" : "Nueva Linea de Producto"}</h2>
+          <h2 className="fw-bold text-primary">{esEdicion ? "Editar Modelo" : "Nuevo Modelo"}</h2>
           <span className={`badge ${formData.activo ? "bg-success" : "bg-secondary"}`}>
-            {formData.activo ? "Activa" : "Inactiva"}
+            {formData.activo ? "Activo" : "Inactivo"}
           </span>
         </div>
       )}
@@ -138,7 +176,7 @@ export default function LineaProductoForm({
         <div className="card shadow-sm border-0 mb-4">
           <div className="card-header bg-white py-3">
             <h5 className="mb-0 text-secondary">
-              <i className="bi bi-tag me-2"></i>Informacion de la Linea
+              <i className="bi bi-tag me-2"></i>Informacion del Modelo
             </h5>
           </div>
           <div className="card-body">
@@ -153,14 +191,14 @@ export default function LineaProductoForm({
                   className={inputClass("codigo")}
                   value={formData.codigo}
                   onChange={handleChange}
-                  placeholder="Ej: LN-01"
+                  placeholder="Ej: MOD-001"
                 />
                 <div className="invalid-feedback">{erroresBackend.codigo || erroresExternos.codigo}</div>
               </div>
 
-              <div className="col-md-8">
+              <div className="col-md-4">
                 <label className="form-label fw-semibold">
-                  Nombre de la Linea <span className="text-danger">*</span>
+                  Nombre del Modelo <span className="text-danger">*</span>
                 </label>
                 <input
                   type="text"
@@ -168,9 +206,32 @@ export default function LineaProductoForm({
                   className={inputClass("nombre")}
                   value={formData.nombre}
                   onChange={handleChange}
-                  placeholder="Ej: ISO, STACK"
+                  placeholder="Ej: Silla, Con Paleta, Plegable"
                 />
                 <div className="invalid-feedback">{erroresBackend.nombre || erroresExternos.nombre}</div>
+              </div>
+
+              <div className="col-md-4">
+                <label className="form-label fw-semibold">
+                  Familia <span className="text-danger">*</span>
+                </label>
+                <select
+                  name="familiaId"
+                  className={selectClass("familiaId")}
+                  value={formData.familiaId}
+                  onChange={handleChange}
+                >
+                  <option value="">Selecciona una familia...</option>
+                  {familias.map((familia) => {
+                    const familiaOptionId = familia.id ?? familia.familiaId;
+                    return (
+                      <option key={familiaOptionId} value={familiaOptionId}>
+                        {familia.nombre}
+                      </option>
+                    );
+                  })}
+                </select>
+                <div className="invalid-feedback">{erroresBackend.familiaId || erroresExternos.familiaId}</div>
               </div>
 
               <div className="col-md-12">
@@ -181,32 +242,42 @@ export default function LineaProductoForm({
                   value={formData.descripcion || ""}
                   onChange={handleChange}
                   rows="4"
-                  placeholder="Descripcion detallada de la linea de producto"
+                  placeholder="Descripcion detallada del modelo"
                 />
                 <div className="invalid-feedback">{erroresBackend.descripcion || erroresExternos.descripcion}</div>
                 <div className="form-text text-muted">Maximo 500 caracteres</div>
               </div>
+
+              <div className="col-md-12">
+                <div className="border-top pt-3 mt-2">
+                  <div className="d-flex align-items-center">
+                    <div className="form-check form-switch mb-0">
+                      <input
+                        className="form-check-input"
+                        type="checkbox"
+                        name="activo"
+                        checked={formData.activo}
+                        onChange={handleChange}
+                        id="activoSwitch"
+                        style={{ width: "40px", height: "20px", cursor: "pointer" }}
+                      />
+                    </div>
+                    <div className="ms-3">
+                      <label className="form-check-label fw-semibold d-block" htmlFor="activoSwitch" style={{ cursor: "pointer" }}>
+                        Modelo {formData.activo ? "Activo" : "Inactivo"}
+                      </label>
+                      <small className="text-muted">
+                        {formData.activo
+                          ? "El modelo de producto esta habilitado y disponible"
+                          : "El modelo de producto esta deshabilitado"}
+                      </small>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-
-        {!esModal && (
-          <div className="d-flex justify-content-between align-items-center bg-white p-3 rounded shadow-sm mb-4">
-            <div className="form-check form-switch">
-              <input
-                className="form-check-input"
-                type="checkbox"
-                name="activo"
-                checked={formData.activo}
-                onChange={handleChange}
-                id="switchActivo"
-              />
-              <label className="form-check-label fw-semibold" htmlFor="switchActivo">
-                Linea de producto habilitada
-              </label>
-            </div>
-          </div>
-        )}
 
         <div className="d-flex justify-content-between align-items-center bg-white p-3 rounded shadow-sm">
           {esModal && (
@@ -220,7 +291,7 @@ export default function LineaProductoForm({
                 id="switchActivoModal"
               />
               <label className="form-check-label fw-semibold" htmlFor="switchActivoModal">
-                Linea habilitada
+                Modelo {formData.activo ? "Activo" : "Inactivo"}
               </label>
             </div>
           )}

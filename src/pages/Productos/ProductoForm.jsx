@@ -5,7 +5,7 @@ import {
   crearProducto, 
   actualizarProducto 
 } from "../../services/productos.js";
-import { obtenerTiposProducto } from "../../services/tiposProducto.js";
+import { obtenerModelos } from "../../services/modelos.js";
 import { obtenerLineasProducto } from "../../services/lineaProducto.js";
 import { obtenerCategorias } from "../../services/categorias.js";
 import { obtenerMateriales } from "../../services/materiales.js";
@@ -54,7 +54,7 @@ export default function ProductoForm({
     const cargarCatalogos = async () => {
       try {
         const [tipos, lineasData, categoriasData, materialesData] = await Promise.all([
-          obtenerTiposProducto(),
+          obtenerModelos(),
           obtenerLineasProducto(),
           obtenerCategorias(),
           obtenerMateriales()

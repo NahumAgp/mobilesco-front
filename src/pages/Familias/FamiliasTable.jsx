@@ -10,8 +10,10 @@ export default function FamiliasTable({ data, onEditar, onEliminar }) {
           <thead className="table-light">
             <tr>
               <th>ID</th>
+              <th>Codigo</th>
               <th>Nombre</th>
-              <th>Descripción</th>
+              <th>Descripcion</th>
+              <th>Linea</th>
               <th>Registro</th>
               <th>Estado</th>
               <th>Acciones</th>
@@ -30,13 +32,17 @@ export default function FamiliasTable({ data, onEditar, onEliminar }) {
                 >
 
                   <td>{familia.id}</td>
+                  <td>{familia.codigo}</td>
                   <td>{familia.nombre}</td>
                   <td>{familia.descripcion}</td>
+                  <td>{familia.lineaNombre || familia.linea?.nombre || familia.lineaId || "-"}</td>
                   <td>
-                    {new Date(familia.createdAt).toLocaleString('es-MX', {
-                      dateStyle: 'short',
-                      timeStyle: 'short'
-                    })}
+                    {familia.createdAt
+                      ? new Date(familia.createdAt).toLocaleString("es-MX", {
+                          dateStyle: "short",
+                          timeStyle: "short"
+                        })
+                      : "-"}
                   </td>
 
                   <td>
@@ -81,7 +87,7 @@ export default function FamiliasTable({ data, onEditar, onEliminar }) {
             ) : (
 
               <tr>
-                <td colSpan="5" className="text-center text-muted py-3">
+                <td colSpan="7" className="text-center text-muted py-3">
                   No hay familias registradas
                 </td>
               </tr>
