@@ -7,6 +7,7 @@ import { obtenerLineasProducto } from "../../services/lineaProducto";
 export default function FamiliaForm({ familiaId }) {
   const navigate = useNavigate();
   const esEdicion = Boolean(familiaId);
+  const [erroresBackend, setErroresBackend] = useState({});
 
   const [formData, setFormData] = useState({
     codigo: "",
@@ -71,11 +72,23 @@ export default function FamiliaForm({ familiaId }) {
     e.preventDefault();
 
     try {
+      setErroresBackend({});
+      const lineaIdNormalizado = formData.lineaId ? Number(formData.lineaId) : null;
+
+      if (!lineaIdNormalizado) {
+        setErroresBackend((prev) => ({
+          ...prev,
+          lineaId: "La linea es obligatoria"
+        }));
+        return;
+      }
+
       const payload = {
         codigo: formData.codigo?.toString().trim() || "",
         nombre: formData.nombre?.trim() || "",
         descripcion: formData.descripcion?.trim() || "",
-        lineaId: formData.lineaId ? Number(formData.lineaId) : null,
+        lineaId: lineaIdNormalizado,
+        linea_id: lineaIdNormalizado,
         activo: Boolean(formData.activo)
       };
 
@@ -87,7 +100,11 @@ export default function FamiliaForm({ familiaId }) {
 
       navigate("/familias");
     } catch (error) {
-      console.error(error);
+      if (error?.errors) {
+        setErroresBackend(error.errors);
+      } else {
+        console.error(error);
+      }
     }
   }
 
@@ -111,14 +128,20 @@ export default function FamiliaForm({ familiaId }) {
 
         <div className="col-md-12">
           <label className="form-label">Linea</label>
-          <select name="lineaId" className="form-select" value={formData.lineaId} onChange={handleChange}>
+          <select
+            name="lineaId"
+            className={`form-select ${erroresBackend.lineaId || erroresBackend.linea_id ? "is-invalid" : ""}`}
+            value={formData.lineaId}
+            onChange={handleChange}
+          >
             <option value="">Selecciona una linea...</option>
             {lineas.map((linea) => (
-              <option key={linea.id} value={linea.id}>
+              <option key={linea.id ?? linea.lineaId} value={linea.id ?? linea.lineaId}>
                 {linea.nombre}
               </option>
             ))}
           </select>
+          <div className="invalid-feedback">{erroresBackend.lineaId || erroresBackend.linea_id}</div>
         </div>
 
         <div className="col-md-12">

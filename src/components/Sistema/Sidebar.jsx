@@ -377,8 +377,35 @@ export default function Sidebar() {
               Productos
             </NavLink>
 
+            <NavLink to="/productos-completos" className="sidebar-link">
+              <i className="bi bi-grid-3x3-gap me-2"></i>
+              Productos Completos
+            </NavLink>
+
           </div>
         </div>
+
+        {/* Variantes */}
+<div>
+  <button className="sidebar-parent" data-bs-toggle="collapse" data-bs-target="#menuVariantes">
+    <div className="sidebar-parent-content">
+      <i className="bi bi-tags me-2"></i>
+      <span>Variantes</span>
+    </div>
+    <i className="bi bi-chevron-down sidebar-chevron"></i>
+  </button>
+
+  <div className="collapse sidebar-submenu" id="menuVariantes">
+    <NavLink to="/variantes" className="sidebar-link">
+      <i className="bi bi-list-ul me-2"></i>
+      Lista de Variantes
+    </NavLink>
+    <NavLink to="/variantes/nuevo" className="sidebar-link">
+      <i className="bi bi-plus-circle me-2"></i>
+      Nueva Variante
+    </NavLink>
+  </div>
+</div>
 
         {/* INSUMOS */}
         <div>

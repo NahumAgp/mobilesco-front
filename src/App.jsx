@@ -62,6 +62,11 @@ import ProductoBOMPage from "./pages/Productos/ProductoBOMPage";
 import ProductoInsumosBOMPage from "./pages/Productos/ProductoInsumosBOMPage";
 import ProductoOperacionesBOMPage from "./pages/Productos/ProductoOperacionesBOMPage";
 
+import VariantesPage from "./pages/Variantes/VariantesPage.jsx";
+import VarianteFormPage from "./pages/Variantes/VarianteFromPage.jsx";
+
+import ProductosCompletosPage from "./pages/ProductosCompletos/ProductosCompletosPage.jsx";
+
 export default function App() {
 
   return (
@@ -164,6 +169,11 @@ export default function App() {
         <Route path="/kardex" element={<KardexPage />} />
         <Route path="/kardex/insumo/:insumoId" element={<KardexPage />} />
         
+         {/* Variantes */}
+        <Route path="/variantes" element={<VariantesPage />} />
+        <Route path="/variantes/nuevo" element={<VarianteFormPage />} />
+        <Route path="/variantes/:id" element={<VarianteFormPage />} />
+
         {/* Productos */}
        <Route path="/productos" element={<ProductosPage />} />
         <Route path="/productos/nuevo" element={<ProductoFormPage />} />
@@ -172,6 +182,8 @@ export default function App() {
         <Route path="/productos/:id/bom/insumos" element={<ProductoInsumosBOMPage />} />
         <Route path="/productos/:id/bom/operaciones" element={<ProductoOperacionesBOMPage />} />
 
+        <Route path="/productos-completos" element={<ProductosCompletosPage />} />
+        <Route path="/prueba/productos" element={<Navigate to="/productos-completos" replace />} />
       </Route>
 
       
