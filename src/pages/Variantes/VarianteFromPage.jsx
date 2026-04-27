@@ -4,7 +4,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import VarianteForm from "./VarianteForm.jsx";
 
-export default function VarianteFormPage() {
+export default function VarianteFormPage({ returnPath = "/variantes" }) {
 
   const { id } = useParams();
   const navigate = useNavigate();
@@ -19,7 +19,7 @@ export default function VarianteFormPage() {
         </h3>
         <button
           className="btn btn-outline-secondary"
-          onClick={() => navigate("/variantes")}
+          onClick={() => navigate(returnPath)}
         >
           Volver
         </button>
@@ -27,7 +27,7 @@ export default function VarianteFormPage() {
 
       <div className="card">
         <div className="card-body">
-          <VarianteForm varianteId={id} />
+          <VarianteForm varianteId={id} returnPath={returnPath} />
         </div>
       </div>
     </div>

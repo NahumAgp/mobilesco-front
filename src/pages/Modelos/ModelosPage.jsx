@@ -45,7 +45,7 @@ export default function ModelosPage() {
 
   const manejarEliminar = async (id) => {
 
-    const confirmacion = window.confirm("¿Seguro que deseas eliminar este modelo?");
+    const confirmacion = window.confirm("ï¿½Seguro que deseas eliminar este modelo?");
     if (!confirmacion) return;
 
     try {
@@ -102,7 +102,7 @@ export default function ModelosPage() {
 
       <PageHeader
         title="Modelos"
-        subtitle="Catálogo de modelos"
+        subtitle="CatÃ¡logo de modelos"
         actions={
           <button
             className="btn btn-success"
@@ -133,7 +133,7 @@ export default function ModelosPage() {
               <input
                 type="text"
                 className="form-control"
-                placeholder="Buscar por nombre, descripción o familia..."
+                placeholder="Buscar por nombre, descripciÃ³n o familia..."
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
               />

@@ -9,7 +9,7 @@ import { obtenerModelos } from "../../services/modelos.js";
 import { obtenerCategorias } from "../../services/categorias.js";
 import { obtenerColores } from "../../services/color.js";
 
-export default function VarianteForm({ varianteId }) {
+export default function VarianteForm({ varianteId, returnPath = "/variantes" }) {
   const navigate = useNavigate();
   const esEdicion = Boolean(varianteId);
 
@@ -117,7 +117,7 @@ export default function VarianteForm({ varianteId }) {
         await crearVariante(payload);
       }
 
-      navigate("/variantes");
+      navigate(returnPath);
     } catch (error) {
       console.error("Error en handleSubmit:", error);
       alert(error.message || "Error al guardar variante");
@@ -270,7 +270,7 @@ export default function VarianteForm({ varianteId }) {
           <button
             type="button"
             className="btn btn-outline-secondary"
-            onClick={() => navigate("/variantes")}
+            onClick={() => navigate(returnPath)}
           >
             <i className="bi bi-x-lg me-1"></i>
             Cancelar

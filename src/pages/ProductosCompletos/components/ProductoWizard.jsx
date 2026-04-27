@@ -12,7 +12,7 @@ const PASOS = [
 ];
 
 const MENSAJES_VALIDACION = {
-  1: "Completa c\u00f3digo, nombre y familia para continuar.",
+  1: "Selecciona un modelo existente o completa codigo, nombre y familia para crear uno nuevo.",
   2: "Agrega al menos una variante con categoria, color y SKU generado.",
   3: "Puedes continuar sin im\u00e1genes o agregar al menos una imagen."
 };
@@ -23,6 +23,7 @@ export default function ProductoWizard({ onComplete, onCancel }) {
   const [guardando, setGuardando] = useState(false);
   const [productoData, setProductoData] = useState({
     modelo: {
+      modo: "existente",
       id: null,
       codigo: "",
       nombre: "",
@@ -52,7 +53,12 @@ export default function ProductoWizard({ onComplete, onCancel }) {
 
   const validarPasoActual = () => {
     if (pasoActual === 1) {
-      const { codigo, nombre, familiaId } = productoData.modelo;
+      const { modo, id, codigo, nombre, familiaId } = productoData.modelo;
+
+      if (modo === "existente") {
+        return Boolean(id);
+      }
+
       return Boolean(codigo?.trim() && nombre?.trim() && familiaId);
     }
 

@@ -44,6 +44,10 @@ export default function ResumenStep({ data }) {
         <div className="card-body">
           <div className="row">
             <div className="col-md-4">
+              <strong>Origen:</strong>{" "}
+              {data.modelo.modo === "existente" ? "Modelo existente" : "Modelo nuevo"}
+            </div>
+            <div className="col-md-4">
               <strong>Codigo:</strong> {data.modelo.codigo || "N/A"}
             </div>
             <div className="col-md-4">

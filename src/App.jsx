@@ -24,16 +24,11 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 import FamiliasPage from "./pages/Familias/FamiliasPage.jsx";
 import FamiliaFormPage from "./pages/Familias/FamiliaFormPage.jsx";
 
-import LineaProductoForm from "./pages/LineaProducto/LineaProductoFormPage.jsx";
 import LineaProductoFormPage from "./pages/LineaProducto/LineaProductoFormPage.jsx";
 import LineaProductoPage from "./pages/LineaProducto/LineaProductoPage.jsx";
 
 import CategoriaPage from "./pages/Categoria/CategoriaPage.jsx";
-import CategoriaFromPage from "./pages/Categoria/CategoriaFormPage.jsx";
 import CategoriaFormPage from "./pages/Categoria/CategoriaFormPage.jsx";
-
-import MaterialesPage from "./pages/Materiales/MaterialesPage.jsx";
-import MaterialFormPage from "./pages/Materiales/MaterialFormPage.jsx";
 
 import ModelosPage from "./pages/Modelos/ModelosPage.jsx";
 import ModelosFormPage from "./pages/Modelos/ModelosFormPage.jsx";
@@ -54,13 +49,6 @@ import ComprasFormPage from "./pages/Compras/CompraFormPage.jsx";
 
 import KardexPage from "./pages/Kardex/KardexPage"; 
 import CompraDetallePage from "./pages/Compras/CompraDetallePage.jsx";
-
-import ProductosPage from "./pages/Productos/ProductosPage";
-import ProductoFormPage from "./pages/Productos/ProductoFormPage";
-import ProductoDetallePage from "./pages/Productos/ProductoDetallePage";
-import ProductoBOMPage from "./pages/Productos/ProductoBOMPage";
-import ProductoInsumosBOMPage from "./pages/Productos/ProductoInsumosBOMPage";
-import ProductoOperacionesBOMPage from "./pages/Productos/ProductoOperacionesBOMPage";
 
 import VariantesPage from "./pages/Variantes/VariantesPage.jsx";
 import VarianteFormPage from "./pages/Variantes/VarianteFromPage.jsx";
@@ -130,9 +118,9 @@ export default function App() {
         <Route path="/categorias/:id" element={<CategoriaFormPage />} />
 
         {/* MATERIALES */}
-        <Route path="/materiales" element={<MaterialesPage />} />
-        <Route path="/materiales/nuevo" element={<MaterialFormPage />} />
-        <Route path="/materiales/:id" element={<MaterialFormPage />} />
+        <Route path="/materiales" element={<Navigate to="/productos" replace />} />
+        <Route path="/materiales/nuevo" element={<Navigate to="/productos" replace />} />
+        <Route path="/materiales/:id" element={<Navigate to="/productos" replace />} />
 
         {/* MODELOS */}
         <Route path="/modelos" element={<ModelosPage />} />
@@ -175,15 +163,15 @@ export default function App() {
         <Route path="/variantes/:id" element={<VarianteFormPage />} />
 
         {/* Productos */}
-       <Route path="/productos" element={<ProductosPage />} />
-        <Route path="/productos/nuevo" element={<ProductoFormPage />} />
-        <Route path="/productos/:id" element={<ProductoFormPage />} />
-        <Route path="/productos/:id/ver" element={<ProductoDetallePage />} />
-        <Route path="/productos/:id/bom/insumos" element={<ProductoInsumosBOMPage />} />
-        <Route path="/productos/:id/bom/operaciones" element={<ProductoOperacionesBOMPage />} />
+        <Route path="/productos" element={<ProductosCompletosPage />} />
+        <Route path="/productos/nuevo" element={<ProductosCompletosPage iniciarCreacion />} />
+        <Route path="/productos/:id" element={<VarianteFormPage returnPath="/productos" />} />
+        <Route path="/productos/:id/ver" element={<Navigate to="/productos" replace />} />
+        <Route path="/productos/:id/bom/insumos" element={<Navigate to="/productos" replace />} />
+        <Route path="/productos/:id/bom/operaciones" element={<Navigate to="/productos" replace />} />
 
-        <Route path="/productos-completos" element={<ProductosCompletosPage />} />
-        <Route path="/prueba/productos" element={<Navigate to="/productos-completos" replace />} />
+        <Route path="/productos-completos" element={<Navigate to="/productos" replace />} />
+        <Route path="/prueba/productos" element={<Navigate to="/productos" replace />} />
       </Route>
 
       

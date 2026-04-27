@@ -1,0 +1,102 @@
+.variantes-table-card {
+  overflow: hidden;
+}
+
+.variantes-table-wrap {
+  max-height: calc(100vh - 350px);
+  overflow: auto;
+}
+
+.variantes-table {
+  min-width: 1260px;
+  table-layout: fixed;
+}
+
+.variantes-table thead th {
+  padding: 14px 12px;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.variantes-table tbody td {
+  padding: 12px;
+  vertical-align: middle;
+}
+
+.variantes-col-imagen {
+  width: 96px;
+}
+
+.variantes-col-sku {
+  width: 140px;
+}
+
+.variantes-col-descripcion {
+  width: 360px;
+}
+
+.variantes-col-modelo,
+.variantes-col-nivel,
+.variantes-col-color {
+  width: 120px;
+}
+
+.variantes-col-estado {
+  width: 116px;
+}
+
+.variantes-col-fecha {
+  width: 142px;
+}
+
+.variantes-col-acciones {
+  width: 230px;
+}
+
+.variantes-table-image,
+.variantes-table-image-placeholder {
+  width: 64px;
+  height: 64px;
+  border-radius: 6px;
+  border: 1px solid #dee2e6;
+}
+
+.variantes-table-image {
+  display: block;
+  object-fit: cover;
+}
+
+.variantes-table-image-placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8f9fa;
+  color: #6c757d;
+  font-size: 12px;
+}
+
+.variantes-table-sku,
+.variantes-table td:nth-child(4),
+.variantes-table td:nth-child(5),
+.variantes-table td:nth-child(6),
+.variantes-table td:nth-child(7),
+.variantes-table td:nth-child(8),
+.variantes-table td:nth-child(9) {
+  white-space: nowrap;
+}
+
+.variantes-table-title,
+.variantes-table-description {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.variantes-table-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}

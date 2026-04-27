@@ -1,21 +1,50 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import ProductoWizard from "./components/ProductoWizard";
-import ProductosTable from "./components/ProductosTable";
 import { crearModelo } from "../../services/modelos";
 import { crearVariante } from "../../services/variantes";
 import { crearImagen, subirImagenArchivo } from "../../services/imagenes";
+import { obtenerProductos, eliminarProducto } from "../../services/productos";
+import VariantesTable from "../Variantes/VariantesTable";
+import PageHeader from "../../components/Sistema/PageHeader";
+import Toast from "../../components/ui/Toast";
 
-export default function ProductosCompletosPage() {
-  const [modoCreacion, setModoCreacion] = useState(false);
+const getLista = (respuesta) => {
+  if (Array.isArray(respuesta)) return respuesta;
+  if (Array.isArray(respuesta?.content)) return respuesta.content;
+  return [];
+};
+
+export default function ProductosCompletosPage({ iniciarCreacion = false }) {
+  const navigate = useNavigate();
+  const [modoCreacion, setModoCreacion] = useState(iniciarCreacion);
   const [productos, setProductos] = useState([]);
+  const [loadingLista, setLoadingLista] = useState(false);
+  const [errorLista, setErrorLista] = useState("");
   const [mensaje, setMensaje] = useState("");
   const [tipoMensaje, setTipoMensaje] = useState("success");
+  const [busqueda, setBusqueda] = useState("");
+  const [filtroEstatus, setFiltroEstatus] = useState("TODOS");
 
-  useEffect(() => {
+  const cargarProductos = async () => {
     // Limpiar cache legado del modulo cuando existia en modo local.
     localStorage.removeItem("productos_completos_cache");
     localStorage.removeItem("productos_prueba");
-    setProductos([]);
+
+    try {
+      setLoadingLista(true);
+      setErrorLista("");
+      const data = await obtenerProductos();
+      setProductos(getLista(data));
+    } catch (error) {
+      setErrorLista(error?.message || "No se pudieron cargar los productos.");
+    } finally {
+      setLoadingLista(false);
+    }
+  };
+
+  useEffect(() => {
+    cargarProductos();
   }, []);
 
   const obtenerIdModelo = (modeloGuardado) =>
@@ -74,21 +103,33 @@ export default function ProductosCompletosPage() {
     });
   };
 
-  const handleSaveComplete = async (nuevoProducto) => {
-    const modeloPayload = {
-      codigo: nuevoProducto?.modelo?.codigo?.trim() || "",
-      nombre: nuevoProducto?.modelo?.nombre?.trim() || "",
-      descripcion: nuevoProducto?.modelo?.descripcion?.trim() || "",
-      familia_id: Number(nuevoProducto?.modelo?.familiaId),
-      activo: Boolean(nuevoProducto?.modelo?.activo)
-    };
+  const cerrarModoCreacion = () => {
+    setModoCreacion(false);
+    if (iniciarCreacion) {
+      navigate("/productos", { replace: true });
+    }
+  };
 
+  const handleSaveComplete = async (nuevoProducto) => {
     try {
-      const modeloGuardado = await crearModelo(modeloPayload);
-      const modeloId = obtenerIdModelo(modeloGuardado);
+      const usarModeloExistente = nuevoProducto?.modelo?.modo === "existente";
+      let modeloId = usarModeloExistente ? Number(nuevoProducto?.modelo?.id) : null;
+
+      if (!usarModeloExistente) {
+        const modeloPayload = {
+          codigo: nuevoProducto?.modelo?.codigo?.trim() || "",
+          nombre: nuevoProducto?.modelo?.nombre?.trim() || "",
+          descripcion: nuevoProducto?.modelo?.descripcion?.trim() || "",
+          familia_id: Number(nuevoProducto?.modelo?.familiaId),
+          activo: Boolean(nuevoProducto?.modelo?.activo)
+        };
+
+        const modeloGuardado = await crearModelo(modeloPayload);
+        modeloId = obtenerIdModelo(modeloGuardado);
+      }
 
       if (!modeloId) {
-        throw new Error("Se creo el modelo, pero no se recibio su ID para guardar variantes.");
+        throw new Error("No se recibio el ID del modelo para guardar variantes.");
       }
 
       const variantes = Array.isArray(nuevoProducto?.variantes) ? nuevoProducto.variantes : [];
@@ -96,7 +137,6 @@ export default function ProductosCompletosPage() {
         nuevoProducto?.imagenes
       );
 
-      const variantesGuardadas = [];
       const mapaVariantes = new Map();
       for (const variante of variantes) {
         const payloadVariante = {
@@ -112,7 +152,6 @@ export default function ProductosCompletosPage() {
         };
 
         const varianteGuardada = await crearVariante(payloadVariante);
-        variantesGuardadas.push(varianteGuardada);
 
         const varianteIdBd = obtenerIdVariante(varianteGuardada);
         if (!varianteIdBd) {
@@ -122,7 +161,6 @@ export default function ProductosCompletosPage() {
         mapaVariantes.set(String(variante.id), Number(varianteIdBd));
       }
 
-      const imagenesGuardadas = [];
       for (const variante of variantes) {
         const varianteIdBd = mapaVariantes.get(String(variante.id));
         if (!varianteIdBd) continue;
@@ -133,16 +171,13 @@ export default function ProductosCompletosPage() {
 
         for (let idx = 0; idx < listaImagenes.length; idx += 1) {
           const imagen = listaImagenes[idx];
-          const imagenGuardada = await guardarImagenVariante({
+          await guardarImagenVariante({
             imagen,
             varianteId: varianteIdBd,
             esPrincipal: Boolean(imagen?.principal),
             orden: idx + 1,
             altTexto: imagen?.nombre || `Imagen ${idx + 1}`
           });
-
-          if (!imagenGuardada) continue;
-          imagenesGuardadas.push(imagenGuardada);
         }
       }
 
@@ -155,37 +190,22 @@ export default function ProductosCompletosPage() {
             ? imagenesPorVariante[String(primeraVarianteLocal.id)]
             : [];
 
-          const portadaGuardada = await guardarImagenVariante({
+          await guardarImagenVariante({
             imagen: imagenModelo,
             varianteId: primeraVarianteBd,
             esPrincipal: listaPrimera.length === 0,
             orden: listaPrimera.length + 1,
             altTexto: imagenModelo?.nombre || "Portada del modelo"
           });
-
-          if (portadaGuardada) {
-            imagenesGuardadas.push(portadaGuardada);
-          }
         }
       }
 
-      const registroLocal = {
-        ...nuevoProducto,
-        modelo: {
-          ...nuevoProducto.modelo,
-          id: modeloId
-        },
-        variantesApi: variantesGuardadas,
-        imagenesApi: imagenesGuardadas
-      };
-
-      const nuevosProductos = [...productos, registroLocal];
-      setProductos(nuevosProductos);
       setTipoMensaje("success");
       setMensaje(
         "Producto guardado en BD (modelo, variantes e imagenes)."
       );
-      setModoCreacion(false);
+      cerrarModoCreacion();
+      await cargarProductos();
     } catch (error) {
       setTipoMensaje("danger");
       setMensaje(error?.message || "No se pudo guardar el producto en la base de datos.");
@@ -193,33 +213,103 @@ export default function ProductosCompletosPage() {
     }
   };
 
+  const manejarEliminar = async (id) => {
+    const confirmar = window.confirm("¿Seguro que deseas eliminar esta variante?");
+    if (!confirmar) return;
+
+    try {
+      await eliminarProducto(id);
+      setTipoMensaje("success");
+      setMensaje("Variante eliminada correctamente.");
+      await cargarProductos();
+    } catch (error) {
+      setTipoMensaje("danger");
+      setMensaje(error?.message || "No se pudo eliminar la variante.");
+    }
+  };
+
+  const productosFiltrados = productos.filter((variante) => {
+    const termino = busqueda.toLowerCase().trim();
+    const texto = [
+      variante?.sku,
+      variante?.nombre,
+      variante?.descripcion,
+      variante?.productoBaseNombre,
+      variante?.modeloNombre,
+      variante?.nivelNombre,
+      variante?.categoriaNombre,
+      variante?.colorNombre
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    const coincideBusqueda = !termino || texto.includes(termino);
+    const coincideEstatus =
+      filtroEstatus === "TODOS" ||
+      (filtroEstatus === "ACTIVO" && variante?.activo) ||
+      (filtroEstatus === "INACTIVO" && !variante?.activo);
+
+    return coincideBusqueda && coincideEstatus;
+  });
+
   if (modoCreacion) {
     return (
-      <ProductoWizard onComplete={handleSaveComplete} onCancel={() => setModoCreacion(false)} />
+      <ProductoWizard onComplete={handleSaveComplete} onCancel={cerrarModoCreacion} />
     );
   }
 
   return (
-    <div className="container py-4">
-      {mensaje && (
-        <div className={`alert alert-${tipoMensaje} mb-4`} role="alert">
-          {mensaje}
-        </div>
-      )}
+    <>
+      <Toast message={mensaje} type={tipoMensaje} onClose={() => setMensaje("")} />
 
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <div>
-          <h2 className="fw-bold text-primary">Productos Completos</h2>
-          <p className="text-muted mb-0">Alta unificada de modelo, variantes e imagenes</p>
-        </div>
+      <PageHeader
+        title="Productos"
+        subtitle="Alta unificada de modelos, variantes e imagenes"
+        actions={
+          <button className="btn btn-success" onClick={() => setModoCreacion(true)}>
+            <i className="bi bi-plus-circle me-2"></i>
+            Nuevo Producto
+          </button>
+        }
+      />
 
-        <button className="btn btn-primary" onClick={() => setModoCreacion(true)}>
-          <i className="bi bi-plus-circle me-2"></i>
-          Nuevo Producto
-        </button>
+      {loadingLista && <div className="alert alert-info">Cargando productos...</div>}
+      {errorLista && <div className="alert alert-danger">{errorLista}</div>}
+
+      <div className="card mb-3">
+        <div className="card-body">
+          <div className="row g-2 align-items-center">
+            <div className="col-md-5">
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Buscar por SKU, variante, modelo, nivel o color..."
+                value={busqueda}
+                onChange={(event) => setBusqueda(event.target.value)}
+              />
+            </div>
+
+            <div className="col-md-3">
+              <select
+                className="form-select"
+                value={filtroEstatus}
+                onChange={(event) => setFiltroEstatus(event.target.value)}
+              >
+                <option value="TODOS">Todos</option>
+                <option value="ACTIVO">Activos</option>
+                <option value="INACTIVO">Inactivos</option>
+              </select>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <ProductosTable data={productos} />
-    </div>
+      <VariantesTable
+        data={productosFiltrados}
+        onEditar={(variante) => navigate(`/productos/${variante.id}`)}
+        onEliminar={manejarEliminar}
+      />
+    </>
   );
 }
