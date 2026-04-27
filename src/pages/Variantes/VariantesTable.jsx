@@ -5,22 +5,54 @@ const API_BASE_URL = "http://localhost:8081";
 const getVarianteId = (variante) =>
   variante?.id || variante?.varianteId || variante?.id_variante || null;
 
+const getEtiquetaEntidad = (fuentes = []) => {
+  for (const fuente of fuentes) {
+    if (!fuente) continue;
+
+    if (typeof fuente === "string") {
+      const texto = String(fuente).trim();
+      if (texto && !/^\d+$/.test(texto)) return texto;
+      continue;
+    }
+
+    if (typeof fuente === "number") {
+      continue;
+    }
+
+    const nombre = fuente?.nombre || fuente?.name || "";
+
+    if (nombre) return nombre;
+  }
+
+  return "-";
+};
+
 const getModeloNombre = (variante) =>
-  variante?.productoBaseNombre ||
-  variante?.modeloNombre ||
-  variante?.productoBase?.nombre ||
-  variante?.modelo?.nombre ||
-  "-";
+  getEtiquetaEntidad([
+    variante?.productoBaseNombre,
+    variante?.modeloNombre,
+    variante?.productoBase?.nombre,
+    variante?.modelo?.nombre,
+    variante?.productoBase,
+    variante?.modelo
+  ]);
 
 const getCategoriaNombre = (variante) =>
-  variante?.nivelNombre ||
-  variante?.categoriaNombre ||
-  variante?.nivel?.nombre ||
-  variante?.categoria?.nombre ||
-  "-";
+  getEtiquetaEntidad([
+    variante?.nivelNombre,
+    variante?.categoriaNombre,
+    variante?.nivel?.nombre,
+    variante?.categoria?.nombre,
+    variante?.nivel,
+    variante?.categoria
+  ]);
 
 const getColorNombre = (variante) =>
-  variante?.colorNombre || variante?.color?.nombre || "-";
+  getEtiquetaEntidad([
+    variante?.colorNombre,
+    variante?.color?.nombre,
+    variante?.color
+  ]);
 
 const getImagenActiva = (imagen) =>
   imagen?.activo ?? imagen?.active ?? imagen?.habilitada ?? true;

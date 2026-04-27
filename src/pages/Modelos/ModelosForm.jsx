@@ -1,15 +1,16 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { obtenerModeloPorId, crearModelo, actualizarModelo } from "../../services/modelos.js";
-import { obtenerFamilias } from "../../services/familias.js";
+import { obtenerFamilias, obtenerFamiliaPorId } from "../../services/familias.js";
 import {
   obtenerVariantesPorProductoBase,
   crearVariante,
   actualizarVariante,
   eliminarVariante as eliminarVarianteService
 } from "../../services/variantes.js";
-import { obtenerCategorias } from "../../services/categorias.js";
-import { obtenerColores } from "../../services/color.js";
+import { obtenerCategorias, crearCategoria } from "../../services/categorias.js";
+import { obtenerColores, crearColor } from "../../services/color.js";
+import { obtenerLineaProductoPorId } from "../../services/lineaProducto.js";
 import {
   obtenerImagenesPorVariante,
   subirImagenArchivo,
@@ -126,6 +127,54 @@ const getColorVariante = (variante, coloresCatalogo = []) => {
   return id ? `ID ${id}` : "-";
 };
 
+const limpiarCodigo = (valor = "") => String(valor || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+const tomarInicial = (valor, fallback = "X") => {
+  const limpio = limpiarCodigo(valor);
+  return limpio[0] || fallback;
+};
+
+const construirCodigoCategoria = (categoria) => {
+  const base = limpiarCodigo(categoria?.codigo || "");
+  if (/^\d+$/.test(base)) {
+    return base.slice(-2).padStart(2, "0");
+  }
+
+  if (base) {
+    return base.slice(0, 2).padEnd(2, "X");
+  }
+
+  return "00";
+};
+
+const construirCodigoColor = (color) => {
+  const base = limpiarCodigo(color?.codigo || "");
+  if (base) return base.slice(0, 2).padEnd(2, "X");
+
+  const nombre = (color?.nombre || "").trim();
+  if (!nombre) return "SC";
+
+  const iniciales = nombre
+    .split(/\s+/)
+    .map((parte) => limpiarCodigo(parte)[0])
+    .filter(Boolean)
+    .join("");
+
+  return (iniciales || "SC").slice(0, 2).padEnd(2, "X");
+};
+
+const construirSkuVariante = ({ linea, familia, modelo, categoria, color }) => {
+  if (!categoria || !color) return "";
+
+  const codigoLinea = tomarInicial(linea?.codigo || linea?.nombre, "X");
+  const codigoFamilia = tomarInicial(familia?.codigo || familia?.nombre, "X");
+  const codigoModelo = tomarInicial(modelo?.codigo || modelo?.nombre, "X");
+  const codigoCategoria = construirCodigoCategoria(categoria);
+  const codigoColor = construirCodigoColor(color);
+
+  return `${codigoLinea}${codigoFamilia}${codigoModelo}-${codigoCategoria}-${codigoColor}`;
+};
+
 export default function ModeloForm({
   modeloId,
   modelo,
@@ -137,6 +186,8 @@ export default function ModeloForm({
   const [toastType, setToastType] = useState("success");
   const [erroresBackend, setErroresBackend] = useState({});
   const [familias, setFamilias] = useState([]);
+  const [familiaActual, setFamiliaActual] = useState(null);
+  const [lineaActual, setLineaActual] = useState(null);
   const [categoriasCatalogo, setCategoriasCatalogo] = useState([]);
   const [coloresCatalogo, setColoresCatalogo] = useState([]);
   const [variantesModelo, setVariantesModelo] = useState([]);
@@ -171,32 +222,49 @@ export default function ModeloForm({
     activo: true
   });
 
+  const modeloActual = useMemo(
+    () => ({
+      codigo: formData.codigo || modelo?.codigo || modelo?.sku || "",
+      nombre: formData.nombre || modelo?.nombre || ""
+    }),
+    [formData.codigo, formData.nombre, modelo]
+  );
+
+  const categoriaSeleccionada = useMemo(
+    () =>
+      categoriasCatalogo.find((categoria) => String(categoria?.id) === String(varianteForm.id_nivel)) || null,
+    [categoriasCatalogo, varianteForm.id_nivel]
+  );
+
+  const colorSeleccionado = useMemo(
+    () =>
+      coloresCatalogo.find((color) => String(color?.id) === String(varianteForm.id_color)) || null,
+    [coloresCatalogo, varianteForm.id_color]
+  );
+
+  const skuAutomaticoVariante = useMemo(
+    () =>
+      construirSkuVariante({
+        linea: lineaActual,
+        modelo: modeloActual,
+        familia: familiaActual,
+        categoria: categoriaSeleccionada,
+        color: colorSeleccionado
+      }),
+    [modeloActual, familiaActual, lineaActual, categoriaSeleccionada, colorSeleccionado]
+  );
+
   useEffect(() => {
     const cargarCatalogos = async () => {
       try {
-        const [familiasResp, categoriasResp, coloresResp] = await Promise.all([
-          obtenerFamilias(),
-          obtenerCategorias(),
-          obtenerColores()
-        ]);
+        const familiasResp = await obtenerFamilias();
+        setFamilias(getLista(familiasResp));
 
-        if (familiasResp.content) {
-          setFamilias(familiasResp.content);
-        } else if (Array.isArray(familiasResp)) {
-          setFamilias(familiasResp);
-        }
+        const categoriasResp = await obtenerCategorias();
+        setCategoriasCatalogo(getLista(categoriasResp));
 
-        if (categoriasResp.content) {
-          setCategoriasCatalogo(categoriasResp.content);
-        } else if (Array.isArray(categoriasResp)) {
-          setCategoriasCatalogo(categoriasResp);
-        }
-
-        if (coloresResp.content) {
-          setColoresCatalogo(coloresResp.content);
-        } else if (Array.isArray(coloresResp)) {
-          setColoresCatalogo(coloresResp);
-        }
+        const coloresResp = await obtenerColores();
+        setColoresCatalogo(getLista(coloresResp));
       } catch (e) {
         console.error("Error cargando catalogos:", e);
       }
@@ -204,6 +272,128 @@ export default function ModeloForm({
 
     cargarCatalogos();
   }, []);
+
+  const cargarCategoriasCatalogo = async () => {
+    const respuesta = await obtenerCategorias();
+    const lista = getLista(respuesta);
+    setCategoriasCatalogo(lista);
+    return lista;
+  };
+
+  const cargarColoresCatalogo = async () => {
+    const respuesta = await obtenerColores();
+    const lista = getLista(respuesta);
+    setColoresCatalogo(lista);
+    return lista;
+  };
+
+  const crearCategoriaRapida = async () => {
+    const nombre = window.prompt("Nombre de la categoria / nivel:");
+    if (!nombre || !nombre.trim()) return;
+
+    const codigoSugerido = String(categoriasCatalogo.length + 1).padStart(2, "0");
+    const codigo = window.prompt("Codigo corto de categoria (ej: 03):", codigoSugerido);
+
+    try {
+      await crearCategoria({
+        codigo: (codigo || codigoSugerido).trim(),
+        nombre: nombre.trim(),
+        descripcion: "Creada desde el editor de variantes",
+        activo: true
+      });
+
+      const categoriasActualizadas = await cargarCategoriasCatalogo();
+      const categoriaRecienCreada = categoriasActualizadas.find(
+        (categoria) => categoria.nombre?.trim().toLowerCase() === nombre.trim().toLowerCase()
+      );
+
+      if (categoriaRecienCreada?.id) {
+        setVarianteForm((prev) => ({ ...prev, id_nivel: String(categoriaRecienCreada.id) }));
+      }
+    } catch (error) {
+      console.error("Error creando categoria:", error);
+      alert(error.message || "No se pudo crear la categoria.");
+    }
+  };
+
+  const crearColorRapido = async () => {
+    const nombre = window.prompt("Nombre del color:");
+    if (!nombre || !nombre.trim()) return;
+
+    const codigoSugerido = nombre
+      .trim()
+      .split(/\s+/)
+      .map((parte) => parte[0]?.toUpperCase())
+      .filter(Boolean)
+      .join("")
+      .slice(0, 2)
+      .padEnd(2, "X");
+
+    const codigo = window.prompt("Codigo corto de color (ej: CX):", codigoSugerido);
+    const hex = window.prompt("HEX del color (ej: #1E90FF):", "#808080");
+
+    try {
+      await crearColor({
+        codigo: (codigo || codigoSugerido).trim().toUpperCase(),
+        nombre: nombre.trim(),
+        hex: (hex || "#808080").trim().toUpperCase()
+      });
+
+      const coloresActualizados = await cargarColoresCatalogo();
+      const colorRecienCreado = coloresActualizados.find(
+        (color) => color.nombre?.trim().toLowerCase() === nombre.trim().toLowerCase()
+      );
+
+      if (colorRecienCreado?.id) {
+        setVarianteForm((prev) => ({ ...prev, id_color: String(colorRecienCreado.id) }));
+      }
+    } catch (error) {
+      console.error("Error creando color:", error);
+      alert(error.message || "No se pudo crear el color.");
+    }
+  };
+
+  useEffect(() => {
+    const cargarContextoSku = async () => {
+      const familiaId = Number(formData.familiaId);
+
+      if (!familiaId) {
+        setFamiliaActual(null);
+        setLineaActual(null);
+        return;
+      }
+
+      try {
+        const familiaEnCatalogo = familias.find((familia) => Number(familia?.id) === familiaId) || null;
+        if (!familiaEnCatalogo) {
+          setFamiliaActual(null);
+          setLineaActual(null);
+          return;
+        }
+
+        const familiaCompleta =
+          familiaEnCatalogo?.lineaId || familiaEnCatalogo?.linea?.id
+            ? familiaEnCatalogo
+            : await obtenerFamiliaPorId(familiaId);
+
+        setFamiliaActual(familiaCompleta || null);
+
+        const lineaId = familiaCompleta?.lineaId || familiaCompleta?.linea?.id;
+        if (!lineaId) {
+          setLineaActual(null);
+          return;
+        }
+
+        const linea = await obtenerLineaProductoPorId(lineaId);
+        setLineaActual(linea || null);
+      } catch (error) {
+        console.error("Error cargando linea para SKU de variante:", error);
+        setLineaActual(null);
+      }
+    };
+
+    cargarContextoSku();
+  }, [formData.familiaId, familias]);
 
   const cargarImagenPrincipalModelo = async (idModelo) => {
     if (!idModelo) {
@@ -312,7 +502,15 @@ export default function ModeloForm({
       return;
     }
 
-    if (!varianteForm.sku?.trim()) {
+    if (!varianteForm.id_nivel || !varianteForm.id_color) {
+      setToastType("warning");
+      setToastMessage("Selecciona categoria/nivel y color para generar el SKU.");
+      return;
+    }
+
+    const skuFinal = skuAutomaticoVariante || varianteForm.sku?.trim();
+
+    if (!skuFinal) {
       setToastType("warning");
       setToastMessage("El SKU es obligatorio.");
       return;
@@ -322,7 +520,7 @@ export default function ModeloForm({
       setGuardandoVariante(true);
 
       const payload = {
-        sku: varianteForm.sku.trim().toUpperCase(),
+        sku: skuFinal.trim().toUpperCase(),
         nombre: varianteForm.nombre?.trim() || "",
         descripcion: varianteForm.descripcion?.trim() || "",
         activo: Boolean(varianteForm.activo),
@@ -1051,13 +1249,66 @@ export default function ModeloForm({
                           <h6 className="mb-3">{modoNuevaVariante ? "Nueva Variante" : "Editar Variante"}</h6>
 
                           <div className="mb-2">
-                            <label className="form-label">SKU</label>
+                            <label className="form-label">Categoria / Nivel *</label>
+                            <div className="d-flex gap-2">
+                              <select
+                                className="form-select"
+                                value={varianteForm.id_nivel || ""}
+                                onChange={(e) => setVarianteForm((prev) => ({ ...prev, id_nivel: e.target.value }))}
+                              >
+                                <option value="">Seleccionar categoria...</option>
+                                {categoriasCatalogo.map((cat) => {
+                                  const id = cat.id ?? cat.categoriaId ?? cat.id_nivel;
+                                  return (
+                                    <option key={id} value={id}>
+                                      {cat.codigo ? `[${cat.codigo}] ` : ""}
+                                      {cat.nombre || `Categoria ${id}`}
+                                    </option>
+                                  );
+                                })}
+                              </select>
+                              <button type="button" className="btn btn-outline-secondary" onClick={crearCategoriaRapida}>
+                                +
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="mb-3">
+                            <label className="form-label">Color *</label>
+                            <div className="d-flex gap-2">
+                              <select
+                                className="form-select"
+                                value={varianteForm.id_color || ""}
+                                onChange={(e) => setVarianteForm((prev) => ({ ...prev, id_color: e.target.value }))}
+                              >
+                                <option value="">Seleccionar color...</option>
+                                {coloresCatalogo.map((color) => {
+                                  const id = color.id ?? color.colorId ?? color.id_color;
+                                  return (
+                                    <option key={id} value={id}>
+                                      {color.codigo ? `[${color.codigo}] ` : ""}
+                                      {color.nombre || `Color ${id}`}
+                                    </option>
+                                  );
+                                })}
+                              </select>
+                              <button type="button" className="btn btn-outline-secondary" onClick={crearColorRapido}>
+                                +
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="mb-2">
+                            <label className="form-label">SKU automatico</label>
                             <input
                               type="text"
-                              className="form-control"
-                              value={varianteForm.sku || ""}
-                              onChange={(e) => setVarianteForm((prev) => ({ ...prev, sku: e.target.value }))}
+                              className="form-control bg-white"
+                              value={skuAutomaticoVariante || varianteForm.sku || ""}
+                              readOnly
                             />
+                            <small className="text-muted">
+                              Se genera automaticamente al elegir categoria/nivel y color.
+                            </small>
                           </div>
 
                           <div className="mb-2">
@@ -1078,44 +1329,6 @@ export default function ModeloForm({
                               value={varianteForm.descripcion || ""}
                               onChange={(e) => setVarianteForm((prev) => ({ ...prev, descripcion: e.target.value }))}
                             />
-                          </div>
-
-                          <div className="mb-2">
-                            <label className="form-label">Categoria</label>
-                            <select
-                              className="form-select"
-                              value={varianteForm.id_nivel || ""}
-                              onChange={(e) => setVarianteForm((prev) => ({ ...prev, id_nivel: e.target.value }))}
-                            >
-                              <option value="">Sin categoria</option>
-                              {categoriasCatalogo.map((cat) => {
-                                const id = cat.id ?? cat.categoriaId ?? cat.id_nivel;
-                                return (
-                                  <option key={id} value={id}>
-                                    {cat.codigo ? `[${cat.codigo}] ` : ""}{cat.nombre || `Categoria ${id}`}
-                                  </option>
-                                );
-                              })}
-                            </select>
-                          </div>
-
-                          <div className="mb-3">
-                            <label className="form-label">Color</label>
-                            <select
-                              className="form-select"
-                              value={varianteForm.id_color || ""}
-                              onChange={(e) => setVarianteForm((prev) => ({ ...prev, id_color: e.target.value }))}
-                            >
-                              <option value="">Sin color</option>
-                              {coloresCatalogo.map((color) => {
-                                const id = color.id ?? color.colorId ?? color.id_color;
-                                return (
-                                  <option key={id} value={id}>
-                                    {color.codigo ? `[${color.codigo}] ` : ""}{color.nombre || `Color ${id}`}
-                                  </option>
-                                );
-                              })}
-                            </select>
                           </div>
 
                           <div className="form-check form-switch mb-3">

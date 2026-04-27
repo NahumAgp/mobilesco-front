@@ -1,10 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ProductoWizard from "./components/ProductoWizard";
 import { crearModelo } from "../../services/modelos";
 import { crearVariante } from "../../services/variantes";
 import { crearImagen, subirImagenArchivo } from "../../services/imagenes";
 import { obtenerProductos, eliminarProducto } from "../../services/productos";
+import { obtenerModelos } from "../../services/modelos";
+import { obtenerCategorias } from "../../services/categorias";
+import { obtenerColores } from "../../services/color";
 import VariantesTable from "../Variantes/VariantesTable";
 import PageHeader from "../../components/Sistema/PageHeader";
 import Toast from "../../components/ui/Toast";
@@ -15,10 +18,29 @@ const getLista = (respuesta) => {
   return [];
 };
 
+const getNombrePorCatalogo = (item, catalogo, clavesId = [], clavesNombre = []) => {
+  for (const clave of clavesNombre) {
+    const valorDirecto = item?.[clave];
+    if (typeof valorDirecto === "string" && valorDirecto.trim()) return valorDirecto.trim();
+  }
+
+  for (const clave of clavesId) {
+    const id = item?.[clave];
+    if (id === null || id === undefined || id === "") continue;
+    const encontrado = catalogo.find((registro) => String(registro?.id) === String(id));
+    if (encontrado?.nombre) return encontrado.nombre;
+  }
+
+  return "";
+};
+
 export default function ProductosCompletosPage({ iniciarCreacion = false }) {
   const navigate = useNavigate();
   const [modoCreacion, setModoCreacion] = useState(iniciarCreacion);
   const [productos, setProductos] = useState([]);
+  const [modelosCatalogo, setModelosCatalogo] = useState([]);
+  const [categoriasCatalogo, setCategoriasCatalogo] = useState([]);
+  const [coloresCatalogo, setColoresCatalogo] = useState([]);
   const [loadingLista, setLoadingLista] = useState(false);
   const [errorLista, setErrorLista] = useState("");
   const [mensaje, setMensaje] = useState("");
@@ -43,8 +65,25 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
     }
   };
 
+  const cargarCatalogos = async () => {
+    try {
+      const [modelosResp, categoriasResp, coloresResp] = await Promise.all([
+        obtenerModelos(),
+        obtenerCategorias(),
+        obtenerColores()
+      ]);
+
+      setModelosCatalogo(getLista(modelosResp));
+      setCategoriasCatalogo(getLista(categoriasResp));
+      setColoresCatalogo(getLista(coloresResp));
+    } catch (error) {
+      console.error("No se pudieron cargar los catalogos de variantes:", error);
+    }
+  };
+
   useEffect(() => {
     cargarProductos();
+    cargarCatalogos();
   }, []);
 
   const obtenerIdModelo = (modeloGuardado) =>
@@ -59,6 +98,62 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
     varianteGuardada?.varianteId ||
     varianteGuardada?.id_variante ||
     null;
+
+  const modelosPorId = useMemo(
+    () => new Map(modelosCatalogo.map((modelo) => [String(modelo?.id), modelo?.nombre || ""])),
+    [modelosCatalogo]
+  );
+
+  const categoriasPorId = useMemo(
+    () => new Map(categoriasCatalogo.map((categoria) => [String(categoria?.id), categoria?.nombre || ""])),
+    [categoriasCatalogo]
+  );
+
+  const coloresPorId = useMemo(
+    () => new Map(coloresCatalogo.map((color) => [String(color?.id), color?.nombre || ""])),
+    [coloresCatalogo]
+  );
+
+  const enriquecerProducto = (producto) => {
+    const modeloNombre =
+      getNombrePorCatalogo(
+        producto,
+        modelosCatalogo,
+        ["productoBaseId", "modeloId", "id_producto_base", "id_modelo"],
+        ["productoBaseNombre", "modeloNombre"]
+      ) ||
+      modelosPorId.get(String(producto?.productoBaseId || producto?.modeloId || producto?.id_producto_base || producto?.id_modelo)) ||
+      "";
+
+    const categoriaNombre =
+      getNombrePorCatalogo(
+        producto,
+        categoriasCatalogo,
+        ["id_nivel", "nivelId", "categoriaId"],
+        ["nivelNombre", "categoriaNombre"]
+      ) ||
+      categoriasPorId.get(String(producto?.id_nivel || producto?.nivelId || producto?.categoriaId)) ||
+      "";
+
+    const colorNombre =
+      getNombrePorCatalogo(
+        producto,
+        coloresCatalogo,
+        ["id_color", "colorId"],
+        ["colorNombre"]
+      ) ||
+      coloresPorId.get(String(producto?.id_color || producto?.colorId)) ||
+      "";
+
+    return {
+      ...producto,
+      modeloNombre: modeloNombre || producto?.modeloNombre || producto?.productoBaseNombre || "",
+      nivelNombre: categoriaNombre || producto?.nivelNombre || producto?.categoriaNombre || "",
+      categoriaNombre: categoriaNombre || producto?.categoriaNombre || producto?.nivelNombre || "",
+      colorNombre: colorNombre || producto?.colorNombre || "",
+      productoBaseNombre: modeloNombre || producto?.productoBaseNombre || ""
+    };
+  };
 
   const normalizarImagenes = (imagenes) => {
     if (Array.isArray(imagenes)) {
@@ -229,16 +324,17 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
   };
 
   const productosFiltrados = productos.filter((variante) => {
+    const productoEnriquecido = enriquecerProducto(variante);
     const termino = busqueda.toLowerCase().trim();
     const texto = [
-      variante?.sku,
-      variante?.nombre,
-      variante?.descripcion,
-      variante?.productoBaseNombre,
-      variante?.modeloNombre,
-      variante?.nivelNombre,
-      variante?.categoriaNombre,
-      variante?.colorNombre
+      productoEnriquecido?.sku,
+      productoEnriquecido?.nombre,
+      productoEnriquecido?.descripcion,
+      productoEnriquecido?.productoBaseNombre,
+      productoEnriquecido?.modeloNombre,
+      productoEnriquecido?.nivelNombre,
+      productoEnriquecido?.categoriaNombre,
+      productoEnriquecido?.colorNombre
     ]
       .filter(Boolean)
       .join(" ")
@@ -247,8 +343,8 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
     const coincideBusqueda = !termino || texto.includes(termino);
     const coincideEstatus =
       filtroEstatus === "TODOS" ||
-      (filtroEstatus === "ACTIVO" && variante?.activo) ||
-      (filtroEstatus === "INACTIVO" && !variante?.activo);
+      (filtroEstatus === "ACTIVO" && productoEnriquecido?.activo) ||
+      (filtroEstatus === "INACTIVO" && !productoEnriquecido?.activo);
 
     return coincideBusqueda && coincideEstatus;
   });
