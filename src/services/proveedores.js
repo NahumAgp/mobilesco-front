@@ -6,8 +6,21 @@ import { API_PATHS } from "../config/apiPaths";
 // PROVEEDORES
 // ========================================
 
-export function obtenerProveedores() {
-  return request(API_PATHS.PROVEEDORES);
+export function obtenerProveedores(filtros = {}) {
+  const params = new URLSearchParams();
+
+  Object.entries(filtros).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      params.set(key, String(value));
+    }
+  });
+
+  const query = params.toString();
+  const endpoint = query
+    ? `${API_PATHS.PROVEEDORES}?${query}`
+    : API_PATHS.PROVEEDORES;
+
+  return request(endpoint);
 }
 
 export function obtenerProveedorPorId(id) {
@@ -36,4 +49,21 @@ export function eliminarProveedor(id) {
 
 export function obtenerTiposInsumo() {
   return request(`${API_PATHS.PROVEEDORES}/tipos-insumo`);
+}
+
+export function exportarProveedoresExcel(filtros = {}) {
+  const params = new URLSearchParams();
+
+  Object.entries(filtros).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      params.set(key, String(value));
+    }
+  });
+
+  const query = params.toString();
+  const endpoint = query
+    ? `${API_PATHS.PROVEEDORES}/reporte/excel?${query}`
+    : `${API_PATHS.PROVEEDORES}/reporte/excel`;
+
+  return request(endpoint, { responseType: "blob" });
 }

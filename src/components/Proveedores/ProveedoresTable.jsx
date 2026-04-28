@@ -10,8 +10,8 @@ export default function ProveedoresTable({ data, onEditar, onEliminar }) {
       <div
         className="table-responsive"
         style={{
-          height: "calc(100vh - 350px)",
-          overflowY: "auto"
+          height: "auto",
+          overflowY: "visible"
         }}
       >
 
