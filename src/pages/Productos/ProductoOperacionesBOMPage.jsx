@@ -5,8 +5,7 @@ import {
   obtenerProductoPorId,
   obtenerOperacionesDeProducto,
   agregarOperacionesMasivo,
-  eliminarOperacionDeProducto,
-  reordenarOperaciones
+  eliminarOperacionDeProducto
 } from "../../services/productos.js";
 import { obtenerOperaciones } from "../../services/operaciones.js";
 import Card from "../../components/ui/Card.jsx";
@@ -95,7 +94,7 @@ export default function ProductoOperacionesBOMPage() {
       setToastMessage("Operaciones agregadas correctamente");
       setNuevasOperaciones([{ operacionId: "", cantidad: 1, observaciones: "" }]);
       cargarDatos();
-    } catch (error) {
+    } catch {
       setToastType("danger");
       setToastMessage("Error al agregar operaciones");
     }
@@ -108,7 +107,7 @@ export default function ProductoOperacionesBOMPage() {
       setToastType("success");
       setToastMessage("Operación eliminada");
       cargarDatos();
-    } catch (error) {
+    } catch {
       setToastType("danger");
       setToastMessage("Error al eliminar");
     }

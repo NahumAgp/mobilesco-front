@@ -57,6 +57,8 @@ export default function CompraForm({
     requiereConversion: false,
     insumoSeleccionado: null
   });
+  const subtotalCalculado = detalles.reduce((sum, d) => sum + (d.subtotal || 0), 0);
+  const totalCalculado = subtotalCalculado + (formData.impuesto || 0);
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -71,8 +73,8 @@ export default function CompraForm({
         setProveedores(proveedoresData.content || proveedoresData);
         setInsumos(insumosData.content || insumosData);
         setUnidadesMedida(unidadesData.content || unidadesData);
-      } catch (e) {
-        console.error("Error cargando catálogos:", e);
+      } catch (error) {
+        console.error("Error cargando catálogos:", error);
       }
     };
     cargarCatalogos();
@@ -89,9 +91,7 @@ export default function CompraForm({
           proveedorId: compra.proveedorId || "",
           tipoDocumento: compra.tipoDocumento || "FACTURA",
           numeroDocumento: compra.numeroDocumento || "",
-          subtotal: compra.subtotal || 0,
           impuesto: compra.impuesto || 0,
-          total: compra.total || 0,
           observaciones: compra.observaciones || "",
           estado: compra.estado || "PENDIENTE",
           activo: compra.activo ?? true,
@@ -111,34 +111,20 @@ export default function CompraForm({
             proveedorId: data.proveedorId || "",
             tipoDocumento: data.tipoDocumento || "FACTURA",
             numeroDocumento: data.numeroDocumento || "",
-            subtotal: data.subtotal || 0,
             impuesto: data.impuesto || 0,
-            total: data.total || 0,
             observaciones: data.observaciones || "",
             estado: data.estado || "PENDIENTE",
             activo: data.activo ?? true,
             detalles: data.detalles || []
           });
           setDetalles(data.detalles || []);
-        } catch (e) {
-          console.error("Error cargando:", e);
+        } catch (error) {
+          console.error("Error cargando:", error);
         }
       }
     };
     cargar();
   }, [compraId, compra, esModal]);
-
-  // Recalcular totales cuando cambian detalles o impuesto
-  useEffect(() => {
-    const subtotal = detalles.reduce((sum, d) => sum + (d.subtotal || 0), 0);
-    const total = subtotal + (formData.impuesto || 0);
-    
-    setFormData(prev => ({
-      ...prev,
-      subtotal,
-      total
-    }));
-  }, [detalles, formData.impuesto]);
 
   function handleChange(e) {
     const { name, value, type, checked } = e.target;
@@ -261,7 +247,17 @@ export default function CompraForm({
 
     const dataToSend = {
       ...formData,
-      detalles: detalles.map(({ id, insumoNombre, unidadCompraSimbolo, unidadConsumoSimbolo, insumoSeleccionado, ...detalle }) => detalle)
+      subtotal: subtotalCalculado,
+      total: totalCalculado,
+      detalles: detalles.map((detalle) => {
+        const detallePayload = { ...detalle };
+        delete detallePayload.id;
+        delete detallePayload.insumoNombre;
+        delete detallePayload.unidadCompraSimbolo;
+        delete detallePayload.unidadConsumoSimbolo;
+        delete detallePayload.insumoSeleccionado;
+        return detallePayload;
+      })
     };
 
     try {
@@ -611,7 +607,7 @@ export default function CompraForm({
                       type="number"
                       step="0.01"
                       className="form-control bg-light"
-                      value={formData.subtotal.toFixed(2)}
+                      value={subtotalCalculado.toFixed(2)}
                       readOnly
                     />
                   </div>
@@ -641,7 +637,7 @@ export default function CompraForm({
                       type="number"
                       step="0.01"
                       className="form-control bg-light fw-bold text-primary"
-                      value={formData.total.toFixed(2)}
+                      value={totalCalculado.toFixed(2)}
                       readOnly
                     />
                   </div>
@@ -694,3 +690,4 @@ export default function CompraForm({
     </div>
   );
 }
+

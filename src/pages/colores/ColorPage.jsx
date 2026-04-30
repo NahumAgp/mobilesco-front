@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useColor } from "./useColor.js";
@@ -28,7 +28,7 @@ export default function ColorPage() {
       await eliminarColor(id);
       setToastType("success");
       setToastMessage("Color eliminado correctamente");
-    } catch (e) {
+    } catch {
       setToastType("danger");
       setToastMessage("Error al eliminar color");
     }
@@ -81,3 +81,4 @@ export default function ColorPage() {
     </>
   );
 }
+

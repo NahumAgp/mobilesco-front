@@ -3,8 +3,7 @@ import { useEffect, useState } from "react";
 import { 
   obtenerProductoPorId, 
   obtenerEstructuraCostos,
-  eliminarInsumoDeProducto,
-  eliminarOperacionDeProducto
+  eliminarInsumoDeProducto
 } from "../../services/productos.js";
 import Card from "../../components/ui/Card.jsx";
 import Toast from "../../components/ui/Toast.jsx";
@@ -32,9 +31,9 @@ export default function ProductoDetallePage() {
       ]);
       setProducto(productoData);
       setEstructuraCostos(costosData);
-    } catch (e) {
+    } catch (error) {
       setError("Error cargando el producto");
-      console.error(e);
+      console.error(error);
     } finally {
       setLoading(false);
     }
@@ -48,23 +47,9 @@ export default function ProductoDetallePage() {
       setToastType("success");
       setToastMessage("Insumo eliminado correctamente");
       cargarTodo(); // Recargar
-    } catch (error) {
+    } catch {
       setToastType("danger");
       setToastMessage("Error al eliminar insumo");
-    }
-  };
-
-  const handleEliminarOperacion = async (operacionId) => {
-    if (!window.confirm("¿Eliminar esta operación del proceso?")) return;
-    
-    try {
-      await eliminarOperacionDeProducto(id, operacionId);
-      setToastType("success");
-      setToastMessage("Operación eliminada correctamente");
-      cargarTodo(); // Recargar
-    } catch (error) {
-      setToastType("danger");
-      setToastMessage("Error al eliminar operación");
     }
   };
 
@@ -74,13 +59,6 @@ export default function ProductoDetallePage() {
       currency: 'MXN',
       minimumFractionDigits: 2
     }).format(value || 0);
-  };
-
-  const formatTime = (minutos) => {
-    if (!minutos) return '-';
-    const horas = Math.floor(minutos / 60);
-    const mins = minutos % 60;
-    return horas > 0 ? `${horas}h ${mins}min` : `${mins}min`;
   };
 
   if (loading) {
@@ -233,7 +211,6 @@ export default function ProductoDetallePage() {
               </thead>
               <tbody>
                 {estructuraCostos.insumos.map((item) => {
-                  const cantidadConDesperdicio = item.cantidad * (1 + (item.desperdicioPorcentaje || 0) / 100);
                   return (
                     <tr key={item.id}>
                       <td>
@@ -347,3 +324,4 @@ export default function ProductoDetallePage() {
     </div>
   );
 }
+

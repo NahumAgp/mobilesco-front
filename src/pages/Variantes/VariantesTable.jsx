@@ -2,8 +2,8 @@ import "./VariantesTable.css";
 
 const API_BASE_URL = "http://localhost:8081";
 
-const getVarianteId = (variante) =>
-  variante?.id || variante?.varianteId || variante?.id_variante || null;
+const getProductoId = (producto) =>
+  producto?.id || producto?.productoId || producto?.id_producto || null;
 
 const getEtiquetaEntidad = (fuentes = []) => {
   for (const fuente of fuentes) {
@@ -27,55 +27,58 @@ const getEtiquetaEntidad = (fuentes = []) => {
   return "-";
 };
 
-const getModeloNombre = (variante) =>
+const getProductoBaseNombre = (producto) =>
   getEtiquetaEntidad([
-    variante?.productoBaseNombre,
-    variante?.modeloNombre,
-    variante?.productoBase?.nombre,
-    variante?.modelo?.nombre,
-    variante?.productoBase,
-    variante?.modelo
+    producto?.nombre_modelo,
+    producto?.productoBaseNombre,
+    producto?.modeloNombre,
+    producto?.productoBase?.nombre,
+    producto?.modelo?.nombre,
+    producto?.productoBase,
+    producto?.modelo
   ]);
 
-const getCategoriaNombre = (variante) =>
+const getNivelNombre = (producto) =>
   getEtiquetaEntidad([
-    variante?.nivelNombre,
-    variante?.categoriaNombre,
-    variante?.nivel?.nombre,
-    variante?.categoria?.nombre,
-    variante?.nivel,
-    variante?.categoria
+    producto?.nombre_nivel,
+    producto?.nivelNombre,
+    producto?.categoriaNombre,
+    producto?.nivel?.nombre,
+    producto?.categoria?.nombre,
+    producto?.nivel,
+    producto?.categoria
   ]);
 
-const getColorNombre = (variante) =>
+const getColorNombre = (producto) =>
   getEtiquetaEntidad([
-    variante?.colorNombre,
-    variante?.color?.nombre,
-    variante?.color
+    producto?.nombre_color,
+    producto?.colorNombre,
+    producto?.color?.nombre,
+    producto?.color
   ]);
 
 const getImagenActiva = (imagen) =>
   imagen?.activo ?? imagen?.active ?? imagen?.habilitada ?? true;
 
-const getImagenRepresentativa = (variante) => {
+const getImagenRepresentativa = (producto) => {
   const directa =
-    variante?.imagenPrincipal ||
-    variante?.imagen ||
-    variante?.foto ||
+    producto?.imagenPrincipal ||
+    producto?.imagen ||
+    producto?.foto ||
     null;
 
   if (directa?.url) return directa;
 
   const urlDirecta =
-    variante?.imagenPrincipalUrl ||
-    variante?.imagenUrl ||
-    variante?.urlImagen ||
-    variante?.fotoUrl ||
+    producto?.imagenPrincipalUrl ||
+    producto?.imagenUrl ||
+    producto?.urlImagen ||
+    producto?.fotoUrl ||
     "";
 
-  if (urlDirecta) return { url: urlDirecta, altTexto: variante?.nombre || variante?.sku };
+  if (urlDirecta) return { url: urlDirecta, altTexto: producto?.nombre || producto?.sku };
 
-  const imagenes = Array.isArray(variante?.imagenes) ? variante.imagenes : [];
+  const imagenes = Array.isArray(producto?.imagenes) ? producto.imagenes : [];
   const principalActiva = imagenes.find(
     (imagen) => Boolean(imagen?.esPrincipal || imagen?.principal) && getImagenActiva(imagen) && imagen?.url
   );
@@ -132,8 +135,8 @@ export default function VariantesTable({ data, onEditar, onEliminar }) {
             <tr>
               <th>Imagen</th>
               <th>SKU</th>
-              <th>Descripcion</th>
-              <th>Modelo</th>
+              <th>Descripción</th>
+              <th>Producto Base</th>
               <th>Nivel</th>
               <th>Color</th>
               <th>Estado</th>
@@ -143,23 +146,23 @@ export default function VariantesTable({ data, onEditar, onEliminar }) {
           </thead>
           <tbody>
             {Array.isArray(data) && data.length > 0 ? (
-              data.map((variante) => {
-                const varianteId = getVarianteId(variante);
-                const imagen = getImagenRepresentativa(variante);
+              data.map((producto) => {
+                const productoId = getProductoId(producto);
+                const imagen = getImagenRepresentativa(producto);
                 const imagenUrl = toPreviewUrl(imagen?.url);
 
                 return (
                   <tr
-                    key={varianteId || variante?.sku}
+                    key={productoId || producto?.sku}
                     style={{ cursor: onEditar ? "pointer" : "default" }}
-                    onClick={() => onEditar?.(variante)}
+                    onClick={() => onEditar?.(producto)}
                   >
                     <td>
                       {imagenUrl ? (
                         <img
                           className="variantes-table-image"
                           src={imagenUrl}
-                          alt={imagen?.altTexto || variante?.nombre || variante?.sku || "Variante"}
+                          alt={imagen?.altTexto || producto?.nombre || producto?.sku || "Producto"}
                         />
                       ) : (
                         <div
@@ -171,33 +174,33 @@ export default function VariantesTable({ data, onEditar, onEliminar }) {
                       )}
                     </td>
                     <td>
-                      <span className="badge bg-secondary variantes-table-sku">{variante?.sku || "-"}</span>
+                      <span className="badge bg-secondary variantes-table-sku">{producto?.sku || "-"}</span>
                     </td>
                     <td>
-                      <div className="fw-semibold variantes-table-title">{variante?.nombre || "-"}</div>
-                      {variante?.descripcion && (
+                      <div className="fw-semibold variantes-table-title">{producto?.nombre || "-"}</div>
+                      {producto?.descripcion && (
                         <small className="text-muted variantes-table-description">
-                          {variante.descripcion.length > 70
-                            ? `${variante.descripcion.substring(0, 70)}...`
-                            : variante.descripcion}
+                          {producto.descripcion.length > 70
+                            ? `${producto.descripcion.substring(0, 70)}...`
+                            : producto.descripcion}
                         </small>
                       )}
                     </td>
-                    <td>{getModeloNombre(variante)}</td>
-                    <td>{getCategoriaNombre(variante)}</td>
-                    <td>{getColorNombre(variante)}</td>
+                    <td>{getProductoBaseNombre(producto)}</td>
+                    <td>{getNivelNombre(producto)}</td>
+                    <td>{getColorNombre(producto)}</td>
                     <td>
                       <span
                         className={
-                          variante?.activo
+                          producto?.activo
                             ? "badge bg-success-subtle text-success border border-success-subtle"
                             : "badge bg-secondary-subtle text-secondary border border-secondary-subtle"
                         }
                       >
-                        {variante?.activo ? "Activo" : "Inactivo"}
+                        {producto?.activo ? "Activo" : "Inactivo"}
                       </span>
                     </td>
-                    <td>{formatFecha(variante?.createdAt || variante?.fechaCreacion)}</td>
+                    <td>{formatFecha(producto?.createdAt || producto?.updatedAt || producto?.fechaCreacion)}</td>
                     <td>
                       <div className="variantes-table-actions">
                         <button
@@ -205,7 +208,7 @@ export default function VariantesTable({ data, onEditar, onEliminar }) {
                           className="btn btn-sm btn-outline-primary"
                           onClick={(event) => {
                             event.stopPropagation();
-                            onEditar?.(variante);
+                            onEditar?.(producto);
                           }}
                           disabled={!onEditar}
                         >
@@ -217,9 +220,9 @@ export default function VariantesTable({ data, onEditar, onEliminar }) {
                           className="btn btn-sm btn-outline-danger"
                           onClick={(event) => {
                             event.stopPropagation();
-                            onEliminar?.(varianteId);
+                            onEliminar?.(productoId);
                           }}
-                          disabled={!onEliminar || !varianteId}
+                          disabled={!onEliminar || !productoId}
                         >
                           <i className="bi bi-trash me-1"></i>
                           Eliminar
@@ -232,9 +235,9 @@ export default function VariantesTable({ data, onEditar, onEliminar }) {
             ) : (
               <tr>
                 <td colSpan="9" className="text-center text-muted py-5">
-                  <i className="bi bi-tags fs-1 d-block mb-3 text-secondary"></i>
-                  <span className="fs-5">No hay variantes registradas</span>
-                  <p className="text-secondary mt-2">Crea un producto para generar sus variantes</p>
+                  <i className="bi bi-box fs-1 d-block mb-3 text-secondary"></i>
+                  <span className="fs-5">No hay productos registrados</span>
+                  <p className="text-secondary mt-2">Crea un producto para comenzar</p>
                 </td>
               </tr>
             )}

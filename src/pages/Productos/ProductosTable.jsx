@@ -1,12 +1,4 @@
 export default function ProductosTable({ data, onVer, onEditar, onEliminar }) {
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('es-MX', {
-      style: 'currency',
-      currency: 'MXN',
-      minimumFractionDigits: 2
-    }).format(value || 0);
-  };
-
   return (
     <div className="card">
       <div

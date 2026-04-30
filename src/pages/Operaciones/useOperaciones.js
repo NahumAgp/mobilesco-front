@@ -27,9 +27,9 @@ export function useOperaciones() {
         setOperaciones([]);
       }
 
-    } catch (e) {
-      console.error("❌ Error cargando operaciones:", e);
-      setError("Error cargando operaciones: " + (e.message || "Error desconocido"));
+    } catch (error) {
+      console.error("❌ Error cargando operaciones:", error);
+      setError("Error cargando operaciones: " + (error.message || "Error desconocido"));
     } finally {
       setLoadingLista(false);
     }
@@ -51,3 +51,4 @@ export function useOperaciones() {
     eliminarOperacion
   };
 }
+

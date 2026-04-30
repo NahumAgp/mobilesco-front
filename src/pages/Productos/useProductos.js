@@ -26,9 +26,9 @@ export function useProductos() {
         setProductos([]);
       }
 
-    } catch (e) {
-      console.error("❌ Error cargando productos:", e);
-      setError("Error cargando productos: " + (e.message || "Error desconocido"));
+    } catch (error) {
+      console.error("❌ Error cargando productos:", error);
+      setError("Error cargando productos: " + (error.message || "Error desconocido"));
     } finally {
       setLoadingLista(false);
     }
@@ -50,3 +50,4 @@ export function useProductos() {
     eliminarProducto
   };
 }
+

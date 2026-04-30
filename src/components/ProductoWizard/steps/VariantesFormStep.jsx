@@ -1,8 +1,9 @@
 // components/ProductoWizard/steps/VariantesFormStep.jsx
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 export default function VariantesFormStep({ data, onUpdate }) {
   const [editandoVariante, setEditandoVariante] = useState(null);
+  const nextTempIdRef = useRef(1);
   const [formVariante, setFormVariante] = useState({
     talla: "",
     color: "",
@@ -16,7 +17,7 @@ export default function VariantesFormStep({ data, onUpdate }) {
     if (editandoVariante !== null) {
       nuevasVariantes[editandoVariante] = formVariante;
     } else {
-      nuevasVariantes.push({ ...formVariante, id: Date.now() });
+      nuevasVariantes.push({ ...formVariante, id: `tmp-${nextTempIdRef.current++}` });
     }
     onUpdate("variantes", nuevasVariantes);
     resetForm();

@@ -4,75 +4,99 @@
 import request from "./api";
 import { API_PATHS } from "../config/apiPaths";
 
+const PRODUCTOS_PATH = API_PATHS.PRODUCTOS;
+
+const buildQueryString = (filtros = {}) => {
+  if (!filtros || typeof filtros !== "object") return "";
+  const params = new URLSearchParams();
+
+  Object.entries(filtros).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === "") return;
+    params.append(key, value);
+  });
+
+  const query = params.toString();
+  return query ? `?${query}` : "";
+};
+
 // ========================================
-// VARIANTES
+// PRODUCTOS
 // ========================================
 
-// Obtener todas las variantes
-export function obtenerVariantes() {
-  return request(API_PATHS.VARIANTES);
+export function obtenerProductos() {
+  return request(PRODUCTOS_PATH);
 }
 
-// Obtener variantes activas
-export function obtenerVariantesActivas() {
-  return request(`${API_PATHS.VARIANTES}/activos`);
+export function obtenerProductosActivos() {
+  return request(`${PRODUCTOS_PATH}/buscar${buildQueryString({ activo: true })}`);
 }
 
-// Obtener variante por ID
-export function obtenerVariantePorId(id) {
-  return request(`${API_PATHS.VARIANTES}/${id}`);
+export function obtenerProductoPorId(id) {
+  return request(`${PRODUCTOS_PATH}/${id}`);
 }
 
-// Obtener variante por SKU
-export function obtenerVariantePorSku(sku) {
-  return request(`${API_PATHS.VARIANTES}/sku/${sku}`);
+export function obtenerProductoPorSku(sku) {
+  return request(`${PRODUCTOS_PATH}/sku/${sku}`);
 }
 
-// Obtener variante completa por ID (con imágenes)
-export function obtenerVarianteCompleta(id) {
-  return request(`${API_PATHS.VARIANTES}/${id}/completo`);
+export function obtenerProductoCompleto(id) {
+  return request(`${PRODUCTOS_PATH}/${id}`);
 }
 
-// Obtener variante completa por SKU (con imágenes)
-export function obtenerVarianteCompletaPorSku(sku) {
-  return request(`${API_PATHS.VARIANTES}/sku/${sku}/completo`);
+export function obtenerProductoCompletoPorSku(sku) {
+  return request(`${PRODUCTOS_PATH}/sku/${sku}`);
 }
 
-// Obtener variantes por producto base
-export function obtenerVariantesPorProductoBase(productoBaseId) {
-  return request(`${API_PATHS.VARIANTES}/por-producto-base/${productoBaseId}`);
+export function obtenerProductosPorProductoBase(productoBaseId) {
+  return request(`${PRODUCTOS_PATH}/por-producto-base/${productoBaseId}`);
 }
 
-// Obtener variantes activas por producto base
-export function obtenerVariantesActivasPorProductoBase(productoBaseId) {
-  return request(`${API_PATHS.VARIANTES}/por-producto-base/${productoBaseId}/activos?activo=true`);
+export function obtenerProductosActivosPorProductoBase(productoBaseId) {
+  return request(
+    `${PRODUCTOS_PATH}/buscar${buildQueryString({
+      id_producto_base: productoBaseId,
+      activo: true
+    })}`
+  );
 }
 
-// Buscar variantes con filtros
-export function buscarVariantes(filtros) {
-  const params = new URLSearchParams(filtros).toString();
-  return request(`${API_PATHS.VARIANTES}/buscar?${params}`);
+export function buscarProductos(filtros) {
+  return request(`${PRODUCTOS_PATH}/buscar${buildQueryString(filtros)}`);
 }
 
-// Crear variante
-export function crearVariante(data) {
-  return request(API_PATHS.VARIANTES, {
+export function crearProducto(data) {
+  return request(PRODUCTOS_PATH, {
     method: "POST",
-    body: JSON.stringify(data),
+    body: JSON.stringify(data)
   });
 }
 
-// Actualizar variante
-export function actualizarVariante(id, data) {
-  return request(`${API_PATHS.VARIANTES}/${id}`, {
+export function actualizarProducto(id, data) {
+  return request(`${PRODUCTOS_PATH}/${id}`, {
     method: "PUT",
-    body: JSON.stringify(data),
+    body: JSON.stringify(data)
   });
 }
 
-// Eliminar variante
-export function eliminarVariante(id) {
-  return request(`${API_PATHS.VARIANTES}/${id}`, {
-    method: "DELETE",
+export function eliminarProducto(id) {
+  return request(`${PRODUCTOS_PATH}/${id}`, {
+    method: "DELETE"
   });
 }
+
+// ========================================
+// ALIAS LEGADOS
+// ========================================
+
+export const obtenerVariantes = obtenerProductos;
+export const obtenerVariantesActivas = obtenerProductosActivos;
+export const obtenerVariantePorId = obtenerProductoPorId;
+export const obtenerVariantePorSku = obtenerProductoPorSku;
+export const obtenerVarianteCompleta = obtenerProductoCompleto;
+export const obtenerVarianteCompletaPorSku = obtenerProductoCompletoPorSku;
+export const obtenerVariantesPorProductoBase = obtenerProductosPorProductoBase;
+export const obtenerVariantesActivasPorProductoBase = obtenerProductosActivosPorProductoBase;
+export const buscarVariantes = buscarProductos;
+export const crearVariante = crearProducto;
+export const actualizarVariante = actualizarProducto;
+export const eliminarVariante = eliminarProducto;

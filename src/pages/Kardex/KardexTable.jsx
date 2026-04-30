@@ -86,16 +86,17 @@ export default function KardexTable({ movimientos, loading, insumoNombre }) {
     );
   }
 
-  // Calcular saldo acumulado
-  let saldo = 0;
-  const movimientosConSaldo = movimientos.map(m => {
-    if (m.tipo === 'ENTRADA') {
-      saldo += m.cantidad;
-    } else {
-      saldo -= m.cantidad;
-    }
-    return { ...m, saldoAcumulado: saldo };
-  });
+  const movimientosConSaldo = movimientos.reduce((acc, mov) => {
+    const saldoAnterior = acc.saldo;
+    const saldoAcumulado = mov.tipo === "ENTRADA"
+      ? saldoAnterior + mov.cantidad
+      : saldoAnterior - mov.cantidad;
+
+    return {
+      saldo: saldoAcumulado,
+      items: [...acc.items, { ...mov, saldoAcumulado }]
+    };
+  }, { saldo: 0, items: [] }).items;
 
   return (
     <Card

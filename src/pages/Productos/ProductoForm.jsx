@@ -5,7 +5,6 @@ import {
   crearProducto, 
   actualizarProducto 
 } from "../../services/productos.js";
-import { obtenerModelos } from "../../services/modelos.js";
 import { obtenerLineasProducto } from "../../services/lineaProducto.js";
 import { obtenerCategorias } from "../../services/categorias.js";
 import { obtenerMateriales } from "../../services/materiales.js";
@@ -25,7 +24,6 @@ export default function ProductoForm({
   const [loading, setLoading] = useState(false);
   
   // Catálogos
-  const [tiposProducto, setTiposProducto] = useState([]);
   const [lineas, setLineas] = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [materiales, setMateriales] = useState([]);
@@ -39,7 +37,6 @@ export default function ProductoForm({
     sku: "",
     nombre: "",
     descripcion: "",
-    tipoProductoId: "",
     lineaId: "",
     categoriaId: "",
     materialId: "",
@@ -53,19 +50,17 @@ export default function ProductoForm({
   useEffect(() => {
     const cargarCatalogos = async () => {
       try {
-        const [tipos, lineasData, categoriasData, materialesData] = await Promise.all([
-          obtenerModelos(),
+        const [lineasData, categoriasData, materialesData] = await Promise.all([
           obtenerLineasProducto(),
           obtenerCategorias(),
           obtenerMateriales()
         ]);
 
-        setTiposProducto(tipos.content || tipos || []);
         setLineas(lineasData.content || lineasData || []);
         setCategorias(categoriasData.content || categoriasData || []);
         setMateriales(materialesData.content || materialesData || []);
-      } catch (e) {
-        console.error("Error cargando catálogos:", e);
+      } catch (error) {
+        console.error("Error cargando catálogos:", error);
       }
     };
     cargarCatalogos();
@@ -79,7 +74,6 @@ export default function ProductoForm({
           sku: producto.sku || "",
           nombre: producto.nombre || "",
           descripcion: producto.descripcion || "",
-          tipoProductoId: producto.tipoProductoId || "",
           lineaId: producto.lineaId || "",
           categoriaId: producto.categoriaId || "",
           materialId: producto.materialId || "",
@@ -99,7 +93,6 @@ export default function ProductoForm({
             sku: data.sku || "",
             nombre: data.nombre || "",
             descripcion: data.descripcion || "",
-            tipoProductoId: data.tipoProductoId || "",
             lineaId: data.lineaId || "",
             categoriaId: data.categoriaId || "",
             materialId: data.materialId || "",
@@ -108,8 +101,8 @@ export default function ProductoForm({
             pesoKg: data.pesoKg || "",
             activo: data.activo ?? true
           });
-        } catch (e) {
-          console.error("Error cargando producto:", e);
+        } catch (error) {
+          console.error("Error cargando producto:", error);
         } finally {
           setLoading(false);
         }
@@ -140,19 +133,19 @@ export default function ProductoForm({
     e.preventDefault();
 
     // Validar campos requeridos
-    if (!formData.sku || !formData.nombre || !formData.tipoProductoId) {
-      alert("Completa los campos obligatorios: SKU, Nombre y Tipo de Producto");
+    if (!formData.sku || !formData.nombre) {
+      alert("Completa los campos obligatorios: SKU y Nombre");
       return;
     }
 
     // Convertir valores vacíos a null
-    const dataToSend = {
-      ...formData,
-      lineaId: formData.lineaId || null,
-      categoriaId: formData.categoriaId || null,
-      materialId: formData.materialId || null,
-      pesoKg: formData.pesoKg === "" ? null : formData.pesoKg
-    };
+      const dataToSend = {
+        ...formData,
+        lineaId: formData.lineaId || null,
+        categoriaId: formData.categoriaId || null,
+        materialId: formData.materialId || null,
+        pesoKg: formData.pesoKg === "" ? null : formData.pesoKg
+      };
 
     try {
       setErroresBackend({});
@@ -274,24 +267,6 @@ export default function ProductoForm({
             {/* Clasificación */}
             <Card title="Clasificación" icon="bi-tags" className="mb-4">
               <div className="row g-3">
-                <div className="col-md-6">
-                  <label className="form-label fw-semibold">
-                    Tipo de Producto <span className="text-danger">*</span>
-                  </label>
-                  <select
-                    name="tipoProductoId"
-                    className={selectClass("tipoProductoId")}
-                    value={formData.tipoProductoId}
-                    onChange={handleChange}
-                  >
-                    <option value="">Seleccionar tipo...</option>
-                    {tiposProducto.map(tipo => (
-                      <option key={tipo.id} value={tipo.id}>{tipo.nombre}</option>
-                    ))}
-                  </select>
-                  <div className="invalid-feedback">{erroresBackend.tipoProductoId}</div>
-                </div>
-
                 <div className="col-md-6">
                   <label className="form-label fw-semibold">Línea</label>
                   <select
@@ -451,3 +426,5 @@ export default function ProductoForm({
     </div>
   );
 }
+
+

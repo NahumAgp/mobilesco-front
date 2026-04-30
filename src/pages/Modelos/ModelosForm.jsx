@@ -1,18 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { obtenerModeloPorId, crearModelo, actualizarModelo } from "../../services/modelos.js";
-import { obtenerFamilias, obtenerFamiliaPorId } from "../../services/familias.js";
+import { obtenerFamilias } from "../../services/familias.js";
+import { obtenerProductos } from "../../services/variantes.js";
 import {
-  obtenerVariantesPorProductoBase,
-  crearVariante,
-  actualizarVariante,
-  eliminarVariante as eliminarVarianteService
-} from "../../services/variantes.js";
-import { obtenerCategorias, crearCategoria } from "../../services/categorias.js";
-import { obtenerColores, crearColor } from "../../services/color.js";
-import { obtenerLineaProductoPorId } from "../../services/lineaProducto.js";
-import {
+  obtenerImagenesPorProducto,
   obtenerImagenesPorVariante,
+  obtenerImagenPrincipalPorProducto,
   subirImagenArchivo,
   actualizarImagen,
   eliminarImagen
@@ -23,15 +17,111 @@ const API_BASE_URL = "http://localhost:8081";
 
 const getLista = (respuesta) => {
   if (Array.isArray(respuesta)) return respuesta;
-  if (Array.isArray(respuesta?.content)) return respuesta.content;
-  return [];
+  const visitados = new Set();
+  const buscarLista = (valor, nivel = 0) => {
+    if (Array.isArray(valor)) return valor;
+    if (!valor || typeof valor !== "object" || nivel > 4 || visitados.has(valor)) return null;
+
+    visitados.add(valor);
+
+    const clavesPreferidas = [
+      "content",
+      "data",
+      "items",
+      "results",
+      "productos",
+      "variantes",
+      "lista",
+      "rows",
+      "payload"
+    ];
+
+    for (const clave of clavesPreferidas) {
+      const candidato = valor?.[clave];
+      if (Array.isArray(candidato)) return candidato;
+    }
+
+    for (const nested of Object.values(valor)) {
+      const encontrado = buscarLista(nested, nivel + 1);
+      if (Array.isArray(encontrado)) return encontrado;
+    }
+
+    return null;
+  };
+
+  return buscarLista(respuesta) || [];
 };
 
 const getModeloId = (modelo) =>
-  modelo?.id || modelo?.modeloId || modelo?.id_producto_base || modelo?.productoBaseId || null;
+  modelo?.id ||
+  modelo?.modeloId ||
+  modelo?.id_modelo ||
+  modelo?.modelo_id ||
+  modelo?.producto_base_id ||
+  modelo?.id_producto_base ||
+  modelo?.productoBaseId ||
+  null;
 
 const getVarianteId = (variante) =>
   variante?.id || variante?.varianteId || variante?.id_variante || null;
+
+const getModeloRelacionadoId = (item) =>
+  item?.id_modelo ||
+  item?.modeloId ||
+  item?.modelo_id ||
+  item?.producto_base_id ||
+  item?.productoBaseId ||
+  item?.id_producto_base ||
+  item?.modelo?.id ||
+  item?.modelo?.modeloId ||
+  item?.productoBase?.id ||
+  item?.producto_base?.id ||
+  null;
+
+const coincideModeloId = (item, modeloId) =>
+  String(getModeloRelacionadoId(item) ?? "") === String(modeloId ?? "");
+
+const coincideModeloIdFlexible = (item, modeloId, nivel = 0, visitados = new Set()) => {
+  if (!item || typeof item !== "object" || nivel > 2 || visitados.has(item)) return false;
+  visitados.add(item);
+
+  for (const [clave, valor] of Object.entries(item)) {
+    if (valor === null || valor === undefined) continue;
+
+    if (typeof valor === "object") {
+      if (coincideModeloIdFlexible(valor, modeloId, nivel + 1, visitados)) return true;
+      continue;
+    }
+
+    if (String(valor) !== String(modeloId)) continue;
+
+    if (/id|modelo|producto|base/i.test(clave)) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
+const getVariantesDelModelo = (modelo = {}) => {
+  const candidatos = [
+    modelo?.variantes,
+    modelo?.productos,
+    modelo?.productosRelacionados,
+    modelo?.productosHijos,
+    modelo?.hijos,
+    modelo?.detalle?.variantes,
+    modelo?.detalle?.productos
+  ];
+
+  for (const candidato of candidatos) {
+    if (Array.isArray(candidato) && candidato.length > 0) {
+      return candidato;
+    }
+  }
+
+  return [];
+};
 
 const toPreviewUrl = (url) => {
   if (!url || typeof url !== "string") return "";
@@ -60,119 +150,49 @@ const getImagenRepresentativa = (imagenes = []) => {
   return imagenes.find((img) => img?.url) || null;
 };
 
-const mapVarianteToForm = (variante = {}) => ({
-  sku: variante?.sku || "",
-  nombre: variante?.nombre || "",
-  descripcion: variante?.descripcion || "",
-  activo: variante?.activo ?? true,
-  id_nivel:
-    variante?.id_nivel ||
-    variante?.nivelId ||
-    variante?.categoriaId ||
-    variante?.nivel?.id ||
-    variante?.categoria?.id ||
-    "",
-  id_color:
-    variante?.id_color ||
-    variante?.colorId ||
-    variante?.color?.id ||
-    ""
-});
+const getImagenDesdeRespuesta = (respuesta) => {
+  if (!respuesta) return null;
+  if (Array.isArray(respuesta)) return getImagenRepresentativa(respuesta);
 
-const getCategoriaVariante = (variante, categoriasCatalogo = []) => {
-  const nombre =
-    variante?.nivelNombre ||
-    variante?.categoriaNombre ||
-    variante?.nivel?.nombre ||
-    variante?.categoria?.nombre ||
-    variante?.nombreNivel ||
-    variante?.nombreCategoria;
+  if (typeof respuesta === "object") {
+    const url =
+      respuesta?.url ||
+      respuesta?.imagenUrl ||
+      respuesta?.urlImagen ||
+      respuesta?.fotoUrl ||
+      respuesta?.imagenPrincipalUrl ||
+      respuesta?.imagen?.url ||
+      respuesta?.imagenPrincipal?.url ||
+      "";
 
-  if (nombre) return nombre;
+    if (!url) return null;
 
-  const id =
-    variante?.id_nivel ||
-    variante?.nivelId ||
-    variante?.categoriaId ||
-    variante?.nivel?.id ||
-    variante?.categoria?.id;
-
-  if (id) {
-    const categoria = categoriasCatalogo.find(
-      (cat) => Number(cat?.id ?? cat?.categoriaId ?? cat?.id_nivel) === Number(id)
-    );
-    if (categoria?.nombre) return categoria.nombre;
+    return {
+      ...respuesta,
+      url
+    };
   }
 
-  return id ? `ID ${id}` : "-";
+  return null;
 };
 
-const getColorVariante = (variante, coloresCatalogo = []) => {
-  const nombre =
-    variante?.colorNombre ||
-    variante?.color?.nombre ||
-    variante?.nombreColor;
+const getImagenDirectaProducto = (producto) => {
+  const raw =
+    producto?.imagenPrincipalUrl ||
+    producto?.imagenUrl ||
+    producto?.urlImagen ||
+    producto?.fotoUrl ||
+    producto?.imagen?.url ||
+    producto?.imagenPrincipal?.url ||
+    (Array.isArray(producto?.imagenes) ? producto.imagenes.find((img) => img?.url)?.url || "" : "") ||
+    "";
 
-  if (nombre) return nombre;
+  if (!raw) return null;
 
-  const id = variante?.id_color || variante?.colorId || variante?.color?.id;
-
-  if (id) {
-    const color = coloresCatalogo.find(
-      (c) => Number(c?.id ?? c?.colorId ?? c?.id_color) === Number(id)
-    );
-    if (color?.nombre) return color.nombre;
-  }
-
-  return id ? `ID ${id}` : "-";
-};
-
-const limpiarCodigo = (valor = "") => String(valor || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
-
-const tomarInicial = (valor, fallback = "X") => {
-  const limpio = limpiarCodigo(valor);
-  return limpio[0] || fallback;
-};
-
-const construirCodigoCategoria = (categoria) => {
-  const base = limpiarCodigo(categoria?.codigo || "");
-  if (/^\d+$/.test(base)) {
-    return base.slice(-2).padStart(2, "0");
-  }
-
-  if (base) {
-    return base.slice(0, 2).padEnd(2, "X");
-  }
-
-  return "00";
-};
-
-const construirCodigoColor = (color) => {
-  const base = limpiarCodigo(color?.codigo || "");
-  if (base) return base.slice(0, 2).padEnd(2, "X");
-
-  const nombre = (color?.nombre || "").trim();
-  if (!nombre) return "SC";
-
-  const iniciales = nombre
-    .split(/\s+/)
-    .map((parte) => limpiarCodigo(parte)[0])
-    .filter(Boolean)
-    .join("");
-
-  return (iniciales || "SC").slice(0, 2).padEnd(2, "X");
-};
-
-const construirSkuVariante = ({ linea, familia, modelo, categoria, color }) => {
-  if (!categoria || !color) return "";
-
-  const codigoLinea = tomarInicial(linea?.codigo || linea?.nombre, "X");
-  const codigoFamilia = tomarInicial(familia?.codigo || familia?.nombre, "X");
-  const codigoModelo = tomarInicial(modelo?.codigo || modelo?.nombre, "X");
-  const codigoCategoria = construirCodigoCategoria(categoria);
-  const codigoColor = construirCodigoColor(color);
-
-  return `${codigoLinea}${codigoFamilia}${codigoModelo}-${codigoCategoria}-${codigoColor}`;
+  return {
+    url: raw,
+    altTexto: producto?.altTexto || producto?.nombre || producto?.sku || "Producto"
+  };
 };
 
 export default function ModeloForm({
@@ -186,28 +206,11 @@ export default function ModeloForm({
   const [toastType, setToastType] = useState("success");
   const [erroresBackend, setErroresBackend] = useState({});
   const [familias, setFamilias] = useState([]);
-  const [familiaActual, setFamiliaActual] = useState(null);
-  const [lineaActual, setLineaActual] = useState(null);
-  const [categoriasCatalogo, setCategoriasCatalogo] = useState([]);
-  const [coloresCatalogo, setColoresCatalogo] = useState([]);
   const [variantesModelo, setVariantesModelo] = useState([]);
-  const [imagenesPorVariante, setImagenesPorVariante] = useState({});
-  const [imagenesVariantes, setImagenesVariantes] = useState({});
   const [imagenPrincipal, setImagenPrincipal] = useState(null);
   const [cargandoImagen, setCargandoImagen] = useState(false);
-  const [actualizandoImagenId, setActualizandoImagenId] = useState(null);
-  const [varianteSeleccionadaId, setVarianteSeleccionadaId] = useState(null);
-  const [modoNuevaVariante, setModoNuevaVariante] = useState(false);
-  const [varianteForm, setVarianteForm] = useState(mapVarianteToForm());
-  const [imagenesVarianteSeleccionada, setImagenesVarianteSeleccionada] = useState([]);
-  const [guardandoVariante, setGuardandoVariante] = useState(false);
-  const [eliminandoVariante, setEliminandoVariante] = useState(false);
-  const [subiendoImagenVariante, setSubiendoImagenVariante] = useState(false);
-  const [reemplazoImagenTarget, setReemplazoImagenTarget] = useState(null);
 
   const fileInputRef = useRef(null);
-  const fileInputVarianteRef = useRef(null);
-  const fileInputReemplazoRef = useRef(null);
 
   const navigate = useNavigate();
 
@@ -222,511 +225,121 @@ export default function ModeloForm({
     activo: true
   });
 
-  const modeloActual = useMemo(
-    () => ({
-      codigo: formData.codigo || modelo?.codigo || modelo?.sku || "",
-      nombre: formData.nombre || modelo?.nombre || ""
-    }),
-    [formData.codigo, formData.nombre, modelo]
-  );
-
-  const categoriaSeleccionada = useMemo(
-    () =>
-      categoriasCatalogo.find((categoria) => String(categoria?.id) === String(varianteForm.id_nivel)) || null,
-    [categoriasCatalogo, varianteForm.id_nivel]
-  );
-
-  const colorSeleccionado = useMemo(
-    () =>
-      coloresCatalogo.find((color) => String(color?.id) === String(varianteForm.id_color)) || null,
-    [coloresCatalogo, varianteForm.id_color]
-  );
-
-  const skuAutomaticoVariante = useMemo(
-    () =>
-      construirSkuVariante({
-        linea: lineaActual,
-        modelo: modeloActual,
-        familia: familiaActual,
-        categoria: categoriaSeleccionada,
-        color: colorSeleccionado
-      }),
-    [modeloActual, familiaActual, lineaActual, categoriaSeleccionada, colorSeleccionado]
-  );
-
   useEffect(() => {
     const cargarCatalogos = async () => {
       try {
         const familiasResp = await obtenerFamilias();
         setFamilias(getLista(familiasResp));
-
-        const categoriasResp = await obtenerCategorias();
-        setCategoriasCatalogo(getLista(categoriasResp));
-
-        const coloresResp = await obtenerColores();
-        setColoresCatalogo(getLista(coloresResp));
-      } catch (e) {
-        console.error("Error cargando catalogos:", e);
+      } catch (error) {
+        console.error("Error cargando catalogos:", error);
       }
     };
 
     cargarCatalogos();
   }, []);
 
-  const cargarCategoriasCatalogo = async () => {
-    const respuesta = await obtenerCategorias();
-    const lista = getLista(respuesta);
-    setCategoriasCatalogo(lista);
-    return lista;
-  };
+  const cargarImagenPrincipalModelo = async (modeloFuente) => {
+    const idModelo = typeof modeloFuente === "object" ? getModeloId(modeloFuente) : modeloFuente;
+    const productosLocales = typeof modeloFuente === "object" ? getVariantesDelModelo(modeloFuente) : [];
+    const imagenLocal = typeof modeloFuente === "object" ? getImagenDesdeRespuesta(modeloFuente) : null;
 
-  const cargarColoresCatalogo = async () => {
-    const respuesta = await obtenerColores();
-    const lista = getLista(respuesta);
-    setColoresCatalogo(lista);
-    return lista;
-  };
-
-  const crearCategoriaRapida = async () => {
-    const nombre = window.prompt("Nombre de la categoria / nivel:");
-    if (!nombre || !nombre.trim()) return;
-
-    const codigoSugerido = String(categoriasCatalogo.length + 1).padStart(2, "0");
-    const codigo = window.prompt("Codigo corto de categoria (ej: 03):", codigoSugerido);
-
-    try {
-      await crearCategoria({
-        codigo: (codigo || codigoSugerido).trim(),
-        nombre: nombre.trim(),
-        descripcion: "Creada desde el editor de variantes",
-        activo: true
-      });
-
-      const categoriasActualizadas = await cargarCategoriasCatalogo();
-      const categoriaRecienCreada = categoriasActualizadas.find(
-        (categoria) => categoria.nombre?.trim().toLowerCase() === nombre.trim().toLowerCase()
-      );
-
-      if (categoriaRecienCreada?.id) {
-        setVarianteForm((prev) => ({ ...prev, id_nivel: String(categoriaRecienCreada.id) }));
-      }
-    } catch (error) {
-      console.error("Error creando categoria:", error);
-      alert(error.message || "No se pudo crear la categoria.");
-    }
-  };
-
-  const crearColorRapido = async () => {
-    const nombre = window.prompt("Nombre del color:");
-    if (!nombre || !nombre.trim()) return;
-
-    const codigoSugerido = nombre
-      .trim()
-      .split(/\s+/)
-      .map((parte) => parte[0]?.toUpperCase())
-      .filter(Boolean)
-      .join("")
-      .slice(0, 2)
-      .padEnd(2, "X");
-
-    const codigo = window.prompt("Codigo corto de color (ej: CX):", codigoSugerido);
-    const hex = window.prompt("HEX del color (ej: #1E90FF):", "#808080");
-
-    try {
-      await crearColor({
-        codigo: (codigo || codigoSugerido).trim().toUpperCase(),
-        nombre: nombre.trim(),
-        hex: (hex || "#808080").trim().toUpperCase()
-      });
-
-      const coloresActualizados = await cargarColoresCatalogo();
-      const colorRecienCreado = coloresActualizados.find(
-        (color) => color.nombre?.trim().toLowerCase() === nombre.trim().toLowerCase()
-      );
-
-      if (colorRecienCreado?.id) {
-        setVarianteForm((prev) => ({ ...prev, id_color: String(colorRecienCreado.id) }));
-      }
-    } catch (error) {
-      console.error("Error creando color:", error);
-      alert(error.message || "No se pudo crear el color.");
-    }
-  };
-
-  useEffect(() => {
-    const cargarContextoSku = async () => {
-      const familiaId = Number(formData.familiaId);
-
-      if (!familiaId) {
-        setFamiliaActual(null);
-        setLineaActual(null);
-        return;
-      }
-
-      try {
-        const familiaEnCatalogo = familias.find((familia) => Number(familia?.id) === familiaId) || null;
-        if (!familiaEnCatalogo) {
-          setFamiliaActual(null);
-          setLineaActual(null);
-          return;
-        }
-
-        const familiaCompleta =
-          familiaEnCatalogo?.lineaId || familiaEnCatalogo?.linea?.id
-            ? familiaEnCatalogo
-            : await obtenerFamiliaPorId(familiaId);
-
-        setFamiliaActual(familiaCompleta || null);
-
-        const lineaId = familiaCompleta?.lineaId || familiaCompleta?.linea?.id;
-        if (!lineaId) {
-          setLineaActual(null);
-          return;
-        }
-
-        const linea = await obtenerLineaProductoPorId(lineaId);
-        setLineaActual(linea || null);
-      } catch (error) {
-        console.error("Error cargando linea para SKU de variante:", error);
-        setLineaActual(null);
-      }
-    };
-
-    cargarContextoSku();
-  }, [formData.familiaId, familias]);
-
-  const cargarImagenPrincipalModelo = async (idModelo) => {
-    if (!idModelo) {
+    if (!idModelo && productosLocales.length === 0 && !imagenLocal?.url) {
       setVariantesModelo([]);
-      setImagenesPorVariante({});
-      setImagenesVariantes({});
       setImagenPrincipal(null);
       return;
     }
 
     setCargandoImagen(true);
     try {
-      const variantesResp = await obtenerVariantesPorProductoBase(idModelo);
-      const variantes = getLista(variantesResp);
-      setVariantesModelo(variantes);
+      let principal = imagenLocal ? { ...imagenLocal, productoId: idModelo || imagenLocal?.productoId || null } : null;
 
-      const mapaListas = {};
+      if (idModelo) {
+        try {
+          const respuestaImagenesModelo = await obtenerImagenesPorProducto(idModelo);
+          const imagenesModelo = getLista(respuestaImagenesModelo);
+          const imagenModeloDesdeLista = getImagenRepresentativa(imagenesModelo);
+          if (imagenModeloDesdeLista?.url) {
+            principal = {
+              ...imagenModeloDesdeLista,
+              productoId: idModelo
+            };
+          }
+        } catch {
+          // Si no hay imagenes de modelo en la lista, probamos el endpoint principal.
+        }
+
+        try {
+          const respuestaImagenModelo = await obtenerImagenPrincipalPorProducto(idModelo);
+          const imagenModelo = getImagenDesdeRespuesta(respuestaImagenModelo);
+          if (imagenModelo?.url) {
+            principal = {
+              ...imagenModelo,
+              productoId: idModelo
+            };
+          }
+        } catch {
+          // Si no hay imagen independiente del modelo, seguimos con los productos relacionados.
+        }
+      }
+
+      const productosDelModelo =
+        productosLocales.length > 0
+          ? productosLocales
+          : idModelo
+            ? getLista(await obtenerProductos()).filter(
+                (item) => coincideModeloId(item, idModelo) || coincideModeloIdFlexible(item, idModelo)
+              )
+            : [];
+
+      setVariantesModelo(productosDelModelo);
+
       const mapaImagenes = {};
       await Promise.all(
-        variantes.map(async (variante) => {
-          const varianteId = getVarianteId(variante);
-          if (!varianteId) return;
+        productosDelModelo.map(async (producto) => {
+          const productoId = getVarianteId(producto);
+          if (!productoId) return;
+
+          const imagenDirecta = getImagenDirectaProducto(producto);
+          if (imagenDirecta?.url) {
+            mapaImagenes[productoId] = imagenDirecta;
+            return;
+          }
 
           try {
-            const listaResp = await obtenerImagenesPorVariante(varianteId);
+            const listaResp = await obtenerImagenesPorProducto(productoId);
             const lista = getLista(listaResp);
-            mapaListas[varianteId] = lista;
 
             const representativa = getImagenRepresentativa(lista);
             if (representativa?.url) {
-              mapaImagenes[varianteId] = representativa;
+              mapaImagenes[productoId] = representativa;
             }
           } catch {
             // Sin imagenes en esta variante.
-            mapaListas[varianteId] = [];
           }
         })
       );
 
-      setImagenesPorVariante(mapaListas);
-      setImagenesVariantes(mapaImagenes);
-
-      let principal = null;
-      const primeraConImagen = variantes.find((variante) => {
-        const varianteId = getVarianteId(variante);
-        return Boolean(varianteId && mapaImagenes[varianteId]?.url);
+      let principalFinal = principal;
+      const primeraConImagen = productosDelModelo.find((producto) => {
+        const productoId = getVarianteId(producto);
+        return Boolean(productoId && mapaImagenes[productoId]?.url);
       });
-      if (primeraConImagen) {
-        const varianteId = getVarianteId(primeraConImagen);
-        principal = {
-          ...mapaImagenes[varianteId],
-          varianteId
+      if (!principalFinal && primeraConImagen) {
+        const productoId = getVarianteId(primeraConImagen);
+        principalFinal = {
+          ...mapaImagenes[productoId],
+          varianteId: productoId,
+          productoId: idModelo || null
         };
       }
 
-      setImagenPrincipal(principal);
+      setImagenPrincipal(principalFinal);
     } catch (error) {
       console.error("Error cargando imagen principal del modelo:", error);
-      setImagenesPorVariante({});
-      setImagenesVariantes({});
       setImagenPrincipal(null);
       setVariantesModelo([]);
     } finally {
       setCargandoImagen(false);
-    }
-  };
-
-  const cargarImagenesVarianteSeleccionada = async (varianteId) => {
-    if (!varianteId) {
-      setImagenesVarianteSeleccionada([]);
-      return;
-    }
-
-    try {
-      const listaResp = await obtenerImagenesPorVariante(varianteId);
-      setImagenesVarianteSeleccionada(getLista(listaResp));
-    } catch {
-      setImagenesVarianteSeleccionada([]);
-    }
-  };
-
-  const seleccionarVariante = async (variante) => {
-    const varianteId = getVarianteId(variante);
-    if (!varianteId) return;
-
-    setModoNuevaVariante(false);
-    setVarianteSeleccionadaId(varianteId);
-    setVarianteForm(mapVarianteToForm(variante));
-    await cargarImagenesVarianteSeleccionada(varianteId);
-  };
-
-  const iniciarNuevaVariante = () => {
-    setModoNuevaVariante(true);
-    setVarianteSeleccionadaId(null);
-    setVarianteForm(mapVarianteToForm());
-    setImagenesVarianteSeleccionada([]);
-  };
-
-  const obtenerModeloActualId = () => getModeloId(modelo) || modeloId;
-
-  const guardarVarianteSeleccionada = async () => {
-    const idModeloActual = obtenerModeloActualId();
-    if (!idModeloActual) {
-      setToastType("danger");
-      setToastMessage("No se encontro el ID del modelo para guardar la variante.");
-      return;
-    }
-
-    if (!varianteForm.id_nivel || !varianteForm.id_color) {
-      setToastType("warning");
-      setToastMessage("Selecciona categoria/nivel y color para generar el SKU.");
-      return;
-    }
-
-    const skuFinal = skuAutomaticoVariante || varianteForm.sku?.trim();
-
-    if (!skuFinal) {
-      setToastType("warning");
-      setToastMessage("El SKU es obligatorio.");
-      return;
-    }
-
-    try {
-      setGuardandoVariante(true);
-
-      const payload = {
-        sku: skuFinal.trim().toUpperCase(),
-        nombre: varianteForm.nombre?.trim() || "",
-        descripcion: varianteForm.descripcion?.trim() || "",
-        activo: Boolean(varianteForm.activo),
-        id_producto_base: Number(idModeloActual),
-        id_nivel: varianteForm.id_nivel ? Number(varianteForm.id_nivel) : null,
-        id_color: varianteForm.id_color ? Number(varianteForm.id_color) : null
-      };
-
-      let respuesta = null;
-      if (modoNuevaVariante) {
-        respuesta = await crearVariante(payload);
-      } else if (varianteSeleccionadaId) {
-        respuesta = await actualizarVariante(varianteSeleccionadaId, payload);
-      }
-
-      setToastType("success");
-      setToastMessage(modoNuevaVariante ? "Variante creada correctamente." : "Variante actualizada correctamente.");
-
-      await cargarImagenPrincipalModelo(idModeloActual);
-
-      const idRespuesta = getVarianteId(respuesta);
-      if (idRespuesta) {
-        const varianteRecargada = (variantesModelo || []).find(
-          (v) => Number(getVarianteId(v)) === Number(idRespuesta)
-        );
-        if (varianteRecargada) {
-          await seleccionarVariante(varianteRecargada);
-        } else {
-          setVarianteSeleccionadaId(idRespuesta);
-          await cargarImagenesVarianteSeleccionada(idRespuesta);
-        }
-      } else if (modoNuevaVariante) {
-        setModoNuevaVariante(false);
-      }
-    } catch (error) {
-      setToastType("danger");
-      setToastMessage(error?.message || "No se pudo guardar la variante.");
-    } finally {
-      setGuardandoVariante(false);
-    }
-  };
-
-  const eliminarVarianteSeleccionada = async () => {
-    if (!varianteSeleccionadaId) return;
-
-    const confirmar = window.confirm("Seguro que deseas eliminar esta variante?");
-    if (!confirmar) return;
-
-    try {
-      setEliminandoVariante(true);
-      await eliminarVarianteService(varianteSeleccionadaId);
-
-      setToastType("success");
-      setToastMessage("Variante eliminada correctamente.");
-
-      const idModeloActual = obtenerModeloActualId();
-      if (idModeloActual) {
-        await cargarImagenPrincipalModelo(idModeloActual);
-      }
-
-      setVarianteSeleccionadaId(null);
-      setVarianteForm(mapVarianteToForm());
-      setImagenesVarianteSeleccionada([]);
-    } catch (error) {
-      setToastType("danger");
-      setToastMessage(error?.message || "No se pudo eliminar la variante.");
-    } finally {
-      setEliminandoVariante(false);
-    }
-  };
-
-  const subirImagenAVarianteSeleccionada = async (event) => {
-    const archivo = event.target.files?.[0];
-    event.target.value = "";
-    if (!archivo || !varianteSeleccionadaId) return;
-
-    try {
-      setSubiendoImagenVariante(true);
-      await subirImagenArchivo({
-        archivo,
-        varianteId: Number(varianteSeleccionadaId),
-        esPrincipal: imagenesVarianteSeleccionada.length === 0,
-        altTexto: `Variante ${varianteForm.sku || ""}`.trim() || "Imagen variante"
-      });
-
-      setToastType("success");
-      setToastMessage("Imagen agregada a la variante.");
-
-      await cargarImagenesVarianteSeleccionada(varianteSeleccionadaId);
-      const idModeloActual = obtenerModeloActualId();
-      if (idModeloActual) await cargarImagenPrincipalModelo(idModeloActual);
-    } catch (error) {
-      setToastType("danger");
-      setToastMessage(error?.message || "No se pudo subir la imagen.");
-    } finally {
-      setSubiendoImagenVariante(false);
-    }
-  };
-
-  const toggleEstadoImagenVariante = async (imagen) => {
-    if (!imagen?.id) return;
-    const nuevoEstado = !getImagenActiva(imagen);
-
-    try {
-      setActualizandoImagenId(imagen.id);
-      await actualizarImagen(imagen.id, {
-        activo: nuevoEstado,
-        esPrincipal: Boolean(imagen?.esPrincipal || imagen?.principal),
-        orden: Number(imagen?.orden) || 1,
-        altTexto: imagen?.altTexto || imagen?.nombre || "Imagen variante"
-      });
-
-      setToastType("success");
-      setToastMessage(`Imagen ${nuevoEstado ? "activada" : "desactivada"} correctamente.`);
-      await cargarImagenesVarianteSeleccionada(varianteSeleccionadaId);
-      const idModeloActual = obtenerModeloActualId();
-      if (idModeloActual) await cargarImagenPrincipalModelo(idModeloActual);
-    } catch (error) {
-      setToastType("danger");
-      setToastMessage(error?.message || "No se pudo actualizar el estado de la imagen.");
-    } finally {
-      setActualizandoImagenId(null);
-    }
-  };
-
-  const marcarImagenComoPrincipal = async (imagen) => {
-    if (!imagen?.id) return;
-
-    try {
-      setActualizandoImagenId(imagen.id);
-      await actualizarImagen(imagen.id, {
-        activo: getImagenActiva(imagen),
-        esPrincipal: true,
-        orden: Number(imagen?.orden) || 1,
-        altTexto: imagen?.altTexto || imagen?.nombre || "Imagen principal"
-      });
-
-      setToastType("success");
-      setToastMessage("Imagen principal actualizada.");
-      await cargarImagenesVarianteSeleccionada(varianteSeleccionadaId);
-      const idModeloActual = obtenerModeloActualId();
-      if (idModeloActual) await cargarImagenPrincipalModelo(idModeloActual);
-    } catch (error) {
-      setToastType("danger");
-      setToastMessage(error?.message || "No se pudo marcar como principal.");
-    } finally {
-      setActualizandoImagenId(null);
-    }
-  };
-
-  const eliminarImagenVarianteSeleccionada = async (imagen) => {
-    if (!imagen?.id) return;
-
-    const confirmar = window.confirm("Eliminar esta imagen de la variante?");
-    if (!confirmar) return;
-
-    try {
-      setActualizandoImagenId(imagen.id);
-      await eliminarImagen(imagen.id);
-      setToastType("success");
-      setToastMessage("Imagen eliminada.");
-      await cargarImagenesVarianteSeleccionada(varianteSeleccionadaId);
-      const idModeloActual = obtenerModeloActualId();
-      if (idModeloActual) await cargarImagenPrincipalModelo(idModeloActual);
-    } catch (error) {
-      setToastType("danger");
-      setToastMessage(error?.message || "No se pudo eliminar la imagen.");
-    } finally {
-      setActualizandoImagenId(null);
-    }
-  };
-
-  const iniciarReemplazoImagen = (imagen) => {
-    setReemplazoImagenTarget(imagen || null);
-    fileInputReemplazoRef.current?.click();
-  };
-
-  const reemplazarImagenVariante = async (event) => {
-    const archivo = event.target.files?.[0];
-    event.target.value = "";
-    const imagen = reemplazoImagenTarget;
-    setReemplazoImagenTarget(null);
-
-    if (!archivo || !imagen || !varianteSeleccionadaId) return;
-
-    try {
-      setActualizandoImagenId(imagen.id);
-      await subirImagenArchivo({
-        archivo,
-        varianteId: Number(varianteSeleccionadaId),
-        esPrincipal: Boolean(imagen?.esPrincipal || imagen?.principal),
-        orden: Number(imagen?.orden) || 1,
-        altTexto: imagen?.altTexto || imagen?.nombre || "Imagen variante"
-      });
-      await eliminarImagen(imagen.id);
-
-      setToastType("success");
-      setToastMessage("Imagen reemplazada correctamente.");
-      await cargarImagenesVarianteSeleccionada(varianteSeleccionadaId);
-      const idModeloActual = obtenerModeloActualId();
-      if (idModeloActual) await cargarImagenPrincipalModelo(idModeloActual);
-    } catch (error) {
-      setToastType("danger");
-      setToastMessage(error?.message || "No se pudo reemplazar la imagen.");
-    } finally {
-      setActualizandoImagenId(null);
     }
   };
 
@@ -741,10 +354,7 @@ export default function ModeloForm({
           activo: modelo.activo ?? true
         });
 
-        const idModelo = getModeloId(modelo);
-        if (idModelo) {
-          await cargarImagenPrincipalModelo(idModelo);
-        }
+        await cargarImagenPrincipalModelo(modelo);
         return;
       }
 
@@ -759,10 +369,9 @@ export default function ModeloForm({
             activo: data.activo ?? true
           });
 
-          const idModelo = getModeloId(data) || modeloId;
-          await cargarImagenPrincipalModelo(idModelo);
-        } catch (e) {
-          console.error("Error cargando:", e);
+          await cargarImagenPrincipalModelo(data || modeloId);
+        } catch (error) {
+          console.error("Error cargando:", error);
         }
       }
     };
@@ -849,20 +458,18 @@ export default function ModeloForm({
       return;
     }
 
-    const varianteDestinoId =
-      imagenPrincipal?.varianteId ||
-      getVarianteId(variantesModelo[0]);
+    const idModeloActual = modeloId || getModeloId(modelo);
 
-    if (!varianteDestinoId) {
+    if (!idModeloActual) {
       setToastType("danger");
-      setToastMessage("Este modelo no tiene variantes. Crea una variante antes de subir imagen.");
+      setToastMessage("No se encontro el ID del modelo para subir la imagen.");
       return;
     }
 
     try {
       await subirImagenArchivo({
         archivo,
-        varianteId: Number(varianteDestinoId),
+        productoId: Number(idModeloActual),
         esPrincipal: true,
         altTexto: `Modelo ${formData.nombre || formData.codigo || ""}`.trim() || "Imagen del modelo"
       });
@@ -870,10 +477,7 @@ export default function ModeloForm({
       setToastType("success");
       setToastMessage("Imagen del modelo actualizada.");
 
-      const idModeloActual = modeloId || getModeloId(modelo);
-      if (idModeloActual) {
-        await cargarImagenPrincipalModelo(idModeloActual);
-      }
+      await cargarImagenPrincipalModelo(idModeloActual);
     } catch (error) {
       setToastType("danger");
       setToastMessage(error.message || "No se pudo actualizar la imagen del modelo.");
@@ -881,14 +485,16 @@ export default function ModeloForm({
   };
 
   const manejarEliminarImagen = async () => {
-    if (!imagenPrincipal?.id || !imagenPrincipal?.varianteId) {
+    const idModeloActual = imagenPrincipal?.productoId || modeloId || getModeloId(modelo);
+
+    if (!imagenPrincipal?.id || !idModeloActual) {
       setToastType("warning");
       setToastMessage("No hay imagen principal para eliminar.");
       return;
     }
 
     try {
-      const listaResp = await obtenerImagenesPorVariante(imagenPrincipal.varianteId);
+      const listaResp = await obtenerImagenesPorVariante(idModeloActual);
       const imagenesVariante = getLista(listaResp);
 
       if (imagenesVariante.length <= 1) {
@@ -911,10 +517,7 @@ export default function ModeloForm({
       setToastType("success");
       setToastMessage("Imagen principal eliminada.");
 
-      const idModeloActual = modeloId || getModeloId(modelo);
-      if (idModeloActual) {
-        await cargarImagenPrincipalModelo(idModeloActual);
-      }
+      await cargarImagenPrincipalModelo(idModeloActual);
     } catch (error) {
       setToastType("danger");
       setToastMessage(error.message || "No se pudo eliminar la imagen.");
@@ -1124,7 +727,7 @@ export default function ModeloForm({
 
                   {variantesModelo.length === 0 && (
                     <div className="form-text text-warning mt-2">
-                      Este modelo no tiene variantes. Para gestionar imagen, crea al menos una variante.
+                      Este modelo aun no tiene productos, pero la portada del modelo se puede cargar aqui.
                     </div>
                   )}
                 </div>
@@ -1132,361 +735,6 @@ export default function ModeloForm({
             </div>
           )}
         </div>
-
-        {esEdicion && (
-          <div className="card shadow-sm border-0 mb-4">
-            <div className="card-header bg-white py-3">
-              <h5 className="mb-0 text-secondary">
-                <i className="bi bi-box-seam me-2"></i>Productos de este modelo
-              </h5>
-            </div>
-            <div className="card-body">
-              {cargandoImagen ? (
-                <div className="text-muted">Cargando variantes...</div>
-              ) : variantesModelo.length === 0 ? (
-                <div className="text-muted">Este modelo aun no tiene variantes.</div>
-              ) : (
-                <div className="table-responsive">
-                  <table className="table table-sm align-middle">
-                    <thead>
-                      <tr>
-                        <th>SKU</th>
-                        <th>Nombre</th>
-                        <th>Categoria</th>
-                        <th>Color</th>
-                        <th>Imagen</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {variantesModelo.map((variante) => {
-                        const varianteId = getVarianteId(variante);
-                        const img = varianteId ? imagenesVariantes[varianteId] : null;
-
-                        return (
-                          <tr
-                            key={varianteId || variante.sku || variante.nombre}
-                            style={{ cursor: "pointer" }}
-                            className={Number(varianteSeleccionadaId) === Number(varianteId) && !modoNuevaVariante ? "table-primary" : ""}
-                            onClick={() => seleccionarVariante(variante)}
-                          >
-                            <td>
-                              <code>{variante.sku || "-"}</code>
-                            </td>
-                            <td className="text-truncate" style={{ maxWidth: "300px" }} title={variante.nombre || "-"}>
-                              {variante.nombre || "-"}
-                            </td>
-                            <td>{getCategoriaVariante(variante, categoriasCatalogo)}</td>
-                            <td>{getColorVariante(variante, coloresCatalogo)}</td>
-                            <td>
-                              {img?.url ? (
-                                <img
-                                  src={toPreviewUrl(img.url)}
-                                  alt={img.altTexto || variante.nombre || "Imagen variante"}
-                                  style={{
-                                    width: "64px",
-                                    height: "64px",
-                                    objectFit: "contain",
-                                    backgroundColor: "#f8f9fa",
-                                    padding: "4px",
-                                    borderRadius: "6px",
-                                    border: "1px solid #dee2e6"
-                                  }}
-                                />
-                              ) : (
-                                <span className="text-muted">Sin imagen</span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {esEdicion && (
-          <div className="card shadow-sm border-0 mb-4">
-            <div className="card-header bg-white py-3">
-              <h5 className="mb-0 text-secondary">
-                <i className="bi bi-pencil-square me-2"></i>Editor de variante
-              </h5>
-            </div>
-            <div className="card-body">
-              {variantesModelo.length === 0 ? (
-                <div className="text-muted">Este modelo aun no tiene variantes para editar.</div>
-              ) : (
-                <>
-                  <div className="d-flex flex-wrap gap-2 mb-3">
-                    <button type="button" className="btn btn-outline-primary btn-sm" onClick={iniciarNuevaVariante}>
-                      <i className="bi bi-plus-circle me-1"></i>
-                      Nueva variante
-                    </button>
-                    {(varianteSeleccionadaId || modoNuevaVariante) && (
-                      <button
-                        type="button"
-                        className="btn btn-outline-secondary btn-sm"
-                        onClick={() => {
-                          setModoNuevaVariante(false);
-                          setVarianteSeleccionadaId(null);
-                          setVarianteForm(mapVarianteToForm());
-                          setImagenesVarianteSeleccionada([]);
-                        }}
-                      >
-                        Limpiar seleccion
-                      </button>
-                    )}
-                  </div>
-
-                  {!varianteSeleccionadaId && !modoNuevaVariante ? (
-                    <div className="text-muted">Selecciona una variante de la tabla para editarla o crea una nueva.</div>
-                  ) : (
-                    <div className="row g-4">
-                      <div className="col-lg-5">
-                        <div className="border rounded p-3 h-100">
-                          <h6 className="mb-3">{modoNuevaVariante ? "Nueva Variante" : "Editar Variante"}</h6>
-
-                          <div className="mb-2">
-                            <label className="form-label">Categoria / Nivel *</label>
-                            <div className="d-flex gap-2">
-                              <select
-                                className="form-select"
-                                value={varianteForm.id_nivel || ""}
-                                onChange={(e) => setVarianteForm((prev) => ({ ...prev, id_nivel: e.target.value }))}
-                              >
-                                <option value="">Seleccionar categoria...</option>
-                                {categoriasCatalogo.map((cat) => {
-                                  const id = cat.id ?? cat.categoriaId ?? cat.id_nivel;
-                                  return (
-                                    <option key={id} value={id}>
-                                      {cat.codigo ? `[${cat.codigo}] ` : ""}
-                                      {cat.nombre || `Categoria ${id}`}
-                                    </option>
-                                  );
-                                })}
-                              </select>
-                              <button type="button" className="btn btn-outline-secondary" onClick={crearCategoriaRapida}>
-                                +
-                              </button>
-                            </div>
-                          </div>
-
-                          <div className="mb-3">
-                            <label className="form-label">Color *</label>
-                            <div className="d-flex gap-2">
-                              <select
-                                className="form-select"
-                                value={varianteForm.id_color || ""}
-                                onChange={(e) => setVarianteForm((prev) => ({ ...prev, id_color: e.target.value }))}
-                              >
-                                <option value="">Seleccionar color...</option>
-                                {coloresCatalogo.map((color) => {
-                                  const id = color.id ?? color.colorId ?? color.id_color;
-                                  return (
-                                    <option key={id} value={id}>
-                                      {color.codigo ? `[${color.codigo}] ` : ""}
-                                      {color.nombre || `Color ${id}`}
-                                    </option>
-                                  );
-                                })}
-                              </select>
-                              <button type="button" className="btn btn-outline-secondary" onClick={crearColorRapido}>
-                                +
-                              </button>
-                            </div>
-                          </div>
-
-                          <div className="mb-2">
-                            <label className="form-label">SKU automatico</label>
-                            <input
-                              type="text"
-                              className="form-control bg-white"
-                              value={skuAutomaticoVariante || varianteForm.sku || ""}
-                              readOnly
-                            />
-                            <small className="text-muted">
-                              Se genera automaticamente al elegir categoria/nivel y color.
-                            </small>
-                          </div>
-
-                          <div className="mb-2">
-                            <label className="form-label">Nombre</label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              value={varianteForm.nombre || ""}
-                              onChange={(e) => setVarianteForm((prev) => ({ ...prev, nombre: e.target.value }))}
-                            />
-                          </div>
-
-                          <div className="mb-2">
-                            <label className="form-label">Descripcion</label>
-                            <textarea
-                              className="form-control"
-                              rows="3"
-                              value={varianteForm.descripcion || ""}
-                              onChange={(e) => setVarianteForm((prev) => ({ ...prev, descripcion: e.target.value }))}
-                            />
-                          </div>
-
-                          <div className="form-check form-switch mb-3">
-                            <input
-                              className="form-check-input"
-                              type="checkbox"
-                              id="varianteActivaSwitch"
-                              checked={Boolean(varianteForm.activo)}
-                              onChange={(e) => setVarianteForm((prev) => ({ ...prev, activo: e.target.checked }))}
-                            />
-                            <label className="form-check-label" htmlFor="varianteActivaSwitch">
-                              Variante activa
-                            </label>
-                          </div>
-
-                          <div className="d-flex gap-2 flex-wrap">
-                            <button
-                              type="button"
-                              className="btn btn-primary btn-sm"
-                              onClick={guardarVarianteSeleccionada}
-                              disabled={guardandoVariante}
-                            >
-                              {guardandoVariante ? "Guardando..." : "Guardar variante"}
-                            </button>
-
-                            {!modoNuevaVariante && varianteSeleccionadaId && (
-                              <button
-                                type="button"
-                                className="btn btn-outline-danger btn-sm"
-                                onClick={eliminarVarianteSeleccionada}
-                                disabled={eliminandoVariante}
-                              >
-                                {eliminandoVariante ? "Eliminando..." : "Eliminar variante"}
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="col-lg-7">
-                        <div className="border rounded p-3 h-100">
-                          <div className="d-flex justify-content-between align-items-center mb-3">
-                            <h6 className="mb-0">Imagenes de la variante</h6>
-                            <button
-                              type="button"
-                              className="btn btn-outline-primary btn-sm"
-                              onClick={() => fileInputVarianteRef.current?.click()}
-                              disabled={!varianteSeleccionadaId || subiendoImagenVariante}
-                            >
-                              {subiendoImagenVariante ? "Subiendo..." : "Agregar imagen"}
-                            </button>
-                          </div>
-
-                          <input
-                            ref={fileInputVarianteRef}
-                            type="file"
-                            accept="image/*"
-                            className="d-none"
-                            onChange={subirImagenAVarianteSeleccionada}
-                          />
-                          <input
-                            ref={fileInputReemplazoRef}
-                            type="file"
-                            accept="image/*"
-                            className="d-none"
-                            onChange={reemplazarImagenVariante}
-                          />
-
-                          {!varianteSeleccionadaId ? (
-                            <div className="text-muted">Selecciona una variante existente para gestionar sus imagenes.</div>
-                          ) : imagenesVarianteSeleccionada.length === 0 ? (
-                            <div className="text-muted">Esta variante no tiene imagenes.</div>
-                          ) : (
-                            <div className="row g-3">
-                              {imagenesVarianteSeleccionada.map((imagen) => {
-                                const activa = getImagenActiva(imagen);
-                                const esPrincipal = Boolean(imagen?.esPrincipal || imagen?.principal);
-                                const loading = actualizandoImagenId === imagen.id;
-
-                                return (
-                                  <div key={imagen.id} className="col-sm-6 col-md-4">
-                                    <div className="card h-100">
-                                      <div className="p-2">
-                                        <img
-                                          src={toPreviewUrl(imagen.url)}
-                                          alt={imagen.altTexto || imagen.nombre || "Imagen"}
-                                          style={{
-                                            width: "100%",
-                                            height: "120px",
-                                            objectFit: "contain",
-                                            backgroundColor: "#f8f9fa",
-                                            borderRadius: "6px",
-                                            border: "1px solid #dee2e6",
-                                            padding: "4px"
-                                          }}
-                                        />
-                                      </div>
-                                      <div className="card-body py-2 px-2">
-                                        <div className="d-flex gap-1 mb-2 flex-wrap">
-                                          {esPrincipal && <span className="badge bg-primary">Principal</span>}
-                                          <span className={`badge ${activa ? "bg-success" : "bg-secondary"}`}>
-                                            {activa ? "Activa" : "Inactiva"}
-                                          </span>
-                                        </div>
-
-                                        <div className="d-grid gap-1">
-                                          <button
-                                            type="button"
-                                            className={`btn btn-sm ${activa ? "btn-outline-secondary" : "btn-outline-success"}`}
-                                            disabled={loading}
-                                            onClick={() => toggleEstadoImagenVariante(imagen)}
-                                          >
-                                            {loading ? "Guardando..." : activa ? "Desactivar" : "Activar"}
-                                          </button>
-
-                                          <button
-                                            type="button"
-                                            className="btn btn-sm btn-outline-primary"
-                                            disabled={loading || esPrincipal}
-                                            onClick={() => marcarImagenComoPrincipal(imagen)}
-                                          >
-                                            Marcar principal
-                                          </button>
-
-                                          <button
-                                            type="button"
-                                            className="btn btn-sm btn-outline-warning"
-                                            disabled={loading}
-                                            onClick={() => iniciarReemplazoImagen(imagen)}
-                                          >
-                                            Reemplazar
-                                          </button>
-
-                                          <button
-                                            type="button"
-                                            className="btn btn-sm btn-outline-danger"
-                                            disabled={loading}
-                                            onClick={() => eliminarImagenVarianteSeleccionada(imagen)}
-                                          >
-                                            Eliminar
-                                          </button>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-        )}
 
         <div className="d-flex justify-content-between align-items-center bg-white p-3 rounded shadow-sm">
           {esModal && (
@@ -1518,3 +766,5 @@ export default function ModeloForm({
     </div>
   );
 }
+
+

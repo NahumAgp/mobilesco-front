@@ -14,19 +14,19 @@ export default function ProveedorFormPage() {
 
   // Cargar datos del proveedor para obtener el nombre
   useEffect(() => {
-    if (esEdicion) {
-      cargarProveedor();
-    }
-  }, [id]);
+    if (!esEdicion) return;
 
-  const cargarProveedor = async () => {
-    try {
-      const data = await obtenerProveedorPorId(id);
-      setProveedor(data);
-    } catch (error) {
-      console.error("Error cargando proveedor:", error);
-    }
-  };
+    const cargarProveedor = async () => {
+      try {
+        const data = await obtenerProveedorPorId(id);
+        setProveedor(data);
+      } catch (error) {
+        console.error("Error cargando proveedor:", error);
+      }
+    };
+
+    cargarProveedor();
+  }, [esEdicion, id]);
 
   return (
     <div className="container mt-4">

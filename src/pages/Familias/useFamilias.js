@@ -24,7 +24,7 @@ export function useFamilias() {
         setFamilias(data);
       }
 
-    } catch (e) {
+    } catch {
 
       setError("Error cargando familias");
 

@@ -1,13 +1,14 @@
-﻿const API_BASE_URL = "http://localhost:8081";
+const API_BASE_URL = "http://localhost:8081";
 
 const getModeloImagenUrl = (modelo) => {
   const raw =
+    modelo?.imagenPrincipalUrl ||
+    modelo?.imagenPrincipal?.url ||
     modelo?.imagenUrl ||
     modelo?.urlImagen ||
-    modelo?.imagenPrincipalUrl ||
     modelo?.fotoUrl ||
     modelo?.imagen?.url ||
-    modelo?.imagenPrincipal?.url ||
+    (Array.isArray(modelo?.imagenes) ? modelo.imagenes.find((img) => img?.url)?.url || "" : "") ||
     "";
 
   if (!raw || typeof raw !== "string") return "";
@@ -16,7 +17,11 @@ const getModeloImagenUrl = (modelo) => {
   return `${API_BASE_URL}/${raw}`;
 };
 
-export default function TiposProductoTable({ data, onEditar, onEliminar }) {
+export default function TiposProductoTable({
+  data,
+  onEditar,
+  onEliminar
+}) {
   return (
     <div className="card">
       <div
@@ -113,27 +118,29 @@ export default function TiposProductoTable({ data, onEditar, onEliminar }) {
                       </button>
                     </td>
                     <td>
-                      {imagenUrl ? (
-                        <img
-                          src={imagenUrl}
-                          alt={`Modelo ${tipo.nombre || tipo.codigo || tipo.id}`}
-                          style={{
-                            width: "42px",
-                            height: "42px",
-                            objectFit: "cover",
-                            borderRadius: "6px",
-                            border: "1px solid #dee2e6"
-                          }}
-                        />
-                      ) : (
-                        <div
-                          className="d-inline-flex align-items-center justify-content-center bg-light text-muted border rounded"
-                          style={{ width: "42px", height: "42px", fontSize: "11px" }}
-                          title="Sin imagen"
-                        >
-                          N/A
-                        </div>
-                      )}
+                      <div className="d-flex align-items-center gap-2">
+                        {imagenUrl ? (
+                          <img
+                            src={imagenUrl}
+                            alt={`Modelo ${tipo.nombre || tipo.codigo || tipo.id}`}
+                            style={{
+                              width: "42px",
+                              height: "42px",
+                              objectFit: "cover",
+                              borderRadius: "6px",
+                              border: "1px solid #dee2e6"
+                            }}
+                          />
+                        ) : (
+                          <div
+                            className="d-inline-flex align-items-center justify-content-center bg-light text-muted border rounded"
+                            style={{ width: "42px", height: "42px", fontSize: "11px" }}
+                            title="Sin imagen"
+                          >
+                            N/A
+                          </div>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );

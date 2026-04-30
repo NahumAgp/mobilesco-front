@@ -42,7 +42,7 @@ export default function OperacionesPage() {
       setToastType("success");
       setToastMessage("Operación eliminada correctamente");
 
-    } catch (e) {
+    } catch {
 
       setToastType("danger");
       setToastMessage("Error al eliminar operación");

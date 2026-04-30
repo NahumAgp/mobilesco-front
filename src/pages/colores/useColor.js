@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { obtenerColores, eliminarColor as eliminarColorService } from "../../services/color.js";
 
 export function useColor() {
@@ -14,7 +14,7 @@ export function useColor() {
       const data = await obtenerColores();
       const lista = data?.content || data || [];
       setColores(Array.isArray(lista) ? lista : []);
-    } catch (e) {
+    } catch {
       setError("Error cargando colores");
       setColores([]);
     } finally {
@@ -39,3 +39,4 @@ export function useColor() {
     recargar: cargar
   };
 }
+

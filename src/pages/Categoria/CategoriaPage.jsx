@@ -31,7 +31,7 @@ export default function CategoriaPage() {
       await eliminarCategoria(id);
       setToastType("success");
       setToastMessage("Categoria eliminada correctamente");
-    } catch (e) {
+    } catch {
       setToastType("danger");
       setToastMessage("Error al eliminar categoria");
     }
@@ -120,3 +120,4 @@ export default function CategoriaPage() {
     </>
   );
 }
+

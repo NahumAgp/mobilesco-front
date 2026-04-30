@@ -27,9 +27,9 @@ export function useMateriales() {
         setMateriales([]);
       }
 
-    } catch (e) {
-      console.error("❌ Error cargando materiales:", e);
-      setError("Error cargando materiales: " + (e.message || "Error desconocido"));
+    } catch (error) {
+      console.error("❌ Error cargando materiales:", error);
+      setError("Error cargando materiales: " + (error.message || "Error desconocido"));
     } finally {
       setLoadingLista(false);
     }
@@ -51,3 +51,4 @@ export function useMateriales() {
     eliminarMaterial
   };
 }
+

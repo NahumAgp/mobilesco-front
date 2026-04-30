@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { obtenerColorPorId, crearColor, actualizarColor } from "../../services/color.js";
 import Toast from "../../components/ui/Toast.jsx";
@@ -36,8 +36,8 @@ export default function ColorForm({ colorId, color, onSave, onCancel, errores: e
         try {
           const data = await obtenerColorPorId(colorId);
           setFormData(mapColorToForm(data));
-        } catch (e) {
-          console.error("Error cargando:", e);
+        } catch (error) {
+          console.error("Error cargando:", error);
         }
       }
     };
@@ -201,3 +201,5 @@ export default function ColorForm({ colorId, color, onSave, onCancel, errores: e
     </div>
   );
 }
+
+

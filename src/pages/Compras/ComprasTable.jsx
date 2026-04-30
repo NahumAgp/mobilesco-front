@@ -3,7 +3,6 @@ import { useState } from "react";
 export default function ComprasTable({ 
   data, 
   onVer, 
-  onEditar, 
   onEliminar, 
   onRecibir, 
   onCancelar 

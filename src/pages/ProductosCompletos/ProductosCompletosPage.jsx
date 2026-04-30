@@ -14,8 +14,39 @@ import Toast from "../../components/ui/Toast";
 
 const getLista = (respuesta) => {
   if (Array.isArray(respuesta)) return respuesta;
-  if (Array.isArray(respuesta?.content)) return respuesta.content;
-  return [];
+  const visitados = new Set();
+  const buscarLista = (valor, nivel = 0) => {
+    if (Array.isArray(valor)) return valor;
+    if (!valor || typeof valor !== "object" || nivel > 4 || visitados.has(valor)) return null;
+
+    visitados.add(valor);
+
+    const clavesPreferidas = [
+      "content",
+      "data",
+      "items",
+      "results",
+      "productos",
+      "variantes",
+      "lista",
+      "rows",
+      "payload"
+    ];
+
+    for (const clave of clavesPreferidas) {
+      const candidato = valor?.[clave];
+      if (Array.isArray(candidato)) return candidato;
+    }
+
+    for (const nested of Object.values(valor)) {
+      const encontrado = buscarLista(nested, nivel + 1);
+      if (Array.isArray(encontrado)) return encontrado;
+    }
+
+    return null;
+  };
+
+  return buscarLista(respuesta) || [];
 };
 
 const getNombrePorCatalogo = (item, catalogo, clavesId = [], clavesNombre = []) => {
@@ -32,6 +63,44 @@ const getNombrePorCatalogo = (item, catalogo, clavesId = [], clavesNombre = []) 
   }
 
   return "";
+};
+
+const getRelacionadoId = (item, claves = []) => {
+  for (const clave of claves) {
+    const valor = item?.[clave];
+    if (valor !== undefined && valor !== null && valor !== "") return valor;
+  }
+
+  return (
+    item?.modelo?.id ||
+    item?.modelo?.modeloId ||
+    item?.modelo?.id_modelo ||
+    item?.modelo?.producto_base_id ||
+    item?.productoBase?.id ||
+    item?.producto_base?.id ||
+    null
+  );
+};
+
+const buscarIdEnCatalogo = (item, catalogoMapa, nivel = 0, visitados = new Set()) => {
+  if (!item || typeof item !== "object" || nivel > 2 || visitados.has(item)) return null;
+  visitados.add(item);
+
+  for (const [clave, valor] of Object.entries(item)) {
+    if (valor === null || valor === undefined) continue;
+
+    if (typeof valor === "object") {
+      const encontrado = buscarIdEnCatalogo(valor, catalogoMapa, nivel + 1, visitados);
+      if (encontrado !== null) return encontrado;
+      continue;
+    }
+
+    if (/id|modelo|producto|base|nivel|categoria|color/i.test(clave) && catalogoMapa.has(String(valor))) {
+      return valor;
+    }
+  }
+
+  return null;
 };
 
 export default function ProductosCompletosPage({ iniciarCreacion = false }) {
@@ -116,37 +185,57 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
 
   const enriquecerProducto = (producto) => {
     const modeloNombre =
+      producto?.nombre_modelo ||
       getNombrePorCatalogo(
         producto,
         modelosCatalogo,
-        ["productoBaseId", "modeloId", "id_producto_base", "id_modelo"],
+        ["productoBaseId", "modeloId", "id_producto_base", "id_modelo", "producto_base_id", "modelo_id"],
         ["productoBaseNombre", "modeloNombre"]
       ) ||
-      modelosPorId.get(String(producto?.productoBaseId || producto?.modeloId || producto?.id_producto_base || producto?.id_modelo)) ||
+      modelosPorId.get(
+        String(
+          getRelacionadoId(producto, [
+            "productoBaseId",
+            "modeloId",
+            "id_producto_base",
+            "id_modelo",
+            "producto_base_id",
+            "modelo_id"
+          ])
+        )
+      ) ||
+      modelosPorId.get(String(buscarIdEnCatalogo(producto, modelosPorId))) ||
       "";
 
     const categoriaNombre =
+      producto?.nombre_nivel ||
       getNombrePorCatalogo(
         producto,
         categoriasCatalogo,
-        ["id_nivel", "nivelId", "categoriaId"],
+        ["id_nivel", "nivelId", "categoriaId", "nivel_id", "categoria_id"],
         ["nivelNombre", "categoriaNombre"]
       ) ||
-      categoriasPorId.get(String(producto?.id_nivel || producto?.nivelId || producto?.categoriaId)) ||
+      categoriasPorId.get(
+        String(getRelacionadoId(producto, ["id_nivel", "nivelId", "categoriaId", "nivel_id", "categoria_id"]))
+      ) ||
       "";
 
     const colorNombre =
+      producto?.nombre_color ||
       getNombrePorCatalogo(
         producto,
         coloresCatalogo,
-        ["id_color", "colorId"],
+        ["id_color", "colorId", "color_id"],
         ["colorNombre"]
       ) ||
-      coloresPorId.get(String(producto?.id_color || producto?.colorId)) ||
+      coloresPorId.get(String(getRelacionadoId(producto, ["id_color", "colorId", "color_id"]))) ||
       "";
 
     return {
       ...producto,
+      nombre_modelo: modeloNombre || producto?.nombre_modelo || "",
+      nombre_nivel: categoriaNombre || producto?.nombre_nivel || "",
+      nombre_color: colorNombre || producto?.nombre_color || "",
       modeloNombre: modeloNombre || producto?.modeloNombre || producto?.productoBaseNombre || "",
       nivelNombre: categoriaNombre || producto?.nivelNombre || producto?.categoriaNombre || "",
       categoriaNombre: categoriaNombre || producto?.categoriaNombre || producto?.nivelNombre || "",
@@ -241,7 +330,7 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
             .replace(/\s+/g, " "),
           descripcion: `Variante ${variante?.categoriaNombre || "sin categoria"} - ${variante?.colorNombre || "sin color"}`,
           activo: true,
-          id_producto_base: Number(modeloId),
+          id_modelo: Number(modeloId),
           id_nivel: variante?.categoriaId ? Number(variante.categoriaId) : null,
           id_color: variante?.colorId ? Number(variante.colorId) : null
         };
@@ -331,10 +420,13 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
       productoEnriquecido?.nombre,
       productoEnriquecido?.descripcion,
       productoEnriquecido?.productoBaseNombre,
+      productoEnriquecido?.nombre_modelo,
       productoEnriquecido?.modeloNombre,
       productoEnriquecido?.nivelNombre,
+      productoEnriquecido?.nombre_nivel,
       productoEnriquecido?.categoriaNombre,
-      productoEnriquecido?.colorNombre
+      productoEnriquecido?.colorNombre,
+      productoEnriquecido?.nombre_color
     ]
       .filter(Boolean)
       .join(" ")

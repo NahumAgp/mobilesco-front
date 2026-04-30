@@ -69,11 +69,11 @@ export function useProveedores({
           totalPages: data.totalPages ?? 0,
           totalElements: data.totalElements ?? data.content.length,
           numberOfElements: data.numberOfElements ?? data.content.length,
-          first: Boolean(data.first),
-          last: Boolean(data.last),
-          empty: Boolean(data.empty),
-          hasNext: !Boolean(data.last),
-          hasPrevious: !Boolean(data.first)
+          first: data.first ?? false,
+          last: data.last ?? false,
+          empty: data.empty ?? false,
+          hasNext: data.last === false,
+          hasPrevious: data.first === false
         });
         return;
       }
@@ -91,7 +91,7 @@ export function useProveedores({
         hasNext: false,
         hasPrevious: page > 0
       });
-    } catch (e) {
+    } catch {
       setError("Error cargando proveedores");
     } finally {
       setLoadingLista(false);
@@ -115,3 +115,4 @@ export function useProveedores({
     eliminarProveedor
   };
 }
+

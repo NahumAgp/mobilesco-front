@@ -28,9 +28,9 @@ export function useInsumos() {
         setInsumos([]);
       }
 
-    } catch (e) {
-      console.error("❌ Error cargando insumos:", e);
-      setError("Error cargando insumos: " + (e.message || "Error desconocido"));
+    } catch (error) {
+      console.error("❌ Error cargando insumos:", error);
+      setError("Error cargando insumos: " + (error.message || "Error desconocido"));
     } finally {
       setLoadingLista(false);
     }
@@ -58,3 +58,4 @@ export function useInsumos() {
     ajustarStock
   };
 }
+

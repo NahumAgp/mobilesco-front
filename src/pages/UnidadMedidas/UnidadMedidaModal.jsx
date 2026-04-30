@@ -8,27 +8,27 @@ export default function EmpleadoModal({ show, onClose, onSelect }) {
 
   useEffect(() => {
 
-    if (show) {
-      cargarEmpleados();
-    }
+    if (!show) return;
+
+    const cargarEmpleados = async () => {
+
+      try {
+
+        const data = await obtenerEmpleados();
+
+        setEmpleados(data.filter(e => e.activo));
+
+      } catch (error) {
+
+        console.error("Error al cargar empleados:", error);
+
+      }
+
+    };
+
+    cargarEmpleados();
 
   }, [show]);
-
-  const cargarEmpleados = async () => {
-
-    try {
-
-      const data = await obtenerEmpleados();
-
-      setEmpleados(data.filter(e => e.activo));
-
-    } catch (error) {
-
-      console.error("Error al cargar empleados:", error);
-
-    }
-
-  };
 
   const empleadosFiltrados = empleados.filter((e) => {
 

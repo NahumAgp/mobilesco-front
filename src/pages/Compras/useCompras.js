@@ -29,9 +29,9 @@ export function useCompras() {
         setCompras([]);
       }
 
-    } catch (e) {
-      console.error("❌ Error cargando compras:", e);
-      setError("Error cargando compras: " + (e.message || "Error desconocido"));
+    } catch (error) {
+      console.error("❌ Error cargando compras:", error);
+      setError("Error cargando compras: " + (error.message || "Error desconocido"));
     } finally {
       setLoadingLista(false);
     }

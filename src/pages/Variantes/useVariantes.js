@@ -3,13 +3,12 @@
 // ============================================
 import { useEffect, useState } from "react";
 import {
-  obtenerVariantes,
-  eliminarVariante as eliminarService
+  obtenerProductos,
+  eliminarProducto as eliminarService
 } from "../../services/variantes";
 
 export function useVariantes() {
-
-  const [variantes, setVariantes] = useState([]);
+  const [productos, setProductos] = useState([]);
   const [loadingLista, setLoadingLista] = useState(false);
   const [error, setError] = useState("");
 
@@ -17,15 +16,15 @@ export function useVariantes() {
     try {
       setLoadingLista(true);
       setError("");
-      const data = await obtenerVariantes();
+      const data = await obtenerProductos();
 
       if (data.content) {
-        setVariantes(data.content);
+        setProductos(data.content);
       } else {
-        setVariantes(data);
+        setProductos(data);
       }
-    } catch (e) {
-      setError("Error cargando variantes");
+    } catch {
+      setError("Error cargando productos");
     } finally {
       setLoadingLista(false);
     }
@@ -35,15 +34,16 @@ export function useVariantes() {
     cargar();
   }, []);
 
-  async function eliminarVariante(id) {
+  async function eliminarProducto(id) {
     await eliminarService(id);
     await cargar();
   }
 
   return {
-    variantes,
+    productos,
     loadingLista,
     error,
-    eliminarVariante
+    eliminarProducto
   };
 }
+

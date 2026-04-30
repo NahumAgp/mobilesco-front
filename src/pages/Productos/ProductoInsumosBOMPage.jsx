@@ -86,7 +86,7 @@ export default function ProductoInsumosBOMPage() {
       setToastMessage("Insumos agregados correctamente");
       setNuevosInsumos([{ insumoId: "", cantidad: 1, desperdicioPorcentaje: 0, observaciones: "" }]);
       cargarDatos(); // Recargar
-    } catch (error) {
+    } catch {
       setToastType("danger");
       setToastMessage("Error al agregar insumos");
     }
@@ -99,7 +99,7 @@ export default function ProductoInsumosBOMPage() {
       setToastType("success");
       setToastMessage("Insumo eliminado");
       cargarDatos();
-    } catch (error) {
+    } catch {
       setToastType("danger");
       setToastMessage("Error al eliminar");
     }

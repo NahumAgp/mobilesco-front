@@ -43,8 +43,8 @@ export default function InsumoForm({
         } else if (Array.isArray(data)) {
           setUnidadesMedida(data);
         }
-      } catch (e) {
-        console.error("Error cargando unidades de medida:", e);
+      } catch (error) {
+        console.error("Error cargando unidades de medida:", error);
       }
     };
     cargarUnidades();
@@ -82,8 +82,8 @@ export default function InsumoForm({
             stockMinimo: data.stockMinimo || 0,
             activo: data.activo ?? true
           });
-        } catch (e) {
-          console.error("Error cargando:", e);
+        } catch (error) {
+          console.error("Error cargando:", error);
         }
       }
     };
@@ -357,3 +357,4 @@ export default function InsumoForm({
     </div>
   );
 }
+

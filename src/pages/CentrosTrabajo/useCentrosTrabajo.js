@@ -27,9 +27,9 @@ export function useCentrosTrabajo() {
         setCentrosTrabajo([]);
       }
 
-    } catch (e) {
-      console.error("❌ Error cargando centros de trabajo:", e);
-      setError("Error cargando centros de trabajo: " + (e.message || "Error desconocido"));
+    } catch (error) {
+      console.error("❌ Error cargando centros de trabajo:", error);
+      setError("Error cargando centros de trabajo: " + (error.message || "Error desconocido"));
     } finally {
       setLoadingLista(false);
     }

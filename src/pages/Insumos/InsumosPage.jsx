@@ -43,7 +43,7 @@ export default function InsumosPage() {
       setToastType("success");
       setToastMessage("Insumo eliminado correctamente");
 
-    } catch (e) {
+    } catch {
 
       setToastType("danger");
       setToastMessage("Error al eliminar insumo");
@@ -55,7 +55,7 @@ export default function InsumosPage() {
       await ajustarStock(id, cantidad, tipo, motivo);
       setToastType("success");
       setToastMessage(`Stock ${tipo === "ENTRADA" ? "incrementado" : "reducido"} correctamente`);
-    } catch (e) {
+    } catch {
       setToastType("danger");
       setToastMessage("Error al ajustar stock");
     }

@@ -24,9 +24,9 @@ export default function CompraDetallePage() {
       setLoading(true);
       const data = await obtenerCompraPorId(id);
       setCompra(data);
-    } catch (e) {
+    } catch (error) {
       setError("Error cargando la compra");
-      console.error(e);
+      console.error(error);
     } finally {
       setLoading(false);
     }
@@ -42,9 +42,9 @@ export default function CompraDetallePage() {
       setToastType("success");
       setToastMessage("Compra recibida y stock actualizado");
       cargarCompra(); // Recargar para ver el cambio
-    } catch (e) {
+    } catch (error) {
       setToastType("danger");
-      setToastMessage("Error al recibir compra: " + (e.message || "Error desconocido"));
+      setToastMessage("Error al recibir compra: " + (error.message || "Error desconocido"));
     }
   };
 
@@ -61,7 +61,7 @@ export default function CompraDetallePage() {
       setShowCancelModal(false);
       setMotivoCancelacion("");
       cargarCompra(); // Recargar para ver el cambio
-    } catch (e) {
+    } catch {
       setToastType("danger");
       setToastMessage("Error al cancelar compra");
     }
@@ -350,3 +350,4 @@ export default function CompraDetallePage() {
     </div>
   );
 }
+

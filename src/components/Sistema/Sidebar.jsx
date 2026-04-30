@@ -7,7 +7,7 @@ export default function Sidebar() {
 
   const navigate = useNavigate();
   const [user, setUser] = useState(getUser());
-  const [imageError, setImageError] = useState(false);
+  const [failedFoto, setFailedFoto] = useState(null);
 
   const [openMenu, setOpenMenu] = useState(false);
   const menuRef = useRef(null);
@@ -26,13 +26,13 @@ export default function Sidebar() {
     ? `http://localhost:8081${user.fotoUrl}`
     : null;
   const iniciales = `${nombre.trim().charAt(0)}${apellido.trim().charAt(0)}`.toUpperCase() || "U";
-  const mostrarFoto = foto && !imageError;
+  const mostrarFoto = foto && failedFoto !== foto;
 
   const handleLogout = async () => {
     try {
       await logout();
-    } catch (e) {
-      console.warn("Error logout:", e);
+    } catch (error) {
+      console.warn("Error logout:", error);
     }
     navigate("/login");
   };
@@ -45,10 +45,6 @@ export default function Sidebar() {
     window.addEventListener("userUpdated", updateUser);
     return () => window.removeEventListener("userUpdated", updateUser);
   }, []);
-
-  useEffect(() => {
-    setImageError(false);
-  }, [foto]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -76,7 +72,7 @@ export default function Sidebar() {
               <img
                 src={foto}
                 alt="perfil"
-                onError={() => setImageError(true)}
+                onError={() => setFailedFoto(foto)}
               />
             ) : (
               <span>{iniciales}</span>

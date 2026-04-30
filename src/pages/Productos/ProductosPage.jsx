@@ -41,7 +41,7 @@ export default function ProductosPage() {
       await eliminarProducto(id);
       setToastType("success");
       setToastMessage("Producto eliminado correctamente");
-    } catch (e) {
+    } catch {
       setToastType("danger");
       setToastMessage("Error al eliminar producto");
     }

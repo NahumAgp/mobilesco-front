@@ -40,7 +40,7 @@ export default function UnidadesMedidaPage() {
       setToastType("success");
       setToastMessage("Unidad de medida eliminada correctamente");
 
-    } catch (e) {
+    } catch {
 
       setToastType("danger");
       setToastMessage("Error al eliminar unidad de medida");

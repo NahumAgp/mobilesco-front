@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { obtenerLineaProductoPorId, crearLineaProducto, actualizarLineaProducto } from "../../services/lineaProducto.js";
 import Toast from "../../components/ui/Toast.jsx";
@@ -44,8 +44,8 @@ export default function LineaProductoForm({
         try {
           const data = await obtenerLineaProductoPorId(lineaProductoId);
           setFormData(mapLineaToForm(data));
-        } catch (e) {
-          console.error("Error cargando:", e);
+        } catch (error) {
+          console.error("Error cargando:", error);
         }
       }
     };
@@ -238,3 +238,5 @@ export default function LineaProductoForm({
     </div>
   );
 }
+
+

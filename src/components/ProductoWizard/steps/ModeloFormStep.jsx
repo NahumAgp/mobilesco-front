@@ -5,14 +5,18 @@ import { obtenerFamilias } from "../../../services/familias";
 export default function ModeloFormStep({ data, onUpdate }) {
   const [familias, setFamilias] = useState([]);
 
-  useEffect(() => {
-    cargarFamilias();
-  }, []);
-
   const cargarFamilias = async () => {
     const response = await obtenerFamilias();
     setFamilias(response.content || response);
   };
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      cargarFamilias();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;

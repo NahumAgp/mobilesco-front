@@ -1,10 +1,40 @@
 import request from "./api";
 import { API_PATHS } from "../config/apiPaths";
 
-export function subirImagenArchivo({ archivo, varianteId, esPrincipal, orden, altTexto }) {
+const normalizarProductoId = (data = {}) => data.productoId ?? data.varianteId ?? null;
+
+const normalizarImagen = (imagen) => {
+  if (!imagen || typeof imagen !== "object") return imagen;
+  if (imagen.productoId !== undefined) {
+    return imagen;
+  }
+
+  if (imagen.varianteId !== undefined) {
+    return {
+      ...imagen,
+      productoId: imagen.varianteId
+    };
+  }
+
+  return imagen;
+};
+
+const normalizarRespuestaImagen = (respuesta) => {
+  if (Array.isArray(respuesta)) {
+    return respuesta.map(normalizarImagen);
+  }
+
+  return normalizarImagen(respuesta);
+};
+
+export function subirImagenArchivo({ archivo, productoId, varianteId, esPrincipal, orden, altTexto }) {
   const formData = new FormData();
   formData.append("archivo", archivo);
-  formData.append("varianteId", String(varianteId));
+  const idProducto = normalizarProductoId({ productoId, varianteId });
+  if (!idProducto) {
+    throw new Error("productoId es requerido para subir una imagen");
+  }
+  formData.append("productoId", String(idProducto));
 
   if (typeof esPrincipal === "boolean") {
     formData.append("esPrincipal", String(esPrincipal));
@@ -19,33 +49,42 @@ export function subirImagenArchivo({ archivo, varianteId, esPrincipal, orden, al
   return request(`${API_PATHS.IMAGENES}/upload`, {
     method: "POST",
     body: formData
-  });
+  }).then(normalizarRespuestaImagen);
 }
 
 export function crearImagen(data) {
+  const payload = { ...data };
+  if (payload.productoId === undefined && payload.varianteId !== undefined) {
+    payload.productoId = payload.varianteId;
+    delete payload.varianteId;
+  }
+  if (payload.productoId === undefined || payload.productoId === null || payload.productoId === "") {
+    throw new Error("productoId es requerido para crear una imagen");
+  }
+
   return request(API_PATHS.IMAGENES, {
     method: "POST",
-    body: JSON.stringify(data)
-  });
+    body: JSON.stringify(payload)
+  }).then(normalizarRespuestaImagen);
 }
 
-export function obtenerImagenesPorVariante(varianteId) {
-  return request(`${API_PATHS.IMAGENES}/variante/${varianteId}`);
+export function obtenerImagenesPorProducto(productoId) {
+  return request(`${API_PATHS.IMAGENES}/producto/${productoId}`).then(normalizarRespuestaImagen);
 }
 
-export function obtenerImagenPrincipalPorVariante(varianteId) {
-  return request(`${API_PATHS.IMAGENES}/variante/${varianteId}/principal`);
+export function obtenerImagenPrincipalPorProducto(productoId) {
+  return request(`${API_PATHS.IMAGENES}/producto/${productoId}/principal`).then(normalizarRespuestaImagen);
 }
 
 export function obtenerImagenPorId(id) {
-  return request(`${API_PATHS.IMAGENES}/${id}`);
+  return request(`${API_PATHS.IMAGENES}/${id}`).then(normalizarRespuestaImagen);
 }
 
 export function actualizarImagen(id, data) {
   return request(`${API_PATHS.IMAGENES}/${id}`, {
     method: "PUT",
     body: JSON.stringify(data)
-  });
+  }).then(normalizarRespuestaImagen);
 }
 
 export function eliminarImagen(id) {
@@ -54,8 +93,13 @@ export function eliminarImagen(id) {
   });
 }
 
-export function eliminarImagenesPorVariante(varianteId) {
-  return request(`${API_PATHS.IMAGENES}/variante/${varianteId}`, {
+export function eliminarImagenesPorProducto(productoId) {
+  return request(`${API_PATHS.IMAGENES}/producto/${productoId}`, {
     method: "DELETE"
   });
 }
+
+// Aliases legados para módulos que todavía usan el nombre viejo.
+export const obtenerImagenesPorVariante = obtenerImagenesPorProducto;
+export const obtenerImagenPrincipalPorVariante = obtenerImagenPrincipalPorProducto;
+export const eliminarImagenesPorVariante = eliminarImagenesPorProducto;

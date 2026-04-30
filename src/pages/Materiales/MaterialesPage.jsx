@@ -42,7 +42,7 @@ export default function MaterialesPage() {
       setToastType("success");
       setToastMessage("Material eliminado correctamente");
 
-    } catch (e) {
+    } catch {
 
       setToastType("danger");
       setToastMessage("Error al eliminar material");

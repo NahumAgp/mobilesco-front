@@ -50,9 +50,7 @@ import ComprasFormPage from "./pages/Compras/CompraFormPage.jsx";
 import KardexPage from "./pages/Kardex/KardexPage"; 
 import CompraDetallePage from "./pages/Compras/CompraDetallePage.jsx";
 
-import VariantesPage from "./pages/Variantes/VariantesPage.jsx";
 import VarianteFormPage from "./pages/Variantes/VarianteFromPage.jsx";
-
 import ProductosCompletosPage from "./pages/ProductosCompletos/ProductosCompletosPage.jsx";
 
 export default function App() {
@@ -157,11 +155,6 @@ export default function App() {
         <Route path="/kardex" element={<KardexPage />} />
         <Route path="/kardex/insumo/:insumoId" element={<KardexPage />} />
         
-         {/* Variantes */}
-        <Route path="/variantes" element={<VariantesPage />} />
-        <Route path="/variantes/nuevo" element={<VarianteFormPage />} />
-        <Route path="/variantes/:id" element={<VarianteFormPage />} />
-
         {/* Productos */}
         <Route path="/productos" element={<ProductosCompletosPage />} />
         <Route path="/productos/nuevo" element={<ProductosCompletosPage iniciarCreacion />} />
@@ -169,6 +162,11 @@ export default function App() {
         <Route path="/productos/:id/ver" element={<Navigate to="/productos" replace />} />
         <Route path="/productos/:id/bom/insumos" element={<Navigate to="/productos" replace />} />
         <Route path="/productos/:id/bom/operaciones" element={<Navigate to="/productos" replace />} />
+
+        {/* Variantes legacy */}
+        <Route path="/variantes" element={<Navigate to="/productos" replace />} />
+        <Route path="/variantes/nuevo" element={<Navigate to="/productos/nuevo" replace />} />
+        <Route path="/variantes/:id" element={<Navigate to="/productos" replace />} />
 
         <Route path="/productos-completos" element={<Navigate to="/productos" replace />} />
         <Route path="/prueba/productos" element={<Navigate to="/productos" replace />} />

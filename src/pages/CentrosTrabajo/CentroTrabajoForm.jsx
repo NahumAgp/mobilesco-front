@@ -60,8 +60,8 @@ export default function CentroTrabajoForm({
             horasDisponiblesDia: data.horasDisponiblesDia || "",
             activo: data.activo ?? true
           });
-        } catch (e) {
-          console.error("Error cargando:", e);
+        } catch (error) {
+          console.error("Error cargando:", error);
         }
       }
     };

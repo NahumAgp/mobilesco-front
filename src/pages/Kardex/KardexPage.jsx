@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { obtenerInsumos } from "../../services/insumos.js";
 import { obtenerHistorialInsumo, obtenerMovimientosPorPeriodo, obtenerCostoPromedio } from "../../services/kardex.js";
 import KardexTable from "./KardexTable.jsx";
@@ -8,8 +7,6 @@ import Toast from "../../components/ui/Toast.jsx";
 import Card from "../../components/ui/Card.jsx";
 
 export default function KardexPage() {
-  const navigate = useNavigate();
-  
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
   
@@ -38,8 +35,8 @@ export default function KardexPage() {
     try {
       const data = await obtenerInsumos();
       setInsumos(data.content || data || []);
-    } catch (e) {
-      console.error("Error cargando insumos:", e);
+    } catch (error) {
+      console.error("Error cargando insumos:", error);
       setToastType("danger");
       setToastMessage("Error al cargar insumos");
     }
@@ -80,8 +77,8 @@ export default function KardexPage() {
       const promedio = await obtenerCostoPromedio(insumoSeleccionado);
       setCostoPromedio(promedio);
       
-    } catch (e) {
-      console.error("Error consultando kardex:", e);
+    } catch (error) {
+      console.error("Error consultando kardex:", error);
       setError("Error al consultar el kardex");
       setMovimientos([]);
     } finally {
@@ -261,3 +258,4 @@ export default function KardexPage() {
     </>
   );
 }
+

@@ -42,8 +42,8 @@ export default function OperacionForm({
         } else if (Array.isArray(data)) {
           setCentrosTrabajo(data);
         }
-      } catch (e) {
-        console.error("Error cargando centros de trabajo:", e);
+      } catch (error) {
+        console.error("Error cargando centros de trabajo:", error);
       }
     };
     cargarCentros();
@@ -60,7 +60,7 @@ export default function OperacionForm({
           centroTrabajoId: operacion.centroTrabajoId || "",
           costoMinuto: operacion.costoMinuto || "",
           costoHora: operacion.costoHora || "",
-          tiempoOperacion: data.tiempoOperacion || "", 
+          tiempoOperacion: operacion.tiempoOperacion || "", 
           activo: operacion.activo ?? true
         });
         return;
@@ -79,8 +79,8 @@ export default function OperacionForm({
             tiempoOperacion: data.tiempoOperacion || "",
             activo: data.activo ?? true
           });
-        } catch (e) {
-          console.error("Error cargando:", e);
+        } catch (error) {
+          console.error("Error cargando:", error);
         }
       }
     };
@@ -359,3 +359,5 @@ export default function OperacionForm({
     </div>
   );
 }
+
+

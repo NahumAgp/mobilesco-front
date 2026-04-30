@@ -55,7 +55,7 @@ export default function ModelosPage() {
       setToastType("success");
       setToastMessage("Modelo eliminado correctamente");
 
-    } catch (e) {
+    } catch {
 
       setToastType("danger");
       setToastMessage("Error al eliminar modelo");
@@ -192,3 +192,4 @@ export default function ModelosPage() {
     </>
   );
 }
+

@@ -35,7 +35,7 @@ export default function EmpleadosPage() {
       await eliminarEmpleado(id);
       setToastType("success");
       setToastMessage("Empleado eliminado correctamente");
-    } catch (e) {
+    } catch {
       setToastType("danger");
       setToastMessage("Error al eliminar empleado");
     }
@@ -74,12 +74,6 @@ export default function EmpleadosPage() {
 
     return pasaFiltroTexto && coincideEstatus && coincideSoloActivos;
   });
-
-  // Función para formatear fecha si la necesitas mostrar
-  const formatearFecha = (fecha) => {
-    if (!fecha) return 'No registrada';
-    return new Date(fecha).toLocaleDateString('es-MX');
-  };
 
   return (
     <>

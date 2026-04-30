@@ -14,7 +14,7 @@ export function useCategorias() {
       const data = await obtenerCategorias();
       const lista = data?.content || data || [];
       setCategorias(Array.isArray(lista) ? lista : []);
-    } catch (e) {
+    } catch {
       setError("Error cargando categorias");
       setCategorias([]);
     } finally {
@@ -38,3 +38,4 @@ export function useCategorias() {
     eliminarCategoria
   };
 }
+

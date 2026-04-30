@@ -10,34 +10,33 @@ import PageHeader from "../../components/Sistema/PageHeader";
 import Toast from "../../components/ui/Toast";
 
 export default function VariantesPage() {
-
   const navigate = useNavigate();
 
   const {
-    variantes,
+    productos,
     loadingLista,
     error,
-    eliminarVariante
+    eliminarProducto
   } = useVariantes();
 
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
 
-  const abrirEditar = (variante) => {
-    navigate(`/variantes/${variante.id}`);
+  const abrirEditar = (producto) => {
+    navigate(`/productos/${producto.id}`);
   };
 
   const manejarEliminar = async (id) => {
-    const confirmacion = window.confirm("¿Seguro que deseas eliminar esta variante?");
+    const confirmacion = window.confirm("¿Seguro que deseas eliminar este producto?");
     if (!confirmacion) return;
 
     try {
-      await eliminarVariante(id);
+      await eliminarProducto(id);
       setToastType("success");
-      setToastMessage("Variante eliminada correctamente");
-    } catch (e) {
+      setToastMessage("Producto eliminado correctamente");
+    } catch {
       setToastType("danger");
-      setToastMessage("Error al eliminar variante");
+      setToastMessage("Error al eliminar producto");
     }
   };
 
@@ -50,20 +49,20 @@ export default function VariantesPage() {
       />
 
       <PageHeader
-        title="Catálogo de Variantes"
-        subtitle="Administración de SKUs y variantes de productos"
+        title="Catálogo de Productos"
+        subtitle="Administración de SKUs y productos"
         actions={
           <button
             className="btn btn-success"
-            onClick={() => navigate("/variantes/nuevo")}
+            onClick={() => navigate("/productos/nuevo")}
           >
-            Nueva Variante
+            Nuevo Producto
           </button>
         }
       />
 
       {loadingLista && (
-        <div className="alert alert-info">Cargando variantes...</div>
+        <div className="alert alert-info">Cargando productos...</div>
       )}
 
       {error && (
@@ -71,10 +70,11 @@ export default function VariantesPage() {
       )}
 
       <VariantesTable
-        data={variantes}
+        data={productos}
         onEditar={abrirEditar}
         onEliminar={manejarEliminar}
       />
     </>
   );
 }
+

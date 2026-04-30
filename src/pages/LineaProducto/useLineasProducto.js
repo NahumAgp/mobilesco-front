@@ -26,7 +26,7 @@ export function useLineasProducto() {
         setLineasProducto(data);
       }
 
-    } catch (e) {
+    } catch {
       setError("Error cargando líneas de producto");
     } finally {
       setLoadingLista(false);

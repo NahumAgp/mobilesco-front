@@ -41,7 +41,7 @@ export default function LineaProductoPage() {
       setToastType("success");
       setToastMessage("Línea de producto eliminada correctamente");
 
-    } catch (e) {
+    } catch {
 
       setToastType("danger");
       setToastMessage("Error al eliminar línea de producto");

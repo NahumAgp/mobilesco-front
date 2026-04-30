@@ -15,8 +15,8 @@ export const API_PATHS = {
   // Productos
   LINEAS: `${API_VERSION}/lineas`,
   FAMILIAS: `${API_VERSION}/familias`,
-  MODELOS: `${API_VERSION}/productos-base`,
-  VARIANTES: `${API_VERSION}/variantes`,
+  MODELOS: `${API_VERSION}/modelos`,
+  VARIANTES: `${API_VERSION}/productos`,
   CATEGORIAS: `${API_VERSION}/niveles`,
   COLORES: `${API_VERSION}/colores`,
   IMAGENES: `${API_VERSION}/imagenes`,
@@ -40,7 +40,6 @@ export const API_PATHS = {
   // Otros módulos
   PROVEEDORES: `${API_VERSION}/proveedores`,
   UNIDADES_MEDIDA: `${API_VERSION}/unidades-medida`,
-  PRODUCTOS: `${API_VERSION}/productos`,
   CLIENTES: `${API_VERSION}/clientes`,
   COTIZACIONES: `${API_VERSION}/cotizaciones`
 

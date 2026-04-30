@@ -41,7 +41,7 @@ export default function CentrosTrabajoPage() {
       setToastType("success");
       setToastMessage("Centro de trabajo eliminado correctamente");
 
-    } catch (e) {
+    } catch {
 
       setToastType("danger");
       setToastMessage("Error al eliminar centro de trabajo");

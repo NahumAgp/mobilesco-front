@@ -44,8 +44,8 @@ export default function CategoriaForm({
         try {
           const data = await obtenerCategoriaPorId(categoriaId);
           setFormData(mapCategoriaToForm(data));
-        } catch (e) {
-          console.error("Error cargando:", e);
+        } catch (error) {
+          console.error("Error cargando:", error);
         }
       }
     };
@@ -253,3 +253,4 @@ export default function CategoriaForm({
     </div>
   );
 }
+

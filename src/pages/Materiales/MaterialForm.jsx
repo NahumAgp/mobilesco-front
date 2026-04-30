@@ -38,8 +38,8 @@ export default function MaterialForm({
         try {
           const data = await obtenerMaterialPorId(materialId);
           setFormData({ ...data });
-        } catch (e) {
-          console.error("Error cargando:", e);
+        } catch (error) {
+          console.error("Error cargando:", error);
         }
       }
     };
@@ -234,3 +234,4 @@ export default function MaterialForm({
     </div>
   );
 }
+

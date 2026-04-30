@@ -86,7 +86,7 @@ export default function ProductoBOMPage() {
         desperdicioPorcentaje: 0,
         observaciones: ""
       });
-    } catch (error) {
+    } catch {
       setToastType("danger");
       setToastMessage("Error al agregar insumo");
     }
@@ -100,7 +100,7 @@ export default function ProductoBOMPage() {
       setToastType("success");
       setToastMessage("Insumo eliminado");
       cargarDatos();
-    } catch (error) {
+    } catch {
       setToastType("danger");
       setToastMessage("Error al eliminar insumo");
     }

@@ -45,7 +45,7 @@ export default function ComprasPage() {
       await eliminarCompra(id);
       setToastType("success");
       setToastMessage("Compra eliminada correctamente");
-    } catch (e) {
+    } catch {
       setToastType("danger");
       setToastMessage("Error al eliminar compra");
     }
@@ -59,9 +59,9 @@ export default function ComprasPage() {
       await recibirCompra(id);
       setToastType("success");
       setToastMessage("Compra recibida y stock actualizado");
-    } catch (e) {
+    } catch (error) {
       setToastType("danger");
-      setToastMessage("Error al recibir compra: " + (e.message || "Error desconocido"));
+      setToastMessage("Error al recibir compra: " + (error.message || "Error desconocido"));
     }
   };
 
@@ -73,7 +73,7 @@ export default function ComprasPage() {
       await cancelarCompra(id, motivo);
       setToastType("success");
       setToastMessage("Compra cancelada");
-    } catch (e) {
+    } catch {
       setToastType("danger");
       setToastMessage("Error al cancelar compra");
     }

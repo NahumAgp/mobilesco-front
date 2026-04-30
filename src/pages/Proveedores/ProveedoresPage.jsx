@@ -66,7 +66,7 @@ export default function ProveedoresPage() {
       await eliminarProveedor(id);
       setToastType("success");
       setToastMessage("Proveedor eliminado correctamente");
-    } catch (e) {
+    } catch {
       setToastType("danger");
       setToastMessage("Error al eliminar proveedor");
     }
@@ -267,3 +267,4 @@ export default function ProveedoresPage() {
     </>
   );
 }
+

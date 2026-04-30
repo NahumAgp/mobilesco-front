@@ -1,10 +1,13 @@
 // components/ProductoWizard/ProductoWizard.jsx
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ModeloForm from "./steps/ModeloFormStep";
 import VariantesForm from "./steps/VariantesFormStep";
 import ImagenesForm from "./steps/ImagenesFormStep";
 import Resumen from "./steps/Resumen";
+import { crearModelo, actualizarModelo } from "../../services/modelos";
+import { crearVariante, actualizarVariante } from "../../services/variantes";
+import { subirImagenArchivo } from "../../services/imagenes";
 
 const PASOS = [
   { id: 1, nombre: "Datos Básicos", icono: "bi-info-circle", componente: ModeloForm },
@@ -13,7 +16,7 @@ const PASOS = [
   { id: 4, nombre: "Resumen", icono: "bi-check-circle", componente: Resumen }
 ];
 
-export default function ProductoWizard({ productoId, onComplete }) {
+export default function ProductoWizard({ onComplete }) {
   const [pasoActual, setPasoActual] = useState(1);
   const [productoData, setProductoData] = useState({
     modelo: {
@@ -28,6 +31,7 @@ export default function ProductoWizard({ productoId, onComplete }) {
   });
   const [toastMessage, setToastMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const PasoComponent = PASOS.find(p => p.id === pasoActual)?.componente;
 
@@ -58,26 +62,30 @@ export default function ProductoWizard({ productoId, onComplete }) {
       // 1. Crear/Actualizar modelo
       let modeloId = productoData.modelo.id;
       if (!modeloId) {
-        const nuevoModelo = await crearModeloAPI(productoData.modelo);
+        const nuevoModelo = await crearModelo(productoData.modelo);
         modeloId = nuevoModelo.id;
         actualizarDatos("modelo", { id: modeloId });
       } else {
-        await actualizarModeloAPI(modeloId, productoData.modelo);
+        await actualizarModelo(modeloId, productoData.modelo);
       }
 
       // 2. Guardar variantes (asociadas al modelo)
       for (const variante of productoData.variantes) {
         if (variante.id) {
-          await actualizarVarianteAPI(variante.id, { ...variante, modeloId });
+          await actualizarVariante(variante.id, { ...variante, modeloId });
         } else {
-          await crearVarianteAPI({ ...variante, modeloId });
+          await crearVariante({ ...variante, modeloId });
         }
       }
 
       // 3. Guardar imágenes
       for (const imagen of productoData.imagenes) {
         if (!imagen.id && imagen.file) {
-          await subirImagenAPI(imagen.file, modeloId, imagen.principal);
+          await subirImagenArchivo({
+            archivo: imagen.file,
+            productoId: modeloId,
+            esPrincipal: imagen.principal
+          });
         }
       }
 

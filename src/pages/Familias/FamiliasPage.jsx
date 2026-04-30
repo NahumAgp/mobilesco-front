@@ -37,7 +37,7 @@ export default function FamiliasPage() {
       setToastType("success");
       setToastMessage("Familia eliminada correctamente");
 
-    } catch (e) {
+    } catch {
 
       setToastType("danger");
       setToastMessage("Error al eliminar familia");
