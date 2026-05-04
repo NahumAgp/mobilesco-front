@@ -55,7 +55,7 @@ export default function LineaProductoPage() {
     pageInfo,
     loadingLista,
     error,
-    eliminarLineaProducto
+    cambiarEstadoLineaProducto
   } = useLineasProducto({ page, sortBy: sortField, direction: sortDirection });
 
   const totalElements = pageInfo.totalElements ?? 0;
@@ -65,6 +65,7 @@ export default function LineaProductoPage() {
   const desde = totalElements > 0 ? page * PAGE_SIZE + 1 : 0;
   const hasta = totalElements > 0 ? page * PAGE_SIZE + lineasProducto.length : 0;
   const terminoBusqueda = busqueda.toLowerCase().trim().replace(/\s+/g, " ");
+
   const lineasFiltradas = useMemo(() => {
     const compararValor = (a, b) => {
       const valorA = a ?? "";
@@ -84,9 +85,9 @@ export default function LineaProductoPage() {
       });
     };
 
-      const filtradas = lineasProducto.filter((linea) => {
-        const pasaFiltroTexto = (() => {
-          if (!terminoBusqueda) return true;
+    const filtradas = lineasProducto.filter((linea) => {
+      const pasaFiltroTexto = (() => {
+        if (!terminoBusqueda) return true;
 
         const palabras = terminoBusqueda.split(" ");
         const infoLinea = [
@@ -141,20 +142,17 @@ export default function LineaProductoPage() {
     navigate(`/lineas-producto/${linea.id}`);
   };
 
-  const manejarEliminar = async (id) => {
-    const confirmacion = window.confirm(
-      "¿Seguro que deseas eliminar esta línea de producto?"
-    );
-
-    if (!confirmacion) return;
-
+  const manejarCambioEstado = async (linea) => {
     try {
-      await eliminarLineaProducto(id);
+      const nuevoEstado = !linea.activo;
+      await cambiarEstadoLineaProducto(linea.id, nuevoEstado);
       setToastType("success");
-      setToastMessage("Línea de producto eliminada correctamente");
+      setToastMessage(
+        nuevoEstado ? "Linea de producto activada correctamente" : "Linea de producto desactivada correctamente"
+      );
     } catch {
       setToastType("danger");
-      setToastMessage("Error al eliminar línea de producto");
+      setToastMessage("Error al cambiar el estado de la linea de producto");
     }
   };
 
@@ -224,8 +222,8 @@ export default function LineaProductoPage() {
       />
 
       <PageHeader
-        title="Líneas de Producto"
-        subtitle="Catálogo de líneas"
+        title="Lineas de Producto"
+        subtitle="Catalogo de lineas"
         actions={
           <div className="lineas-header-actions">
             <button
@@ -240,7 +238,7 @@ export default function LineaProductoPage() {
               className="btn lineas-brand-primary"
               onClick={() => navigate("/lineas-producto/nuevo")}
             >
-              Nueva línea
+              Nueva linea
             </button>
           </div>
         }
@@ -248,7 +246,7 @@ export default function LineaProductoPage() {
 
       {loadingLista && (
         <div className="alert alert-info">
-          Cargando líneas de producto...
+          Cargando lineas de producto...
         </div>
       )}
 
@@ -265,7 +263,7 @@ export default function LineaProductoPage() {
               <input
                 type="text"
                 className="form-control"
-                placeholder="Buscar por código o nombre..."
+                placeholder="Buscar por codigo o nombre..."
                 value={busqueda}
                 onChange={cambiarBusqueda}
               />
@@ -293,9 +291,9 @@ export default function LineaProductoPage() {
         <div className="card shadow-sm border-0 lineas-empty-card">
           <div className="text-center text-muted py-5">
             <i className="bi bi-box-seam fs-1 d-block mb-3 text-secondary"></i>
-            <span className="fs-5 d-block">No hay líneas de producto registradas</span>
+            <span className="fs-5 d-block">No hay lineas de producto registradas</span>
             <p className="text-secondary mt-2 mb-0">
-              Crea la primera línea para comenzar a organizar tu catálogo
+              Crea la primera linea para comenzar a organizar tu catalogo
             </p>
           </div>
         </div>
@@ -307,7 +305,7 @@ export default function LineaProductoPage() {
                 <i className="bi bi-funnel fs-1 d-block mb-3 text-secondary"></i>
                 <span className="fs-5 d-block">No hay coincidencias</span>
                 <p className="text-secondary mt-2 mb-0">
-                  Ajusta los filtros para ver líneas en esta página
+                  Ajusta los filtros para ver lineas en esta pagina
                 </p>
               </div>
             </div>
@@ -315,7 +313,7 @@ export default function LineaProductoPage() {
             <LineaProductoTable
               data={lineasFiltradas}
               onEditar={abrirEditar}
-              onEliminar={manejarEliminar}
+              onCambiarEstado={manejarCambioEstado}
               sortField={sortField}
               sortDirection={sortDirection}
               onSort={manejarOrden}
@@ -326,11 +324,11 @@ export default function LineaProductoPage() {
             <div className="lineas-pagination-panel">
               <div className="lineas-pagination-summary">
                 {hayFiltrosActivos
-                  ? `Mostrando ${lineasFiltradas.length} coincidencias en esta página`
-                  : `Mostrando ${desde} a ${hasta} de ${totalElements} líneas`}
+                  ? `Mostrando ${lineasFiltradas.length} coincidencias en esta pagina`
+                  : `Mostrando ${desde} a ${hasta} de ${totalElements} lineas`}
               </div>
 
-              <nav aria-label="Paginación de líneas de producto">
+              <nav aria-label="Paginacion de lineas de producto">
                 <ul className="pagination mb-0 flex-wrap">
                   <li className={`page-item ${page <= 0 ? "disabled" : ""}`}>
                     <button
@@ -388,7 +386,7 @@ export default function LineaProductoPage() {
                       onClick={() => irAPagina(totalPages - 1)}
                       disabled={page >= totalPages - 1}
                     >
-                      Última
+                      Ultima
                     </button>
                   </li>
                 </ul>

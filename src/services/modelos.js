@@ -6,8 +6,32 @@ import { API_PATHS } from "../config/apiPaths";
 // MODELOS
 // ========================================
 
-export function obtenerModelos() {
-  return request(API_PATHS.MODELOS);
+export function obtenerModelos(params = {}) {
+  const page = typeof params === "number" ? params : params.page;
+  const size = typeof params === "object" ? params.size : undefined;
+  const sortBy = typeof params === "object" ? params.sortBy : undefined;
+  const direction = typeof params === "object" ? params.direction : undefined;
+
+  const searchParams = new URLSearchParams();
+
+  if (page !== undefined && page !== null) {
+    searchParams.set("page", page);
+  }
+
+  if (size !== undefined && size !== null) {
+    searchParams.set("size", size);
+  }
+
+  if (sortBy) {
+    searchParams.set("sortBy", sortBy);
+  }
+
+  if (direction) {
+    searchParams.set("direction", direction);
+  }
+
+  const queryString = searchParams.toString();
+  return request(queryString ? `${API_PATHS.MODELOS}?${queryString}` : API_PATHS.MODELOS);
 }
 
 export function obtenerModeloPorId(id) {
@@ -27,6 +51,20 @@ export function actualizarModelo(id, data) {
   return request(url, {
     method: "PUT",
     body: JSON.stringify(data),
+  });
+}
+
+export function activarModelo(id) {
+  const url = `${API_PATHS.MODELOS}/${id}/activar`;
+  return request(url, {
+    method: "PATCH",
+  });
+}
+
+export function desactivarModelo(id) {
+  const url = `${API_PATHS.MODELOS}/${id}/desactivar`;
+  return request(url, {
+    method: "PATCH",
   });
 }
 
@@ -50,4 +88,21 @@ export function obtenerModelosPorFamilia(familiaId) {
 export function buscarModelos(nombre) {
   const url = `${API_PATHS.MODELOS}/buscar?nombre=${encodeURIComponent(nombre)}`;
   return request(url);
+}
+
+export function exportarModelosExcel(filtros = {}) {
+  const params = new URLSearchParams();
+
+  Object.entries(filtros).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      params.set(key, String(value));
+    }
+  });
+
+  const query = params.toString();
+  const endpoint = query
+    ? `${API_PATHS.MODELOS}/reporte/excel?${query}`
+    : `${API_PATHS.MODELOS}/reporte/excel`;
+
+  return request(endpoint, { responseType: "blob" });
 }

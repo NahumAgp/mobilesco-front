@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import {
   obtenerModelos,
+  activarModelo,
+  desactivarModelo,
   eliminarModelo as eliminarService
 } from "../../services/modelos.js";
 import { obtenerProductos, obtenerVariantesPorProductoBase } from "../../services/variantes.js";
@@ -8,6 +10,30 @@ import {
   obtenerImagenPrincipalPorProducto,
   obtenerImagenPrincipalPorVariante
 } from "../../services/imagenes.js";
+
+const PAGE_INFO_DEFAULT = {
+  totalElements: 0,
+  totalPages: 0,
+  number: 0,
+  size: 10,
+  first: true,
+  last: true
+};
+
+function normalizarPageInfo(data, fallbackPage = 0) {
+  const totalPages = Number(data?.totalPages ?? 0);
+  const number = Number(data?.page ?? data?.number ?? fallbackPage ?? 0);
+  const size = Number(data?.size ?? 10);
+
+  return {
+    totalElements: Number(data?.totalElements ?? 0),
+    totalPages,
+    number,
+    size,
+    first: number <= 0,
+    last: totalPages <= 0 ? true : number >= totalPages - 1
+  };
+}
 
 const getLista = (respuesta) => {
   if (Array.isArray(respuesta)) return respuesta;
@@ -97,7 +123,7 @@ const coincideModeloIdFlexible = (item, modeloId, nivel = 0, visitados = new Set
   return false;
 };
 
-const getVariantesDelModelo = (modelo) => {
+const getVariantesDelModelo = (modelo = {}) => {
   const candidatos = [
     modelo?.variantes,
     modelo?.productos,
@@ -220,19 +246,39 @@ async function resolverImagenPrincipalModelo(modelo) {
   }
 }
 
-export function useModelos() {
+export function useModelos({ page, size = 10, sortBy = "nombre", direction = "asc" } = {}) {
   const [modelos, setModelos] = useState([]);
+  const [pageInfo, setPageInfo] = useState(PAGE_INFO_DEFAULT);
   const [loadingLista, setLoadingLista] = useState(false);
   const [error, setError] = useState("");
 
-  async function cargar() {
+  const cargar = async () => {
     try {
       setLoadingLista(true);
       setError("");
 
-      const data = await obtenerModelos();
-      const listaModelos = getLista(data);
+      const data =
+        page === undefined || page === null
+          ? await obtenerModelos()
+          : await obtenerModelos({ page, size, sortBy, direction });
 
+      if (data?.content) {
+        setModelos(data.content);
+        setPageInfo(normalizarPageInfo(data, page ?? data.page ?? data.number ?? 0));
+      } else {
+        const lista = getLista(data);
+        setModelos(lista);
+        setPageInfo({
+          totalElements: lista.length,
+          totalPages: lista.length > 0 ? 1 : 0,
+          number: 0,
+          size: lista.length || size,
+          first: true,
+          last: true
+        });
+      }
+
+      const listaModelos = getLista(data?.content ? data.content : data);
       const modelosEnriquecidos = await Promise.all(
         listaModelos.map(async (modelo) => ({
           ...modelo,
@@ -243,27 +289,39 @@ export function useModelos() {
       setModelos(modelosEnriquecidos);
     } catch (error) {
       setError("Error cargando modelos: " + (error.message || "Error desconocido"));
+      setModelos([]);
+      setPageInfo(PAGE_INFO_DEFAULT);
     } finally {
       setLoadingLista(false);
     }
-  }
+  };
 
   useEffect(() => {
     cargar();
-  }, []);
+  }, [page, size, sortBy, direction]);
 
   async function eliminarModelo(id) {
     await eliminarService(id);
     await cargar();
   }
 
+  async function cambiarEstadoModelo(id, activo) {
+    if (activo) {
+      await activarModelo(id);
+    } else {
+      await desactivarModelo(id);
+    }
+
+    await cargar();
+  }
+
   return {
     modelos,
+    pageInfo,
     loadingLista,
     error,
     eliminarModelo,
+    cambiarEstadoModelo,
     recargarModelos: cargar
   };
 }
-
-

@@ -28,6 +28,18 @@ export function actualizarCategoria(id, data) {
   });
 }
 
+export function activarCategoria(id) {
+  return request(`${API_PATHS.CATEGORIAS}/${id}/activar`, {
+    method: "PATCH",
+  });
+}
+
+export function desactivarCategoria(id) {
+  return request(`${API_PATHS.CATEGORIAS}/${id}/desactivar`, {
+    method: "PATCH",
+  });
+}
+
 export function eliminarCategoria(id) {
   return request(`${API_PATHS.CATEGORIAS}/${id}`, {
     method: "DELETE",
@@ -40,4 +52,21 @@ export function obtenerCategoriasActivas() {
 
 export function buscarCategoriasPorNombre(nombre) {
   return request(`${API_PATHS.CATEGORIAS}/buscar?nombre=${encodeURIComponent(nombre)}`);
+}
+
+export function exportarCategoriasExcel(filtros = {}) {
+  const params = new URLSearchParams();
+
+  Object.entries(filtros).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      params.set(key, String(value));
+    }
+  });
+
+  const query = params.toString();
+  const endpoint = query
+    ? `${API_PATHS.CATEGORIAS}/reporte/excel?${query}`
+    : `${API_PATHS.CATEGORIAS}/reporte/excel`;
+
+  return request(endpoint, { responseType: "blob" });
 }

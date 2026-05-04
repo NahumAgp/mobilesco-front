@@ -19,7 +19,7 @@ function obtenerIconoOrden(sortField, sortDirection, field) {
 export default function LineaProductoTable({
   data,
   onEditar,
-  onEliminar,
+  onCambiarEstado,
   sortField = "nombre",
   sortDirection = "asc",
   onSort
@@ -133,12 +133,12 @@ export default function LineaProductoTable({
                         className="btn lineas-brand-danger"
                         onClick={(e) => {
                           e.stopPropagation();
-                          onEliminar(linea.id);
+                          onCambiarEstado(linea);
                         }}
-                        title="Eliminar"
+                        title={linea.activo ? "Desactivar" : "Activar"}
                       >
-                        <i className="bi bi-trash me-1"></i>
-                        Eliminar
+                        <i className={`bi ${linea.activo ? "bi-toggle-on" : "bi-toggle-off"} me-1`}></i>
+                        {linea.activo ? "Desactivar" : "Activar"}
                       </button>
                     </div>
                   </td>

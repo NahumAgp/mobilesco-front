@@ -167,3 +167,20 @@ export function obtenerEstructuraCostos(productoId) {
   console.log("🌐 GET Estructura Costos - URL:", url);
   return request(url);
 }
+
+export function exportarProductosExcel(filtros = {}) {
+  const params = new URLSearchParams();
+
+  Object.entries(filtros).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      params.set(key, String(value));
+    }
+  });
+
+  const query = params.toString();
+  const endpoint = query
+    ? `${API_PATHS.PRODUCTOS}/reporte/excel?${query}`
+    : `${API_PATHS.PRODUCTOS}/reporte/excel`;
+
+  return request(endpoint, { responseType: "blob" });
+}

@@ -4,6 +4,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import ModelosForm from "./ModelosForm.jsx";
 import { obtenerProductos } from "../../services/productos.js";
 import ProductoRapidoDrawer from "./ProductoRapidoDrawer.jsx";
+import "./ModelosPage.css";
 
 const API_BASE_URL = "http://localhost:8081";
 
@@ -165,7 +166,7 @@ export default function ModelosFormPage() {
   const totalProductos = useMemo(() => productos.length, [productos]);
 
   return (
-    <div className="container mt-4">
+    <div className="container mt-4 modelos-page-shell">
       <div className="d-flex align-items-center justify-content-between mb-3">
         <h3 className="m-0">{esEdicion ? "Editar Modelo" : "Nuevo Modelo"}</h3>
         <button className="btn btn-outline-secondary" onClick={() => navigate("/modelos")}>
@@ -173,14 +174,14 @@ export default function ModelosFormPage() {
         </button>
       </div>
 
-      <div className="card mb-4">
+      <div className="card mb-4 modelos-table-card">
         <div className="card-body">
           <ModelosForm modeloId={id} />
         </div>
       </div>
 
       {esEdicion && (
-        <div className="card">
+        <div className="card modelos-table-card">
           <div className="card-body">
             <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
               <h5 className="mb-0">Productos de este modelo</h5>
@@ -188,7 +189,7 @@ export default function ModelosFormPage() {
                 <span className="badge bg-secondary">{totalProductos}</span>
                 <button
                   type="button"
-                  className="btn btn-sm btn-primary px-3"
+                  className="btn btn-sm modelos-brand-primary px-3"
                   onClick={() => setMostrarNuevoProducto(true)}
                 >
                   <i className="bi bi-plus-lg me-1"></i>

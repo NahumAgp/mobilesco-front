@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { obtenerLineaProductoPorId, crearLineaProducto, actualizarLineaProducto } from "../../services/lineaProducto.js";
+import {
+  obtenerLineaProductoPorId,
+  crearLineaProducto,
+  actualizarLineaProducto,
+  eliminarLineaProducto
+} from "../../services/lineaProducto.js";
 import Toast from "../../components/ui/Toast.jsx";
 
 export default function LineaProductoForm({
@@ -107,6 +112,22 @@ export default function LineaProductoForm({
         setToastType("danger");
         setToastMessage(error.message || "Error al guardar los datos");
       }
+    }
+  }
+
+  async function handleEliminar() {
+    const confirmacion = window.confirm("Seguro que deseas eliminar esta linea de producto?");
+    if (!confirmacion) return;
+
+    try {
+      const id = lineaProducto?.id || lineaProductoId;
+      await eliminarLineaProducto(id);
+      setToastType("success");
+      setToastMessage("Linea de producto eliminada correctamente");
+      setTimeout(() => navigate("/lineas-producto"), 1500);
+    } catch (error) {
+      setToastType("danger");
+      setToastMessage(error.message || "Error al eliminar la linea de producto");
     }
   }
 
@@ -225,6 +246,18 @@ export default function LineaProductoForm({
             </div>
           )}
 
+          {!esModal && esEdicion ? (
+            <button
+              type="button"
+              className="btn btn-outline-danger px-4"
+              onClick={handleEliminar}
+            >
+              Eliminar
+            </button>
+          ) : (
+            <span />
+          )}
+
           <div className={`gap-2 d-flex ${esModal ? "ms-auto" : ""}`}>
             <button type="button" className="btn btn-light px-4" onClick={handleCancel}>
               Cancelar
@@ -238,5 +271,3 @@ export default function LineaProductoForm({
     </div>
   );
 }
-
-

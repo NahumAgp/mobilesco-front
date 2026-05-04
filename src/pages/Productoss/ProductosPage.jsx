@@ -6,7 +6,7 @@ import { crearVariante } from "../../services/variantes";
 import { crearImagen, subirImagenArchivo } from "../../services/imagenes";
 import { obtenerProductos, eliminarProducto } from "../../services/productos";
 import { obtenerModelos } from "../../services/modelos";
-import { obtenerCategorias } from "../../services/categorias";
+import { obtenerNiveles } from "../../services/niveles";
 import { obtenerColores } from "../../services/color";
 import VariantesTable from "../Variantes/VariantesTable";
 import PageHeader from "../../components/Sistema/PageHeader";
@@ -138,7 +138,7 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
     try {
       const [modelosResp, categoriasResp, coloresResp] = await Promise.all([
         obtenerModelos(),
-        obtenerCategorias(),
+        obtenerNiveles(),
         obtenerColores()
       ]);
 

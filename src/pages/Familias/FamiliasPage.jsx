@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 import { useFamilias } from "./useFamilias";
 import { obtenerLineasProducto } from "../../services/lineaProducto";
+import { exportarFamiliasExcel } from "../../services/familias.js";
 
 import FamiliasTable from "./FamiliasTable";
 import PageHeader from "../../components/Sistema/PageHeader";
@@ -50,13 +51,14 @@ export default function FamiliasPage() {
   const [sortField, setSortField] = useState("nombre");
   const [sortDirection, setSortDirection] = useState("asc");
   const [lineasDisponibles, setLineasDisponibles] = useState([]);
+  const [exportandoExcel, setExportandoExcel] = useState(false);
 
   const {
     familias,
     pageInfo,
     loadingLista,
     error,
-    eliminarFamilia
+    cambiarEstadoFamilia
   } = useFamilias({ page, size: PAGE_SIZE, sortBy: sortField, direction: sortDirection });
 
   const totalElements = pageInfo.totalElements ?? 0;
@@ -139,7 +141,6 @@ export default function FamiliasPage() {
       const lineaFamiliaId = familia.lineaId ?? familia.linea?.id ?? "";
       const coincideLinea =
         !lineaFiltroNormalizado || String(lineaFamiliaId) === lineaFiltroNormalizado;
-
       const coincideSoloActivos = !soloActivos || familia.activo;
 
       return pasaFiltroTexto && coincideLinea && coincideSoloActivos;
@@ -179,17 +180,48 @@ export default function FamiliasPage() {
     navigate(`/familias/${familia.id}`);
   };
 
-  const manejarEliminar = async (id) => {
-    const confirmacion = window.confirm("¿Seguro que deseas eliminar esta familia?");
-    if (!confirmacion) return;
-
+  const manejarCambioEstado = async (familia) => {
     try {
-      await eliminarFamilia(id);
+      const nuevoEstado = !familia.activo;
+      await cambiarEstadoFamilia(familia.id, nuevoEstado);
       setToastType("success");
-      setToastMessage("Familia eliminada correctamente");
+      setToastMessage(
+        nuevoEstado ? "Familia activada correctamente" : "Familia desactivada correctamente"
+      );
     } catch {
       setToastType("danger");
-      setToastMessage("Error al eliminar familia");
+      setToastMessage("Error al cambiar el estado de la familia");
+    }
+  };
+
+  const exportarExcel = async () => {
+    try {
+      setExportandoExcel(true);
+
+      const blob = await exportarFamiliasExcel({
+        activo: soloActivos ? true : undefined,
+        busqueda: terminoBusqueda || undefined,
+        lineaId: lineaFiltroId || undefined,
+        sortBy: sortField,
+        direction: sortDirection
+      });
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "familias.xlsx";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      setToastType("success");
+      setToastMessage("Reporte de Excel generado correctamente");
+    } catch {
+      setToastType("danger");
+      setToastMessage("No se pudo generar el reporte de Excel");
+    } finally {
+      setExportandoExcel(false);
     }
   };
 
@@ -239,6 +271,14 @@ export default function FamiliasPage() {
         actions={
           <div className="familias-header-actions">
             <button
+              className="btn btn-outline-success me-2"
+              onClick={exportarExcel}
+              disabled={exportandoExcel}
+            >
+              <i className="bi bi-file-earmark-excel me-1"></i>
+              {exportandoExcel ? "Generando..." : "Reporte Excel"}
+            </button>
+            <button
               className="btn familias-brand-primary"
               onClick={() => navigate("/familias/nuevo")}
             >
@@ -279,10 +319,10 @@ export default function FamiliasPage() {
                 value={lineaFiltroId}
                 onChange={cambiarLineaFiltro}
               >
-                <option value="">Todas las líneas</option>
+                <option value="">Todas las lineas</option>
                 {lineasDisponibles.map((linea) => (
                   <option key={linea.id ?? linea.lineaId} value={linea.id ?? linea.lineaId}>
-                    {linea.nombre || linea.codigo || `Línea ${linea.id ?? linea.lineaId}`}
+                    {linea.nombre || linea.codigo || `Linea ${linea.id ?? linea.lineaId}`}
                   </option>
                 ))}
               </select>
@@ -324,7 +364,7 @@ export default function FamiliasPage() {
                 <i className="bi bi-funnel fs-1 d-block mb-3 text-secondary"></i>
                 <span className="fs-5 d-block">No hay coincidencias</span>
                 <p className="text-secondary mt-2 mb-0">
-                  Ajusta los filtros para ver familias en esta página
+                  Ajusta los filtros para ver familias en esta pagina
                 </p>
               </div>
             </div>
@@ -332,7 +372,7 @@ export default function FamiliasPage() {
             <FamiliasTable
               data={familiasFiltradas}
               onEditar={abrirEditar}
-              onEliminar={manejarEliminar}
+              onCambiarEstado={manejarCambioEstado}
               sortField={sortField}
               sortDirection={sortDirection}
               onSort={manejarOrden}
@@ -343,11 +383,11 @@ export default function FamiliasPage() {
             <div className="familias-pagination-panel">
               <div className="familias-pagination-summary">
                 {hayFiltrosActivos
-                  ? `Mostrando ${familiasFiltradas.length} coincidencias en esta página`
+                  ? `Mostrando ${familiasFiltradas.length} coincidencias en esta pagina`
                   : `Mostrando ${desde} a ${hasta} de ${totalElements} familias`}
               </div>
 
-              <nav aria-label="Paginación de familias">
+              <nav aria-label="Paginacion de familias">
                 <ul className="pagination mb-0 flex-wrap">
                   <li className={`page-item ${page <= 0 ? "disabled" : ""}`}>
                     <button
@@ -405,7 +445,7 @@ export default function FamiliasPage() {
                       onClick={() => irAPagina(totalPages - 1)}
                       disabled={page >= totalPages - 1}
                     >
-                      Última
+                      Ultima
                     </button>
                   </li>
                 </ul>

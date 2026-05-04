@@ -3,10 +3,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { obtenerModeloPorId } from "../../services/modelos.js";
 import { obtenerFamiliaPorId } from "../../services/familias.js";
 import { obtenerLineaProductoPorId } from "../../services/lineaProducto.js";
-import { obtenerCategorias, crearCategoria } from "../../services/categorias.js";
+import { obtenerNiveles, crearNivel } from "../../services/niveles.js";
 import { obtenerColores, crearColor } from "../../services/color.js";
 import { crearProducto } from "../../services/variantes.js";
 import { subirImagenArchivo } from "../../services/imagenes.js";
+import SearchableSelect from "../../components/ui/SearchableSelect.jsx";
 
 const MAX_SIZE_BYTES = 5 * 1024 * 1024;
 
@@ -248,7 +249,7 @@ export default function ProductoRapidoDrawer({ show, modeloId, onClose, onSaved 
 
         const [modeloResp, categoriasResp, coloresResp] = await Promise.all([
           modeloId ? obtenerModeloPorId(modeloId) : Promise.resolve(null),
-          obtenerCategorias(),
+          obtenerNiveles(),
           obtenerColores()
         ]);
 
@@ -316,7 +317,7 @@ export default function ProductoRapidoDrawer({ show, modeloId, onClose, onSaved 
   };
 
   const refrescarCategorias = async () => {
-    const respuesta = await obtenerCategorias();
+    const respuesta = await obtenerNiveles();
     const lista = getLista(respuesta);
     setCategorias(lista);
     return lista;
@@ -340,7 +341,7 @@ export default function ProductoRapidoDrawer({ show, modeloId, onClose, onSaved 
 
     try {
       setError("");
-      const creada = await crearCategoria({
+      const creada = await crearNivel({
         codigo: (formCategoria.codigo || codigoSugerido).trim(),
         nombre,
         descripcion: "Creada desde el panel rapido de producto",
@@ -583,29 +584,28 @@ export default function ProductoRapidoDrawer({ show, modeloId, onClose, onSaved 
                     {mostrarAltaCategoria ? "Ocultar alta" : "Crear categoria"}
                   </button>
                 </div>
-                <div className="d-flex gap-2">
-                  <select
-                    className="form-select"
-                    value={formData.categoriaId}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, categoriaId: e.target.value }))}
-                  >
-                    <option value="">Seleccionar nivel / categoria...</option>
-                    {categorias.map((categoria) => (
-                      <option key={categoria.id} value={categoria.id}>
-                        {categoria.codigo ? `[${categoria.codigo}] ` : ""}
-                        {categoria.nombre}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    className="btn btn-outline-secondary"
-                    onClick={() => setMostrarAltaCategoria((prev) => !prev)}
-                    title="Crear categoria"
-                  >
-                    +
-                  </button>
-                </div>
+                <SearchableSelect
+                  value={formData.categoriaId}
+                  options={categorias}
+                  onChange={(value) => setFormData((prev) => ({ ...prev, categoriaId: value }))}
+                  placeholder="Seleccionar nivel / categoria..."
+                  searchPlaceholder="Escribe código, nombre o descripción..."
+                  getOptionValue={(categoria) => categoria.id}
+                  getOptionLabel={(categoria) => `${categoria.codigo ? `[${categoria.codigo}] ` : ""}${categoria.nombre}`}
+                  getOptionSearchText={(categoria) =>
+                    [categoria.codigo, categoria.nombre, categoria.descripcion].filter(Boolean).join(" ").toLowerCase()
+                  }
+                  actionNode={
+                    <button
+                      type="button"
+                      className="btn btn-outline-secondary"
+                      onClick={() => setMostrarAltaCategoria((prev) => !prev)}
+                      title="Crear categoria"
+                    >
+                      +
+                    </button>
+                  }
+                />
                 {mostrarAltaCategoria && (
                   <div className="border rounded p-3 mt-2 bg-white">
                     <div className="row g-2">
@@ -657,29 +657,28 @@ export default function ProductoRapidoDrawer({ show, modeloId, onClose, onSaved 
                     {mostrarAltaColor ? "Ocultar alta" : "Crear color"}
                   </button>
                 </div>
-                <div className="d-flex gap-2 align-items-stretch">
-                  <select
-                    className="form-select"
-                    value={formData.colorId}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, colorId: e.target.value }))}
-                  >
-                    <option value="">Seleccionar color...</option>
-                    {coloresOrdenados.map((color) => (
-                      <option key={color.id} value={color.id}>
-                        {color.codigo ? `[${color.codigo}] ` : ""}
-                        {color.nombre}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    className="btn btn-outline-secondary"
-                    onClick={() => setMostrarAltaColor((prev) => !prev)}
-                    title="Crear color"
-                  >
-                    +
-                  </button>
-                </div>
+                <SearchableSelect
+                  value={formData.colorId}
+                  options={coloresOrdenados}
+                  onChange={(value) => setFormData((prev) => ({ ...prev, colorId: value }))}
+                  placeholder="Seleccionar color..."
+                  searchPlaceholder="Escribe código, nombre o hex..."
+                  getOptionValue={(color) => color.id}
+                  getOptionLabel={(color) => `${color.codigo ? `[${color.codigo}] ` : ""}${color.nombre}`}
+                  getOptionSearchText={(color) =>
+                    [color.codigo, color.nombre, color.descripcion, color.hex].filter(Boolean).join(" ").toLowerCase()
+                  }
+                  actionNode={
+                    <button
+                      type="button"
+                      className="btn btn-outline-secondary"
+                      onClick={() => setMostrarAltaColor((prev) => !prev)}
+                      title="Crear color"
+                    >
+                      +
+                    </button>
+                  }
+                />
                 <div className="d-flex flex-wrap gap-2 mt-2">
                   {coloresOrdenados.slice(0, 10).map((color) => {
                     const hex = getHexColor(color);

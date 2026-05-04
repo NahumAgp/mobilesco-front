@@ -1,13 +1,23 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { obtenerFamiliaPorId, crearFamilia, actualizarFamilia } from "../../services/familias";
+import {
+  obtenerFamiliaPorId,
+  crearFamilia,
+  actualizarFamilia,
+  eliminarFamilia
+} from "../../services/familias";
 import { obtenerLineasProducto } from "../../services/lineaProducto";
+import { obtenerModelos } from "../../services/modelos";
+import Toast from "../../components/ui/Toast.jsx";
+import SearchableSelect from "../../components/ui/SearchableSelect.jsx";
 
 export default function FamiliaForm({ familiaId }) {
   const navigate = useNavigate();
   const esEdicion = Boolean(familiaId);
   const [erroresBackend, setErroresBackend] = useState({});
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState("success");
 
   const [formData, setFormData] = useState({
     codigo: "",
@@ -17,6 +27,9 @@ export default function FamiliaForm({ familiaId }) {
     activo: true
   });
   const [lineas, setLineas] = useState([]);
+  const [modelosFamilia, setModelosFamilia] = useState([]);
+  const [cargandoModelos, setCargandoModelos] = useState(false);
+  const [errorModelos, setErrorModelos] = useState("");
 
   const obtenerErrorCampo = (campo) =>
     erroresBackend[campo] ||
@@ -69,6 +82,42 @@ export default function FamiliaForm({ familiaId }) {
     };
 
     cargar();
+  }, [familiaId]);
+
+  useEffect(() => {
+    const cargarModelos = async () => {
+      if (!familiaId) {
+        setModelosFamilia([]);
+        return;
+      }
+
+      try {
+        setCargandoModelos(true);
+        setErrorModelos("");
+
+        const data = await obtenerModelos();
+        const lista = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.content)
+            ? data.content
+            : [];
+
+        const filtrados = lista.filter((modelo) => {
+          const familiaModeloId = modelo.familiaId ?? modelo.familia?.id ?? modelo.familia_id ?? "";
+          return String(familiaModeloId) === String(familiaId);
+        });
+
+        setModelosFamilia(filtrados);
+      } catch (error) {
+        console.error(error);
+        setModelosFamilia([]);
+        setErrorModelos("No se pudieron cargar los modelos de esta familia.");
+      } finally {
+        setCargandoModelos(false);
+      }
+    };
+
+    cargarModelos();
   }, [familiaId]);
 
   function handleChange(e) {
@@ -144,7 +193,9 @@ export default function FamiliaForm({ familiaId }) {
         await crearFamilia(payload);
       }
 
-      navigate("/familias");
+      setToastType("success");
+      setToastMessage(esEdicion ? "Familia actualizada con exito" : "Familia registrada con exito");
+      setTimeout(() => navigate("/familias"), 1500);
     } catch (error) {
       if (error?.errors) {
         setErroresBackend(error.errors);
@@ -171,24 +222,43 @@ export default function FamiliaForm({ familiaId }) {
         setErroresBackend(
           Object.keys(erroresNormalizados).length > 0
             ? erroresNormalizados
-            : { general: mensaje }
+            : {}
         );
+
+        if (Object.keys(erroresNormalizados).length === 0) {
+          setToastType("danger");
+          setToastMessage(mensaje);
+        }
       } else {
         console.error(error);
+        setToastType("danger");
+        setToastMessage("Error al guardar la familia");
       }
+    }
+  }
+
+  async function handleEliminar() {
+    const confirmacion = window.confirm("Seguro que deseas eliminar esta familia?");
+    if (!confirmacion) return;
+
+    try {
+      await eliminarFamilia(familiaId);
+      setToastType("success");
+      setToastMessage("Familia eliminada correctamente");
+      setTimeout(() => navigate("/familias"), 1500);
+    } catch (error) {
+      const mensaje = error?.message || "No se pudo eliminar la familia";
+      setToastType("danger");
+      setToastMessage(mensaje);
     }
   }
 
   return (
     <form onSubmit={handleSubmit} noValidate>
-      {erroresBackend.general && (
-        <div className="alert alert-danger">
-          {erroresBackend.general}
-        </div>
-      )}
+      <Toast message={toastMessage} type={toastType} onClose={() => setToastMessage("")} />
 
       <div className="row g-3">
-        <div className="col-md-4">
+        <div className="col-md-2">
           <label className="form-label">Codigo</label>
           <input
             type="text"
@@ -196,13 +266,14 @@ export default function FamiliaForm({ familiaId }) {
             className={inputClass("codigo")}
             value={formData.codigo}
             onChange={handleChange}
+            placeholder="Ej: A, B, M, MO"
           />
           <div className="invalid-feedback">
             {obtenerErrorCampo("codigo")}
           </div>
         </div>
 
-        <div className="col-md-8">
+        <div className="col-md-5">
           <label className="form-label">Nombre</label>
           <input
             type="text"
@@ -210,10 +281,29 @@ export default function FamiliaForm({ familiaId }) {
             className={inputClass("nombre")}
             value={formData.nombre}
             onChange={handleChange}
+            placeholder="Ej: Anaqueles, Bancas, Mesas..."
           />
           <div className="invalid-feedback">
             {obtenerErrorCampo("nombre")}
           </div>
+        </div>
+
+        <div className="col-md-5">
+          <SearchableSelect
+            label="Linea"
+            value={formData.lineaId}
+            options={lineas}
+            onChange={(value) => handleChange({ target: { name: "lineaId", value } })}
+            placeholder="Selecciona una línea..."
+            searchPlaceholder="Escribe código o nombre de la línea..."
+            error={obtenerErrorCampo("lineaId")}
+            getOptionValue={(linea) => linea.id ?? linea.lineaId}
+            getOptionLabel={(linea) => `${linea.codigo ? `${linea.codigo} - ` : ""}${linea.nombre || "-"}`}
+            getOptionSearchText={(linea) =>
+              [linea.codigo, linea.nombre, linea.descripcion].filter(Boolean).join(" ").toLowerCase()
+            }
+            renderOptionLabel={(linea) => `${linea.codigo ? `[${linea.codigo}] ` : ""}${linea.nombre || "-"}`}
+          />
         </div>
 
         <div className="col-md-12">
@@ -223,29 +313,11 @@ export default function FamiliaForm({ familiaId }) {
             className={inputClass("descripcion")}
             value={formData.descripcion}
             onChange={handleChange}
+            placeholder="Ej: Familia de anaqueles para exhibición y almacenamiento"
+            rows={3}
           />
           <div className="invalid-feedback">
             {obtenerErrorCampo("descripcion")}
-          </div>
-        </div>
-
-        <div className="col-md-12">
-          <label className="form-label">Linea</label>
-          <select
-            name="lineaId"
-            className={selectClass("lineaId")}
-            value={formData.lineaId}
-            onChange={handleChange}
-          >
-            <option value="">Selecciona una linea...</option>
-            {lineas.map((linea) => (
-              <option key={linea.id ?? linea.lineaId} value={linea.id ?? linea.lineaId}>
-                {linea.nombre}
-              </option>
-            ))}
-          </select>
-          <div className="invalid-feedback">
-            {obtenerErrorCampo("lineaId")}
           </div>
         </div>
 
@@ -262,12 +334,74 @@ export default function FamiliaForm({ familiaId }) {
           </div>
         </div>
 
-        <div className="col-md-12">
+        <div className="col-md-12 d-flex gap-2">
+          {esEdicion && (
+            <button type="button" className="btn btn-outline-danger" onClick={handleEliminar}>
+              Eliminar
+            </button>
+          )}
+
           <button type="submit" className="btn btn-primary">
             Guardar
           </button>
         </div>
       </div>
+
+      {familiaId && (
+        <div className="card mt-4">
+          <div className="card-header bg-white py-3 d-flex align-items-center justify-content-between">
+            <h5 className="mb-0">Modelos de esta familia</h5>
+            <span className="badge bg-success-subtle text-success border border-success-subtle">
+              {modelosFamilia.length} modelos
+            </span>
+          </div>
+
+          <div className="card-body">
+            {cargandoModelos ? (
+              <div className="text-muted">Cargando modelos...</div>
+            ) : errorModelos ? (
+              <div className="alert alert-warning mb-0">{errorModelos}</div>
+            ) : modelosFamilia.length > 0 ? (
+              <div className="table-responsive">
+                <table className="table table-hover align-middle mb-0">
+                  <thead className="table-light">
+                    <tr>
+                      <th>ID</th>
+                      <th>Código</th>
+                      <th>Nombre</th>
+                      <th>Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {modelosFamilia.map((modelo) => (
+                      <tr key={modelo.id}>
+                        <td>{modelo.id}</td>
+                        <td>{modelo.codigo || "-"}</td>
+                        <td>{modelo.nombre || "-"}</td>
+                        <td>
+                          <span
+                            className={
+                              modelo.activo
+                                ? "badge bg-success-subtle text-success border border-success-subtle"
+                                : "badge bg-secondary-subtle text-secondary border border-secondary-subtle"
+                            }
+                          >
+                            {modelo.activo ? "Activo" : "Inactivo"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-muted">
+                Esta familia todavía no tiene modelos asociados.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </form>
   );
 }

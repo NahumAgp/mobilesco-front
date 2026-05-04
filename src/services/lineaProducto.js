@@ -53,6 +53,18 @@ export function actualizarLineaProducto(id, data) {
   });
 }
 
+export function activarLineaProducto(id) {
+  return request(`${API_PATHS.LINEAS}/${id}/activar`, {
+    method: "PATCH",
+  });
+}
+
+export function desactivarLineaProducto(id) {
+  return request(`${API_PATHS.LINEAS}/${id}/desactivar`, {
+    method: "PATCH",
+  });
+}
+
 export function eliminarLineaProducto(id) {
   return request(`${API_PATHS.LINEAS}/${id}`, {
     method: "DELETE",

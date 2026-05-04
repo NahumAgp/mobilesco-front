@@ -4,9 +4,9 @@ import ProductoWizard from "./components/ProductoWizard";
 import { crearModelo } from "../../services/modelos";
 import { crearVariante } from "../../services/variantes";
 import { crearImagen, subirImagenArchivo } from "../../services/imagenes";
-import { obtenerProductos, eliminarProducto } from "../../services/productos";
+import { obtenerProductos, eliminarProducto, exportarProductosExcel } from "../../services/productos";
 import { obtenerModelos } from "../../services/modelos";
-import { obtenerCategorias } from "../../services/categorias";
+import { obtenerNiveles } from "../../services/niveles";
 import { obtenerColores } from "../../services/color";
 import VariantesTable from "../Variantes/VariantesTable";
 import PageHeader from "../../components/Sistema/PageHeader";
@@ -116,6 +116,7 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
   const [tipoMensaje, setTipoMensaje] = useState("success");
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstatus, setFiltroEstatus] = useState("TODOS");
+  const [exportandoExcel, setExportandoExcel] = useState(false);
 
   const cargarProductos = async () => {
     // Limpiar cache legado del modulo cuando existia en modo local.
@@ -138,7 +139,7 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
     try {
       const [modelosResp, categoriasResp, coloresResp] = await Promise.all([
         obtenerModelos(),
-        obtenerCategorias(),
+        obtenerNiveles(),
         obtenerColores()
       ]);
 
@@ -154,6 +155,34 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
     cargarProductos();
     cargarCatalogos();
   }, []);
+
+  const exportarExcel = async () => {
+    try {
+      setExportandoExcel(true);
+
+      const blob = await exportarProductosExcel({
+        activo: filtroEstatus === "TODOS" ? undefined : filtroEstatus === "ACTIVO",
+        busqueda: busqueda || undefined
+      });
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "productos.xlsx";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      setTipoMensaje("success");
+      setMensaje("Reporte de Excel generado correctamente");
+    } catch (error) {
+      setTipoMensaje("danger");
+      setMensaje(error?.message || "No se pudo generar el reporte de Excel");
+    } finally {
+      setExportandoExcel(false);
+    }
+  };
 
   const obtenerIdModelo = (modeloGuardado) =>
     modeloGuardado?.id ||
@@ -455,10 +484,20 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
         title="Productos"
         subtitle="Alta unificada de modelos, variantes e imagenes"
         actions={
-          <button className="btn btn-success" onClick={() => setModoCreacion(true)}>
-            <i className="bi bi-plus-circle me-2"></i>
-            Nuevo Producto
-          </button>
+          <div className="d-flex gap-2">
+            <button
+              className="btn btn-outline-success"
+              onClick={exportarExcel}
+              disabled={exportandoExcel}
+            >
+              <i className="bi bi-file-earmark-excel me-1"></i>
+              {exportandoExcel ? "Generando..." : "Reporte Excel"}
+            </button>
+            <button className="btn btn-success" onClick={() => setModoCreacion(true)}>
+              <i className="bi bi-plus-circle me-2"></i>
+              Nuevo Producto
+            </button>
+          </div>
         }
       />
 

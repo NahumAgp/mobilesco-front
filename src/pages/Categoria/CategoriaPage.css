@@ -1,0 +1,176 @@
+.categorias-page-shell,
+.categorias-empty-card,
+.categorias-table-card {
+  --categorias-brand-ink: #30404a;
+  --categorias-brand-ink-strong: #22303a;
+  --categorias-brand-green: #57d37e;
+  --categorias-brand-green-soft: rgba(87, 211, 126, 0.12);
+  --categorias-brand-sage-soft: rgba(48, 64, 74, 0.08);
+  --categorias-brand-danger: #d77b31;
+}
+
+.categorias-page-shell {
+  display: flex;
+  flex-direction: column;
+}
+
+.categorias-filters-card.card {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: none;
+}
+
+.categorias-table-card.card {
+  padding: 0;
+  overflow: hidden;
+  border-radius: 0;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: none;
+  background: #ffffff;
+}
+
+.categorias-table-scroll {
+  height: auto;
+  min-height: 0;
+  overflow-y: visible;
+}
+
+.categorias-table-head th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: linear-gradient(180deg, #f7faf9 0%, #f4f8fb 100%);
+  border-bottom: 1px solid var(--categorias-brand-sage-soft);
+  color: var(--categorias-brand-ink);
+}
+
+.categorias-table-row {
+  cursor: pointer;
+}
+
+.categorias-table-row:hover {
+  background: linear-gradient(90deg, var(--categorias-brand-green-soft), rgba(48, 64, 74, 0.04));
+}
+
+.categorias-code-badge {
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+}
+
+.categorias-actions {
+  white-space: nowrap;
+}
+
+.categorias-pagination-panel {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  padding: 14px 18px;
+  border-radius: 0;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: none;
+}
+
+.categorias-pagination-summary {
+  color: var(--categorias-brand-ink);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.categorias-pagination-panel .pagination {
+  gap: 4px;
+}
+
+.categorias-pagination-panel .page-link {
+  border-radius: 10px;
+}
+
+.categorias-pagination-panel .page-item.active .page-link {
+  background: var(--categorias-brand-green);
+  border-color: var(--categorias-brand-green);
+  color: #ffffff;
+}
+
+.categorias-pagination-panel .page-link:hover {
+  color: var(--categorias-brand-ink);
+  background: var(--categorias-brand-green-soft);
+  border-color: var(--categorias-brand-green);
+}
+
+.categorias-pagination-panel .page-link:focus {
+  box-shadow: 0 0 0 0.2rem rgba(87, 211, 126, 0.2);
+}
+
+.categorias-brand-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 180px;
+  padding-inline: 1.35rem;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid #57d37e;
+  color: var(--categorias-brand-ink);
+  box-shadow:
+    0 0 0 1px rgba(87, 211, 126, 0.4),
+    0 0 14px rgba(87, 211, 126, 0.35),
+    0 10px 18px rgba(48, 64, 74, 0.12);
+}
+
+.categorias-brand-primary:hover,
+.categorias-brand-primary:focus {
+  background: linear-gradient(135deg, rgba(87, 211, 126, 0.18), rgba(87, 211, 126, 0.06));
+  border-color: #2ec35d;
+  color: var(--categorias-brand-ink-strong);
+}
+
+.categorias-brand-outline {
+  color: #1f6a55 !important;
+  border-color: rgba(67, 192, 128, 0.95) !important;
+  background: #ffffff !important;
+}
+
+.categorias-brand-outline:hover,
+.categorias-brand-outline:focus {
+  color: #165c49 !important;
+  background: rgba(67, 192, 128, 0.12) !important;
+  border-color: #2fc46f !important;
+}
+
+.categorias-brand-danger {
+  color: var(--categorias-brand-danger) !important;
+  border-color: rgba(215, 123, 49, 0.75) !important;
+  background: #ffffff !important;
+}
+
+.categorias-brand-danger:hover,
+.categorias-brand-danger:focus {
+  color: var(--categorias-brand-danger) !important;
+  background: rgba(215, 123, 49, 0.08) !important;
+  border-color: var(--categorias-brand-danger) !important;
+}
+
+.categorias-empty-card.card {
+  padding: 0;
+  border-radius: 0;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: none;
+}
+
+@media (max-width: 576px) {
+  .categorias-pagination-panel {
+    padding: 12px 14px;
+  }
+
+  .categorias-pagination-panel .pagination {
+    width: 100%;
+  }
+
+  .categorias-brand-primary,
+  .categorias-brand-outline,
+  .categorias-brand-danger {
+    width: 100%;
+  }
+}

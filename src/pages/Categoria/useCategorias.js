@@ -35,7 +35,8 @@ export function useCategorias() {
     categorias,
     loadingLista,
     error,
-    eliminarCategoria
+    eliminarCategoria,
+    recargar: cargar
   };
 }
 

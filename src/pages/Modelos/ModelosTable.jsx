@@ -20,27 +20,13 @@ const getModeloImagenUrl = (modelo) => {
 export default function TiposProductoTable({
   data,
   onEditar,
-  onEliminar
+  onCambiarEstado
 }) {
   return (
-    <div className="card">
-      <div
-        className="table-responsive"
-        style={{
-          height: "calc(100vh - 350px)",
-          overflowY: "auto"
-        }}
-      >
+    <div className="card shadow-sm border-0 modelos-table-card">
+      <div className="table-responsive modelos-table-scroll">
         <table className="table table-hover mb-0">
-          <thead
-            className="table-light"
-            style={{
-              position: "sticky",
-              top: 0,
-              zIndex: 2,
-              backgroundColor: "white"
-            }}
-          >
+          <thead className="table-light modelos-table-head">
             <tr>
               <th>ID</th>
               <th>Nombre</th>
@@ -61,7 +47,7 @@ export default function TiposProductoTable({
                 return (
                   <tr
                     key={tipo.id}
-                    style={{ cursor: "pointer" }}
+                    className="modelos-table-row"
                     onClick={() => onEditar(tipo)}
                   >
                     <td>{tipo.id}</td>
@@ -74,7 +60,9 @@ export default function TiposProductoTable({
                         : tipo.descripcion || "-"}
                     </td>
                     <td>{tipo.familiaNombre || "-"}</td>
-                    <td>{tipo.codigo || "-"}</td>
+                    <td>
+                      <span className="badge text-bg-light border modelos-code-badge">{tipo.codigo || "-"}</span>
+                    </td>
                     <td>
                       <span
                         className={
@@ -97,7 +85,7 @@ export default function TiposProductoTable({
                     </td>
                     <td>
                       <button
-                        className="btn btn-sm btn-outline-primary me-1"
+                        className="btn btn-sm modelos-brand-outline me-1"
                         onClick={(e) => {
                           e.stopPropagation();
                           onEditar(tipo);
@@ -107,14 +95,15 @@ export default function TiposProductoTable({
                         Editar
                       </button>
                       <button
-                        className="btn btn-sm btn-outline-danger"
+                        className="btn btn-sm modelos-brand-danger"
                         onClick={(e) => {
                           e.stopPropagation();
-                          onEliminar(tipo.id);
+                          onCambiarEstado(tipo);
                         }}
+                        title={tipo.activo ? "Desactivar" : "Activar"}
                       >
-                        <i className="bi bi-trash me-1"></i>
-                        Eliminar
+                        <i className={`bi ${tipo.activo ? "bi-toggle-on" : "bi-toggle-off"} me-1`}></i>
+                        {tipo.activo ? "Desactivar" : "Activar"}
                       </button>
                     </td>
                     <td>

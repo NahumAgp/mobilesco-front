@@ -19,7 +19,7 @@ function obtenerIconoOrden(sortField, sortDirection, field) {
 export default function FamiliasTable({
   data,
   onEditar,
-  onEliminar,
+  onCambiarEstado,
   sortField = "nombre",
   sortDirection = "asc",
   onSort
@@ -146,12 +146,12 @@ export default function FamiliasTable({
                         className="btn familias-brand-danger"
                         onClick={(e) => {
                           e.stopPropagation();
-                          onEliminar(familia.id);
+                          onCambiarEstado(familia);
                         }}
-                        title="Eliminar"
+                        title={familia.activo ? "Desactivar" : "Activar"}
                       >
-                        <i className="bi bi-trash me-1"></i>
-                        Eliminar
+                        <i className={`bi ${familia.activo ? "bi-toggle-on" : "bi-toggle-off"} me-1`}></i>
+                        {familia.activo ? "Desactivar" : "Activar"}
                       </button>
                     </div>
                   </td>

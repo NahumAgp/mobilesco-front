@@ -1,19 +1,24 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useCategorias } from "./useCategorias";
+import { activarCategoria, desactivarCategoria, exportarCategoriasExcel } from "../../services/categorias.js";
 
 import CategoriaTable from "./CategoriaTable.jsx";
 import PageHeader from "../../components/Sistema/PageHeader.jsx";
 import Toast from "../../components/ui/Toast.jsx";
+import "./CategoriaPage.css";
 
 export default function CategoriaPage() {
   const navigate = useNavigate();
 
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 10;
+  const [exportandoExcel, setExportandoExcel] = useState(false);
 
-  const { categorias, loadingLista, error, eliminarCategoria } = useCategorias();
+  const { categorias, loadingLista, error, recargar } = useCategorias();
 
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstatus, setFiltroEstatus] = useState("TODOS");
@@ -23,18 +28,70 @@ export default function CategoriaPage() {
     navigate(`/categorias/${categoria.id}`);
   };
 
-  const manejarEliminar = async (id) => {
-    const confirmacion = window.confirm("Seguro que deseas eliminar esta categoria?");
-    if (!confirmacion) return;
-
+  const manejarCambioEstado = async (categoria) => {
     try {
-      await eliminarCategoria(id);
+      const nuevoEstado = !categoria.activo;
+      if (nuevoEstado) {
+        await activarCategoria(categoria.id);
+      } else {
+        await desactivarCategoria(categoria.id);
+      }
+
       setToastType("success");
-      setToastMessage("Categoria eliminada correctamente");
+      setToastMessage(
+        nuevoEstado ? "Categoria activada con exito" : "Categoria desactivada con exito"
+      );
+      await recargar();
     } catch {
       setToastType("danger");
-      setToastMessage("Error al eliminar categoria");
+      setToastMessage("Error al cambiar el estado de la categoria");
     }
+  };
+
+  const exportarExcel = async () => {
+    try {
+      setExportandoExcel(true);
+
+      const blob = await exportarCategoriasExcel({
+        activo: filtroEstatus === "TODOS" ? undefined : filtroEstatus === "ACTIVO",
+        busqueda: busqueda || undefined
+      });
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "categorias.xlsx";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      setToastType("success");
+      setToastMessage("Reporte de Excel generado correctamente");
+    } catch {
+      setToastType("danger");
+      setToastMessage("No se pudo generar el reporte de Excel");
+    } finally {
+      setExportandoExcel(false);
+    }
+  };
+
+  const construirRangoPaginas = (totalPages, currentPage) => {
+    if (!totalPages || totalPages <= 0) return [];
+
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, index) => index);
+    }
+
+    const paginas = [0];
+    const inicio = Math.max(1, currentPage - 1);
+    const fin = Math.min(totalPages - 2, currentPage + 1);
+
+    if (inicio > 1) paginas.push("...");
+    for (let i = inicio; i <= fin; i += 1) paginas.push(i);
+    if (fin < totalPages - 2) paginas.push("...");
+    paginas.push(totalPages - 1);
+    return paginas;
   };
 
   const categoriasFiltradas = categorias.filter((categoria) => {
@@ -62,6 +119,27 @@ export default function CategoriaPage() {
     return pasaFiltroTexto && coincideEstatus && coincideSoloActivos;
   });
 
+  const totalElements = categoriasFiltradas.length;
+  const totalPages = Math.ceil(totalElements / PAGE_SIZE);
+  const paginaActual = totalPages > 0 ? Math.min(page, totalPages - 1) : 0;
+  const paginasVisibles = construirRangoPaginas(totalPages, paginaActual);
+  const categoriasPaginadas = useMemo(
+    () => categoriasFiltradas.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE),
+    [categoriasFiltradas, page]
+  );
+  const desde = totalElements > 0 ? page * PAGE_SIZE + 1 : 0;
+  const hasta = totalElements > 0 ? page * PAGE_SIZE + categoriasPaginadas.length : 0;
+
+  useEffect(() => {
+    if (page >= totalPages && totalPages > 0) {
+      setPage(totalPages - 1);
+    }
+  }, [page, totalPages]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [busqueda, filtroEstatus, soloActivos]);
+
   return (
     <>
       <Toast message={toastMessage} type={toastType} onClose={() => setToastMessage("")} />
@@ -70,9 +148,19 @@ export default function CategoriaPage() {
         title="Categorias"
         subtitle="Catalogo de categorias de productos"
         actions={
-          <button className="btn btn-success" onClick={() => navigate("/categorias/nuevo")}>
-            Nueva Categoria
-          </button>
+          <div className="d-flex gap-2">
+            <button
+              className="btn btn-outline-success"
+              onClick={exportarExcel}
+              disabled={exportandoExcel}
+            >
+              <i className="bi bi-file-earmark-excel me-1"></i>
+              {exportandoExcel ? "Generando..." : "Reporte Excel"}
+            </button>
+            <button className="btn categorias-brand-primary" onClick={() => navigate("/categorias/nuevo")}>
+              Nueva Categoria
+            </button>
+          </div>
         }
       />
 
@@ -80,7 +168,7 @@ export default function CategoriaPage() {
 
       {error && <div className="alert alert-danger">{error}</div>}
 
-      <div className="card mb-3">
+      <div className="card mb-3 categorias-filters-card">
         <div className="card-body">
           <div className="row g-2 align-items-center">
             <div className="col-md-6">
@@ -116,7 +204,69 @@ export default function CategoriaPage() {
         </div>
       </div>
 
-      <CategoriaTable data={categoriasFiltradas} onEditar={abrirEditar} onEliminar={manejarEliminar} />
+      <CategoriaTable
+        data={categoriasPaginadas}
+        onEditar={abrirEditar}
+        onCambiarEstado={manejarCambioEstado}
+      />
+
+      {totalElements > 0 && (
+        <div className="categorias-pagination-panel">
+          <div className="categorias-pagination-summary">
+            {`Mostrando ${desde} a ${hasta} de ${totalElements} categorias`}
+          </div>
+
+          <nav aria-label="Paginacion de categorias">
+            <ul className="pagination mb-0 flex-wrap">
+              <li className={`page-item ${page <= 0 ? "disabled" : ""}`}>
+                <button className="page-link" onClick={() => setPage(0)} disabled={page <= 0}>
+                  Primera
+                </button>
+              </li>
+
+              <li className={`page-item ${page <= 0 ? "disabled" : ""}`}>
+                <button className="page-link" onClick={() => setPage(page - 1)} disabled={page <= 0}>
+                  Anterior
+                </button>
+              </li>
+
+              {paginasVisibles.map((pagina, index) =>
+                pagina === "..." ? (
+                  <li key={`categoria-dots-${index}`} className="page-item disabled">
+                    <span className="page-link">...</span>
+                  </li>
+                ) : (
+                  <li key={`categoria-page-${pagina}`} className={`page-item ${page === pagina ? "active" : ""}`}>
+                    <button className="page-link" onClick={() => setPage(pagina)}>
+                      {pagina + 1}
+                    </button>
+                  </li>
+                )
+              )}
+
+              <li className={`page-item ${page >= totalPages - 1 ? "disabled" : ""}`}>
+                <button
+                  className="page-link"
+                  onClick={() => setPage(page + 1)}
+                  disabled={page >= totalPages - 1}
+                >
+                  Siguiente
+                </button>
+              </li>
+
+              <li className={`page-item ${page >= totalPages - 1 ? "disabled" : ""}`}>
+                <button
+                  className="page-link"
+                  onClick={() => setPage(totalPages - 1)}
+                  disabled={page >= totalPages - 1}
+                >
+                  Ultima
+                </button>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      )}
     </>
   );
 }

@@ -126,19 +126,19 @@
 }
 
 .familias-pagination-panel .page-item.active .page-link {
-  background: var(--familias-brand-teal);
-  border-color: var(--familias-brand-teal);
+  background: #57d37e;
+  border-color: #57d37e;
   color: #ffffff;
 }
 
 .familias-pagination-panel .page-link:hover {
   color: var(--familias-brand-ink);
-  background: var(--familias-brand-teal-soft);
-  border-color: var(--familias-brand-teal);
+  background: rgba(87, 211, 126, 0.12);
+  border-color: #57d37e;
 }
 
 .familias-pagination-panel .page-link:focus {
-  box-shadow: 0 0 0 0.2rem rgba(47, 127, 127, 0.2);
+  box-shadow: 0 0 0 0.2rem rgba(87, 211, 126, 0.2);
 }
 
 .familias-brand-primary {
@@ -193,22 +193,22 @@
 }
 
 .familias-brand-danger {
-  color: var(--familias-brand-teal) !important;
-  border-color: rgba(47, 127, 127, 0.75) !important;
+  color: var(--lineas-brand-orange, #d77b31) !important;
+  border-color: rgba(215, 123, 49, 0.75) !important;
   background: #ffffff !important;
   box-shadow:
-    0 0 0 1px rgba(47, 127, 127, 0.18),
-    0 0 12px rgba(47, 127, 127, 0.1);
+    0 0 0 1px rgba(215, 123, 49, 0.18),
+    0 0 12px rgba(215, 123, 49, 0.1);
 }
 
 .familias-brand-danger:hover,
 .familias-brand-danger:focus {
-  color: var(--familias-brand-teal) !important;
-  background: rgba(47, 127, 127, 0.08) !important;
-  border-color: var(--familias-brand-teal) !important;
+  color: var(--lineas-brand-orange, #d77b31) !important;
+  background: rgba(215, 123, 49, 0.08) !important;
+  border-color: var(--lineas-brand-orange, #d77b31) !important;
   box-shadow:
-    0 0 0 1px rgba(47, 127, 127, 0.42),
-    0 0 14px rgba(47, 127, 127, 0.24);
+    0 0 0 1px rgba(215, 123, 49, 0.42),
+    0 0 14px rgba(215, 123, 49, 0.24);
 }
 
 .familias-empty-card.card {

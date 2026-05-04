@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { obtenerFamilias } from "../../../../services/familias.js";
 import { obtenerModelos } from "../../../../services/modelos.js";
+import SearchableSelect from "../../../../components/ui/SearchableSelect.jsx";
 
 const getLista = (respuesta) => {
   if (Array.isArray(respuesta)) return respuesta;
@@ -176,25 +177,23 @@ export default function ModeloStep({ data, onUpdate }) {
             <label className="form-label fw-semibold">
               Modelo <span className="text-danger">*</span>
             </label>
-            <select
-              name="id"
-              className={`form-select ${errores.id ? "is-invalid" : ""}`}
+            <SearchableSelect
               value={data.modelo.id || ""}
-              onChange={handleModeloExistenteChange}
+              options={modelos}
+              onChange={(value) =>
+                handleModeloExistenteChange({ target: { value } })
+              }
               onBlur={handleBlur}
               disabled={cargandoModelos}
-            >
-              <option value="">
-                {cargandoModelos ? "Cargando modelos..." : "Seleccionar modelo..."}
-              </option>
-              {modelos.map((modelo) => (
-                <option key={getModeloId(modelo)} value={getModeloId(modelo)}>
-                  {modelo.codigo ? `[${modelo.codigo}] ` : ""}
-                  {modelo.nombre}
-                </option>
-              ))}
-            </select>
-            {errores.id && <div className="invalid-feedback">{errores.id}</div>}
+              placeholder={cargandoModelos ? "Cargando modelos..." : "Seleccionar modelo..."}
+              searchPlaceholder="Escribe código, nombre o descripción del modelo..."
+              error={errores.id}
+              getOptionValue={getModeloId}
+              getOptionLabel={(modelo) => `${modelo.codigo ? `[${modelo.codigo}] ` : ""}${modelo.nombre || "-"}`}
+              getOptionSearchText={(modelo) =>
+                [modelo.codigo, modelo.nombre, modelo.descripcion].filter(Boolean).join(" ").toLowerCase()
+              }
+            />
             {errorModelos && <div className="form-text text-danger">{errorModelos}</div>}
           </div>
 
@@ -253,24 +252,21 @@ export default function ModeloStep({ data, onUpdate }) {
             <label className="form-label fw-semibold">
               Familia <span className="text-danger">*</span>
             </label>
-            <select
-              name="familiaId"
-              className={`form-select ${errores.familiaId ? "is-invalid" : ""}`}
+            <SearchableSelect
               value={data.modelo.familiaId}
-              onChange={handleChange}
+              options={familias}
+              onChange={(value) => handleChange({ target: { name: "familiaId", value } })}
               onBlur={handleBlur}
               disabled={cargandoFamilias}
-            >
-              <option value="">
-                {cargandoFamilias ? "Cargando familias..." : "Seleccionar familia..."}
-              </option>
-              {familias.map((familia) => (
-                <option key={familia.id} value={familia.id}>
-                  {familia.nombre}
-                </option>
-              ))}
-            </select>
-            {errores.familiaId && <div className="invalid-feedback">{errores.familiaId}</div>}
+              placeholder={cargandoFamilias ? "Cargando familias..." : "Seleccionar familia..."}
+              searchPlaceholder="Escribe nombre o descripción de la familia..."
+              error={errores.familiaId}
+              getOptionValue={(familia) => familia.id}
+              getOptionLabel={(familia) => familia.nombre}
+              getOptionSearchText={(familia) =>
+                [familia.codigo, familia.nombre, familia.descripcion].filter(Boolean).join(" ").toLowerCase()
+              }
+            />
             {errorFamilias && <div className="form-text text-danger">{errorFamilias}</div>}
           </div>
 

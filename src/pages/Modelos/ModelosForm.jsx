@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { obtenerModeloPorId, crearModelo, actualizarModelo } from "../../services/modelos.js";
+import { obtenerModeloPorId, crearModelo, actualizarModelo, eliminarModelo } from "../../services/modelos.js";
 import { obtenerFamilias } from "../../services/familias.js";
 import { obtenerProductos } from "../../services/variantes.js";
 import {
@@ -12,6 +12,8 @@ import {
   eliminarImagen
 } from "../../services/imagenes.js";
 import Toast from "../../components/ui/Toast.jsx";
+import SearchableSelect from "../../components/ui/SearchableSelect.jsx";
+import "./ModelosPage.css";
 
 const API_BASE_URL = "http://localhost:8081";
 
@@ -537,8 +539,32 @@ export default function ModeloForm({
     }
   };
 
+  const handleEliminar = async () => {
+    if (!esEdicion || esModal) return;
+
+    const confirmado = window.confirm("¿Seguro que deseas eliminar este modelo?");
+    if (!confirmado) return;
+
+    const id = modelo?.id || modeloId;
+    if (!id) {
+      setToastType("danger");
+      setToastMessage("No se encontro el ID del modelo para eliminar.");
+      return;
+    }
+
+    try {
+      await eliminarModelo(id);
+      setToastType("success");
+      setToastMessage("Modelo eliminado con exito");
+      setTimeout(() => navigate("/modelos"), 1200);
+    } catch (error) {
+      setToastType("danger");
+      setToastMessage(error.message || "No se pudo eliminar el modelo");
+    }
+  };
+
   return (
-    <div className={esModal ? "" : "container py-4"}>
+    <div className={esModal ? "" : "container py-4 modelos-page-shell"}>
       {!esModal && <Toast message={toastMessage} type={toastType} onClose={() => setToastMessage("")} />}
 
       {!esModal && (
@@ -553,7 +579,7 @@ export default function ModeloForm({
       <form onSubmit={handleSubmit} noValidate>
         <div className="row g-4">
           <div className={esEdicion ? "col-lg-8" : "col-12"}>
-            <div className="card shadow-sm border-0 mb-4 h-100">
+            <div className="card shadow-sm border-0 mb-4 h-100 modelos-table-card">
               <div className="card-header bg-white py-3">
                 <h5 className="mb-0 text-secondary">
                   <i className="bi bi-tag me-2"></i>Informacion del Modelo
@@ -592,26 +618,20 @@ export default function ModeloForm({
                   </div>
 
                   <div className="col-md-4">
-                    <label className="form-label fw-semibold">
-                      Familia <span className="text-danger">*</span>
-                    </label>
-                    <select
-                      name="familiaId"
-                      className={selectClass("familiaId")}
+                    <SearchableSelect
+                      label="Familia"
                       value={formData.familiaId}
-                      onChange={handleChange}
-                    >
-                      <option value="">Selecciona una familia...</option>
-                      {familias.map((familia) => {
-                        const familiaOptionId = familia.id ?? familia.familiaId;
-                        return (
-                          <option key={familiaOptionId} value={familiaOptionId}>
-                            {familia.nombre}
-                          </option>
-                        );
-                      })}
-                    </select>
-                    <div className="invalid-feedback">{erroresBackend.familiaId || erroresExternos.familiaId}</div>
+                      options={familias}
+                      onChange={(value) => handleChange({ target: { name: "familiaId", value } })}
+                      placeholder="Selecciona una familia..."
+                      searchPlaceholder="Escribe código, nombre o descripción..."
+                      error={erroresBackend.familiaId || erroresExternos.familiaId}
+                      getOptionValue={(familia) => familia.id ?? familia.familiaId}
+                      getOptionLabel={(familia) => `${familia.codigo ? `[${familia.codigo}] ` : ""}${familia.nombre || "-"}`}
+                      getOptionSearchText={(familia) =>
+                        [familia.codigo, familia.nombre, familia.descripcion].filter(Boolean).join(" ").toLowerCase()
+                      }
+                    />
                   </div>
 
                   <div className="col-md-12">
@@ -662,7 +682,7 @@ export default function ModeloForm({
 
           {esEdicion && (
             <div className="col-lg-4">
-              <div className="card shadow-sm border-0 mb-4 h-100">
+              <div className="card shadow-sm border-0 mb-4 h-100 modelos-table-card">
                 <div className="card-header bg-white py-3">
                   <h5 className="mb-0 text-secondary">
                     <i className="bi bi-image me-2"></i>Imagen del Modelo
@@ -754,10 +774,15 @@ export default function ModeloForm({
           )}
 
           <div className={`gap-2 d-flex ${esModal ? "ms-auto" : ""}`}>
+            {!esModal && esEdicion && (
+              <button type="button" className="btn btn-outline-danger px-4" onClick={handleEliminar}>
+                Eliminar
+              </button>
+            )}
             <button type="button" className="btn btn-light px-4" onClick={handleCancel}>
               Cancelar
             </button>
-            <button type="submit" className="btn btn-primary px-5 fw-bold">
+            <button type="submit" className="btn modelos-brand-primary px-5 fw-bold">
               {esEdicion ? "Guardar Cambios" : "Guardar"}
             </button>
           </div>

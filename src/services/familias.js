@@ -52,6 +52,18 @@ export function actualizarFamilia(id, data) {
   });
 }
 
+export function activarFamilia(id) {
+  return request(`${API_PATHS.FAMILIAS}/${id}/activar`, {
+    method: "PATCH",
+  });
+}
+
+export function desactivarFamilia(id) {
+  return request(`${API_PATHS.FAMILIAS}/${id}/desactivar`, {
+    method: "PATCH",
+  });
+}
+
 export function eliminarFamilia(id) {
   return request(`${API_PATHS.FAMILIAS}/${id}`, {
     method: "DELETE",
@@ -60,4 +72,21 @@ export function eliminarFamilia(id) {
 
 export function obtenerFamiliasActivas() {
   return request(`${API_PATHS.FAMILIAS}/activas`);
+}
+
+export function exportarFamiliasExcel(filtros = {}) {
+  const params = new URLSearchParams();
+
+  Object.entries(filtros).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      params.set(key, String(value));
+    }
+  });
+
+  const query = params.toString();
+  const endpoint = query
+    ? `${API_PATHS.FAMILIAS}/reporte/excel?${query}`
+    : `${API_PATHS.FAMILIAS}/reporte/excel`;
+
+  return request(endpoint, { responseType: "blob" });
 }

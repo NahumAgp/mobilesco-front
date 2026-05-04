@@ -23,6 +23,18 @@ export function actualizarColor(id, data) {
   });
 }
 
+export function activarColor(id) {
+  return request(`${API_PATHS.COLORES}/${id}/activar`, {
+    method: "PATCH"
+  });
+}
+
+export function desactivarColor(id) {
+  return request(`${API_PATHS.COLORES}/${id}/desactivar`, {
+    method: "PATCH"
+  });
+}
+
 export function eliminarColor(id) {
   return request(`${API_PATHS.COLORES}/${id}`, {
     method: "DELETE"

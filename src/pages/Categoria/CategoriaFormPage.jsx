@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import CategoriaForm from "./CategoriaForm.jsx";
+import "./CategoriaPage.css";
 
 export default function CategoriaFormPage() {
   const { id } = useParams(); // si existe, estamos editando
@@ -7,7 +8,7 @@ export default function CategoriaFormPage() {
   const esEdicion = Boolean(id);
 
   return (
-    <div className="container mt-4">
+    <div className="container mt-4 categorias-page-shell">
       <div className="d-flex align-items-center justify-content-between mb-3">
         <h3 className="m-0">{esEdicion ? "Editar Categoría" : "Nueva Categoría"}</h3>
 
@@ -17,7 +18,7 @@ export default function CategoriaFormPage() {
       </div>
 
       {/* FORMULARIO */}
-      <div className="card mb-4">
+      <div className="card mb-4 categorias-table-card">
         <div className="card-body">
           {/* Reutilizamos el MISMO form */}
           <CategoriaForm categoriaId={id} />

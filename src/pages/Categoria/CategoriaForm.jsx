@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { obtenerCategoriaPorId, crearCategoria, actualizarCategoria } from "../../services/categorias.js";
+import { obtenerCategoriaPorId, crearCategoria, actualizarCategoria, eliminarCategoria } from "../../services/categorias.js";
 import Toast from "../../components/ui/Toast.jsx";
+import "./CategoriaPage.css";
 
 export default function CategoriaForm({
   categoriaId,
@@ -121,8 +122,32 @@ export default function CategoriaForm({
     }
   };
 
+  const handleEliminar = async () => {
+    if (!esEdicion || esModal) return;
+
+    const confirmado = window.confirm("¿Seguro que deseas eliminar esta categoria?");
+    if (!confirmado) return;
+
+    const id = categoria?.id || categoriaId;
+    if (!id) {
+      setToastType("danger");
+      setToastMessage("No se encontro el ID de la categoria para eliminar.");
+      return;
+    }
+
+    try {
+      await eliminarCategoria(id);
+      setToastType("success");
+      setToastMessage("Categoria eliminada con exito");
+      setTimeout(() => navigate("/categorias"), 1200);
+    } catch (error) {
+      setToastType("danger");
+      setToastMessage(error.message || "No se pudo eliminar la categoria");
+    }
+  };
+
   return (
-    <div className={esModal ? "" : "container py-4"}>
+    <div className={esModal ? "" : "container py-4 categorias-page-shell"}>
       {!esModal && <Toast message={toastMessage} type={toastType} onClose={() => setToastMessage("")} />}
 
       {!esModal && (
@@ -135,7 +160,7 @@ export default function CategoriaForm({
       )}
 
       <form onSubmit={handleSubmit} noValidate>
-        <div className="card shadow-sm border-0 mb-4">
+        <div className="card shadow-sm border-0 mb-4 categorias-table-card">
           <div className="card-header bg-white py-3">
             <h5 className="mb-0 text-secondary">
               <i className="bi bi-folder me-2"></i>Informacion de la Categoria
@@ -241,10 +266,15 @@ export default function CategoriaForm({
           )}
 
           <div className={`gap-2 d-flex ${esModal ? "ms-auto" : ""}`}>
+            {!esModal && esEdicion && (
+              <button type="button" className="btn categorias-brand-danger px-4" onClick={handleEliminar}>
+                Eliminar
+              </button>
+            )}
             <button type="button" className="btn btn-light px-4" onClick={handleCancel}>
               Cancelar
             </button>
-            <button type="submit" className="btn btn-primary px-5 fw-bold">
+            <button type="submit" className="btn categorias-brand-primary px-5 fw-bold">
               {esEdicion ? "Guardar Cambios" : "Guardar"}
             </button>
           </div>

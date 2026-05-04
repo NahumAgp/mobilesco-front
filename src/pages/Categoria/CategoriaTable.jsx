@@ -1,23 +1,9 @@
-export default function CategoriaTable({ data, onEditar, onEliminar }) {
+export default function CategoriaTable({ data, onEditar, onCambiarEstado }) {
   return (
-    <div className="card">
-      <div
-        className="table-responsive"
-        style={{
-          height: "calc(100vh - 350px)",
-          overflowY: "auto"
-        }}
-      >
+    <div className="card shadow-sm border-0 categorias-table-card">
+      <div className="table-responsive categorias-table-scroll">
         <table className="table table-hover mb-0">
-          <thead
-            className="table-light"
-            style={{
-              position: "sticky",
-              top: 0,
-              zIndex: 2,
-              backgroundColor: "white"
-            }}
-          >
+          <thead className="table-light categorias-table-head">
             <tr>
               <th>ID</th>
               <th>Codigo</th>
@@ -32,10 +18,10 @@ export default function CategoriaTable({ data, onEditar, onEliminar }) {
           <tbody>
             {data && data.length > 0 ? (
               data.map((categoria) => (
-                <tr key={categoria.id} style={{ cursor: "pointer" }} onClick={() => onEditar(categoria)}>
+                <tr key={categoria.id} className="categorias-table-row" onClick={() => onEditar(categoria)}>
                   <td>{categoria.id}</td>
                   <td>
-                    <span className="badge bg-secondary">{categoria.codigo || "-"}</span>
+                    <span className="badge text-bg-light border categorias-code-badge">{categoria.codigo || "-"}</span>
                   </td>
                   <td>
                     <span className="fw-semibold">{categoria.nombre}</span>
@@ -64,10 +50,9 @@ export default function CategoriaTable({ data, onEditar, onEliminar }) {
                         })
                       : "-"}
                   </td>
-
-                  <td>
+                  <td className="categorias-actions">
                     <button
-                      className="btn btn-sm btn-outline-primary me-1"
+                      className="btn btn-sm categorias-brand-outline me-1"
                       onClick={(e) => {
                         e.stopPropagation();
                         onEditar(categoria);
@@ -76,16 +61,15 @@ export default function CategoriaTable({ data, onEditar, onEliminar }) {
                       <i className="bi bi-pencil me-1"></i>
                       Editar
                     </button>
-
                     <button
-                      className="btn btn-sm btn-outline-danger"
+                      className="btn btn-sm categorias-brand-danger"
                       onClick={(e) => {
                         e.stopPropagation();
-                        onEliminar(categoria.id);
+                        onCambiarEstado?.(categoria);
                       }}
                     >
-                      <i className="bi bi-trash me-1"></i>
-                      Eliminar
+                      <i className={`bi me-1 ${categoria.activo ? "bi-toggle-off" : "bi-toggle-on"}`}></i>
+                      {categoria.activo ? "Desactivar" : "Activar"}
                     </button>
                   </td>
                 </tr>

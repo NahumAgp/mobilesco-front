@@ -2,7 +2,8 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   obtenerLineasProducto,
-  eliminarLineaProducto as eliminarService
+  activarLineaProducto,
+  desactivarLineaProducto
 } from "../../services/lineaProducto.js";
 
 const PAGE_INFO_DEFAULT = {
@@ -73,8 +74,13 @@ export function useLineasProducto({ page, sortBy = "nombre", direction = "asc" }
     cargar();
   }, [cargar]);
 
-  async function eliminarLineaProducto(id) {
-    await eliminarService(id);
+  async function cambiarEstadoLineaProducto(id, activo) {
+    if (activo) {
+      await activarLineaProducto(id);
+    } else {
+      await desactivarLineaProducto(id);
+    }
+
     await cargar();
   }
 
@@ -83,6 +89,6 @@ export function useLineasProducto({ page, sortBy = "nombre", direction = "asc" }
     pageInfo,
     loadingLista,
     error,
-    eliminarLineaProducto
+    cambiarEstadoLineaProducto
   };
 }

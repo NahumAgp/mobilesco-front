@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   obtenerFamilias,
-  eliminarFamilia as eliminarService
+  activarFamilia,
+  desactivarFamilia
 } from "../../services/familias.js";
 
 const PAGE_INFO_DEFAULT = {
@@ -72,8 +73,13 @@ export function useFamilias({ page, size = 10, sortBy = "nombre", direction = "a
     cargar();
   }, [cargar]);
 
-  async function eliminarFamilia(id) {
-    await eliminarService(id);
+  async function cambiarEstadoFamilia(id, activo) {
+    if (activo) {
+      await activarFamilia(id);
+    } else {
+      await desactivarFamilia(id);
+    }
+
     await cargar();
   }
 
@@ -82,6 +88,6 @@ export function useFamilias({ page, size = 10, sortBy = "nombre", direction = "a
     pageInfo,
     loadingLista,
     error,
-    eliminarFamilia
+    cambiarEstadoFamilia
   };
 }

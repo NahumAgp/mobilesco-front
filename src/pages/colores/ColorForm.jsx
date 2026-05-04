@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { obtenerColorPorId, crearColor, actualizarColor } from "../../services/color.js";
+import { obtenerColorPorId, crearColor, actualizarColor, eliminarColor } from "../../services/color.js";
 import Toast from "../../components/ui/Toast.jsx";
+import "./ColorPage.css";
 
 export default function ColorForm({ colorId, color, onSave, onCancel, errores: erroresExternos = {} }) {
   const [toastMessage, setToastMessage] = useState("");
@@ -16,12 +17,14 @@ export default function ColorForm({ colorId, color, onSave, onCancel, errores: e
   const [formData, setFormData] = useState({
     codigo: "",
     nombre: "",
+    descripcion: "",
     hex: "#FF107A"
   });
 
   const mapColorToForm = (data = {}) => ({
     codigo: data.codigo || "",
     nombre: data.nombre || "",
+    descripcion: data.descripcion || "",
     hex: data.hex || "#FF107A"
   });
 
@@ -71,6 +74,7 @@ export default function ColorForm({ colorId, color, onSave, onCancel, errores: e
       const dataToSend = {
         codigo: formData.codigo?.toString().trim() || "",
         nombre: formData.nombre?.trim() || "",
+        descripcion: formData.descripcion?.trim() || "",
         hex: formData.hex?.trim() || ""
       };
 
@@ -112,8 +116,32 @@ export default function ColorForm({ colorId, color, onSave, onCancel, errores: e
     }
   };
 
+  const handleEliminar = async () => {
+    if (!esEdicion || esModal) return;
+
+    const confirmado = window.confirm("¿Seguro que deseas eliminar este color?");
+    if (!confirmado) return;
+
+    const id = color?.id || colorId;
+    if (!id) {
+      setToastType("danger");
+      setToastMessage("No se encontro el ID del color para eliminar.");
+      return;
+    }
+
+    try {
+      await eliminarColor(id);
+      setToastType("success");
+      setToastMessage("Color eliminado con exito");
+      setTimeout(() => navigate("/colores"), 1200);
+    } catch (error) {
+      setToastType("danger");
+      setToastMessage(error.message || "No se pudo eliminar el color");
+    }
+  };
+
   return (
-    <div className={esModal ? "" : "container py-4"}>
+    <div className={esModal ? "" : "container py-4 colores-page-shell"}>
       {!esModal && <Toast message={toastMessage} type={toastType} onClose={() => setToastMessage("")} />}
 
       {!esModal && (
@@ -123,7 +151,7 @@ export default function ColorForm({ colorId, color, onSave, onCancel, errores: e
       )}
 
       <form onSubmit={handleSubmit} noValidate>
-        <div className="card shadow-sm border-0 mb-4">
+        <div className="card shadow-sm border-0 mb-4 colores-table-card">
           <div className="card-header bg-white py-3">
             <h5 className="mb-0 text-secondary">
               <i className="bi bi-palette me-2"></i>Informacion del Color
@@ -161,6 +189,20 @@ export default function ColorForm({ colorId, color, onSave, onCancel, errores: e
                 <div className="invalid-feedback">{erroresBackend.nombre || erroresExternos.nombre}</div>
               </div>
 
+              <div className="col-md-12">
+                <label className="form-label fw-semibold">Descripcion</label>
+                <textarea
+                  name="descripcion"
+                  className={inputClass("descripcion")}
+                  value={formData.descripcion}
+                  onChange={handleChange}
+                  placeholder="Descripcion opcional del color"
+                  rows="3"
+                />
+                <div className="invalid-feedback">{erroresBackend.descripcion || erroresExternos.descripcion}</div>
+                <div className="form-text text-muted">Maximo 255 caracteres</div>
+              </div>
+
               <div className="col-md-4">
                 <label className="form-label fw-semibold">
                   HEX <span className="text-danger">*</span>
@@ -189,10 +231,15 @@ export default function ColorForm({ colorId, color, onSave, onCancel, errores: e
 
         <div className="d-flex justify-content-end align-items-center bg-white p-3 rounded shadow-sm">
           <div className="gap-2 d-flex">
+            {!esModal && esEdicion && (
+              <button type="button" className="btn btn-outline-danger px-4" onClick={handleEliminar}>
+                Eliminar
+              </button>
+            )}
             <button type="button" className="btn btn-light px-4" onClick={handleCancel}>
               Cancelar
             </button>
-            <button type="submit" className="btn btn-primary px-5 fw-bold">
+            <button type="submit" className="btn colores-brand-primary px-5 fw-bold">
               {esEdicion ? "Guardar Cambios" : "Guardar"}
             </button>
           </div>

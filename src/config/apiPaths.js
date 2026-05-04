@@ -18,6 +18,8 @@ export const API_PATHS = {
   MODELOS: `${API_VERSION}/modelos`,
   VARIANTES: `${API_VERSION}/productos`,
   CATEGORIAS: `${API_VERSION}/niveles`,
+  NIVELES: `${API_VERSION}/niveles`,
+  CATEGORIA_REAL: `${API_VERSION}/categorias`,
   COLORES: `${API_VERSION}/colores`,
   IMAGENES: `${API_VERSION}/imagenes`,
 

@@ -1,9 +1,10 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 
-import { obtenerCategorias, crearCategoria } from "../../../../services/categorias.js";
+import { obtenerNiveles, crearNivel } from "../../../../services/niveles.js";
 import { obtenerColores, crearColor } from "../../../../services/color.js";
 import { obtenerFamiliaPorId } from "../../../../services/familias.js";
 import { obtenerLineaProductoPorId } from "../../../../services/lineaProducto.js";
+import SearchableSelect from "../../../../components/ui/SearchableSelect.jsx";
 
 const getLista = (respuesta) => {
   if (Array.isArray(respuesta)) return respuesta;
@@ -80,7 +81,7 @@ export default function VariantesStep({ data, onUpdate }) {
   const variantes = Array.isArray(data.variantes) ? data.variantes : [];
 
   const cargarCategorias = async () => {
-    const respuesta = await obtenerCategorias();
+    const respuesta = await obtenerNiveles();
     const lista = getLista(respuesta);
     setCategorias(lista);
     return lista;
@@ -223,7 +224,7 @@ export default function VariantesStep({ data, onUpdate }) {
     const codigo = window.prompt("Codigo corto de categoria (ej: 01):", codigoSugerido);
 
     try {
-      await crearCategoria({
+      await crearNivel({
         codigo: (codigo || codigoSugerido).trim(),
         nombre: nombre.trim(),
         descripcion: "Creada desde wizard de producto",
@@ -305,47 +306,45 @@ export default function VariantesStep({ data, onUpdate }) {
         <div className="card-body">
           <div className="row g-3 align-items-end">
             <div className="col-md-5">
-              <label className="form-label fw-semibold">Categoria / Nivel *</label>
-              <div className="d-flex gap-2">
-                <select
-                  className="form-select"
-                  value={varianteForm.categoriaId}
-                  onChange={(e) => setVarianteForm((prev) => ({ ...prev, categoriaId: e.target.value }))}
-                >
-                  <option value="">Seleccionar categoria...</option>
-                  {categorias.map((categoria) => (
-                    <option key={categoria.id} value={categoria.id}>
-                      {categoria.codigo ? `[${categoria.codigo}] ` : ""}
-                      {categoria.nombre}
-                    </option>
-                  ))}
-                </select>
-                <button type="button" className="btn btn-outline-secondary" onClick={crearCategoriaRapida}>
-                  +
-                </button>
-              </div>
+              <SearchableSelect
+                label="Categoria / Nivel *"
+                value={varianteForm.categoriaId}
+                options={categorias}
+                onChange={(value) => setVarianteForm((prev) => ({ ...prev, categoriaId: value }))}
+                placeholder="Seleccionar categoria..."
+                searchPlaceholder="Escribe código, nombre o descripción..."
+                getOptionValue={(categoria) => categoria.id}
+                getOptionLabel={(categoria) => `${categoria.codigo ? `[${categoria.codigo}] ` : ""}${categoria.nombre}`}
+                getOptionSearchText={(categoria) =>
+                  [categoria.codigo, categoria.nombre, categoria.descripcion].filter(Boolean).join(" ").toLowerCase()
+                }
+                actionNode={
+                  <button type="button" className="btn btn-outline-secondary" onClick={crearCategoriaRapida}>
+                    +
+                  </button>
+                }
+              />
             </div>
 
             <div className="col-md-5">
-              <label className="form-label fw-semibold">Color *</label>
-              <div className="d-flex gap-2">
-                <select
-                  className="form-select"
-                  value={varianteForm.colorId}
-                  onChange={(e) => setVarianteForm((prev) => ({ ...prev, colorId: e.target.value }))}
-                >
-                  <option value="">Seleccionar color...</option>
-                  {colores.map((color) => (
-                    <option key={color.id} value={color.id}>
-                      {color.codigo ? `[${color.codigo}] ` : ""}
-                      {color.nombre}
-                    </option>
-                  ))}
-                </select>
-                <button type="button" className="btn btn-outline-secondary" onClick={crearColorRapido}>
-                  +
-                </button>
-              </div>
+              <SearchableSelect
+                label="Color *"
+                value={varianteForm.colorId}
+                options={colores}
+                onChange={(value) => setVarianteForm((prev) => ({ ...prev, colorId: value }))}
+                placeholder="Seleccionar color..."
+                searchPlaceholder="Escribe código, nombre o hex..."
+                getOptionValue={(color) => color.id}
+                getOptionLabel={(color) => `${color.codigo ? `[${color.codigo}] ` : ""}${color.nombre}`}
+                getOptionSearchText={(color) =>
+                  [color.codigo, color.nombre, color.descripcion, color.hex].filter(Boolean).join(" ").toLowerCase()
+                }
+                actionNode={
+                  <button type="button" className="btn btn-outline-secondary" onClick={crearColorRapido}>
+                    +
+                  </button>
+                }
+              />
             </div>
 
             <div className="col-md-2">
