@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { obtenerFamiliaPorId, crearFamilia, actualizarFamilia } from "../../services/familias";
@@ -17,6 +17,18 @@ export default function FamiliaForm({ familiaId }) {
     activo: true
   });
   const [lineas, setLineas] = useState([]);
+
+  const obtenerErrorCampo = (campo) =>
+    erroresBackend[campo] ||
+    erroresBackend[`${campo}Id`] ||
+    erroresBackend[`${campo}_id`] ||
+    "";
+
+  const inputClass = (campo) =>
+    `form-control ${obtenerErrorCampo(campo) ? "is-invalid" : ""}`;
+
+  const selectClass = (campo) =>
+    `form-select ${obtenerErrorCampo(campo) ? "is-invalid" : ""}`;
 
   useEffect(() => {
     const cargarLineas = async () => {
@@ -66,31 +78,65 @@ export default function FamiliaForm({ familiaId }) {
       ...prev,
       [name]: type === "checkbox" ? checked : value
     }));
+
+    setErroresBackend((prev) => {
+      if (!prev || Object.keys(prev).length === 0) return prev;
+
+      const copia = { ...prev };
+
+      if (name === "lineaId") {
+        delete copia.lineaId;
+        delete copia.linea_id;
+      } else {
+        delete copia[name];
+        delete copia[`${name}Id`];
+        delete copia[`${name}_id`];
+      }
+
+      delete copia.general;
+      delete copia.message;
+
+      return copia;
+    });
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
 
     try {
-      setErroresBackend({});
+      const erroresValidacion = {};
+      const codigo = formData.codigo?.toString().trim() || "";
+      const nombre = formData.nombre?.trim() || "";
+      const descripcion = formData.descripcion?.trim() || "";
       const lineaIdNormalizado = formData.lineaId ? Number(formData.lineaId) : null;
 
+      if (!codigo) {
+        erroresValidacion.codigo = "El codigo es obligatorio";
+      }
+
+      if (!nombre) {
+        erroresValidacion.nombre = "El nombre es obligatorio";
+      }
+
       if (!lineaIdNormalizado) {
-        setErroresBackend((prev) => ({
-          ...prev,
-          lineaId: "La linea es obligatoria"
-        }));
+        erroresValidacion.lineaId = "La linea es obligatoria";
+      }
+
+      if (Object.keys(erroresValidacion).length > 0) {
+        setErroresBackend(erroresValidacion);
         return;
       }
 
       const payload = {
-        codigo: formData.codigo?.toString().trim() || "",
-        nombre: formData.nombre?.trim() || "",
-        descripcion: formData.descripcion?.trim() || "",
+        codigo,
+        nombre,
+        descripcion,
         lineaId: lineaIdNormalizado,
         linea_id: lineaIdNormalizado,
         activo: Boolean(formData.activo)
       };
+
+      setErroresBackend({});
 
       if (esEdicion) {
         await actualizarFamilia(familiaId, payload);
@@ -102,6 +148,31 @@ export default function FamiliaForm({ familiaId }) {
     } catch (error) {
       if (error?.errors) {
         setErroresBackend(error.errors);
+      } else if (error?.message) {
+        const mensaje = error.message;
+        const erroresNormalizados = {};
+
+        if (/c[oó]digo/i.test(mensaje)) {
+          erroresNormalizados.codigo = mensaje;
+        }
+
+        if (/nombre/i.test(mensaje)) {
+          erroresNormalizados.nombre = mensaje;
+        }
+
+        if (/descripci[oó]n/i.test(mensaje)) {
+          erroresNormalizados.descripcion = mensaje;
+        }
+
+        if (/linea|l[ií]nea/i.test(mensaje)) {
+          erroresNormalizados.lineaId = mensaje;
+        }
+
+        setErroresBackend(
+          Object.keys(erroresNormalizados).length > 0
+            ? erroresNormalizados
+            : { general: mensaje }
+        );
       } else {
         console.error(error);
       }
@@ -109,28 +180,60 @@ export default function FamiliaForm({ familiaId }) {
   }
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit} noValidate>
+      {erroresBackend.general && (
+        <div className="alert alert-danger">
+          {erroresBackend.general}
+        </div>
+      )}
+
       <div className="row g-3">
         <div className="col-md-4">
           <label className="form-label">Codigo</label>
-          <input type="text" name="codigo" className="form-control" value={formData.codigo} onChange={handleChange} />
+          <input
+            type="text"
+            name="codigo"
+            className={inputClass("codigo")}
+            value={formData.codigo}
+            onChange={handleChange}
+          />
+          <div className="invalid-feedback">
+            {obtenerErrorCampo("codigo")}
+          </div>
         </div>
 
         <div className="col-md-8">
           <label className="form-label">Nombre</label>
-          <input type="text" name="nombre" className="form-control" value={formData.nombre} onChange={handleChange} />
+          <input
+            type="text"
+            name="nombre"
+            className={inputClass("nombre")}
+            value={formData.nombre}
+            onChange={handleChange}
+          />
+          <div className="invalid-feedback">
+            {obtenerErrorCampo("nombre")}
+          </div>
         </div>
 
         <div className="col-md-12">
           <label className="form-label">Descripcion</label>
-          <textarea name="descripcion" className="form-control" value={formData.descripcion} onChange={handleChange} />
+          <textarea
+            name="descripcion"
+            className={inputClass("descripcion")}
+            value={formData.descripcion}
+            onChange={handleChange}
+          />
+          <div className="invalid-feedback">
+            {obtenerErrorCampo("descripcion")}
+          </div>
         </div>
 
         <div className="col-md-12">
           <label className="form-label">Linea</label>
           <select
             name="lineaId"
-            className={`form-select ${erroresBackend.lineaId || erroresBackend.linea_id ? "is-invalid" : ""}`}
+            className={selectClass("lineaId")}
             value={formData.lineaId}
             onChange={handleChange}
           >
@@ -141,7 +244,9 @@ export default function FamiliaForm({ familiaId }) {
               </option>
             ))}
           </select>
-          <div className="invalid-feedback">{erroresBackend.lineaId || erroresBackend.linea_id}</div>
+          <div className="invalid-feedback">
+            {obtenerErrorCampo("lineaId")}
+          </div>
         </div>
 
         <div className="col-md-12">

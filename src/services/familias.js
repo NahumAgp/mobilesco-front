@@ -5,8 +5,33 @@ import { API_PATHS } from "../config/apiPaths";
 // FAMILIAS
 // ========================================
 
-export function obtenerFamilias() {
-  return request(API_PATHS.FAMILIAS);
+export function obtenerFamilias(params = {}) {
+  const page = typeof params === "number" ? params : params.page;
+  const size = typeof params === "object" ? params.size : undefined;
+  const sortBy = typeof params === "object" ? params.sortBy : undefined;
+  const direction = typeof params === "object" ? params.direction : undefined;
+
+  const searchParams = new URLSearchParams();
+
+  if (page !== undefined && page !== null) {
+    searchParams.set("page", page);
+  }
+
+  if (size !== undefined && size !== null) {
+    searchParams.set("size", size);
+  }
+
+  if (sortBy) {
+    searchParams.set("sortBy", sortBy);
+  }
+
+  if (direction) {
+    searchParams.set("direction", direction);
+  }
+
+  const queryString = searchParams.toString();
+
+  return request(queryString ? `${API_PATHS.FAMILIAS}?${queryString}` : API_PATHS.FAMILIAS);
 }
 
 export function obtenerFamiliaPorId(id) {
