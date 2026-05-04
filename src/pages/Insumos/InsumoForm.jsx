@@ -22,6 +22,7 @@ export default function InsumoForm({
   const esEdicion = Boolean(insumoId) || Boolean(insumo);
 
   const [formData, setFormData] = useState({
+    codigo: "",
     nombre: "",
     descripcion: "",
     ubicacion: "",
@@ -55,6 +56,7 @@ export default function InsumoForm({
     const cargar = async () => {
       if (esModal && insumo) {
         setFormData({
+          codigo: insumo.codigo || "",
           nombre: insumo.nombre || "",
           descripcion: insumo.descripcion || "",
           ubicacion: insumo.ubicacion || "",
@@ -72,6 +74,7 @@ export default function InsumoForm({
         try {
           const data = await obtenerInsumoPorId(insumoId);
           setFormData({
+            codigo: data.codigo || "",
             nombre: data.nombre || "",
             descripcion: data.descripcion || "",
             ubicacion: data.ubicacion || "",
@@ -179,6 +182,21 @@ export default function InsumoForm({
           </div>
           <div className="card-body">
             <div className="row g-3">
+              <div className="col-md-6">
+                <label className="form-label fw-semibold">
+                  Código del Insumo <span className="text-danger">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="codigo"
+                  className={inputClass("codigo")}
+                  value={formData.codigo}
+                  onChange={handleChange}
+                  placeholder="Ej: INS-001"
+                />
+                <div className="invalid-feedback">{erroresBackend.codigo || erroresExternos.codigo}</div>
+              </div>
+
               <div className="col-md-6">
                 <label className="form-label fw-semibold">
                   Nombre del Insumo <span className="text-danger">*</span>

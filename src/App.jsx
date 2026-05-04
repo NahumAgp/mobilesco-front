@@ -50,8 +50,11 @@ import ComprasFormPage from "./pages/Compras/CompraFormPage.jsx";
 import KardexPage from "./pages/Kardex/KardexPage"; 
 import CompraDetallePage from "./pages/Compras/CompraDetallePage.jsx";
 
-import VarianteFormPage from "./pages/Variantes/VarianteFromPage.jsx";
+import ProductoFormPage from "./pages/Productos/ProductoFormPage.jsx";
 import ProductosCompletosPage from "./pages/ProductosCompletos/ProductosCompletosPage.jsx";
+import ProductoDetallePage from "./pages/Productos/ProductoDetallePage.jsx";
+import ProductoInsumosBOMPage from "./pages/Productos/ProductoInsumosBOMPage.jsx";
+import ProductoOperacionesBOMPage from "./pages/Productos/ProductoOperacionesBOMPage.jsx";
 
 export default function App() {
 
@@ -158,15 +161,10 @@ export default function App() {
         {/* Productos */}
         <Route path="/productos" element={<ProductosCompletosPage />} />
         <Route path="/productos/nuevo" element={<ProductosCompletosPage iniciarCreacion />} />
-        <Route path="/productos/:id" element={<VarianteFormPage returnPath="/productos" />} />
-        <Route path="/productos/:id/ver" element={<Navigate to="/productos" replace />} />
-        <Route path="/productos/:id/bom/insumos" element={<Navigate to="/productos" replace />} />
-        <Route path="/productos/:id/bom/operaciones" element={<Navigate to="/productos" replace />} />
-
-        {/* Variantes legacy */}
-        <Route path="/variantes" element={<Navigate to="/productos" replace />} />
-        <Route path="/variantes/nuevo" element={<Navigate to="/productos/nuevo" replace />} />
-        <Route path="/variantes/:id" element={<Navigate to="/productos" replace />} />
+        <Route path="/productos/:id" element={<ProductoFormPage />} />
+        <Route path="/productos/:id/ver" element={<ProductoDetallePage />} />
+        <Route path="/productos/:id/bom/insumos" element={<ProductoInsumosBOMPage />} />
+        <Route path="/productos/:id/bom/operaciones" element={<ProductoOperacionesBOMPage />} />
 
         <Route path="/productos-completos" element={<Navigate to="/productos" replace />} />
         <Route path="/prueba/productos" element={<Navigate to="/productos" replace />} />
