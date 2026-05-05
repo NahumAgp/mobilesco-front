@@ -1,6 +1,7 @@
 // pages/Productos/ProductoFormPage.jsx
 import { useParams, useNavigate } from "react-router-dom";
 import ProductoForm from "./ProductoForm.jsx"; 
+import ProductoCostosPanel from "./ProductoCostosPanel.jsx";
 
 export default function ProductoFormPage() {
   const { id } = useParams();
@@ -18,6 +19,7 @@ export default function ProductoFormPage() {
       </div>
 
       <ProductoForm productoId={id} />
+      {esEdicion && <ProductoCostosPanel productoId={id} />}
     </div>
   );
 }

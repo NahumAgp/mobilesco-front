@@ -1,4 +1,4 @@
-import request from "./api";
+import request, { API_BASE_URL } from "./api";
 import { API_PATHS } from "../config/apiPaths";
 
 const normalizarProductoId = (data = {}) => data.productoId ?? data.varianteId ?? null;
@@ -52,6 +52,16 @@ export function subirImagenArchivo({ archivo, productoId, varianteId, esPrincipa
   }).then(normalizarRespuestaImagen);
 }
 
+export function subirImagenProducto(productoId, archivo, { esPrincipal = false, orden = 0, altTexto = "" } = {}) {
+  return subirImagenArchivo({
+    archivo,
+    productoId,
+    esPrincipal,
+    orden,
+    altTexto
+  });
+}
+
 export function crearImagen(data) {
   const payload = { ...data };
   if (payload.productoId === undefined && payload.varianteId !== undefined) {
@@ -100,6 +110,12 @@ export function eliminarImagenesPorProducto(productoId) {
 }
 
 // Aliases legados para módulos que todavía usan el nombre viejo.
+export function construirUrlImagen(src) {
+  if (!src) return "";
+  if (/^https?:\/\//i.test(src)) return src;
+  return `${API_BASE_URL}${src.startsWith("/") ? src : `/${src}`}`;
+}
+
 export const obtenerImagenesPorVariante = obtenerImagenesPorProducto;
 export const obtenerImagenPrincipalPorVariante = obtenerImagenPrincipalPorProducto;
 export const eliminarImagenesPorVariante = eliminarImagenesPorProducto;

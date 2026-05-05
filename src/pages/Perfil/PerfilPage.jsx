@@ -2,13 +2,14 @@ import { useState } from "react";
 import { getUser } from "../../services/authService";
 import "./PerfilPage.css";
 import { subirFotoPerfil } from "../../services/empleados";
+import { API_BASE_URL } from "../../config/apiConfig";
 
 export default function PerfilPage() {
 
   const user = getUser();
 
   const [fotoPreview, setFotoPreview] = useState(
-    user?.fotoUrl ? `http://localhost:8081${user.fotoUrl}` : null
+    user?.fotoUrl ? `${API_BASE_URL}${user.fotoUrl}` : null
   );
 
   const handleFotoChange = async (e) => {

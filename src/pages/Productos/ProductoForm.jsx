@@ -14,8 +14,7 @@ import {
 } from "../../services/imagenes.js";
 import Toast from "../../components/ui/Toast.jsx";
 import Card from "../../components/ui/Card.jsx";
-
-const API_BASE_URL = "http://localhost:8081";
+import { API_BASE_URL } from "../../config/apiConfig.js";
 
 const getLista = (respuesta) => {
   if (Array.isArray(respuesta)) return respuesta;

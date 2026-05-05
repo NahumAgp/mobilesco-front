@@ -1,8 +1,9 @@
 // 📁 src/api/api.js
 
 import { API_PATHS } from "../config/apiPaths";
+import { API_BASE_URL } from "../config/apiConfig";
 
-const API_BASE_URL = "http://localhost:8081";
+export { API_BASE_URL };
 
 let isRefreshing = false;
 let refreshPromise = null;

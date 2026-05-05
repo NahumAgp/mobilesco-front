@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://localhost:8081";
+import { API_BASE_URL } from "../../config/apiConfig.js";
 
 const getModeloImagenUrl = (modelo) => {
   const raw =

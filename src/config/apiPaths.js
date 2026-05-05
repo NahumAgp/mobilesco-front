@@ -14,10 +14,11 @@ export const API_PATHS = {
   
   // Productos
   LINEAS: `${API_VERSION}/lineas`,
+  LINEA_PRODUCTO: `${API_VERSION}/lineas`,
   FAMILIAS: `${API_VERSION}/familias`,
   MODELOS: `${API_VERSION}/modelos`,
   VARIANTES: `${API_VERSION}/productos`,
-  CATEGORIAS: `${API_VERSION}/niveles`,
+  CATEGORIAS: `${API_VERSION}/categorias`,
   NIVELES: `${API_VERSION}/niveles`,
   CATEGORIA_REAL: `${API_VERSION}/categorias`,
   COLORES: `${API_VERSION}/colores`,

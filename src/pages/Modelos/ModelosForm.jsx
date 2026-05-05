@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { obtenerModeloPorId, crearModelo, actualizarModelo, eliminarModelo } from "../../services/modelos.js";
 import { obtenerFamilias } from "../../services/familias.js";
 import { obtenerProductos } from "../../services/variantes.js";
+import { API_BASE_URL } from "../../config/apiConfig.js";
 import {
   obtenerImagenesPorProducto,
   obtenerImagenesPorVariante,
@@ -14,8 +15,6 @@ import {
 import Toast from "../../components/ui/Toast.jsx";
 import SearchableSelect from "../../components/ui/SearchableSelect.jsx";
 import "./ModelosPage.css";
-
-const API_BASE_URL = "http://localhost:8081";
 
 const getLista = (respuesta) => {
   if (Array.isArray(respuesta)) return respuesta;

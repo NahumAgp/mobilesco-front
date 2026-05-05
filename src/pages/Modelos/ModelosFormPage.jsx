@@ -3,10 +3,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import ModelosForm from "./ModelosForm.jsx";
 import { obtenerProductos } from "../../services/productos.js";
+import { API_BASE_URL } from "../../config/apiConfig.js";
 import ProductoRapidoDrawer from "./ProductoRapidoDrawer.jsx";
 import "./ModelosPage.css";
-
-const API_BASE_URL = "http://localhost:8081";
 
 const extraerListaProductos = (respuesta) => {
   if (Array.isArray(respuesta)) return respuesta;

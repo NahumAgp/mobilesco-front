@@ -2,6 +2,7 @@ import "./Sidebar.css";
 import { NavLink, useNavigate } from "react-router-dom";
 import { logout, getUser } from "../../services/authService";
 import { useState, useRef, useEffect } from "react";
+import { API_BASE_URL } from "../../config/apiConfig";
 
 export default function Sidebar() {
 
@@ -23,7 +24,7 @@ export default function Sidebar() {
   const rol = rolMap[user?.roles?.[0]] || user?.roles?.[0] || "";
 
   const foto = user?.fotoUrl
-    ? `http://localhost:8081${user.fotoUrl}`
+    ? `${API_BASE_URL}${user.fotoUrl}`
     : null;
   const iniciales = `${nombre.trim().charAt(0)}${apellido.trim().charAt(0)}`.toUpperCase() || "U";
   const mostrarFoto = foto && failedFoto !== foto;

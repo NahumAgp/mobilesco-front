@@ -7,6 +7,7 @@ import { obtenerNiveles, crearNivel } from "../../services/niveles.js";
 import { obtenerColores, crearColor } from "../../services/color.js";
 import { crearProducto } from "../../services/variantes.js";
 import { subirImagenArchivo } from "../../services/imagenes.js";
+import { API_BASE_URL } from "../../config/apiConfig.js";
 import SearchableSelect from "../../components/ui/SearchableSelect.jsx";
 
 const MAX_SIZE_BYTES = 5 * 1024 * 1024;
@@ -78,8 +79,8 @@ const construirNombre = ({ modelo, categoria, color }) =>
 const toPreviewUrl = (url) => {
   if (!url || typeof url !== "string") return "";
   if (/^https?:\/\//i.test(url)) return url;
-  if (url.startsWith("/")) return `http://localhost:8081${url}`;
-  return `http://localhost:8081/${url}`;
+  if (url.startsWith("/")) return `${API_BASE_URL}${url}`;
+  return `${API_BASE_URL}/${url}`;
 };
 
 const getImagenActiva = (imagen) =>

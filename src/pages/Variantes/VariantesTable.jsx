@@ -1,6 +1,5 @@
 import "./VariantesTable.css";
-
-const API_BASE_URL = "http://localhost:8081";
+import { API_BASE_URL } from "../../config/apiConfig.js";
 
 const getProductoId = (producto) =>
   producto?.id || producto?.productoId || producto?.id_producto || null;
