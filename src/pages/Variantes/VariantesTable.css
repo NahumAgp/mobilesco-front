@@ -3,7 +3,7 @@
 }
 
 .variantes-table-wrap {
-  max-height: calc(100vh - 350px);
+  max-height: calc(100vh - 260px);
   overflow: auto;
 }
 
@@ -32,7 +32,12 @@
 }
 
 .variantes-col-descripcion {
-  width: 360px;
+  width: 300px;
+}
+
+.variantes-col-linea,
+.variantes-col-familia {
+  width: 140px;
 }
 
 .variantes-col-modelo,
@@ -43,10 +48,6 @@
 
 .variantes-col-estado {
   width: 116px;
-}
-
-.variantes-col-fecha {
-  width: 142px;
 }
 
 .variantes-col-acciones {

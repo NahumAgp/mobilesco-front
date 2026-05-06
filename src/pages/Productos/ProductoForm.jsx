@@ -437,11 +437,11 @@ export default function ProductoForm({
               </div>
             </Card>
 
-            <Card title="Imágenes del producto" icon="bi-images" className="mb-4">
+            <Card title="Imagenes por producto base y color" icon="bi-images" className="mb-4">
               {esEdicion ? (
                 <>
                   <div className="d-flex align-items-center justify-content-between mb-3">
-                    <div className="text-muted">Sube varias imágenes, marca una principal o elimina las que no sirvan.</div>
+                    <div className="text-muted">Estas imagenes se comparten con variantes del mismo producto base y color.</div>
                     <div className="d-flex gap-2">
                       <span className="badge text-bg-secondary">{imagenes.length}</span>
                       <span className={`badge ${productoPrincipal ? "bg-success" : "bg-secondary"}`}>
@@ -474,8 +474,8 @@ export default function ProductoForm({
                           onChange={handleFileChange}
                         />
                         <i className="bi bi-cloud-upload fs-2 text-secondary"></i>
-                        <p className="mt-2 mb-0">Arrastra imágenes aquí o haz clic para seleccionar</p>
-                        <small className="text-muted">Puedes subir varias imágenes al mismo tiempo.</small>
+                        <p className="mt-2 mb-0">Arrastra imagenes aqui o haz clic para seleccionar</p>
+                        <small className="text-muted">Se aplicaran a todas las variantes del mismo color.</small>
                         {subiendoImagenes && <div className="mt-2 text-primary fw-semibold">Subiendo...</div>}
                       </div>
 
@@ -527,14 +527,14 @@ export default function ProductoForm({
                             );
                           })
                         ) : (
-                          <div className="col-12 text-muted">Todavía no hay imágenes para este producto.</div>
+                          <div className="col-12 text-muted">Todavia no hay imagenes para este producto base y color.</div>
                         )}
                       </div>
                     </>
                   )}
                 </>
               ) : (
-                <div className="text-muted">Guarda el producto para comenzar a subir imágenes.</div>
+                <div className="text-muted">Guarda el producto para comenzar a subir imagenes por color.</div>
               )}
             </Card>
           </div>

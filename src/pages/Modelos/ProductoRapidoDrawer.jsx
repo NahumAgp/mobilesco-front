@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { obtenerModeloPorId } from "../../services/modelos.js";
+import { obtenerModeloPorId, subirImagenModelo, eliminarImagenModelo } from "../../services/modelos.js";
 import { obtenerFamiliaPorId } from "../../services/familias.js";
 import { obtenerLineaProductoPorId } from "../../services/lineaProducto.js";
 import { obtenerNiveles, crearNivel } from "../../services/niveles.js";
@@ -111,8 +111,10 @@ const getHexColor = (color) => {
 
 export default function ProductoRapidoDrawer({ show, modeloId, onClose, onSaved }) {
   const fileInputRef = useRef(null);
+  const modeloFileInputRef = useRef(null);
   const nextImagenIdRef = useRef(1);
   const imagenesRef = useRef([]);
+  const imagenModeloRef = useRef(null);
   const descripcionAutoRef = useRef("");
   const [dragActive, setDragActive] = useState(false);
   const [cargando, setCargando] = useState(false);
@@ -124,6 +126,7 @@ export default function ProductoRapidoDrawer({ show, modeloId, onClose, onSaved 
   const [categorias, setCategorias] = useState([]);
   const [colores, setColores] = useState([]);
   const [imagenes, setImagenes] = useState([]);
+  const [imagenModelo, setImagenModelo] = useState(null);
   const [formCategoria, setFormCategoria] = useState({ codigo: "", nombre: "" });
   const [formColor, setFormColor] = useState({ codigo: "", nombre: "", hex: "#808080" });
   const [mostrarAltaCategoria, setMostrarAltaCategoria] = useState(false);
@@ -190,6 +193,10 @@ export default function ProductoRapidoDrawer({ show, modeloId, onClose, onSaved 
   }, [imagenes]);
 
   useEffect(() => {
+    imagenModeloRef.current = imagenModelo;
+  }, [imagenModelo]);
+
+  useEffect(() => {
     setFormData((prev) => {
       const descripcionActual = prev.descripcion || "";
       const descripcionAnterior = descripcionAutoRef.current;
@@ -217,6 +224,7 @@ export default function ProductoRapidoDrawer({ show, modeloId, onClose, onSaved 
     setCategorias([]);
     setColores([]);
     setImagenes([]);
+    setImagenModelo(null);
     setFormCategoria({ codigo: "", nombre: "" });
     setFormColor({ codigo: "", nombre: "", hex: "#808080" });
     setMostrarAltaCategoria(false);
@@ -236,7 +244,13 @@ export default function ProductoRapidoDrawer({ show, modeloId, onClose, onSaved 
     }
   }, [show, resetForm]);
 
-  useEffect(() => () => limpiarImagenesLocales(imagenesRef.current), [limpiarImagenesLocales]);
+  useEffect(
+    () => () => {
+      limpiarImagenesLocales(imagenesRef.current);
+      limpiarImagenesLocales([imagenModeloRef.current]);
+    },
+    [limpiarImagenesLocales]
+  );
 
   useEffect(() => {
     if (!show) return undefined;
@@ -258,6 +272,14 @@ export default function ProductoRapidoDrawer({ show, modeloId, onClose, onSaved 
 
         const modelo = modeloResp || null;
         setModeloBase(modelo);
+        const urlModelo =
+          modelo?.urlImagen ||
+          modelo?.url_imagen ||
+          modelo?.imagenUrl ||
+          modelo?.imagenPrincipalUrl ||
+          modelo?.imagen?.url ||
+          "";
+        setImagenModelo(urlModelo ? { id: "modelo-actual", url: urlModelo, nombre: "Imagen actual del modelo" } : null);
         setCategorias(getLista(categoriasResp));
         setColores(getLista(coloresResp));
 
@@ -423,6 +445,28 @@ export default function ProductoRapidoDrawer({ show, modeloId, onClose, onSaved 
     });
   };
 
+  const manejarCambioImagenModelo = (event) => {
+    const file = event.target.files?.[0] || null;
+    event.target.value = "";
+    if (!file) return;
+
+    const [valida] = validarArchivos([file]);
+    if (!valida) return;
+
+    setImagenModelo((prev) => {
+      if (prev?.url?.startsWith("blob:")) {
+        URL.revokeObjectURL(prev.url);
+      }
+
+      return {
+        id: `modelo-${Date.now()}`,
+        file: valida,
+        url: URL.createObjectURL(valida),
+        nombre: valida.name
+      };
+    });
+  };
+
   const manejarCambioImagen = (event) => {
     const files = Array.from(event.target.files || []);
     event.target.value = "";
@@ -468,8 +512,28 @@ export default function ProductoRapidoDrawer({ show, modeloId, onClose, onSaved 
     });
   };
 
+  const quitarImagenModelo = async () => {
+    if (!modeloId) return;
+
+    try {
+      setError("");
+      if (imagenModelo?.url?.startsWith("blob:")) {
+        URL.revokeObjectURL(imagenModelo.url);
+        setImagenModelo(null);
+        return;
+      }
+
+      await eliminarImagenModelo(modeloId);
+      setImagenModelo(null);
+      setModeloBase((prev) => (prev ? { ...prev, urlImagen: null, url_imagen: null } : prev));
+    } catch (deleteError) {
+      setError(deleteError?.message || "No se pudo eliminar la imagen del modelo.");
+    }
+  };
+
   const cerrarPanel = () => {
     limpiarImagenesLocales(imagenes);
+    limpiarImagenesLocales([imagenModelo]);
     onClose?.();
   };
 
@@ -512,6 +576,11 @@ export default function ProductoRapidoDrawer({ show, modeloId, onClose, onSaved 
         throw new Error("No se recibio el ID del producto creado.");
       }
 
+      if (imagenModelo?.file instanceof File) {
+        const modeloActualizado = await subirImagenModelo(Number(modeloId), imagenModelo.file);
+        setModeloBase(modeloActualizado || modeloBase);
+      }
+
       for (let index = 0; index < imagenesConPrincipal.length; index += 1) {
         const imagen = imagenesConPrincipal[index];
         if (!(imagen.file instanceof File)) continue;
@@ -540,6 +609,7 @@ export default function ProductoRapidoDrawer({ show, modeloId, onClose, onSaved 
 
   const imagenRepresentativa = getImagenRepresentativa(imagenes);
   const previewUrl = imagenRepresentativa?.url ? toPreviewUrl(imagenRepresentativa.url) : "";
+  const imagenModeloUrl = imagenModelo?.url ? toPreviewUrl(imagenModelo.url) : "";
 
   return (
     <>
@@ -787,6 +857,87 @@ export default function ProductoRapidoDrawer({ show, modeloId, onClose, onSaved 
                   onChange={(e) => setFormData((prev) => ({ ...prev, descripcion: e.target.value }))}
                   placeholder="Descripcion corta del producto"
                 />
+              </div>
+
+              <div className="border rounded p-3 mb-3 bg-white">
+                <div className="d-flex justify-content-between align-items-start gap-3 mb-2">
+                  <div>
+                    <div className="fw-semibold">Imagen del modelo</div>
+                    <small className="text-muted">
+                      Se guarda en el modelo y sirve como respaldo cuando una variante no tiene imagen por color.
+                    </small>
+                  </div>
+                  <span className={`badge ${imagenModeloUrl ? "bg-success" : "bg-secondary"}`}>
+                    {imagenModeloUrl ? "Lista" : "Sin imagen"}
+                  </span>
+                </div>
+
+                <div className="d-flex gap-3 align-items-center flex-wrap">
+                  {imagenModeloUrl ? (
+                    <img
+                      src={imagenModeloUrl}
+                      alt="Imagen del modelo"
+                      style={{
+                        width: "96px",
+                        height: "96px",
+                        objectFit: "cover",
+                        borderRadius: "8px",
+                        border: "1px solid #dee2e6",
+                        background: "#f8f9fa"
+                      }}
+                    />
+                  ) : (
+                    <div
+                      className="d-flex align-items-center justify-content-center border rounded text-muted bg-light"
+                      style={{ width: "96px", height: "96px" }}
+                    >
+                      N/A
+                    </div>
+                  )}
+
+                  <div className="d-flex gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      className="btn btn-outline-primary btn-sm"
+                      onClick={() => modeloFileInputRef.current?.click()}
+                    >
+                      {imagenModeloUrl ? "Cambiar" : "Subir"} imagen
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-outline-danger btn-sm"
+                      onClick={quitarImagenModelo}
+                      disabled={!imagenModeloUrl}
+                    >
+                      Eliminar
+                    </button>
+                    {imagenes.length > 0 && !imagenModelo?.file && (
+                      <button
+                        type="button"
+                        className="btn btn-outline-secondary btn-sm"
+                        onClick={() => {
+                          const principal = imagenes.find((imagen) => imagen.principal) || imagenes[0];
+                          if (!principal?.file) return;
+                          setImagenModelo({
+                            id: `modelo-${Date.now()}`,
+                            file: principal.file,
+                            url: URL.createObjectURL(principal.file),
+                            nombre: principal.nombre
+                          });
+                        }}
+                      >
+                        Usar principal
+                      </button>
+                    )}
+                    <input
+                      ref={modeloFileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="d-none"
+                      onChange={manejarCambioImagenModelo}
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="border-2 border-dashed rounded p-3 text-center mb-3"

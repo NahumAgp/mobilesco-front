@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ProductoWizard from "./components/ProductoWizard";
-import { crearModelo } from "../../services/modelos";
+import { crearModelo, actualizarModelo, subirImagenModelo } from "../../services/modelos";
 import { crearVariante } from "../../services/variantes";
 import { crearImagen, subirImagenArchivo } from "../../services/imagenes";
 import { obtenerProductos, eliminarProducto, exportarProductosExcel } from "../../services/productos";
@@ -11,6 +11,54 @@ import { obtenerColores } from "../../services/color";
 import VariantesTable from "../Variantes/VariantesTable";
 import PageHeader from "../../components/Sistema/PageHeader";
 import Toast from "../../components/ui/Toast";
+import "./ProductosCompletosPage.css";
+
+const PAGE_SIZE = 10;
+
+function construirRangoPaginas(totalPages, currentPage) {
+  if (!totalPages || totalPages <= 0) return [];
+
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => index);
+  }
+
+  const paginas = [0];
+  const inicio = Math.max(1, currentPage - 1);
+  const fin = Math.min(totalPages - 2, currentPage + 1);
+
+  if (inicio > 1) {
+    paginas.push("...");
+  }
+
+  for (let page = inicio; page <= fin; page += 1) {
+    paginas.push(page);
+  }
+
+  if (fin < totalPages - 2) {
+    paginas.push("...");
+  }
+
+  paginas.push(totalPages - 1);
+  return paginas;
+}
+
+const compararValor = (a, b) => {
+  const valorA = a ?? "";
+  const valorB = b ?? "";
+
+  if (typeof valorA === "number" && typeof valorB === "number") {
+    return valorA - valorB;
+  }
+
+  if (typeof valorA === "boolean" && typeof valorB === "boolean") {
+    return Number(valorA) - Number(valorB);
+  }
+
+  return String(valorA).localeCompare(String(valorB), "es", {
+    numeric: true,
+    sensitivity: "base"
+  });
+};
 
 const getLista = (respuesta) => {
   if (Array.isArray(respuesta)) return respuesta;
@@ -114,8 +162,14 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
   const [errorLista, setErrorLista] = useState("");
   const [mensaje, setMensaje] = useState("");
   const [tipoMensaje, setTipoMensaje] = useState("success");
+  const [page, setPage] = useState(0);
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstatus, setFiltroEstatus] = useState("TODOS");
+  const [filtroModelo, setFiltroModelo] = useState("");
+  const [filtroNivel, setFiltroNivel] = useState("");
+  const [filtroColor, setFiltroColor] = useState("");
+  const [sortField, setSortField] = useState("sku");
+  const [sortDirection, setSortDirection] = useState("asc");
   const [exportandoExcel, setExportandoExcel] = useState(false);
 
   const cargarProductos = async () => {
@@ -162,7 +216,9 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
 
       const blob = await exportarProductosExcel({
         activo: filtroEstatus === "TODOS" ? undefined : filtroEstatus === "ACTIVO",
-        busqueda: busqueda || undefined
+        busqueda: busqueda || undefined,
+        sortBy: sortField,
+        direction: sortDirection
       });
 
       const url = window.URL.createObjectURL(blob);
@@ -262,6 +318,8 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
 
     return {
       ...producto,
+      lineaNombre: producto?.lineaNombre || producto?.linea?.nombre || producto?.modelo?.familia?.linea?.nombre || "",
+      familiaNombre: producto?.familiaNombre || producto?.familia?.nombre || producto?.modelo?.familia?.nombre || "",
       nombre_modelo: modeloNombre || producto?.nombre_modelo || "",
       nombre_nivel: categoriaNombre || producto?.nombre_nivel || "",
       nombre_color: colorNombre || producto?.nombre_color || "",
@@ -350,6 +408,15 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
         nuevoProducto?.imagenes
       );
 
+      if (imagenModelo?.file instanceof File) {
+        await subirImagenModelo(Number(modeloId), imagenModelo.file);
+      } else {
+        const urlModelo = construirUrlPersistible(imagenModelo);
+        if (urlModelo) {
+          await actualizarModelo(Number(modeloId), { url_imagen: urlModelo });
+        }
+      }
+
       const mapaVariantes = new Map();
       for (const variante of variantes) {
         const payloadVariante = {
@@ -374,6 +441,8 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
         mapaVariantes.set(String(variante.id), Number(varianteIdBd));
       }
 
+      const coloresConImagenesGuardadas = new Set();
+
       for (const variante of variantes) {
         const varianteIdBd = mapaVariantes.get(String(variante.id));
         if (!varianteIdBd) continue;
@@ -381,6 +450,11 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
         const listaImagenes = Array.isArray(imagenesPorVariante?.[String(variante.id)])
           ? imagenesPorVariante[String(variante.id)]
           : [];
+
+        const colorKey = variante?.colorId ? String(variante.colorId) : String(variante.id);
+        if (coloresConImagenesGuardadas.has(colorKey)) {
+          continue;
+        }
 
         for (let idx = 0; idx < listaImagenes.length; idx += 1) {
           const imagen = listaImagenes[idx];
@@ -392,24 +466,9 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
             altTexto: imagen?.nombre || `Imagen ${idx + 1}`
           });
         }
-      }
 
-      if (imagenModelo?.origen !== "variante" && imagenModelo && variantes.length > 0) {
-        const primeraVarianteLocal = variantes[0];
-        const primeraVarianteBd = mapaVariantes.get(String(primeraVarianteLocal.id));
-
-        if (primeraVarianteBd) {
-          const listaPrimera = Array.isArray(imagenesPorVariante?.[String(primeraVarianteLocal.id)])
-            ? imagenesPorVariante[String(primeraVarianteLocal.id)]
-            : [];
-
-          await guardarImagenVariante({
-            imagen: imagenModelo,
-            varianteId: primeraVarianteBd,
-            esPrincipal: listaPrimera.length === 0,
-            orden: listaPrimera.length + 1,
-            altTexto: imagenModelo?.nombre || "Portada del modelo"
-          });
+        if (listaImagenes.length > 0) {
+          coloresConImagenesGuardadas.add(colorKey);
         }
       }
 
@@ -441,34 +500,148 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
     }
   };
 
-  const productosFiltrados = productos.filter((variante) => {
-    const productoEnriquecido = enriquecerProducto(variante);
-    const termino = busqueda.toLowerCase().trim();
-    const texto = [
-      productoEnriquecido?.sku,
-      productoEnriquecido?.nombre,
-      productoEnriquecido?.descripcion,
-      productoEnriquecido?.productoBaseNombre,
-      productoEnriquecido?.nombre_modelo,
-      productoEnriquecido?.modeloNombre,
-      productoEnriquecido?.nivelNombre,
-      productoEnriquecido?.nombre_nivel,
-      productoEnriquecido?.categoriaNombre,
-      productoEnriquecido?.colorNombre,
-      productoEnriquecido?.nombre_color
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
+  const productosEnriquecidos = useMemo(
+    () => productos.map((producto) => enriquecerProducto(producto)),
+    [productos, modelosCatalogo, categoriasCatalogo, coloresCatalogo, modelosPorId, categoriasPorId, coloresPorId]
+  );
 
-    const coincideBusqueda = !termino || texto.includes(termino);
-    const coincideEstatus =
-      filtroEstatus === "TODOS" ||
-      (filtroEstatus === "ACTIVO" && productoEnriquecido?.activo) ||
-      (filtroEstatus === "INACTIVO" && !productoEnriquecido?.activo);
+  const modelosDisponibles = useMemo(() => {
+    const mapa = new Map();
+    productosEnriquecidos.forEach((producto) => {
+      const id = producto?.modeloId || producto?.id_modelo || producto?.modelo_id || producto?.productoBaseId || "";
+      const nombre = producto?.modeloNombre || producto?.nombre_modelo || producto?.productoBaseNombre || "";
+      if (id && nombre) mapa.set(String(id), nombre);
+    });
+    return Array.from(mapa.entries()).map(([id, nombre]) => ({ id, nombre })).sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+  }, [productosEnriquecidos]);
 
-    return coincideBusqueda && coincideEstatus;
-  });
+  const nivelesDisponibles = useMemo(() => {
+    const mapa = new Map();
+    productosEnriquecidos.forEach((producto) => {
+      const id = producto?.nivelId || producto?.id_nivel || producto?.nivel_id || producto?.categoriaId || "";
+      const nombre = producto?.nivelNombre || producto?.nombre_nivel || producto?.categoriaNombre || "";
+      if (id && nombre) mapa.set(String(id), nombre);
+    });
+    return Array.from(mapa.entries()).map(([id, nombre]) => ({ id, nombre })).sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+  }, [productosEnriquecidos]);
+
+  const coloresDisponibles = useMemo(() => {
+    const mapa = new Map();
+    productosEnriquecidos.forEach((producto) => {
+      const id = producto?.colorId || producto?.id_color || producto?.color_id || "";
+      const nombre = producto?.colorNombre || producto?.nombre_color || "";
+      if (id && nombre) mapa.set(String(id), nombre);
+    });
+    return Array.from(mapa.entries()).map(([id, nombre]) => ({ id, nombre })).sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+  }, [productosEnriquecidos]);
+
+  const productosFiltrados = useMemo(() => {
+    const termino = busqueda.toLowerCase().trim().replace(/\s+/g, " ");
+    const palabras = termino ? termino.split(" ") : [];
+
+    const filtrados = productosEnriquecidos.filter((productoEnriquecido) => {
+      const texto = [
+        productoEnriquecido?.sku,
+        productoEnriquecido?.nombre,
+        productoEnriquecido?.descripcion,
+        productoEnriquecido?.lineaNombre,
+        productoEnriquecido?.familiaNombre,
+        productoEnriquecido?.productoBaseNombre,
+        productoEnriquecido?.nombre_modelo,
+        productoEnriquecido?.modeloNombre,
+        productoEnriquecido?.nivelNombre,
+        productoEnriquecido?.nombre_nivel,
+        productoEnriquecido?.categoriaNombre,
+        productoEnriquecido?.colorNombre,
+        productoEnriquecido?.nombre_color,
+        productoEnriquecido?.activo ? "activo" : "inactivo"
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      const coincideBusqueda = palabras.length === 0 || palabras.every((palabra) => texto.includes(palabra));
+      const coincideEstatus =
+        filtroEstatus === "TODOS" ||
+        (filtroEstatus === "ACTIVO" && productoEnriquecido?.activo) ||
+        (filtroEstatus === "INACTIVO" && !productoEnriquecido?.activo);
+      const coincideModelo =
+        !filtroModelo ||
+        String(productoEnriquecido?.modeloId || productoEnriquecido?.id_modelo || productoEnriquecido?.modelo_id || productoEnriquecido?.productoBaseId || "") === String(filtroModelo);
+      const coincideNivel =
+        !filtroNivel ||
+        String(productoEnriquecido?.nivelId || productoEnriquecido?.id_nivel || productoEnriquecido?.nivel_id || productoEnriquecido?.categoriaId || "") === String(filtroNivel);
+      const coincideColor =
+        !filtroColor ||
+        String(productoEnriquecido?.colorId || productoEnriquecido?.id_color || productoEnriquecido?.color_id || "") === String(filtroColor);
+
+      return coincideBusqueda && coincideEstatus && coincideModelo && coincideNivel && coincideColor;
+    });
+
+    return filtrados.sort((a, b) => {
+      const getValor = (producto) => {
+        switch (sortField) {
+          case "modeloNombre":
+            return producto?.modeloNombre || producto?.nombre_modelo || "";
+          case "lineaNombre":
+            return producto?.lineaNombre || "";
+          case "familiaNombre":
+            return producto?.familiaNombre || "";
+          case "nivelNombre":
+            return producto?.nivelNombre || producto?.nombre_nivel || producto?.categoriaNombre || "";
+          case "colorNombre":
+            return producto?.colorNombre || producto?.nombre_color || "";
+          default:
+            return producto?.[sortField];
+        }
+      };
+
+      const resultado = compararValor(getValor(a), getValor(b));
+      return sortDirection === "asc" ? resultado : -resultado;
+    });
+  }, [
+    busqueda,
+    filtroColor,
+    filtroEstatus,
+    filtroModelo,
+    filtroNivel,
+    productosEnriquecidos,
+    sortDirection,
+    sortField
+  ]);
+
+  const totalElements = productosFiltrados.length;
+  const totalPages = Math.ceil(totalElements / PAGE_SIZE);
+  const paginaActual = totalPages > 0 ? Math.min(page, totalPages - 1) : 0;
+  const paginasVisibles = construirRangoPaginas(totalPages, paginaActual);
+  const desde = totalElements > 0 ? paginaActual * PAGE_SIZE + 1 : 0;
+  const hasta = totalElements > 0 ? Math.min((paginaActual + 1) * PAGE_SIZE, totalElements) : 0;
+  const productosPaginados = productosFiltrados.slice(paginaActual * PAGE_SIZE, paginaActual * PAGE_SIZE + PAGE_SIZE);
+  const hayFiltrosActivos = Boolean(busqueda.trim()) || filtroEstatus !== "TODOS" || Boolean(filtroModelo) || Boolean(filtroNivel) || Boolean(filtroColor);
+  const mostrarVacio = !loadingLista && !errorLista && productos.length === 0;
+  const mostrarSinCoincidencias = !loadingLista && !errorLista && productos.length > 0 && productosFiltrados.length === 0;
+
+  useEffect(() => {
+    if (!loadingLista && totalPages > 0 && page >= totalPages) {
+      setPage(totalPages - 1);
+    }
+  }, [loadingLista, page, totalPages]);
+
+  const irAPagina = (nuevaPagina) => {
+    if (nuevaPagina < 0) return;
+    if (totalPages > 0 && nuevaPagina >= totalPages) return;
+    setPage(nuevaPagina);
+  };
+
+  const manejarOrden = (campo) => {
+    if (sortField === campo) {
+      setSortDirection((direccionActual) => (direccionActual === "asc" ? "desc" : "asc"));
+    } else {
+      setSortDirection("asc");
+      setSortField(campo);
+    }
+    setPage(0);
+  };
 
   if (modoCreacion) {
     return (
@@ -482,18 +655,18 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
 
       <PageHeader
         title="Productos"
-        subtitle="Alta unificada de modelos, variantes e imagenes"
+        subtitle="Catalogo paginado de modelos, variantes e imagenes"
         actions={
-          <div className="d-flex gap-2">
+          <div className="productos-header-actions">
             <button
-              className="btn btn-outline-success"
+              className="btn productos-brand-outline me-2"
               onClick={exportarExcel}
               disabled={exportandoExcel}
             >
               <i className="bi bi-file-earmark-excel me-1"></i>
               {exportandoExcel ? "Generando..." : "Reporte Excel"}
             </button>
-            <button className="btn btn-success" onClick={() => setModoCreacion(true)}>
+            <button className="btn productos-brand-primary" onClick={() => setModoCreacion(true)}>
               <i className="bi bi-plus-circle me-2"></i>
               Nuevo Producto
             </button>
@@ -504,24 +677,84 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
       {loadingLista && <div className="alert alert-info">Cargando productos...</div>}
       {errorLista && <div className="alert alert-danger">{errorLista}</div>}
 
-      <div className="card mb-3">
+      <div className="card mb-3 productos-filters-card">
         <div className="card-body">
           <div className="row g-2 align-items-center">
-            <div className="col-md-5">
+            <div className="col-lg-4 col-md-6">
               <input
                 type="text"
                 className="form-control"
                 placeholder="Buscar por SKU, variante, modelo, nivel o color..."
                 value={busqueda}
-                onChange={(event) => setBusqueda(event.target.value)}
+                onChange={(event) => {
+                  setBusqueda(event.target.value);
+                  setPage(0);
+                }}
               />
             </div>
 
-            <div className="col-md-3">
+            <div className="col-lg-2 col-md-3">
+              <select
+                className="form-select"
+                value={filtroModelo}
+                onChange={(event) => {
+                  setFiltroModelo(event.target.value);
+                  setPage(0);
+                }}
+              >
+                <option value="">Todos los modelos</option>
+                {modelosDisponibles.map((modelo) => (
+                  <option key={modelo.id} value={modelo.id}>
+                    {modelo.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="col-lg-2 col-md-3">
+              <select
+                className="form-select"
+                value={filtroNivel}
+                onChange={(event) => {
+                  setFiltroNivel(event.target.value);
+                  setPage(0);
+                }}
+              >
+                <option value="">Todos los niveles</option>
+                {nivelesDisponibles.map((nivel) => (
+                  <option key={nivel.id} value={nivel.id}>
+                    {nivel.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="col-lg-2 col-md-3">
+              <select
+                className="form-select"
+                value={filtroColor}
+                onChange={(event) => {
+                  setFiltroColor(event.target.value);
+                  setPage(0);
+                }}
+              >
+                <option value="">Todos los colores</option>
+                {coloresDisponibles.map((color) => (
+                  <option key={color.id} value={color.id}>
+                    {color.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="col-lg-2 col-md-3">
               <select
                 className="form-select"
                 value={filtroEstatus}
-                onChange={(event) => setFiltroEstatus(event.target.value)}
+                onChange={(event) => {
+                  setFiltroEstatus(event.target.value);
+                  setPage(0);
+                }}
               >
                 <option value="TODOS">Todos</option>
                 <option value="ACTIVO">Activos</option>
@@ -532,11 +765,114 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
         </div>
       </div>
 
-      <VariantesTable
-        data={productosFiltrados}
-        onEditar={(variante) => navigate(`/productos/${variante.id}`)}
-        onEliminar={manejarEliminar}
-      />
+      {mostrarVacio ? (
+        <div className="card shadow-sm border-0 productos-empty-card">
+          <div className="text-center text-muted py-5">
+            <i className="bi bi-box-seam fs-1 d-block mb-3 text-secondary"></i>
+            <span className="fs-5 d-block">No hay productos registrados</span>
+            <p className="text-secondary mt-2 mb-0">
+              Crea el primer producto para comenzar el catalogo
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="productos-page-shell">
+          {mostrarSinCoincidencias ? (
+            <div className="card shadow-sm border-0 productos-empty-card">
+              <div className="text-center text-muted py-5">
+                <i className="bi bi-funnel fs-1 d-block mb-3 text-secondary"></i>
+                <span className="fs-5 d-block">No hay coincidencias</span>
+                <p className="text-secondary mt-2 mb-0">
+                  Ajusta los filtros para ver productos en esta pagina
+                </p>
+              </div>
+            </div>
+          ) : (
+            <VariantesTable
+              data={productosPaginados}
+              onEditar={(variante) => navigate(`/productos/${variante.id}`)}
+              onEliminar={manejarEliminar}
+              sortField={sortField}
+              sortDirection={sortDirection}
+              onSort={manejarOrden}
+            />
+          )}
+
+          {totalElements > 0 && (
+            <div className="productos-pagination-panel">
+              <div className="productos-pagination-summary">
+                {hayFiltrosActivos
+                  ? `Mostrando ${productosPaginados.length} de ${totalElements} coincidencias`
+                  : `Mostrando ${desde} a ${hasta} de ${totalElements} productos`}
+              </div>
+
+              <nav aria-label="Paginacion de productos">
+                <ul className="pagination mb-0 flex-wrap">
+                  <li className={`page-item ${paginaActual <= 0 ? "disabled" : ""}`}>
+                    <button
+                      className="page-link"
+                      onClick={() => irAPagina(0)}
+                      disabled={paginaActual <= 0}
+                    >
+                      Primera
+                    </button>
+                  </li>
+
+                  <li className={`page-item ${paginaActual <= 0 ? "disabled" : ""}`}>
+                    <button
+                      className="page-link"
+                      onClick={() => irAPagina(paginaActual - 1)}
+                      disabled={paginaActual <= 0}
+                    >
+                      Anterior
+                    </button>
+                  </li>
+
+                  {paginasVisibles.map((pagina, index) => (
+                    pagina === "..." ? (
+                      <li key={`dots-${index}`} className="page-item disabled">
+                        <span className="page-link">...</span>
+                      </li>
+                    ) : (
+                      <li
+                        key={`page-${pagina}`}
+                        className={`page-item ${paginaActual === pagina ? "active" : ""}`}
+                      >
+                        <button
+                          className="page-link"
+                          onClick={() => irAPagina(pagina)}
+                        >
+                          {pagina + 1}
+                        </button>
+                      </li>
+                    )
+                  ))}
+
+                  <li className={`page-item ${paginaActual >= totalPages - 1 ? "disabled" : ""}`}>
+                    <button
+                      className="page-link"
+                      onClick={() => irAPagina(paginaActual + 1)}
+                      disabled={paginaActual >= totalPages - 1}
+                    >
+                      Siguiente
+                    </button>
+                  </li>
+
+                  <li className={`page-item ${paginaActual >= totalPages - 1 ? "disabled" : ""}`}>
+                    <button
+                      className="page-link"
+                      onClick={() => irAPagina(totalPages - 1)}
+                      disabled={paginaActual >= totalPages - 1}
+                    >
+                      Ultima
+                    </button>
+                  </li>
+                </ul>
+              </nav>
+            </div>
+          )}
+        </div>
+      )}
     </>
   );
 }

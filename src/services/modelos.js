@@ -54,6 +54,22 @@ export function actualizarModelo(id, data) {
   });
 }
 
+export function subirImagenModelo(id, archivo) {
+  const formData = new FormData();
+  formData.append("archivo", archivo);
+
+  return request(`${API_PATHS.MODELOS}/${id}/imagen`, {
+    method: "POST",
+    body: formData,
+  });
+}
+
+export function eliminarImagenModelo(id) {
+  return request(`${API_PATHS.MODELOS}/${id}/imagen`, {
+    method: "DELETE",
+  });
+}
+
 export function activarModelo(id) {
   const url = `${API_PATHS.MODELOS}/${id}/activar`;
   return request(url, {

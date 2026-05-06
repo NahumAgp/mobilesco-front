@@ -1,4 +1,4 @@
-﻿const getImagenesModeloyVariantes = (imagenes) => {
+const getImagenesModeloyVariantes = (imagenes) => {
   if (Array.isArray(imagenes)) {
     const modelo = imagenes.find((img) => img?.principal) || imagenes[0] || null;
     return {
@@ -23,8 +23,36 @@
   };
 };
 
+const getColorKey = (variante) =>
+  String(variante?.colorId || variante?.colorCodigo || variante?.colorNombre || variante?.id || "");
+
+const agruparVariantesPorColor = (variantes = []) => {
+  const grupos = new Map();
+
+  variantes.forEach((variante) => {
+    const key = getColorKey(variante);
+    if (!key) return;
+
+    if (!grupos.has(key)) {
+      grupos.set(key, {
+        key,
+        colorCodigo: variante.colorCodigo || "",
+        colorNombre: variante.colorNombre || "Sin color",
+        colorHex: variante.colorHex || "#ccc",
+        representante: variante,
+        variantes: []
+      });
+    }
+
+    grupos.get(key).variantes.push(variante);
+  });
+
+  return Array.from(grupos.values());
+};
+
 export default function ResumenStep({ data }) {
   const variantes = Array.isArray(data.variantes) ? data.variantes : [];
+  const colores = agruparVariantesPorColor(variantes);
 
   const { modelo: imagenModelo, variantes: imagenesPorVariante, total: totalImagenes } =
     getImagenesModeloyVariantes(data.imagenes);
@@ -140,18 +168,28 @@ export default function ResumenStep({ data }) {
             )}
           </div>
 
-          <h6 className="fw-semibold">Imagenes por variante</h6>
-          {variantes.length === 0 && <div className="text-muted">No hay variantes para mostrar imagenes.</div>}
+          <h6 className="fw-semibold">Imagenes por color</h6>
+          {colores.length === 0 && <div className="text-muted">No hay colores para mostrar imagenes.</div>}
 
-          {variantes.map((variante) => {
-            const lista = Array.isArray(imagenesPorVariante?.[String(variante.id)])
-              ? imagenesPorVariante[String(variante.id)]
+          {colores.map((grupoColor) => {
+            const lista = Array.isArray(imagenesPorVariante?.[String(grupoColor.representante.id)])
+              ? imagenesPorVariante[String(grupoColor.representante.id)]
               : [];
 
             return (
-              <div key={variante.id} className="mb-3">
-                <div className="mb-2">
-                  <code>{variante.sku || "SIN-SKU"}</code> <span className="text-muted">({lista.length} imagenes)</span>
+              <div key={grupoColor.key} className="mb-3">
+                <div className="mb-2 d-flex gap-2 align-items-center">
+                  <span
+                    className="rounded-circle border"
+                    style={{ width: "16px", height: "16px", backgroundColor: grupoColor.colorHex }}
+                  />
+                  <strong>
+                    {grupoColor.colorCodigo ? `[${grupoColor.colorCodigo}] ` : ""}
+                    {grupoColor.colorNombre}
+                  </strong>
+                  <span className="text-muted">
+                    ({lista.length} imagenes para {grupoColor.variantes.length} variantes)
+                  </span>
                 </div>
                 <div className="d-flex flex-wrap gap-2">
                   {lista.length === 0 ? (

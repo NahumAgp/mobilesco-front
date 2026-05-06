@@ -26,8 +26,6 @@ export const API_PATHS = {
 
   PRODUCTOS: `${API_VERSION}/productos`,
   MATERIALES: `${API_VERSION}/materiales`,
-  TIPO_PRODUCTO: `${API_VERSION}/tipos-producto`,
-
   // Insumos
   INSUMOS: `${API_VERSION}/insumos`,
 
@@ -39,6 +37,8 @@ export const API_PATHS = {
 
   // Compras
    COMPRAS: `${API_VERSION}/compras`,
+  DETALLES_COMPRA: `${API_VERSION}/detalles-compra`,
+  KARDEX: `${API_VERSION}/kardex`,
   
   // Otros módulos
   PROVEEDORES: `${API_VERSION}/proveedores`,

@@ -1,17 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { obtenerModeloPorId, crearModelo, actualizarModelo, eliminarModelo } from "../../services/modelos.js";
+import {
+  obtenerModeloPorId,
+  crearModelo,
+  actualizarModelo,
+  eliminarModelo,
+  subirImagenModelo,
+  eliminarImagenModelo
+} from "../../services/modelos.js";
 import { obtenerFamilias } from "../../services/familias.js";
 import { obtenerProductos } from "../../services/variantes.js";
 import { API_BASE_URL } from "../../config/apiConfig.js";
-import {
-  obtenerImagenesPorProducto,
-  obtenerImagenesPorVariante,
-  obtenerImagenPrincipalPorProducto,
-  subirImagenArchivo,
-  actualizarImagen,
-  eliminarImagen
-} from "../../services/imagenes.js";
 import Toast from "../../components/ui/Toast.jsx";
 import SearchableSelect from "../../components/ui/SearchableSelect.jsx";
 import "./ModelosPage.css";
@@ -244,7 +243,7 @@ export default function ModeloForm({
     const productosLocales = typeof modeloFuente === "object" ? getVariantesDelModelo(modeloFuente) : [];
     const imagenLocal = typeof modeloFuente === "object" ? getImagenDesdeRespuesta(modeloFuente) : null;
 
-    if (!idModelo && productosLocales.length === 0 && !imagenLocal?.url) {
+    if (!idModelo && !imagenLocal?.url) {
       setVariantesModelo([]);
       setImagenPrincipal(null);
       return;
@@ -252,34 +251,13 @@ export default function ModeloForm({
 
     setCargandoImagen(true);
     try {
-      let principal = imagenLocal ? { ...imagenLocal, productoId: idModelo || imagenLocal?.productoId || null } : null;
+      let principal = imagenLocal ? { ...imagenLocal, modeloId: idModelo || null } : null;
 
-      if (idModelo) {
-        try {
-          const respuestaImagenesModelo = await obtenerImagenesPorProducto(idModelo);
-          const imagenesModelo = getLista(respuestaImagenesModelo);
-          const imagenModeloDesdeLista = getImagenRepresentativa(imagenesModelo);
-          if (imagenModeloDesdeLista?.url) {
-            principal = {
-              ...imagenModeloDesdeLista,
-              productoId: idModelo
-            };
-          }
-        } catch {
-          // Si no hay imagenes de modelo en la lista, probamos el endpoint principal.
-        }
-
-        try {
-          const respuestaImagenModelo = await obtenerImagenPrincipalPorProducto(idModelo);
-          const imagenModelo = getImagenDesdeRespuesta(respuestaImagenModelo);
-          if (imagenModelo?.url) {
-            principal = {
-              ...imagenModelo,
-              productoId: idModelo
-            };
-          }
-        } catch {
-          // Si no hay imagen independiente del modelo, seguimos con los productos relacionados.
+      if (idModelo && !principal?.url) {
+        const modeloActualizado = await obtenerModeloPorId(idModelo);
+        const imagenModelo = getImagenDesdeRespuesta(modeloActualizado);
+        if (imagenModelo?.url) {
+          principal = { ...imagenModelo, modeloId: idModelo };
         }
       }
 
@@ -293,48 +271,7 @@ export default function ModeloForm({
             : [];
 
       setVariantesModelo(productosDelModelo);
-
-      const mapaImagenes = {};
-      await Promise.all(
-        productosDelModelo.map(async (producto) => {
-          const productoId = getVarianteId(producto);
-          if (!productoId) return;
-
-          const imagenDirecta = getImagenDirectaProducto(producto);
-          if (imagenDirecta?.url) {
-            mapaImagenes[productoId] = imagenDirecta;
-            return;
-          }
-
-          try {
-            const listaResp = await obtenerImagenesPorProducto(productoId);
-            const lista = getLista(listaResp);
-
-            const representativa = getImagenRepresentativa(lista);
-            if (representativa?.url) {
-              mapaImagenes[productoId] = representativa;
-            }
-          } catch {
-            // Sin imagenes en esta variante.
-          }
-        })
-      );
-
-      let principalFinal = principal;
-      const primeraConImagen = productosDelModelo.find((producto) => {
-        const productoId = getVarianteId(producto);
-        return Boolean(productoId && mapaImagenes[productoId]?.url);
-      });
-      if (!principalFinal && primeraConImagen) {
-        const productoId = getVarianteId(primeraConImagen);
-        principalFinal = {
-          ...mapaImagenes[productoId],
-          varianteId: productoId,
-          productoId: idModelo || null
-        };
-      }
-
-      setImagenPrincipal(principalFinal);
+      setImagenPrincipal(principal);
     } catch (error) {
       console.error("Error cargando imagen principal del modelo:", error);
       setImagenPrincipal(null);
@@ -468,17 +405,12 @@ export default function ModeloForm({
     }
 
     try {
-      await subirImagenArchivo({
-        archivo,
-        productoId: Number(idModeloActual),
-        esPrincipal: true,
-        altTexto: `Modelo ${formData.nombre || formData.codigo || ""}`.trim() || "Imagen del modelo"
-      });
+      const modeloActualizado = await subirImagenModelo(Number(idModeloActual), archivo);
 
       setToastType("success");
       setToastMessage("Imagen del modelo actualizada.");
 
-      await cargarImagenPrincipalModelo(idModeloActual);
+      await cargarImagenPrincipalModelo(modeloActualizado || idModeloActual);
     } catch (error) {
       setToastType("danger");
       setToastMessage(error.message || "No se pudo actualizar la imagen del modelo.");
@@ -486,39 +418,21 @@ export default function ModeloForm({
   };
 
   const manejarEliminarImagen = async () => {
-    const idModeloActual = imagenPrincipal?.productoId || modeloId || getModeloId(modelo);
+    const idModeloActual = imagenPrincipal?.modeloId || modeloId || getModeloId(modelo);
 
-    if (!imagenPrincipal?.id || !idModeloActual) {
+    if (!imagenPrincipal?.url || !idModeloActual) {
       setToastType("warning");
-      setToastMessage("No hay imagen principal para eliminar.");
+      setToastMessage("No hay imagen de modelo para eliminar.");
       return;
     }
 
     try {
-      const listaResp = await obtenerImagenesPorVariante(idModeloActual);
-      const imagenesVariante = getLista(listaResp);
-
-      if (imagenesVariante.length <= 1) {
-        setToastType("warning");
-        setToastMessage("No se puede eliminar la unica imagen principal. Sube otra primero.");
-        return;
-      }
-
-      const alternativa = imagenesVariante.find((img) => Number(img.id) !== Number(imagenPrincipal.id));
-      if (alternativa?.id) {
-        await actualizarImagen(alternativa.id, {
-          esPrincipal: true,
-          orden: Number(alternativa.orden) || 1,
-          altTexto: alternativa.altTexto || alternativa.nombre || "Imagen principal"
-        });
-      }
-
-      await eliminarImagen(imagenPrincipal.id);
+      const modeloActualizado = await eliminarImagenModelo(idModeloActual);
 
       setToastType("success");
-      setToastMessage("Imagen principal eliminada.");
+      setToastMessage("Imagen del modelo eliminada.");
 
-      await cargarImagenPrincipalModelo(idModeloActual);
+      await cargarImagenPrincipalModelo(modeloActualizado || idModeloActual);
     } catch (error) {
       setToastType("danger");
       setToastMessage(error.message || "No se pudo eliminar la imagen.");

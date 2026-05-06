@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { obtenerNiveles, crearNivel } from "../../../../services/niveles.js";
 import { obtenerColores, crearColor } from "../../../../services/color.js";
@@ -21,30 +21,19 @@ const tomarInicial = (valor, fallback = "X") => {
 
 const construirCodigoCategoria = (categoria) => {
   const base = limpiarCodigo(categoria?.codigo || "");
-  if (/^\d+$/.test(base)) {
-    return base.slice(-2).padStart(2, "0");
-  }
-
-  if (base) {
-    return base.slice(0, 2).padEnd(2, "X");
-  }
+  if (/^\d+$/.test(base)) return base.slice(-2).padStart(2, "0");
+  if (base) return base.slice(0, 2).padEnd(2, "X");
 
   const porId = String(categoria?.id || "").replace(/\D/g, "");
-  if (porId) {
-    return porId.slice(-2).padStart(2, "0");
-  }
-
-  return "00";
+  return porId ? porId.slice(-2).padStart(2, "0") : "00";
 };
 
 const construirCodigoColor = (color) => {
   const base = limpiarCodigo(color?.codigo || "");
   if (base) return base.slice(0, 2).padEnd(2, "X");
 
-  const nombre = (color?.nombre || "").trim();
-  if (!nombre) return "SC";
-
-  const iniciales = nombre
+  const iniciales = (color?.nombre || "")
+    .trim()
     .split(/\s+/)
     .map((parte) => limpiarCodigo(parte)[0])
     .filter(Boolean)
@@ -58,38 +47,32 @@ const construirSku = ({ linea, familia, modelo, categoria, color }) => {
   const codigoFamilia = tomarInicial(familia?.codigo || familia?.nombre, "X");
   const codigoModelo = tomarInicial(modelo?.codigo || modelo?.nombre, "X");
 
-  const codigoCategoria = construirCodigoCategoria(categoria);
-  const codigoColor = construirCodigoColor(color);
-
-  return `${codigoLinea}${codigoFamilia}${codigoModelo}-${codigoCategoria}-${codigoColor}`;
+  return `${codigoLinea}${codigoFamilia}${codigoModelo}-${construirCodigoCategoria(categoria)}-${construirCodigoColor(color)}`;
 };
 
-export default function VariantesStep({ data, onUpdate }) {
-  const [editandoIndex, setEditandoIndex] = useState(null);
-  const [varianteForm, setVarianteForm] = useState({
-    categoriaId: "",
-    colorId: ""
-  });
+const getParKey = (categoriaId, colorId) => `${categoriaId}::${colorId}`;
 
+export default function VariantesStep({ data, onUpdate }) {
   const [categorias, setCategorias] = useState([]);
   const [colores, setColores] = useState([]);
   const [cargandoCatalogos, setCargandoCatalogos] = useState(true);
-
   const [familiaActual, setFamiliaActual] = useState(null);
   const [lineaActual, setLineaActual] = useState(null);
+
+  const [categoriaId, setCategoriaId] = useState("");
+  const [coloresSeleccionados, setColoresSeleccionados] = useState([]);
+  const [mensaje, setMensaje] = useState("");
 
   const variantes = Array.isArray(data.variantes) ? data.variantes : [];
 
   const cargarCategorias = async () => {
-    const respuesta = await obtenerNiveles();
-    const lista = getLista(respuesta);
+    const lista = getLista(await obtenerNiveles());
     setCategorias(lista);
     return lista;
   };
 
   const cargarColores = async () => {
-    const respuesta = await obtenerColores();
-    const lista = getLista(respuesta);
+    const lista = getLista(await obtenerColores());
     setColores(lista);
     return lista;
   };
@@ -123,12 +106,7 @@ export default function VariantesStep({ data, onUpdate }) {
         setFamiliaActual(familia || null);
 
         const lineaId = familia?.lineaId || familia?.linea?.id;
-        if (!lineaId) {
-          setLineaActual(null);
-          return;
-        }
-
-        const linea = await obtenerLineaProductoPorId(lineaId);
+        const linea = lineaId ? await obtenerLineaProductoPorId(lineaId) : null;
         setLineaActual(linea || null);
       } catch (error) {
         console.error("Error cargando contexto de SKU:", error);
@@ -141,79 +119,109 @@ export default function VariantesStep({ data, onUpdate }) {
   }, [data?.modelo?.familiaId]);
 
   const categoriaSeleccionada = useMemo(
-    () => categorias.find((categoria) => String(categoria.id) === String(varianteForm.categoriaId)),
-    [categorias, varianteForm.categoriaId]
+    () => categorias.find((categoria) => String(categoria.id) === String(categoriaId)) || null,
+    [categorias, categoriaId]
   );
 
-  const colorSeleccionado = useMemo(
-    () => colores.find((color) => String(color.id) === String(varianteForm.colorId)),
-    [colores, varianteForm.colorId]
+  const coloresElegidos = useMemo(
+    () => colores.filter((color) => coloresSeleccionados.includes(String(color.id))),
+    [colores, coloresSeleccionados]
   );
 
-  const skuGenerado = useMemo(
-    () =>
-      construirSku({
+  const variantesExistentes = useMemo(() => {
+    const pares = new Set();
+    const skus = new Set();
+    variantes.forEach((variante) => {
+      if (variante?.categoriaId && variante?.colorId) {
+        pares.add(getParKey(variante.categoriaId, variante.colorId));
+      }
+      if (variante?.sku) {
+        skus.add(variante.sku.trim().toUpperCase());
+      }
+    });
+    return { pares, skus };
+  }, [variantes]);
+
+  const toggleColor = (colorId) => {
+    const id = String(colorId);
+    setColoresSeleccionados((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+    setMensaje("");
+  };
+
+  const seleccionarColoresActivos = () => {
+    setColoresSeleccionados(colores.map((color) => String(color.id)));
+    setMensaje("");
+  };
+
+  const agregarVariantesDelNivel = () => {
+    if (!categoriaSeleccionada) {
+      setMensaje("Selecciona un nivel/categoria.");
+      return;
+    }
+
+    if (coloresElegidos.length === 0) {
+      setMensaje("Selecciona uno o mas colores para este nivel.");
+      return;
+    }
+
+    const nuevas = [...variantes];
+    const pares = new Set(variantesExistentes.pares);
+    const skus = new Set(variantesExistentes.skus);
+    let agregadas = 0;
+    let omitidas = 0;
+
+    coloresElegidos.forEach((color) => {
+      const parKey = getParKey(categoriaSeleccionada.id, color.id);
+      const sku = construirSku({
         linea: lineaActual,
         familia: familiaActual,
         modelo: data?.modelo,
         categoria: categoriaSeleccionada,
-        color: colorSeleccionado
-      }),
-    [lineaActual, familiaActual, data?.modelo, categoriaSeleccionada, colorSeleccionado]
-  );
+        color
+      }).toUpperCase();
 
-  const resetForm = () => {
-    setVarianteForm({ categoriaId: "", colorId: "" });
-    setEditandoIndex(null);
-  };
+      if (pares.has(parKey) || skus.has(sku)) {
+        omitidas += 1;
+        return;
+      }
 
-  const agregarOActualizarVariante = () => {
-    if (!varianteForm.categoriaId || !varianteForm.colorId) {
-      alert("Selecciona categoria y color para generar la variante.");
-      return;
-    }
+      nuevas.push({
+        id: Date.now() + nuevas.length,
+        categoriaId: Number(categoriaSeleccionada.id),
+        categoriaNombre: categoriaSeleccionada.nombre || "",
+        categoriaCodigo: categoriaSeleccionada.codigo || "",
+        colorId: Number(color.id),
+        colorNombre: color.nombre || "",
+        colorCodigo: color.codigo || "",
+        colorHex: color.hex || "",
+        sku
+      });
 
-    const nuevaVariante = {
-      id: editandoIndex !== null ? variantes[editandoIndex]?.id : Date.now(),
-      categoriaId: Number(varianteForm.categoriaId),
-      categoriaNombre: categoriaSeleccionada?.nombre || "",
-      categoriaCodigo: categoriaSeleccionada?.codigo || "",
-      colorId: Number(varianteForm.colorId),
-      colorNombre: colorSeleccionado?.nombre || "",
-      colorCodigo: colorSeleccionado?.codigo || "",
-      colorHex: colorSeleccionado?.hex || "",
-      sku: skuGenerado
-    };
-
-    const nuevasVariantes = [...variantes];
-    if (editandoIndex !== null) {
-      nuevasVariantes[editandoIndex] = nuevaVariante;
-    } else {
-      nuevasVariantes.push(nuevaVariante);
-    }
-
-    onUpdate("variantes", nuevasVariantes);
-    resetForm();
-  };
-
-  const editarVariante = (index) => {
-    const variante = variantes[index];
-    if (!variante) return;
-
-    setEditandoIndex(index);
-    setVarianteForm({
-      categoriaId: variante.categoriaId ? String(variante.categoriaId) : "",
-      colorId: variante.colorId ? String(variante.colorId) : ""
+      pares.add(parKey);
+      skus.add(sku);
+      agregadas += 1;
     });
+
+    onUpdate("variantes", nuevas);
+    setMensaje(`${agregadas} variantes agregadas${omitidas ? `, ${omitidas} duplicadas omitidas` : ""}.`);
   };
 
   const eliminarVariante = (index) => {
-    const nuevasVariantes = variantes.filter((_, i) => i !== index);
-    onUpdate("variantes", nuevasVariantes);
+    onUpdate("variantes", variantes.filter((_, i) => i !== index));
+    setMensaje("");
+  };
 
-    if (editandoIndex === index) {
-      resetForm();
-    }
+  const eliminarNivel = (nivelId) => {
+    onUpdate("variantes", variantes.filter((variante) => String(variante.categoriaId) !== String(nivelId)));
+    setMensaje("Nivel eliminado de la lista.");
+  };
+
+  const limpiarVariantes = () => {
+    if (!window.confirm("Eliminar todas las variantes generadas?")) return;
+    onUpdate("variantes", []);
+    setMensaje("Variantes limpiadas.");
   };
 
   const crearCategoriaRapida = async () => {
@@ -231,15 +239,9 @@ export default function VariantesStep({ data, onUpdate }) {
         activo: true
       });
 
-      const categoriasActualizadas = await cargarCategorias();
-
-      const categoriaRecienCreada = categoriasActualizadas.find(
-        (cat) => cat.nombre?.trim().toLowerCase() === nombre.trim().toLowerCase()
-      );
-
-      if (categoriaRecienCreada?.id) {
-        setVarianteForm((prev) => ({ ...prev, categoriaId: String(categoriaRecienCreada.id) }));
-      }
+      const actualizadas = await cargarCategorias();
+      const creada = actualizadas.find((cat) => cat.nombre?.trim().toLowerCase() === nombre.trim().toLowerCase());
+      if (creada?.id) setCategoriaId(String(creada.id));
     } catch (error) {
       console.error("Error creando categoria:", error);
       alert(error.message || "No se pudo crear la categoria.");
@@ -269,20 +271,31 @@ export default function VariantesStep({ data, onUpdate }) {
         hex: (hex || "#808080").trim().toUpperCase()
       });
 
-      const coloresActualizados = await cargarColores();
-
-      const colorRecienCreado = coloresActualizados.find(
-        (color) => color.nombre?.trim().toLowerCase() === nombre.trim().toLowerCase()
-      );
-
-      if (colorRecienCreado?.id) {
-        setVarianteForm((prev) => ({ ...prev, colorId: String(colorRecienCreado.id) }));
-      }
+      const actualizados = await cargarColores();
+      const creado = actualizados.find((color) => color.nombre?.trim().toLowerCase() === nombre.trim().toLowerCase());
+      if (creado?.id) toggleColor(creado.id);
     } catch (error) {
       console.error("Error creando color:", error);
       alert(error.message || "No se pudo crear el color.");
     }
   };
+
+  const variantesPorNivel = useMemo(() => {
+    const mapa = new Map();
+    variantes.forEach((variante) => {
+      const key = String(variante.categoriaId || "sin-nivel");
+      if (!mapa.has(key)) {
+        mapa.set(key, {
+          id: key,
+          nombre: variante.categoriaNombre || "Sin nivel",
+          codigo: variante.categoriaCodigo || "",
+          variantes: []
+        });
+      }
+      mapa.get(key).variantes.push(variante);
+    });
+    return Array.from(mapa.values());
+  }, [variantes]);
 
   if (cargandoCatalogos) {
     return (
@@ -302,17 +315,24 @@ export default function VariantesStep({ data, onUpdate }) {
         Variantes del Producto
       </h4>
 
+      <div className="alert alert-info py-2">
+        Trabaja un nivel a la vez: elige el nivel y marca solo los colores que existan para ese nivel.
+      </div>
+
       <div className="card bg-light mb-4">
         <div className="card-body">
-          <div className="row g-3 align-items-end">
-            <div className="col-md-5">
+          <div className="row g-3">
+            <div className="col-lg-5">
               <SearchableSelect
-                label="Categoria / Nivel *"
-                value={varianteForm.categoriaId}
+                label="Nivel / categoria"
+                value={categoriaId}
                 options={categorias}
-                onChange={(value) => setVarianteForm((prev) => ({ ...prev, categoriaId: value }))}
-                placeholder="Seleccionar categoria..."
-                searchPlaceholder="Escribe código, nombre o descripción..."
+                onChange={(value) => {
+                  setCategoriaId(value);
+                  setMensaje("");
+                }}
+                placeholder="Seleccionar nivel..."
+                searchPlaceholder="Escribe codigo, nombre o descripcion..."
                 getOptionValue={(categoria) => categoria.id}
                 getOptionLabel={(categoria) => `${categoria.codigo ? `[${categoria.codigo}] ` : ""}${categoria.nombre}`}
                 getOptionSearchText={(categoria) =>
@@ -326,113 +346,115 @@ export default function VariantesStep({ data, onUpdate }) {
               />
             </div>
 
-            <div className="col-md-5">
-              <SearchableSelect
-                label="Color *"
-                value={varianteForm.colorId}
-                options={colores}
-                onChange={(value) => setVarianteForm((prev) => ({ ...prev, colorId: value }))}
-                placeholder="Seleccionar color..."
-                searchPlaceholder="Escribe código, nombre o hex..."
-                getOptionValue={(color) => color.id}
-                getOptionLabel={(color) => `${color.codigo ? `[${color.codigo}] ` : ""}${color.nombre}`}
-                getOptionSearchText={(color) =>
-                  [color.codigo, color.nombre, color.descripcion, color.hex].filter(Boolean).join(" ").toLowerCase()
-                }
-                actionNode={
-                  <button type="button" className="btn btn-outline-secondary" onClick={crearColorRapido}>
-                    +
+            <div className="col-lg-7">
+              <div className="d-flex justify-content-between align-items-center mb-2">
+                <label className="form-label fw-semibold mb-0">Colores para este nivel</label>
+                <div className="d-flex gap-2">
+                  <button type="button" className="btn btn-sm btn-outline-secondary" onClick={seleccionarColoresActivos}>
+                    Todos
                   </button>
-                }
-              />
+                  <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setColoresSeleccionados([])}>
+                    Limpiar
+                  </button>
+                  <button type="button" className="btn btn-sm btn-outline-secondary" onClick={crearColorRapido}>
+                    + Color
+                  </button>
+                </div>
+              </div>
+
+              <div className="d-flex flex-wrap gap-2">
+                {colores.map((color) => {
+                  const selected = coloresSeleccionados.includes(String(color.id));
+                  return (
+                    <button
+                      key={color.id}
+                      type="button"
+                      className={`btn btn-sm ${selected ? "btn-success" : "btn-outline-success"}`}
+                      onClick={() => toggleColor(color.id)}
+                    >
+                      <span
+                        className="d-inline-block rounded-circle border me-1"
+                        style={{ width: "12px", height: "12px", backgroundColor: color.hex || "#ccc" }}
+                      />
+                      {color.codigo ? `[${color.codigo}] ` : ""}
+                      {color.nombre}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
-            <div className="col-md-2">
-              <label className="form-label fw-semibold">Vista color</label>
-              <div
-                className="border rounded"
-                style={{
-                  width: "100%",
-                  height: "38px",
-                  backgroundColor: colorSeleccionado?.hex || "#f8f9fa"
-                }}
-              ></div>
-            </div>
-
-            <div className="col-md-6">
-              <label className="form-label fw-semibold">SKU (automatico)</label>
-              <input type="text" className="form-control bg-white" value={skuGenerado} readOnly />
-              <small className="text-muted">
-                Formato: Linea + Familia + Modelo - Categoria - Color (ej: ESF-01-AE)
-              </small>
-            </div>
-
-            <div className="col-md-6">
-              <button className="btn btn-primary me-2" onClick={agregarOActualizarVariante}>
-                <i className={`bi ${editandoIndex !== null ? "bi-pencil" : "bi-plus"} me-1`}></i>
-                {editandoIndex !== null ? "Actualizar" : "Agregar"} Variante
+            <div className="col-12 d-flex flex-wrap align-items-center gap-2">
+              <button type="button" className="btn btn-primary" onClick={agregarVariantesDelNivel}>
+                Agregar colores al nivel
               </button>
-
-              {editandoIndex !== null && (
-                <button className="btn btn-secondary" onClick={resetForm}>
-                  Cancelar
+              {variantes.length > 0 && (
+                <button type="button" className="btn btn-outline-danger" onClick={limpiarVariantes}>
+                  Limpiar todo
                 </button>
               )}
+              {mensaje && <span className="text-muted">{mensaje}</span>}
             </div>
           </div>
         </div>
       </div>
 
-      {variantes.length > 0 && (
-        <div className="table-responsive">
-          <table className="table table-hover">
-            <thead className="table-light">
-              <tr>
-                <th>Categoria</th>
-                <th>Color</th>
-                <th>SKU</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {variantes.map((variante, index) => (
-                <tr key={variante.id || index}>
-                  <td className="fw-semibold">
-                    {variante.categoriaCodigo ? `[${variante.categoriaCodigo}] ` : ""}
-                    {variante.categoriaNombre || "-"}
-                  </td>
-                  <td>
-                    <div className="d-flex align-items-center gap-2">
-                      <div
-                        className="rounded-circle border"
-                        style={{
-                          width: "20px",
-                          height: "20px",
-                          backgroundColor: variante.colorHex || "#ccc"
-                        }}
-                      ></div>
-                      <span>
-                        {variante.colorCodigo ? `[${variante.colorCodigo}] ` : ""}
-                        {variante.colorNombre || "Sin color"}
-                      </span>
-                    </div>
-                  </td>
-                  <td>
-                    <code>{variante.sku || "-"}</code>
-                  </td>
-                  <td>
-                    <button className="btn btn-sm btn-outline-primary me-1" onClick={() => editarVariante(index)}>
-                      <i className="bi bi-pencil"></i>
-                    </button>
-                    <button className="btn btn-sm btn-outline-danger" onClick={() => eliminarVariante(index)}>
-                      <i className="bi bi-trash"></i>
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      {variantesPorNivel.length > 0 ? (
+        variantesPorNivel.map((grupo) => (
+          <div key={grupo.id} className="card mb-3">
+            <div className="card-header d-flex justify-content-between align-items-center">
+              <strong>
+                {grupo.codigo ? `[${grupo.codigo}] ` : ""}
+                {grupo.nombre}
+              </strong>
+              <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => eliminarNivel(grupo.id)}>
+                Quitar nivel
+              </button>
+            </div>
+            <div className="table-responsive">
+              <table className="table table-sm table-hover align-middle mb-0">
+                <thead className="table-light">
+                  <tr>
+                    <th>Color</th>
+                    <th>SKU</th>
+                    <th className="text-end">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {grupo.variantes.map((variante) => {
+                    const indexReal = variantes.findIndex((item) => item.id === variante.id);
+                    return (
+                      <tr key={variante.id}>
+                        <td>
+                          <span
+                            className="d-inline-block rounded-circle border me-2"
+                            style={{ width: "14px", height: "14px", backgroundColor: variante.colorHex || "#ccc" }}
+                          />
+                          {variante.colorCodigo ? `[${variante.colorCodigo}] ` : ""}
+                          {variante.colorNombre || "Sin color"}
+                        </td>
+                        <td>
+                          <code>{variante.sku || "-"}</code>
+                        </td>
+                        <td className="text-end">
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-danger"
+                            onClick={() => eliminarVariante(indexReal)}
+                          >
+                            <i className="bi bi-trash"></i>
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ))
+      ) : (
+        <div className="text-muted">Aun no hay variantes. Agrega colores al nivel seleccionado.</div>
       )}
     </div>
   );

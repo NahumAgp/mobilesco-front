@@ -1,10 +1,11 @@
 import request from "./api";
+import { API_PATHS } from "../config/apiPaths";
 
 // ========================================
 // KARDEX - SOLO CONSULTAS
 // ========================================
 
-const BASE_URL = "/api/kardex";
+const BASE_URL = API_PATHS.KARDEX;
 
 /**
  * Obtener historial completo de un insumo

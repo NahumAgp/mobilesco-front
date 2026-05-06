@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ProductoWizard from "./components/ProductoWizard";
-import { crearModelo } from "../../services/modelos";
+import { crearModelo, actualizarModelo, subirImagenModelo } from "../../services/modelos";
 import { crearVariante } from "../../services/variantes";
 import { crearImagen, subirImagenArchivo } from "../../services/imagenes";
 import { obtenerProductos, eliminarProducto } from "../../services/productos";
@@ -321,6 +321,15 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
         nuevoProducto?.imagenes
       );
 
+      if (imagenModelo?.file instanceof File) {
+        await subirImagenModelo(Number(modeloId), imagenModelo.file);
+      } else {
+        const urlModelo = construirUrlPersistible(imagenModelo);
+        if (urlModelo) {
+          await actualizarModelo(Number(modeloId), { url_imagen: urlModelo });
+        }
+      }
+
       const mapaVariantes = new Map();
       for (const variante of variantes) {
         const payloadVariante = {
@@ -345,6 +354,8 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
         mapaVariantes.set(String(variante.id), Number(varianteIdBd));
       }
 
+      const coloresConImagenesGuardadas = new Set();
+
       for (const variante of variantes) {
         const varianteIdBd = mapaVariantes.get(String(variante.id));
         if (!varianteIdBd) continue;
@@ -352,6 +363,11 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
         const listaImagenes = Array.isArray(imagenesPorVariante?.[String(variante.id)])
           ? imagenesPorVariante[String(variante.id)]
           : [];
+
+        const colorKey = variante?.colorId ? String(variante.colorId) : String(variante.id);
+        if (coloresConImagenesGuardadas.has(colorKey)) {
+          continue;
+        }
 
         for (let idx = 0; idx < listaImagenes.length; idx += 1) {
           const imagen = listaImagenes[idx];
@@ -363,24 +379,9 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
             altTexto: imagen?.nombre || `Imagen ${idx + 1}`
           });
         }
-      }
 
-      if (imagenModelo?.origen !== "variante" && imagenModelo && variantes.length > 0) {
-        const primeraVarianteLocal = variantes[0];
-        const primeraVarianteBd = mapaVariantes.get(String(primeraVarianteLocal.id));
-
-        if (primeraVarianteBd) {
-          const listaPrimera = Array.isArray(imagenesPorVariante?.[String(primeraVarianteLocal.id)])
-            ? imagenesPorVariante[String(primeraVarianteLocal.id)]
-            : [];
-
-          await guardarImagenVariante({
-            imagen: imagenModelo,
-            varianteId: primeraVarianteBd,
-            esPrincipal: listaPrimera.length === 0,
-            orden: listaPrimera.length + 1,
-            altTexto: imagenModelo?.nombre || "Portada del modelo"
-          });
+        if (listaImagenes.length > 0) {
+          coloresConImagenesGuardadas.add(colorKey);
         }
       }
 

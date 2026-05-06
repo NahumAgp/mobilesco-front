@@ -1,57 +1,59 @@
-// src/services/categorias.js
 import request from "./api";
 import { API_PATHS } from "../config/apiPaths";
 
-// ========================================
-// CATEGORÍAS
-// ========================================
+// En productos, "Categoria" visualmente corresponde al catalogo backend de niveles.
+const CATEGORIAS_PRODUCTO_PATH = API_PATHS.NIVELES;
 
 export function obtenerCategorias() {
-  return request(API_PATHS.CATEGORIAS);
+  return request(CATEGORIAS_PRODUCTO_PATH);
 }
 
 export function obtenerCategoriaPorId(id) {
-  return request(`${API_PATHS.CATEGORIAS}/${id}`);
+  return request(`${CATEGORIAS_PRODUCTO_PATH}/${id}`);
 }
 
 export function crearCategoria(data) {
-  return request(API_PATHS.CATEGORIAS, {
+  return request(CATEGORIAS_PRODUCTO_PATH, {
     method: "POST",
-    body: JSON.stringify(data),
+    body: JSON.stringify({
+      codigo: data.codigo,
+      nombre: data.nombre,
+      descripcion: data.descripcion
+    }),
   });
 }
 
 export function actualizarCategoria(id, data) {
-  return request(`${API_PATHS.CATEGORIAS}/${id}`, {
+  return request(`${CATEGORIAS_PRODUCTO_PATH}/${id}`, {
     method: "PUT",
     body: JSON.stringify(data),
   });
 }
 
 export function activarCategoria(id) {
-  return request(`${API_PATHS.CATEGORIAS}/${id}/activar`, {
+  return request(`${CATEGORIAS_PRODUCTO_PATH}/${id}/activar`, {
     method: "PATCH",
   });
 }
 
 export function desactivarCategoria(id) {
-  return request(`${API_PATHS.CATEGORIAS}/${id}/desactivar`, {
+  return request(`${CATEGORIAS_PRODUCTO_PATH}/${id}/desactivar`, {
     method: "PATCH",
   });
 }
 
 export function eliminarCategoria(id) {
-  return request(`${API_PATHS.CATEGORIAS}/${id}`, {
+  return request(`${CATEGORIAS_PRODUCTO_PATH}/${id}`, {
     method: "DELETE",
   });
 }
 
 export function obtenerCategoriasActivas() {
-  return request(`${API_PATHS.CATEGORIAS}/activos`);
+  return request(`${CATEGORIAS_PRODUCTO_PATH}/activos`);
 }
 
 export function buscarCategoriasPorNombre(nombre) {
-  return request(`${API_PATHS.CATEGORIAS}/buscar?nombre=${encodeURIComponent(nombre)}`);
+  return request(`${CATEGORIAS_PRODUCTO_PATH}/nombre/${encodeURIComponent(nombre)}`);
 }
 
 export function exportarCategoriasExcel(filtros = {}) {
@@ -65,8 +67,8 @@ export function exportarCategoriasExcel(filtros = {}) {
 
   const query = params.toString();
   const endpoint = query
-    ? `${API_PATHS.CATEGORIAS}/reporte/excel?${query}`
-    : `${API_PATHS.CATEGORIAS}/reporte/excel`;
+    ? `${CATEGORIAS_PRODUCTO_PATH}/reporte/excel?${query}`
+    : `${CATEGORIAS_PRODUCTO_PATH}/reporte/excel`;
 
   return request(endpoint, { responseType: "blob" });
 }

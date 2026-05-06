@@ -1,6 +1,27 @@
 import "./VariantesTable.css";
 import { API_BASE_URL } from "../../config/apiConfig.js";
 
+const COLUMNAS_ORDENABLES = {
+  sku: "SKU",
+  nombre: "Descripcion",
+  lineaNombre: "Linea",
+  familiaNombre: "Familia",
+  modeloNombre: "Modelo",
+  nivelNombre: "Nivel",
+  colorNombre: "Color",
+  activo: "Estado"
+};
+
+function obtenerIconoOrden(sortField, sortDirection, field) {
+  if (sortField !== field) {
+    return "bi bi-arrow-down-up text-secondary";
+  }
+
+  return sortDirection === "asc"
+    ? "bi bi-sort-down-alt text-primary"
+    : "bi bi-sort-up text-primary";
+}
+
 const getProductoId = (producto) =>
   producto?.id || producto?.productoId || producto?.id_producto || null;
 
@@ -37,6 +58,24 @@ const getProductoBaseNombre = (producto) =>
     producto?.modelo
   ]);
 
+const getLineaNombre = (producto) =>
+  getEtiquetaEntidad([
+    producto?.lineaNombre,
+    producto?.linea?.nombre,
+    producto?.modelo?.familia?.linea?.nombre,
+    producto?.familia?.linea?.nombre,
+    producto?.linea
+  ]);
+
+const getFamiliaNombre = (producto) =>
+  getEtiquetaEntidad([
+    producto?.familiaNombre,
+    producto?.familia?.nombre,
+    producto?.modelo?.familia?.nombre,
+    producto?.productoBase?.familia?.nombre,
+    producto?.familia
+  ]);
+
 const getNivelNombre = (producto) =>
   getEtiquetaEntidad([
     producto?.nombre_nivel,
@@ -60,13 +99,29 @@ const getImagenActiva = (imagen) =>
   imagen?.activo ?? imagen?.active ?? imagen?.habilitada ?? true;
 
 const getImagenRepresentativa = (producto) => {
-  const directa =
-    producto?.imagenPrincipal ||
-    producto?.imagen ||
-    producto?.foto ||
-    null;
+  const directa = producto?.imagenPrincipal || null;
 
   if (directa?.url) return directa;
+
+  const imagenes = Array.isArray(producto?.imagenes) ? producto.imagenes : [];
+  const principalActiva = imagenes.find(
+    (imagen) => Boolean(imagen?.esPrincipal || imagen?.principal) && getImagenActiva(imagen) && imagen?.url
+  );
+
+  if (principalActiva) return principalActiva;
+
+  const imagenPorColor = imagenes.find((imagen) => getImagenActiva(imagen) && imagen?.url);
+  if (imagenPorColor) return imagenPorColor;
+
+  const urlModelo =
+    producto?.modeloUrlImagen ||
+    producto?.modelo?.urlImagen ||
+    producto?.productoBase?.urlImagen ||
+    producto?.imagenModeloUrl ||
+    producto?.modeloImagenUrl ||
+    "";
+
+  if (urlModelo) return { url: urlModelo, altTexto: producto?.modeloNombre || producto?.nombre || producto?.sku };
 
   const urlDirecta =
     producto?.imagenPrincipalUrl ||
@@ -77,14 +132,14 @@ const getImagenRepresentativa = (producto) => {
 
   if (urlDirecta) return { url: urlDirecta, altTexto: producto?.nombre || producto?.sku };
 
-  const imagenes = Array.isArray(producto?.imagenes) ? producto.imagenes : [];
-  const principalActiva = imagenes.find(
-    (imagen) => Boolean(imagen?.esPrincipal || imagen?.principal) && getImagenActiva(imagen) && imagen?.url
-  );
+  const directaLegacy =
+    producto?.imagen ||
+    producto?.foto ||
+    null;
 
-  if (principalActiva) return principalActiva;
+  if (directaLegacy?.url) return directaLegacy;
 
-  return imagenes.find((imagen) => getImagenActiva(imagen) && imagen?.url) || null;
+  return null;
 };
 
 const toPreviewUrl = (url) => {
@@ -94,52 +149,68 @@ const toPreviewUrl = (url) => {
   return `${API_BASE_URL}/${url}`;
 };
 
-const formatFecha = (valor) => {
-  const fecha = new Date(valor);
-  if (Number.isNaN(fecha.getTime())) return "-";
+export default function VariantesTable({
+  data,
+  onEditar,
+  onEliminar,
+  sortField = "sku",
+  sortDirection = "asc",
+  onSort
+}) {
+  const renderHeader = (field, label) => {
+    const esOrdenable = Boolean(onSort) && Object.prototype.hasOwnProperty.call(COLUMNAS_ORDENABLES, field);
+    const ariaSort =
+      sortField === field
+        ? sortDirection === "asc"
+          ? "ascending"
+          : "descending"
+        : "none";
 
-  return fecha.toLocaleDateString("es-MX", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  });
-};
+    return (
+      <th aria-sort={ariaSort}>
+        {esOrdenable ? (
+          <button
+            type="button"
+            className="btn btn-link p-0 text-decoration-none productos-sort-button"
+            onClick={() => onSort(field)}
+          >
+            <span>{label}</span>
+            <i className={`${obtenerIconoOrden(sortField, sortDirection, field)} ms-2`}></i>
+          </button>
+        ) : (
+          label
+        )}
+      </th>
+    );
+  };
 
-export default function VariantesTable({ data, onEditar, onEliminar }) {
   return (
-    <div className="card variantes-table-card">
-      <div
-        className="table-responsive variantes-table-wrap"
-      >
+    <div className="card shadow-sm border-0 variantes-table-card productos-table-card">
+      <div className="table-responsive variantes-table-wrap productos-table-scroll">
         <table className="table table-hover align-middle mb-0 variantes-table">
           <colgroup>
             <col className="variantes-col-imagen" />
             <col className="variantes-col-sku" />
             <col className="variantes-col-descripcion" />
+            <col className="variantes-col-linea" />
+            <col className="variantes-col-familia" />
             <col className="variantes-col-modelo" />
             <col className="variantes-col-nivel" />
             <col className="variantes-col-color" />
             <col className="variantes-col-estado" />
-            <col className="variantes-col-fecha" />
             <col className="variantes-col-acciones" />
           </colgroup>
-          <thead
-            className="table-light"
-            style={{
-              position: "sticky",
-              top: 0,
-              zIndex: 2
-            }}
-          >
+          <thead className="table-light productos-table-head">
             <tr>
               <th>Imagen</th>
-              <th>SKU</th>
-              <th>Descripción</th>
-              <th>Producto Base</th>
-              <th>Nivel</th>
-              <th>Color</th>
-              <th>Estado</th>
-              <th>Fecha</th>
+              {renderHeader("sku", "SKU")}
+              {renderHeader("nombre", "Descripcion")}
+              {renderHeader("lineaNombre", "Linea")}
+              {renderHeader("familiaNombre", "Familia")}
+              {renderHeader("modeloNombre", "Modelo")}
+              {renderHeader("nivelNombre", "Nivel")}
+              {renderHeader("colorNombre", "Color")}
+              {renderHeader("activo", "Estado")}
               <th>Acciones</th>
             </tr>
           </thead>
@@ -153,6 +224,7 @@ export default function VariantesTable({ data, onEditar, onEliminar }) {
                 return (
                   <tr
                     key={productoId || producto?.sku}
+                    className="productos-table-row"
                     style={{ cursor: onEditar ? "pointer" : "default" }}
                     onClick={() => onEditar?.(producto)}
                   >
@@ -185,6 +257,8 @@ export default function VariantesTable({ data, onEditar, onEliminar }) {
                         </small>
                       )}
                     </td>
+                    <td>{getLineaNombre(producto)}</td>
+                    <td>{getFamiliaNombre(producto)}</td>
                     <td>{getProductoBaseNombre(producto)}</td>
                     <td>{getNivelNombre(producto)}</td>
                     <td>{getColorNombre(producto)}</td>
@@ -199,12 +273,11 @@ export default function VariantesTable({ data, onEditar, onEliminar }) {
                         {producto?.activo ? "Activo" : "Inactivo"}
                       </span>
                     </td>
-                    <td>{formatFecha(producto?.createdAt || producto?.updatedAt || producto?.fechaCreacion)}</td>
                     <td>
-                      <div className="variantes-table-actions">
+                      <div className="variantes-table-actions productos-actions">
                         <button
                           type="button"
-                          className="btn btn-sm btn-outline-primary"
+                          className="btn btn-sm productos-brand-outline"
                           onClick={(event) => {
                             event.stopPropagation();
                             onEditar?.(producto);
@@ -216,7 +289,7 @@ export default function VariantesTable({ data, onEditar, onEliminar }) {
                         </button>
                         <button
                           type="button"
-                          className="btn btn-sm btn-outline-danger"
+                          className="btn btn-sm productos-brand-danger"
                           onClick={(event) => {
                             event.stopPropagation();
                             onEliminar?.(productoId);
