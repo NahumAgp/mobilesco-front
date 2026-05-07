@@ -4,8 +4,17 @@ import { API_PATHS } from "../config/apiPaths";
 // ========================================
 // OBTENER TODAS LAS UNIDADES DE MEDIDA (GET)
 // ========================================
-export function obtenerUnidadesMedida() {
-    return request(API_PATHS.UNIDADES_MEDIDA);
+export function obtenerUnidadesMedida(params = {}) {
+    const searchParams = new URLSearchParams();
+
+    Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== "") {
+            searchParams.set(key, String(value));
+        }
+    });
+
+    const query = searchParams.toString();
+    return request(query ? `${API_PATHS.UNIDADES_MEDIDA}?${query}` : API_PATHS.UNIDADES_MEDIDA);
 }
 
 // ========================================
@@ -42,4 +51,21 @@ export function eliminarUnidadMedida(id) {
     return request(`${API_PATHS.UNIDADES_MEDIDA}/${id}`, {
         method: "DELETE"
     });
+}
+
+export function exportarUnidadesMedidaExcel(filtros = {}) {
+    const params = new URLSearchParams();
+
+    Object.entries(filtros).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== "") {
+            params.set(key, String(value));
+        }
+    });
+
+    const query = params.toString();
+    const endpoint = query
+        ? `${API_PATHS.UNIDADES_MEDIDA}/reporte/excel?${query}`
+        : `${API_PATHS.UNIDADES_MEDIDA}/reporte/excel`;
+
+    return request(endpoint, { responseType: "blob" });
 }

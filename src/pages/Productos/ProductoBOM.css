@@ -1,0 +1,213 @@
+.producto-bom-page {
+  --bom-ink: #30404a;
+  --bom-ink-strong: #22303a;
+  --bom-green: #57d37e;
+  --bom-green-soft: rgba(87, 211, 126, 0.14);
+  --bom-orange: #d77b31;
+  --bom-sage: rgba(48, 64, 74, 0.1);
+}
+
+.producto-bom-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.producto-bom-eyebrow {
+  color: var(--bom-orange);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.producto-bom-header h3 {
+  margin: 2px 0 4px;
+  color: var(--bom-ink-strong);
+  font-weight: 800;
+}
+
+.producto-bom-header p {
+  margin: 0;
+  color: #6b7280;
+}
+
+.producto-bom-card.card {
+  border: 1px solid var(--bom-sage) !important;
+  border-radius: 0;
+  box-shadow: 0 10px 24px rgba(48, 64, 74, 0.06) !important;
+}
+
+.producto-bom-card .card-header {
+  background: linear-gradient(90deg, var(--bom-green-soft), #ffffff) !important;
+  border-bottom: 1px solid var(--bom-sage);
+}
+
+.producto-bom-card .card-header h5 {
+  color: var(--bom-ink) !important;
+  font-weight: 800;
+}
+
+.producto-bom-helper,
+.producto-bom-create-intro,
+.producto-bom-empty-action {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--bom-sage);
+  background: linear-gradient(90deg, rgba(87, 211, 126, 0.1), rgba(215, 123, 49, 0.05));
+  color: var(--bom-ink);
+}
+
+.producto-bom-create-intro {
+  justify-content: space-between;
+}
+
+.producto-bom-create-intro span {
+  font-weight: 800;
+}
+
+.producto-bom-empty-action {
+  min-height: 180px;
+  justify-content: center;
+  flex-direction: column;
+  text-align: center;
+}
+
+.producto-bom-empty-action i,
+.producto-bom-helper i {
+  color: var(--bom-orange);
+  font-size: 1.35rem;
+}
+
+.producto-bom-empty-action p {
+  max-width: 320px;
+  margin: 0;
+  color: #6b7280;
+}
+
+.producto-bom-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--bom-ink) !important;
+  background: #ffffff !important;
+  border: 1px solid var(--bom-green) !important;
+  box-shadow:
+    0 0 0 1px rgba(87, 211, 126, 0.22),
+    0 0 12px rgba(87, 211, 126, 0.16);
+}
+
+.producto-bom-primary:hover,
+.producto-bom-primary:focus {
+  background: var(--bom-green-soft) !important;
+  border-color: #2ec35d !important;
+}
+
+.producto-bom-outline {
+  color: var(--bom-ink) !important;
+  background: #ffffff !important;
+  border: 1px solid rgba(48, 64, 74, 0.24) !important;
+}
+
+.producto-bom-outline:hover,
+.producto-bom-outline:focus {
+  background: rgba(48, 64, 74, 0.06) !important;
+  border-color: var(--bom-orange) !important;
+}
+
+.producto-bom-switch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--bom-sage);
+  background: #f8faf9;
+}
+
+.producto-bom-switch input {
+  width: 18px;
+  height: 18px;
+}
+
+.producto-bom-switch label {
+  color: var(--bom-ink);
+  font-weight: 700;
+}
+
+.producto-bom-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(34, 48, 58, 0.42);
+}
+
+.producto-bom-modal {
+  width: min(920px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  padding: 18px;
+  border: 1px solid rgba(48, 64, 74, 0.14);
+  background: #ffffff;
+  box-shadow: 0 24px 60px rgba(34, 48, 58, 0.24);
+}
+
+.producto-bom-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--bom-sage);
+}
+
+.producto-bom-modal-header span {
+  color: var(--bom-orange);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.producto-bom-modal-header h5 {
+  margin: 2px 0 0;
+  color: var(--bom-ink-strong);
+  font-weight: 800;
+}
+
+.producto-bom-nested-create {
+  padding: 14px;
+  border: 1px solid rgba(87, 211, 126, 0.28);
+  background: linear-gradient(90deg, rgba(87, 211, 126, 0.12), rgba(255, 255, 255, 0.92));
+}
+
+.producto-bom-nested-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  color: var(--bom-ink);
+  font-weight: 800;
+}
+
+.producto-bom-nested-title i {
+  color: var(--bom-orange);
+}
+
+@media (max-width: 992px) {
+  .producto-bom-header {
+    flex-direction: column;
+  }
+
+  .producto-bom-modal-backdrop {
+    align-items: flex-start;
+    padding: 12px;
+  }
+}

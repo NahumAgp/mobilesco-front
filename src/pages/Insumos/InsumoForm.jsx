@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { obtenerInsumoPorId, crearInsumo, actualizarInsumo } from "../../services/insumos.js";
 import { obtenerUnidadesMedida } from "../../services/unidadMedidas.js";
 import Toast from "../../components/ui/Toast.jsx";
+import { Ean13BarcodeSvg, obtenerBitsEan13 } from "../../components/Barcode/Ean13Barcode.jsx";
+import "./InsumoForm.css";
 
 export default function InsumoForm({ 
   insumoId,     // para la página
@@ -23,6 +25,7 @@ export default function InsumoForm({
 
   const [formData, setFormData] = useState({
     codigo: "",
+    codigoBarras: "",
     nombre: "",
     descripcion: "",
     ubicacion: "",
@@ -57,6 +60,7 @@ export default function InsumoForm({
       if (esModal && insumo) {
         setFormData({
           codigo: insumo.codigo || "",
+          codigoBarras: insumo.codigoBarras || "",
           nombre: insumo.nombre || "",
           descripcion: insumo.descripcion || "",
           ubicacion: insumo.ubicacion || "",
@@ -75,6 +79,7 @@ export default function InsumoForm({
           const data = await obtenerInsumoPorId(insumoId);
           setFormData({
             codigo: data.codigo || "",
+            codigoBarras: data.codigoBarras || "",
             nombre: data.nombre || "",
             descripcion: data.descripcion || "",
             ubicacion: data.ubicacion || "",
@@ -130,7 +135,11 @@ export default function InsumoForm({
       } else {
         setToastType("success");
         setToastMessage(esEdicion ? "¡Insumo actualizado con éxito!" : "¡Insumo registrado con éxito!");
-        setTimeout(() => navigate("/insumos"), 1500);
+        setFormData((prev) => ({
+          ...prev,
+          codigoBarras: respuesta?.codigoBarras || prev.codigoBarras
+        }));
+        setTimeout(() => navigate(esEdicion ? "/insumos" : `/insumos/${respuesta.id}`), 1500);
       }
 
     } catch (error) {
@@ -156,6 +165,62 @@ export default function InsumoForm({
     } else {
       navigate("/insumos");
     }
+  };
+
+  const imprimirEtiqueta = () => {
+    const bits = obtenerBitsEan13(formData.codigoBarras);
+    if (!bits) return;
+
+    const moduleWidth = 2.4;
+    const barcodeWidth = 95 * moduleWidth;
+    const barcodeHeight = 78;
+    const rects = bits
+      .split("")
+      .map((bit, index) =>
+        bit === "1"
+          ? `<rect x="${index * moduleWidth}" y="0" width="${moduleWidth}" height="${barcodeHeight}" fill="#111827"></rect>`
+          : ""
+      )
+      .join("");
+
+    const ventana = window.open("", "_blank", "width=420,height=360");
+    if (!ventana) return;
+
+    ventana.document.write(`
+      <!doctype html>
+      <html>
+        <head>
+          <title>Etiqueta ${formData.codigoBarras}</title>
+          <style>
+            @page { size: 76mm 38mm; margin: 0; }
+            body { margin: 0; font-family: Arial, sans-serif; color: #111827; }
+            .label { width: 76mm; min-height: 38mm; box-sizing: border-box; padding: 4mm 5mm; text-align: center; }
+            .name { font-size: 12px; font-weight: 700; margin-bottom: 2mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            .meta { font-size: 9px; margin-bottom: 1.5mm; }
+            .code { font-family: monospace; font-size: 11px; letter-spacing: 1.4px; margin-top: 1mm; }
+            svg { width: 100%; height: 20mm; }
+          </style>
+        </head>
+        <body>
+          <div class="label">
+            <div class="name">${formData.nombre || "Insumo"}</div>
+            <div class="meta">${formData.codigo || ""}</div>
+            <svg viewBox="0 0 ${barcodeWidth} ${barcodeHeight}" role="img">
+              <rect width="${barcodeWidth}" height="${barcodeHeight}" fill="#ffffff"></rect>
+              ${rects}
+            </svg>
+            <div class="code">${formData.codigoBarras}</div>
+          </div>
+          <script>
+            window.onload = function () {
+              window.print();
+              window.onafterprint = function () { window.close(); };
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    ventana.document.close();
   };
 
   return (
@@ -337,6 +402,42 @@ export default function InsumoForm({
             </div>
           </div>
         </div>
+
+        {formData.codigoBarras && (
+          <div className="card insumo-barcode-card mb-4">
+            <div className="card-header bg-white py-3 d-flex align-items-center justify-content-between">
+              <h5 className="mb-0 text-secondary">
+                <i className="bi bi-upc-scan me-2"></i>Codigo de barras
+              </h5>
+              <button type="button" className="btn btn-outline-success btn-sm" onClick={imprimirEtiqueta}>
+                <i className="bi bi-printer me-1"></i>
+                Imprimir etiqueta
+              </button>
+            </div>
+            <div className="card-body">
+              <div className="row g-3 align-items-center">
+                <div className="col-md-5">
+                  <div className="insumo-barcode-preview">
+                    <Ean13BarcodeSvg value={formData.codigoBarras} />
+                    <div className="insumo-barcode-number">{formData.codigoBarras}</div>
+                  </div>
+                </div>
+                <div className="col-md-7">
+                  <label className="form-label fw-semibold">Numero de codigo de barras</label>
+                  <input
+                    type="text"
+                    className="form-control border-soft"
+                    value={formData.codigoBarras}
+                    readOnly
+                  />
+                  <small className="text-muted d-block mt-2">
+                    Se genera automaticamente al crear el insumo y queda listo para imprimir etiquetas.
+                  </small>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="d-flex justify-content-between align-items-center bg-white p-3 rounded shadow-sm">
           {esModal && (

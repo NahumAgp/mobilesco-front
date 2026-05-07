@@ -1,7 +1,36 @@
 import { useState, useEffect } from "react";
 import { obtenerCostoPromedio } from "../../services/kardex.js";
 
-export default function InsumosTable({ data, onEditar, onEliminar, onAjustarStock }) {
+const COLUMNAS_ORDENABLES = {
+  id: "ID",
+  codigo: "Codigo",
+  nombre: "Nombre",
+  ubicacion: "Ubicacion",
+  stockActual: "Stock actual",
+  stockMinimo: "Stock minimo",
+  activo: "Estado",
+  fechaRegistro: "Creado"
+};
+
+function obtenerIconoOrden(sortField, sortDirection, field) {
+  if (sortField !== field) {
+    return "bi bi-arrow-down-up text-secondary";
+  }
+
+  return sortDirection === "asc"
+    ? "bi bi-sort-down-alt text-primary"
+    : "bi bi-sort-up text-primary";
+}
+
+export default function InsumosTable({
+  data,
+  onEditar,
+  onEliminar,
+  onAjustarStock,
+  sortField = "nombre",
+  sortDirection = "asc",
+  onSort
+}) {
   const [insumoSeleccionado, setInsumoSeleccionado] = useState(null);
   const [showAjusteModal, setShowAjusteModal] = useState(false);
   const [cantidad, setCantidad] = useState("");
@@ -10,30 +39,25 @@ export default function InsumosTable({ data, onEditar, onEliminar, onAjustarStoc
   const [costosPromedio, setCostosPromedio] = useState({});
   const [loadingCostos, setLoadingCostos] = useState(false);
 
-  // Cargar costos promedio para todos los insumos
   useEffect(() => {
     const cargarCostos = async () => {
       if (!data || data.length === 0) return;
-      
+
       setLoadingCostos(true);
       const costos = {};
-      
+
       try {
-        // Cargar costo promedio de cada insumo en paralelo
         await Promise.all(
           data.map(async (insumo) => {
             try {
               const costo = await obtenerCostoPromedio(insumo.id);
               costos[insumo.id] = costo;
-            } catch (error) {
-              console.error(`Error cargando costo del insumo ${insumo.id}:`, error);
+            } catch {
               costos[insumo.id] = 0;
             }
           })
         );
         setCostosPromedio(costos);
-      } catch (error) {
-        console.error("Error cargando costos promedio:", error);
       } finally {
         setLoadingCostos(false);
       }
@@ -41,6 +65,33 @@ export default function InsumosTable({ data, onEditar, onEliminar, onAjustarStoc
 
     cargarCostos();
   }, [data]);
+
+  const renderHeader = (field, label) => {
+    const esOrdenable = Boolean(onSort) && Object.prototype.hasOwnProperty.call(COLUMNAS_ORDENABLES, field);
+    const ariaSort =
+      sortField === field
+        ? sortDirection === "asc"
+          ? "ascending"
+          : "descending"
+        : "none";
+
+    return (
+      <th aria-sort={ariaSort}>
+        {esOrdenable ? (
+          <button
+            type="button"
+            className="btn btn-link p-0 text-decoration-none insumos-sort-button"
+            onClick={() => onSort(field)}
+          >
+            <span>{label}</span>
+            <i className={`${obtenerIconoOrden(sortField, sortDirection, field)} ms-2`}></i>
+          </button>
+        ) : (
+          label
+        )}
+      </th>
+    );
+  };
 
   const abrirModalAjuste = (insumo, e) => {
     e.stopPropagation();
@@ -57,7 +108,7 @@ export default function InsumosTable({ data, onEditar, onEliminar, onAjustarStoc
 
   const handleAjustarStock = () => {
     if (!cantidad || parseFloat(cantidad) <= 0) {
-      alert("Ingresa una cantidad válida");
+      alert("Ingresa una cantidad valida");
       return;
     }
     onAjustarStock(insumoSeleccionado.id, parseFloat(cantidad), tipoAjuste, motivo);
@@ -71,43 +122,43 @@ export default function InsumosTable({ data, onEditar, onEliminar, onAjustarStoc
   };
 
   const formatCurrency = (value) => {
-    return new Intl.NumberFormat('es-MX', {
-      style: 'currency',
-      currency: 'MXN',
+    return new Intl.NumberFormat("es-MX", {
+      style: "currency",
+      currency: "MXN",
       minimumFractionDigits: 2
     }).format(value || 0);
   };
 
+  const formatearFecha = (valor) => {
+    if (!valor) return "-";
+
+    const fecha = new Date(valor);
+    if (Number.isNaN(fecha.getTime())) return "-";
+
+    return fecha.toLocaleString("es-MX", {
+      dateStyle: "medium",
+      timeStyle: "short"
+    });
+  };
+
   return (
     <>
-      <div className="card">
-        <div
-          className="table-responsive"
-          style={{
-            height: "calc(100vh - 400px)",
-            overflowY: "auto"
-          }}
-        >
-          <table className="table table-hover mb-0">
-            <thead
-              className="table-light"
-              style={{
-                position: "sticky",
-                top: 0,
-                zIndex: 2,
-                backgroundColor: "white"
-              }}
-            >
+      <div className="card shadow-sm border-0 insumos-table-card">
+        <div className="table-responsive insumos-table-scroll">
+          <table className="table table-hover align-middle mb-0">
+            <thead className="table-light insumos-table-head">
               <tr>
-                <th>ID</th>
-                <th>Nombre</th>
-                <th>Descripción</th>
-                <th>Ubicación</th>
+                {renderHeader("id", "ID")}
+                {renderHeader("codigo", "Codigo")}
+                <th>Codigo barras</th>
+                {renderHeader("nombre", "Nombre")}
+                <th>Descripcion</th>
+                {renderHeader("ubicacion", "Ubicacion")}
                 <th>Unidad</th>
-                <th className="text-end">Stock Actual</th>
-                <th className="text-end">Stock Mínimo</th>
-                <th className="text-end">Costo Promedio</th> {/* 👈 NUEVA COLUMNA */}
-                <th>Estado</th>
+                {renderHeader("stockActual", "Stock actual")}
+                {renderHeader("stockMinimo", "Stock minimo")}
+                <th>Costo promedio</th>
+                {renderHeader("activo", "Estado")}
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -118,32 +169,43 @@ export default function InsumosTable({ data, onEditar, onEliminar, onAjustarStoc
                   return (
                     <tr
                       key={insumo.id}
-                      style={{ cursor: "pointer" }}
                       onClick={() => onEditar(insumo)}
-                      className={
-                        stockStatus === "agotado" ? "table-danger" :
-                        stockStatus === "bajo" ? "table-warning" : ""
-                      }
+                      className={`insumos-table-row insumos-row-${stockStatus}`}
+                      role="button"
                     >
-                      <td>{insumo.id}</td>
+                      <td className="text-muted">#{insumo.id}</td>
+                      <td>
+                        <span className="badge text-bg-light border insumos-code-badge">
+                          {insumo.codigo || "-"}
+                        </span>
+                      </td>
+                      <td>
+                        <span className="badge text-bg-light border insumos-code-badge">
+                          {insumo.codigoBarras || "-"}
+                        </span>
+                      </td>
                       <td>
                         <span className="fw-semibold">{insumo.nombre}</span>
                       </td>
-                      <td>
-                        {insumo.descripcion && insumo.descripcion.length > 50 
-                          ? `${insumo.descripcion.substring(0, 50)}...` 
-                          : insumo.descripcion || "-"}
+                      <td className="insumos-description">
+                        {insumo.descripcion || "-"}
                       </td>
                       <td>
                         {insumo.ubicacion || "-"}
-                        {insumo.fila && insumo.columna && ` (${insumo.fila}-${insumo.columna})`}
+                        {insumo.fila && insumo.columna ? ` (${insumo.fila}-${insumo.columna})` : ""}
                       </td>
-                      <td>{insumo.unidadMedida?.simbolo || insumo.unidadMedida?.nombre || "-"}</td>
+                      <td>
+                        <span className="badge text-bg-light border insumos-unit-badge">
+                          {insumo.unidadMedida?.simbolo || insumo.unidadMedida?.nombre || "-"}
+                        </span>
+                      </td>
                       <td className="text-end fw-bold">
-                        {insumo.stockActual?.toFixed(2) || "0.00"}
+                        {Number(insumo.stockActual || 0).toFixed(2)}
                       </td>
                       <td className="text-end">
-                        {insumo.stockMinimo?.toFixed(2) || "-"}
+                        {insumo.stockMinimo !== null && insumo.stockMinimo !== undefined
+                          ? Number(insumo.stockMinimo).toFixed(2)
+                          : "-"}
                       </td>
                       <td className="text-end">
                         {loadingCostos ? (
@@ -172,22 +234,22 @@ export default function InsumosTable({ data, onEditar, onEliminar, onAjustarStoc
                           )}
                           {stockStatus === "bajo" && (
                             <span className="badge bg-warning-subtle text-warning border border-warning-subtle">
-                              Stock Bajo
+                              Stock bajo
                             </span>
                           )}
                         </div>
                       </td>
-                      <td>
-                        <div className="d-flex gap-1">
+                      <td className="insumos-actions">
+                        <div className="btn-group btn-group-sm" role="group">
                           <button
-                            className="btn btn-sm btn-outline-success"
+                            className="btn insumos-brand-outline"
                             onClick={(e) => abrirModalAjuste(insumo, e)}
                             title="Ajustar stock"
                           >
                             <i className="bi bi-plus-slash-minus"></i>
                           </button>
                           <button
-                            className="btn btn-sm btn-outline-primary"
+                            className="btn insumos-brand-outline"
                             onClick={(e) => {
                               e.stopPropagation();
                               onEditar(insumo);
@@ -197,7 +259,7 @@ export default function InsumosTable({ data, onEditar, onEliminar, onAjustarStoc
                             <i className="bi bi-pencil"></i>
                           </button>
                           <button
-                            className="btn btn-sm btn-outline-danger"
+                            className="btn insumos-brand-danger"
                             onClick={(e) => {
                               e.stopPropagation();
                               onEliminar(insumo.id);
@@ -213,10 +275,10 @@ export default function InsumosTable({ data, onEditar, onEliminar, onAjustarStoc
                 })
               ) : (
                 <tr>
-                  <td colSpan="10" className="text-center text-muted py-5">
+                  <td colSpan="12" className="text-center text-muted py-5">
                     <i className="bi bi-boxes fs-1 d-block mb-3 text-secondary"></i>
-                    <span className="fs-5">No hay insumos registrados</span>
-                    <p className="text-secondary mt-2">Comienza creando un nuevo insumo</p>
+                    <span className="fs-5 d-block">No hay insumos registrados</span>
+                    <p className="text-secondary mt-2 mb-0">Comienza creando un nuevo insumo</p>
                   </td>
                 </tr>
               )}
@@ -225,7 +287,6 @@ export default function InsumosTable({ data, onEditar, onEliminar, onAjustarStoc
         </div>
       </div>
 
-      {/* Modal para ajuste de stock */}
       {showAjusteModal && insumoSeleccionado && (
         <div
           className="modal fade show"
@@ -235,23 +296,23 @@ export default function InsumosTable({ data, onEditar, onEliminar, onAjustarStoc
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">
-                  Ajustar Stock: {insumoSeleccionado.nombre}
+                  Ajustar stock: {insumoSeleccionado.nombre}
                 </h5>
                 <button type="button" className="btn-close" onClick={cerrarModal}></button>
               </div>
               <div className="modal-body">
                 <div className="mb-3">
-                  <label className="form-label fw-semibold">Stock Actual</label>
+                  <label className="form-label fw-semibold">Stock actual</label>
                   <input
                     type="text"
                     className="form-control bg-light"
-                    value={`${insumoSeleccionado.stockActual?.toFixed(2) || "0.00"} ${insumoSeleccionado.unidadMedida?.simbolo || insumoSeleccionado.unidadMedida?.nombre || ""}`}
+                    value={`${Number(insumoSeleccionado.stockActual || 0).toFixed(2)} ${insumoSeleccionado.unidadMedida?.simbolo || insumoSeleccionado.unidadMedida?.nombre || ""}`}
                     readOnly
                   />
                 </div>
 
                 <div className="mb-3">
-                  <label className="form-label fw-semibold">Costo Promedio Actual</label>
+                  <label className="form-label fw-semibold">Costo promedio actual</label>
                   <input
                     type="text"
                     className="form-control bg-light text-primary fw-bold"
@@ -261,7 +322,7 @@ export default function InsumosTable({ data, onEditar, onEliminar, onAjustarStoc
                 </div>
 
                 <div className="mb-3">
-                  <label className="form-label fw-semibold">Tipo de Ajuste</label>
+                  <label className="form-label fw-semibold">Tipo de ajuste</label>
                   <div className="d-flex gap-3">
                     <div className="form-check">
                       <input
@@ -310,19 +371,19 @@ export default function InsumosTable({ data, onEditar, onEliminar, onAjustarStoc
                 </div>
 
                 <div className="mb-3">
-                  <label className="form-label fw-semibold">Motivo (opcional)</label>
+                  <label className="form-label fw-semibold">Motivo</label>
                   <input
                     type="text"
                     className="form-control"
                     value={motivo}
                     onChange={(e) => setMotivo(e.target.value)}
-                    placeholder="Ej: Compra, Ajuste, Merma..."
+                    placeholder="Ej: compra, ajuste, merma..."
                   />
                 </div>
 
                 <div className="alert alert-info small">
                   <i className="bi bi-info-circle me-2"></i>
-                  El stock se actualizará en la unidad de medida base: {insumoSeleccionado.unidadMedida?.simbolo || insumoSeleccionado.unidadMedida?.nombre || "N/A"}
+                  El stock se actualizara en la unidad base: {insumoSeleccionado.unidadMedida?.simbolo || insumoSeleccionado.unidadMedida?.nombre || "N/A"}
                 </div>
               </div>
               <div className="modal-footer">
@@ -330,7 +391,7 @@ export default function InsumosTable({ data, onEditar, onEliminar, onAjustarStoc
                   Cancelar
                 </button>
                 <button type="button" className="btn btn-primary" onClick={handleAjustarStock}>
-                  Aplicar Ajuste
+                  Aplicar ajuste
                 </button>
               </div>
             </div>
