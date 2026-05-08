@@ -7,6 +7,10 @@ export const API_PATHS = {
   AUTH_ME: `${API_VERSION}/auth/me`,
   AUTH_REFRESH: `${API_VERSION}/auth/refresh`,
   AUTH_LOGOUT: `${API_VERSION}/auth/logout`,
+  AUTH_REGISTER: `${API_VERSION}/auth/register`,
+  AUTH_ROLES: `${API_VERSION}/auth/roles`,
+  AUTH_INVITACIONES: `${API_VERSION}/auth/invitaciones`,
+  AUTH_PENDIENTES: `${API_VERSION}/auth/usuarios-pendientes`,
 
   // Empleados
   EMPLEADOS: `${API_VERSION}/empleados`,
@@ -38,6 +42,7 @@ export const API_PATHS = {
   // Compras
    COMPRAS: `${API_VERSION}/compras`,
   DETALLES_COMPRA: `${API_VERSION}/detalles-compra`,
+  SALIDAS_INSUMOS: `${API_VERSION}/salidas-insumos`,
   KARDEX: `${API_VERSION}/kardex`,
   
   // Otros módulos

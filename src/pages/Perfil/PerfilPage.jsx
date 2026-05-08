@@ -1,35 +1,49 @@
-import { useState } from "react";
-import { getUser } from "../../services/authService";
+import { useEffect, useState } from "react";
+import { getCurrentUser } from "../../services/authService";
 import "./PerfilPage.css";
 import { subirFotoPerfil } from "../../services/empleados";
 import { API_BASE_URL } from "../../config/apiConfig";
 
 export default function PerfilPage() {
 
-  const user = getUser();
+  const [perfil, setPerfil] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const [fotoPreview, setFotoPreview] = useState(
-    user?.fotoUrl ? `${API_BASE_URL}${user.fotoUrl}` : null
-  );
+  const cargarPerfil = async () => {
+    try {
+      setError("");
+      const data = await getCurrentUser();
+      setPerfil(data);
+      localStorage.setItem("user", JSON.stringify(data));
+    } catch (err) {
+      console.error("Error cargando perfil:", err);
+      setError(err.message || "No se pudo cargar el perfil");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    cargarPerfil();
+
+    const handleUserUpdated = () => {
+      cargarPerfil();
+    };
+
+    window.addEventListener("userUpdated", handleUserUpdated);
+    return () => window.removeEventListener("userUpdated", handleUserUpdated);
+  }, []);
 
   const handleFotoChange = async (e) => {
 
     const file = e.target.files[0];
     if (!file) return;
 
-    const preview = URL.createObjectURL(file);
-    setFotoPreview(preview);
-
     try {
 
-      const response = await subirFotoPerfil(file);
-
-      const user = JSON.parse(localStorage.getItem("user"));
-
-      user.fotoUrl = response.fotoUrl;
-
-      localStorage.setItem("user", JSON.stringify(user));
-
+      await subirFotoPerfil(file);
+      await cargarPerfil();
       window.dispatchEvent(new Event("userUpdated"));
 
     } catch (error) {
@@ -46,15 +60,23 @@ export default function PerfilPage() {
 
       <div className="perfil-card">
 
+        {loading && (
+          <div className="perfil-loading">Cargando perfil...</div>
+        )}
+
+        {error && (
+          <div className="alert alert-danger m-3">{error}</div>
+        )}
+
         <div className="perfil-header" />
 
         {/* AVATAR */}
         <div className="perfil-avatar-wrapper">
 
-  {fotoPreview ? (
+  {perfil?.fotoUrl ? (
 
     <img
-      src={fotoPreview}
+      src={`${API_BASE_URL}${perfil.fotoUrl}`}
       className="perfil-avatar"
       alt="perfil"
     />
@@ -62,8 +84,8 @@ export default function PerfilPage() {
   ) : (
 
     <div className="perfil-avatar placeholder">
-        {user?.nombre?.charAt(0)}
-        {user?.apellidoPaterno?.charAt(0)}
+        {perfil?.nombre?.charAt(0)}
+        {perfil?.apellidoPaterno?.charAt(0)}
         </div>
 
     )}
@@ -85,12 +107,12 @@ export default function PerfilPage() {
 
         <div className="perfil-nombre">
 
-          {user?.nombre} {user?.apellidoPaterno}
+          {perfil?.nombre} {perfil?.apellidoPaterno}
 
         </div>
 
         <div className="perfil-correo">
-          {user?.correo}
+          {perfil?.correo}
         </div>
 
         {/* DATOS */}
@@ -99,32 +121,32 @@ export default function PerfilPage() {
 
           <div className="perfil-field">
             <label>Nombre</label>
-            <input value={user?.nombre || ""} disabled />
+            <input value={perfil?.nombre || ""} disabled />
           </div>
 
           <div className="perfil-field">
             <label>Apellido paterno</label>
-            <input value={user?.apellidoPaterno || ""} disabled />
+            <input value={perfil?.apellidoPaterno || ""} disabled />
           </div>
 
           <div className="perfil-field">
             <label>Apellido materno</label>
-            <input value={user?.apellidoMaterno || ""} disabled />
+            <input value={perfil?.apellidoMaterno || ""} disabled />
           </div>
 
           <div className="perfil-field">
             <label>Correo</label>
-            <input value={user?.correo || ""} disabled />
+            <input value={perfil?.correo || ""} disabled />
           </div>
 
           <div className="perfil-field">
             <label>Teléfono</label>
-            <input value={user?.telefono || ""} disabled />
+            <input value={perfil?.telefono || ""} disabled />
           </div>
 
           <div className="perfil-field">
             <label>Rol</label>
-            <input value={user?.roles?.[0] || ""} disabled />
+            <input value={perfil?.roles?.[0] || ""} disabled />
           </div>
 
         </div>

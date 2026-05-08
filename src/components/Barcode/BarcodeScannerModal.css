@@ -1,0 +1,136 @@
+.barcode-scanner-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1080;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(4, 10, 18, 0.72);
+  backdrop-filter: blur(10px);
+}
+
+.barcode-scanner-modal {
+  width: min(740px, 100%);
+  border-radius: 1.5rem;
+  overflow: hidden;
+  background: linear-gradient(180deg, #ffffff 0%, #f7fffa 100%);
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.35);
+}
+
+.barcode-scanner-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 1.35rem;
+  background: linear-gradient(135deg, #0f5132, #117a65);
+  color: #ffffff;
+}
+
+.barcode-scanner-header h5 {
+  margin-bottom: 0.2rem;
+  font-weight: 800;
+}
+
+.barcode-scanner-header p {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.95rem;
+}
+
+.barcode-scanner-kicker {
+  margin-bottom: 0.25rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.barcode-scanner-body {
+  padding: 1.25rem;
+}
+
+.barcode-scanner-panel {
+  padding: 1rem;
+  border-radius: 1.25rem;
+  border: 1px solid rgba(17, 122, 101, 0.14);
+  background:
+    radial-gradient(circle at top right, rgba(87, 211, 126, 0.14), transparent 28%),
+    linear-gradient(180deg, #f8fffb 0%, #eefaf3 100%);
+}
+
+.barcode-scanner-strip {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.barcode-scanner-strip span {
+  height: 34px;
+  border-radius: 0.35rem;
+  background: linear-gradient(180deg, #0f5132, #57d37e);
+  opacity: 0.9;
+}
+
+.barcode-scanner-strip span:nth-child(2n) {
+  transform: scaleY(0.72);
+  opacity: 0.55;
+}
+
+.barcode-scanner-instructions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.barcode-scanner-icon {
+  flex: 0 0 auto;
+  width: 3.6rem;
+  height: 3.6rem;
+  border-radius: 1rem;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #0f5132, #57d37e);
+  color: #ffffff;
+  font-size: 1.5rem;
+  box-shadow: 0 12px 24px rgba(15, 81, 50, 0.22);
+}
+
+.barcode-scanner-manual .form-label {
+  margin-bottom: 0.5rem;
+}
+
+.barcode-scanner-manual .btn-primary {
+  background: linear-gradient(135deg, #0f5132, #57d37e);
+  border-color: #0f5132;
+}
+
+.barcode-scanner-manual .btn-primary:hover {
+  filter: brightness(1.03);
+}
+
+.barcode-scanner-manual .input-group-text {
+  border-color: #ced4da;
+  color: #0f5132;
+}
+
+.barcode-scanner-manual .form-control:focus {
+  border-color: #57d37e;
+  box-shadow: 0 0 0 0.2rem rgba(87, 211, 126, 0.18);
+}
+
+@media (max-width: 768px) {
+  .barcode-scanner-body {
+    padding: 1rem;
+  }
+
+  .barcode-scanner-instructions {
+    align-items: flex-start;
+  }
+
+  .barcode-scanner-strip span {
+    height: 24px;
+  }
+}

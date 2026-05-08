@@ -6,6 +6,7 @@ import {
   obtenerEmpleadoPorId,
   actualizarEmpleado
 } from "../../services/empleados";
+import { getCurrentUser, getUser } from "../../services/authService";
 
 import PageHeader from "../../components/Sistema/PageHeader.jsx";
 import Toast from "../../components/ui/Toast.jsx";
@@ -15,6 +16,8 @@ export default function EmpleadoFormPage() {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEditing = !!id;
+  const currentUser = getUser();
+  const esMiPerfil = isEditing && String(currentUser?.idEmpleado || "") === String(id);
 
   const [mostrarCuenta, setMostrarCuenta] = useState(false);
 
@@ -113,13 +116,16 @@ export default function EmpleadoFormPage() {
 
     const email = formData.email?.trim();
     const pass = formData.password?.trim();
+    const debeValidarCuenta = !isEditing && mostrarCuenta;
 
-    if (email && !pass) {
-      newErrors.password = "Debes ingresar contraseña";
-    }
+    if (debeValidarCuenta) {
+      if (!email) {
+        newErrors.email = "Debes ingresar correo";
+      }
 
-    if (!email && pass) {
-      newErrors.email = "Debes ingresar correo";
+      if (!pass) {
+        newErrors.password = "Debes ingresar contraseña";
+      }
     }
 
     return newErrors;
@@ -138,17 +144,13 @@ export default function EmpleadoFormPage() {
     }
 
     const datos = {
-
       nombre: formData.nombre.trim(),
       apellidoPaterno: formData.apellidoPaterno.trim(),
-      apellidoMaterno: formData.apellidoMaterno.trim(),
-      telefono: formData.telefono?.trim(),
+      apellidoMaterno: formData.apellidoMaterno.trim() || null,
+      telefono: formData.telefono?.trim() || null,
       fechaNacimiento: formData.fechaNacimiento || null,
       activo: formData.activo
-
-      
     };
-    console.log(formData);
 
     if (formData.email && formData.password) {
 
@@ -177,6 +179,14 @@ export default function EmpleadoFormPage() {
 
       }
 
+      try {
+        const currentUser = await getCurrentUser();
+        localStorage.setItem("user", JSON.stringify(currentUser));
+        window.dispatchEvent(new Event("userUpdated"));
+      } catch (refreshError) {
+        console.warn("No se pudo refrescar el usuario actual:", refreshError);
+      }
+
       setTimeout(() => {
         navigate("/empleados");
       }, 1500);
@@ -184,9 +194,17 @@ export default function EmpleadoFormPage() {
     } catch (error) {
 
       console.error("Error al guardar empleado:", error);
+      console.error("Detalle del error empleado:", error?.data || error?.errors || error?.status);
 
       setToastType("danger");
-      setToastMessage("Error al guardar empleado");
+      const erroresBackend = error?.errors && typeof error.errors === "object"
+        ? Object.values(error.errors).filter(Boolean)
+        : [];
+      setToastMessage(
+        erroresBackend.length > 0
+          ? erroresBackend[0]
+          : error.message || "Error al guardar empleado"
+      );
 
     } finally {
 
@@ -230,17 +248,23 @@ export default function EmpleadoFormPage() {
         }
       />
 
-      <div className="container mt-4">
+      <div className="container-xxl py-4">
 
-        <div className="card">
+        <div className="card shadow-sm border-0">
 
-          <div className="card-body">
+          <div className="card-body p-4 p-md-5">
+
+            {esMiPerfil && (
+              <div className="alert alert-warning border-0 mb-4">
+                Estás editando tu propio empleado. Estos cambios impactan tu perfil actual.
+              </div>
+            )}
 
             <form onSubmit={handleSubmit}>
 
-              <div className="row">
+              <div className="row g-3">
 
-                <div className="col-md-4 mb-3">
+                <div className="col-md-4">
                   <label className="form-label">Nombre *</label>
                   <input
                     className={`form-control ${errors.nombre ? 'is-invalid' : ''}`}
@@ -253,7 +277,7 @@ export default function EmpleadoFormPage() {
                   )}
                 </div>
 
-                <div className="col-md-4 mb-3">
+                <div className="col-md-4">
                   <label className="form-label">Apellido Paterno *</label>
                   <input
                     className={`form-control ${errors.apellidoPaterno ? 'is-invalid' : ''}`}
@@ -266,7 +290,7 @@ export default function EmpleadoFormPage() {
                   )}
                 </div>
 
-                <div className="col-md-4 mb-3">
+                <div className="col-md-4">
                   <label className="form-label">Apellido Materno</label>
                   <input
                     className="form-control"
@@ -276,7 +300,7 @@ export default function EmpleadoFormPage() {
                   />
                 </div>
 
-                <div className="col-md-4 mb-3">
+                <div className="col-md-4">
                   <label className="form-label">Teléfono</label>
                   <input
                     className="form-control"
@@ -286,7 +310,7 @@ export default function EmpleadoFormPage() {
                   />
                 </div>
 
-                <div className="col-md-4 mb-3">
+                <div className="col-md-4">
                   <label className="form-label">Fecha Nacimiento</label>
                   <input
                     type="date"
@@ -297,7 +321,7 @@ export default function EmpleadoFormPage() {
                   />
                 </div>
 
-                <div className="col-md-4 mb-3 d-flex align-items-center">
+                <div className="col-md-4 d-flex align-items-center">
 
                   <div className="form-check mt-4">
 
@@ -320,7 +344,7 @@ export default function EmpleadoFormPage() {
               </div>
 
               {!mostrarCuenta && (
-                <div className="col-12 mb-3">
+                <div className="col-12">
                   <button
                     type="button"
                     className="btn btn-outline-primary"
@@ -333,7 +357,7 @@ export default function EmpleadoFormPage() {
 
               {mostrarCuenta && (
                 <>
-                  <div className="col-md-6 mb-3">
+                  <div className="col-md-6">
                     <label>Correo</label>
                     <input
                       type="email"
@@ -344,7 +368,7 @@ export default function EmpleadoFormPage() {
                     />
                   </div>
 
-                  <div className="col-md-6 mb-3">
+                  <div className="col-md-6">
                     <label>Contraseña</label>
                     <input
                       type="password"

@@ -14,6 +14,7 @@ import UnidadesMedidaPage from "./pages/UnidadMedidas/UnidadMedidaPage.jsx";
 import UnidadMedidaFormPage from "./pages/UnidadMedidas/UnidadMedidaFormPage.jsx";
 
 import Login from "./pages/auth/Login.jsx";
+import Register from "./pages/auth/Register.jsx";
 
 import EmpleadoFormPage from "./pages/Empleados/EmpleadoFormPage.jsx";
 import EmpleadosPage from "./pages/Empleados/EmpleadoPage.jsx";
@@ -21,6 +22,7 @@ import EmpleadosPage from "./pages/Empleados/EmpleadoPage.jsx";
 import PerfilPage from "./pages/Perfil/PerfilPage.jsx";
 
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import RoleRoute from "./components/auth/RoleRoute";
 import FamiliasPage from "./pages/Familias/FamiliasPage.jsx";
 import FamiliaFormPage from "./pages/Familias/FamiliaFormPage.jsx";
 
@@ -37,6 +39,8 @@ import ColorFormPage from "./pages/colores/ColorFormPage.jsx";
 
 import  InsumosPage from "./pages/Insumos/InsumosPage.jsx";
 import  InsumosFormPage from "./pages/Insumos/InsumoFormPage.jsx";
+import SalidasInsumosPage from "./pages/SalidasInsumos/SalidasInsumosPage.jsx";
+import SalidasInsumosNuevaPage from "./pages/SalidasInsumos/SalidasInsumosNuevaPage.jsx";
 
 import CentrosTrabajoPage from "./pages/CentrosTrabajo/CentrosTrabajoPage.jsx";
 import CentrosTrabajoFormPage from "./pages/CentrosTrabajo/CentroTrabajoFormPage.jsx";
@@ -55,6 +59,7 @@ import ProductosCompletosPage from "./pages/ProductosCompletos/ProductosCompleto
 import ProductoDetallePage from "./pages/Productos/ProductoDetallePage.jsx";
 import ProductoInsumosBOMPage from "./pages/Productos/ProductoInsumosBOMPage.jsx";
 import ProductoOperacionesBOMPage from "./pages/Productos/ProductoOperacionesBOMPage.jsx";
+import UsuariosAccesoPage from "./pages/Usuarios/UsuariosAccesoPage.jsx";
 
 export default function App() {
 
@@ -64,6 +69,7 @@ export default function App() {
 
       {/* LOGIN */}
       <Route path="/login" element={<Login />} />
+      <Route path="/registro" element={<Register />} />
 
       {/* REDIRECCIÓN INICIAL */}
       <Route path="/" element={<Navigate to="/login" replace />} />
@@ -92,6 +98,15 @@ export default function App() {
         <Route path="/empleados" element={<EmpleadosPage />} />
 
         <Route path="/perfil" element={<PerfilPage />} />
+
+        <Route
+          path="/usuarios/accesos"
+          element={
+            <RoleRoute allowedRoles={["ADMIN", "DIRECTOR_GENERAL"]}>
+              <UsuariosAccesoPage />
+            </RoleRoute>
+          }
+        />
 
         {/* PROVEEDORES */}
         <Route path="/proveedores" element={<ProveedoresPage />} />
@@ -133,10 +148,12 @@ export default function App() {
         <Route path="/colores/nuevo" element={<ColorFormPage />} />
         <Route path="/colores/:id" element={<ColorFormPage />} />
 
-         {/* Inusmos */}
+        {/* Inusmos */}
         <Route path="/insumos" element={<InsumosPage />} />
         <Route path="/insumos/nuevo" element={<InsumosFormPage />} />
         <Route path="/insumos/:id" element={<InsumosFormPage />} />
+        <Route path="/salidas-insumos" element={<SalidasInsumosPage />} />
+        <Route path="/salidas-insumos/nueva" element={<SalidasInsumosNuevaPage />} />
 
          {/* Centros de Trabajo */}
         <Route path="/centros-trabajo" element={<CentrosTrabajoPage />} />

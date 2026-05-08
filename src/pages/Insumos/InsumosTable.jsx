@@ -3,7 +3,6 @@ import { obtenerCostoPromedio } from "../../services/kardex.js";
 
 const COLUMNAS_ORDENABLES = {
   id: "ID",
-  codigo: "Codigo",
   nombre: "Nombre",
   ubicacion: "Ubicacion",
   stockActual: "Stock actual",
@@ -149,8 +148,7 @@ export default function InsumosTable({
             <thead className="table-light insumos-table-head">
               <tr>
                 {renderHeader("id", "ID")}
-                {renderHeader("codigo", "Codigo")}
-                <th>Codigo barras</th>
+                <th>Codigo</th>
                 {renderHeader("nombre", "Nombre")}
                 <th>Descripcion</th>
                 {renderHeader("ubicacion", "Ubicacion")}
@@ -174,11 +172,6 @@ export default function InsumosTable({
                       role="button"
                     >
                       <td className="text-muted">#{insumo.id}</td>
-                      <td>
-                        <span className="badge text-bg-light border insumos-code-badge">
-                          {insumo.codigo || "-"}
-                        </span>
-                      </td>
                       <td>
                         <span className="badge text-bg-light border insumos-code-badge">
                           {insumo.codigoBarras || "-"}
@@ -275,7 +268,7 @@ export default function InsumosTable({
                 })
               ) : (
                 <tr>
-                  <td colSpan="12" className="text-center text-muted py-5">
+                  <td colSpan="11" className="text-center text-muted py-5">
                     <i className="bi bi-boxes fs-1 d-block mb-3 text-secondary"></i>
                     <span className="fs-5 d-block">No hay insumos registrados</span>
                     <p className="text-secondary mt-2 mb-0">Comienza creando un nuevo insumo</p>

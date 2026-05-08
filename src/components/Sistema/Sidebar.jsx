@@ -17,11 +17,23 @@ export default function Sidebar() {
   const apellido = user?.apellidoPaterno || "";
 
   const rolMap = {
-    ADMIN: "Administrador",
+    ADMIN: "Dev / Admin",
+    DIRECTOR_GENERAL: "Director General",
+    SUBDIRECCION_ADMINISTRATIVA: "Subdirección Administrativa",
+    ASISTENTE_GERENCIAL: "Asistente Gerencial",
+    SUPERVISOR_PRODUCCION: "Supervisor de Producción",
+    JEFE_HERRERIA: "Jefe de Herrería",
+    JEFE_CARPINTERIA: "Jefe de Carpintería",
+    JEFE_ARMADO: "Jefe de Armado",
+    JEFE_ALMACEN: "Jefe de Almacén",
+    JEFE_LOGISTICA: "Jefe de Logística",
+    TECNICO: "Técnico",
+    AYUDANTE_GENERAL: "Ayudante General",
     EMPLOYEE: "Empleado"
   };
 
   const rol = rolMap[user?.roles?.[0]] || user?.roles?.[0] || "";
+  const puedeGestionarUsuarios = user?.roles?.some((r) => r === "ADMIN" || r === "DIRECTOR_GENERAL");
 
   const foto = user?.fotoUrl
     ? `${API_BASE_URL}${user.fotoUrl}`
@@ -114,6 +126,13 @@ export default function Sidebar() {
           Tablero
         </NavLink>
 
+        {puedeGestionarUsuarios && (
+          <NavLink to="/usuarios/accesos" className="sidebar-link">
+            <i className="bi bi-shield-check me-2"></i>
+            Usuarios y accesos
+          </NavLink>
+        )}
+
         {/* EMPLEADOS */}
         <NavLink to="/empleados" className="sidebar-link">
           <i className="bi bi-people me-2"></i>
@@ -184,6 +203,11 @@ export default function Sidebar() {
             <NavLink to="/insumos" className="sidebar-link sidebar-link--sub">
               <i className="bi bi-boxes me-2"></i>
               Insumos
+            </NavLink>
+
+            <NavLink to="/salidas-insumos" className="sidebar-link sidebar-link--sub">
+              <i className="bi bi-box-arrow-right me-2"></i>
+              Salidas
             </NavLink>
 
             <NavLink to="/unidades-medida" className="sidebar-link sidebar-link--sub">

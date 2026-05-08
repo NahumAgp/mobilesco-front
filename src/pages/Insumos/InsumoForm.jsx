@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { obtenerInsumoPorId, crearInsumo, actualizarInsumo } from "../../services/insumos.js";
-import { obtenerUnidadesMedida } from "../../services/unidadMedidas.js";
+import { obtenerUnidadesMedida, crearUnidadMedida } from "../../services/unidadMedidas.js";
 import Toast from "../../components/ui/Toast.jsx";
 import { Ean13BarcodeSvg, obtenerBitsEan13 } from "../../components/Barcode/Ean13Barcode.jsx";
 import "./InsumoForm.css";
@@ -17,6 +17,15 @@ export default function InsumoForm({
   const [toastType, setToastType] = useState("success");
   const [erroresBackend, setErroresBackend] = useState({});
   const [unidadesMedida, setUnidadesMedida] = useState([]);
+  const [mostrarCrearUnidad, setMostrarCrearUnidad] = useState(false);
+  const [creandoUnidad, setCreandoUnidad] = useState(false);
+  const [nuevaUnidadRapida, setNuevaUnidadRapida] = useState({
+    nombre: "",
+    simbolo: "",
+    tipo: ""
+  });
+  const [erroresUnidadRapida, setErroresUnidadRapida] = useState({});
+  const barcodePreviewRef = useRef(null);
   
   const navigate = useNavigate();
   
@@ -24,7 +33,6 @@ export default function InsumoForm({
   const esEdicion = Boolean(insumoId) || Boolean(insumo);
 
   const [formData, setFormData] = useState({
-    codigo: "",
     codigoBarras: "",
     nombre: "",
     descripcion: "",
@@ -59,7 +67,6 @@ export default function InsumoForm({
     const cargar = async () => {
       if (esModal && insumo) {
         setFormData({
-          codigo: insumo.codigo || "",
           codigoBarras: insumo.codigoBarras || "",
           nombre: insumo.nombre || "",
           descripcion: insumo.descripcion || "",
@@ -78,7 +85,6 @@ export default function InsumoForm({
         try {
           const data = await obtenerInsumoPorId(insumoId);
           setFormData({
-            codigo: data.codigo || "",
             codigoBarras: data.codigoBarras || "",
             nombre: data.nombre || "",
             descripcion: data.descripcion || "",
@@ -97,6 +103,65 @@ export default function InsumoForm({
     };
     cargar();
   }, [insumoId, insumo, esModal]);
+
+  const limpiarNuevaUnidad = () => {
+    setNuevaUnidadRapida({
+      nombre: "",
+      simbolo: "",
+      tipo: ""
+    });
+    setErroresUnidadRapida({});
+  };
+
+  const handleNuevaUnidadChange = (field, value) => {
+    setNuevaUnidadRapida((prev) => ({
+      ...prev,
+      [field]: value
+    }));
+
+    setErroresUnidadRapida((prev) => {
+      const copia = { ...prev };
+      delete copia[field];
+      return copia;
+    });
+  };
+
+  const guardarUnidadRapida = async () => {
+    const errores = {};
+
+    if (!nuevaUnidadRapida.nombre.trim()) errores.nombre = "El nombre es obligatorio";
+    if (!nuevaUnidadRapida.simbolo.trim()) errores.simbolo = "El simbolo es obligatorio";
+
+    if (Object.keys(errores).length > 0) {
+      setErroresUnidadRapida(errores);
+      return;
+    }
+
+    try {
+      setCreandoUnidad(true);
+      const creada = await crearUnidadMedida({
+        nombre: nuevaUnidadRapida.nombre.trim(),
+        simbolo: nuevaUnidadRapida.simbolo.trim(),
+        tipo: nuevaUnidadRapida.tipo.trim() || null
+      });
+
+      setUnidadesMedida((prev) => [creada, ...prev]);
+      setFormData((prev) => ({
+        ...prev,
+        unidadMedidaId: String(creada.id)
+      }));
+      limpiarNuevaUnidad();
+      setMostrarCrearUnidad(false);
+      setToastType("success");
+      setToastMessage("Unidad de medida creada y seleccionada");
+    } catch (error) {
+      setErroresUnidadRapida(error.errors || {});
+      setToastType("danger");
+      setToastMessage(error.message || "Error al crear la unidad de medida");
+    } finally {
+      setCreandoUnidad(false);
+    }
+  };
 
   function handleChange(e) {
     const { name, value, type, checked } = e.target;
@@ -188,7 +253,7 @@ export default function InsumoForm({
 
     ventana.document.write(`
       <!doctype html>
-      <html>
+          <html>
         <head>
           <title>Etiqueta ${formData.codigoBarras}</title>
           <style>
@@ -196,7 +261,6 @@ export default function InsumoForm({
             body { margin: 0; font-family: Arial, sans-serif; color: #111827; }
             .label { width: 76mm; min-height: 38mm; box-sizing: border-box; padding: 4mm 5mm; text-align: center; }
             .name { font-size: 12px; font-weight: 700; margin-bottom: 2mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-            .meta { font-size: 9px; margin-bottom: 1.5mm; }
             .code { font-family: monospace; font-size: 11px; letter-spacing: 1.4px; margin-top: 1mm; }
             svg { width: 100%; height: 20mm; }
           </style>
@@ -204,7 +268,6 @@ export default function InsumoForm({
         <body>
           <div class="label">
             <div class="name">${formData.nombre || "Insumo"}</div>
-            <div class="meta">${formData.codigo || ""}</div>
             <svg viewBox="0 0 ${barcodeWidth} ${barcodeHeight}" role="img">
               <rect width="${barcodeWidth}" height="${barcodeHeight}" fill="#ffffff"></rect>
               ${rects}
@@ -223,177 +286,322 @@ export default function InsumoForm({
     ventana.document.close();
   };
 
+  const descargarEtiquetaPng = async () => {
+    const svg = barcodePreviewRef.current?.querySelector("svg");
+    if (!svg) return;
+
+    const width = Number(svg.getAttribute("width")) || 280;
+    const height = Number(svg.getAttribute("height")) || 110;
+    const scale = 2;
+
+    const svgClone = svg.cloneNode(true);
+    svgClone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    svgClone.setAttribute("width", String(width));
+    svgClone.setAttribute("height", String(height));
+
+    const svgText = new XMLSerializer().serializeToString(svgClone);
+    const svgBlob = new Blob([svgText], { type: "image/svg+xml;charset=utf-8" });
+    const svgUrl = URL.createObjectURL(svgBlob);
+
+    try {
+      const image = new Image();
+      image.crossOrigin = "anonymous";
+      image.src = svgUrl;
+
+      await new Promise((resolve, reject) => {
+        image.onload = resolve;
+        image.onerror = reject;
+      });
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width * scale;
+      canvas.height = height * scale;
+
+      const context = canvas.getContext("2d");
+      if (!context) return;
+
+      context.scale(scale, scale);
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, width, height);
+      context.drawImage(image, 0, 0, width, height);
+
+      const pngBlob = await new Promise((resolve) => {
+        canvas.toBlob((blob) => resolve(blob), "image/png");
+      });
+
+      if (!pngBlob) return;
+
+      const pngUrl = URL.createObjectURL(pngBlob);
+      const nombreArchivo = (formData.nombre || "insumo")
+        .trim()
+        .replace(/[\\/:*?"<>|]+/g, "")
+        .replace(/\s+/g, "-")
+        .toLowerCase();
+      const link = document.createElement("a");
+      link.href = pngUrl;
+      link.download = `${nombreArchivo}.png`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(pngUrl);
+    } finally {
+      URL.revokeObjectURL(svgUrl);
+    }
+  };
+
+  const formShellClass = `insumo-form-shell ${esModal ? "" : "container py-4"}`;
+
   return (
-    <div className={esModal ? "" : "container py-4"}>
+    <div className={formShellClass}>
       {!esModal && (
         <Toast message={toastMessage} type={toastType} onClose={() => setToastMessage("")} />
       )}
-      
-      {!esModal && (
-        <div className="d-flex justify-content-between align-items-center mb-4">
-          <h2 className="fw-bold text-primary">{esEdicion ? 'Editar Insumo' : 'Nuevo Insumo'}</h2>
-          <span className={`badge ${formData.activo ? 'bg-success' : 'bg-secondary'}`}>
-            {formData.activo ? 'Activo' : 'Inactivo'}
-          </span>
-        </div>
-      )}
 
       <form onSubmit={handleSubmit} noValidate>
-        <div className="card shadow-sm border-0 mb-4">
-          <div className="card-header bg-white py-3">
-            <h5 className="mb-0 text-secondary">
-              <i className="bi bi-box-seam me-2"></i>Información del Insumo
-            </h5>
-          </div>
+        <div className="card shadow-sm border-0 mb-4 insumo-form-card">
           <div className="card-body">
-            <div className="row g-3">
-              <div className="col-md-6">
-                <label className="form-label fw-semibold">
-                  Código del Insumo <span className="text-danger">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="codigo"
-                  className={inputClass("codigo")}
-                  value={formData.codigo}
-                  onChange={handleChange}
-                  placeholder="Ej: INS-001"
-                />
-                <div className="invalid-feedback">{erroresBackend.codigo || erroresExternos.codigo}</div>
+            <div className="insumo-section-card insumo-section-card--base mb-3">
+              <div className="insumo-section-head">
+                <div>
+                  <div className="insumo-section-kicker">Datos generales</div>
+                  <h6 className="mb-0">Identificación y descripción</h6>
+                </div>
+                <i className="bi bi-box-seam"></i>
               </div>
+              <div className="row g-3">
+                <div className="col-lg-6">
+                  <label className="form-label fw-semibold">
+                    Nombre del Insumo <span className="text-danger">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="nombre"
+                    className={inputClass("nombre")}
+                    value={formData.nombre}
+                    onChange={handleChange}
+                    placeholder="Ej: Tornillos, Tubo, Tela..."
+                  />
+                  <div className="invalid-feedback">{erroresBackend.nombre || erroresExternos.nombre}</div>
+                </div>
 
-              <div className="col-md-6">
-                <label className="form-label fw-semibold">
-                  Nombre del Insumo <span className="text-danger">*</span>
-                </label>
-                <input 
-                  type="text" 
-                  name="nombre" 
-                  className={inputClass("nombre")} 
-                  value={formData.nombre} 
-                  onChange={handleChange} 
-                  placeholder="Ej:Tornillos, Tubo, Tela..."
-                />
-                <div className="invalid-feedback">{erroresBackend.nombre || erroresExternos.nombre}</div>
+                <div className="col-lg-6">
+                  <label className="form-label fw-semibold">
+                    Unidad de Medida <span className="text-danger">*</span>
+                  </label>
+                  <div className="insumo-unidad-select-group">
+                    <select
+                      name="unidadMedidaId"
+                      className={`${selectClass("unidadMedidaId")} insumo-unidad-select`}
+                      value={formData.unidadMedidaId}
+                      onChange={handleChange}
+                    >
+                      <option value="">Selecciona una unidad...</option>
+                      {unidadesMedida.map((um) => (
+                        <option key={um.id} value={um.id}>
+                          {um.nombre} ({um.simbolo})
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      className="btn btn-outline-secondary insumo-unidad-add-btn"
+                      onClick={() => setMostrarCrearUnidad((prev) => !prev)}
+                      aria-label="Crear nueva unidad de medida"
+                      title="Crear nueva unidad de medida"
+                    >
+                      <i className="bi bi-plus-lg"></i>
+                    </button>
+                  </div>
+                  <div className="invalid-feedback">{erroresBackend.unidadMedidaId || erroresExternos.unidadMedidaId}</div>
+                  {mostrarCrearUnidad && (
+                    <div className="insumo-unidad-quick-create mt-3">
+                      <div className="d-flex align-items-center justify-content-between gap-2 mb-3">
+                        <div className="fw-bold text-secondary">
+                          <i className="bi bi-rulers me-2"></i>
+                          Nueva unidad de medida
+                        </div>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-secondary"
+                          onClick={() => {
+                            limpiarNuevaUnidad();
+                            setMostrarCrearUnidad(false);
+                          }}
+                        >
+                          Cerrar
+                        </button>
+                      </div>
+
+                      <div className="row g-2">
+                        <div className="col-md-5">
+                          <label className="form-label fw-semibold">Nombre *</label>
+                          <input
+                            className={`form-control ${erroresUnidadRapida.nombre ? "is-invalid" : ""}`}
+                            value={nuevaUnidadRapida.nombre}
+                            onChange={(e) => handleNuevaUnidadChange("nombre", e.target.value)}
+                            placeholder="Kilogramo"
+                          />
+                          <div className="invalid-feedback">{erroresUnidadRapida.nombre}</div>
+                        </div>
+                        <div className="col-md-3">
+                          <label className="form-label fw-semibold">Simbolo *</label>
+                          <input
+                            className={`form-control ${erroresUnidadRapida.simbolo ? "is-invalid" : ""}`}
+                            value={nuevaUnidadRapida.simbolo}
+                            onChange={(e) => handleNuevaUnidadChange("simbolo", e.target.value)}
+                            placeholder="kg"
+                          />
+                          <div className="invalid-feedback">{erroresUnidadRapida.simbolo}</div>
+                        </div>
+                        <div className="col-md-4">
+                          <label className="form-label fw-semibold">Tipo</label>
+                          <input
+                            className="form-control"
+                            value={nuevaUnidadRapida.tipo}
+                            onChange={(e) => handleNuevaUnidadChange("tipo", e.target.value)}
+                            placeholder="Peso, pieza..."
+                          />
+                        </div>
+                        <div className="col-12 d-flex justify-content-end gap-2">
+                          <button
+                            type="button"
+                            className="btn btn-outline-secondary btn-sm"
+                            onClick={limpiarNuevaUnidad}
+                          >
+                            Limpiar
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-primary btn-sm"
+                            onClick={guardarUnidadRapida}
+                            disabled={creandoUnidad}
+                          >
+                            {creandoUnidad ? "Creando..." : "Crear unidad"}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="col-12">
+                  <label className="form-label fw-semibold">Descripción</label>
+                  <textarea
+                    name="descripcion"
+                    className={inputClass("descripcion")}
+                    value={formData.descripcion || ""}
+                    onChange={handleChange}
+                    rows="3"
+                    placeholder="Descripción detallada del insumo..."
+                  />
+                  <div className="invalid-feedback">{erroresBackend.descripcion || erroresExternos.descripcion}</div>
+                </div>
               </div>
+            </div>
 
-              <div className="col-md-6">
-                <label className="form-label fw-semibold">
-                  Unidad de Medida <span className="text-danger">*</span>
-                </label>
-                <select
-                  name="unidadMedidaId"
-                  className={selectClass("unidadMedidaId")}
-                  value={formData.unidadMedidaId}
-                  onChange={handleChange}
-                >
-                  <option value="">Selecciona una unidad...</option>
-                  {unidadesMedida.map(um => (
-                    <option key={um.id} value={um.id}>
-                      {um.nombre} ({um.simbolo})
-                    </option>
-                  ))}
-                </select>
-                <div className="invalid-feedback">{erroresBackend.unidadMedidaId || erroresExternos.unidadMedidaId}</div>
+            <div className="insumo-section-card insumo-section-card--location mb-3">
+              <div className="insumo-section-head">
+                <div>
+                  <div className="insumo-section-kicker">Ubicación</div>
+                  <h6 className="mb-0">Dónde se guarda el insumo</h6>
+                </div>
+                <i className="bi bi-geo-alt"></i>
               </div>
+              <div className="row g-3">
+                <div className="col-lg-6">
+                  <label className="form-label fw-semibold">Ubicación</label>
+                  <input
+                    type="text"
+                    name="ubicacion"
+                    className={inputClass("ubicacion")}
+                    value={formData.ubicacion}
+                    onChange={handleChange}
+                    placeholder="Ej: Almacén A, Estante 3..."
+                  />
+                </div>
 
-              <div className="col-md-12">
-                <label className="form-label fw-semibold">Descripción</label>
-                <textarea
-                  name="descripcion"
-                  className={inputClass("descripcion")}
-                  value={formData.descripcion || ""}
-                  onChange={handleChange}
-                  rows="3"
-                  placeholder="Descripción detallada del insumo..."
-                />
-                <div className="invalid-feedback">{erroresBackend.descripcion || erroresExternos.descripcion}</div>
+                <div className="col-md-3 col-lg-3">
+                  <label className="form-label fw-semibold">Fila</label>
+                  <input
+                    type="text"
+                    name="fila"
+                    className={inputClass("fila")}
+                    value={formData.fila}
+                    onChange={handleChange}
+                    placeholder="A01"
+                  />
+                </div>
+
+                <div className="col-md-3 col-lg-3">
+                  <label className="form-label fw-semibold">Columna</label>
+                  <input
+                    type="text"
+                    name="columna"
+                    className={inputClass("columna")}
+                    value={formData.columna}
+                    onChange={handleChange}
+                    placeholder="B02"
+                  />
+                </div>
               </div>
+            </div>
 
-              <div className="col-md-4">
-                <label className="form-label fw-semibold">Ubicación</label>
-                <input 
-                  type="text" 
-                  name="ubicacion" 
-                  className={inputClass("ubicacion")} 
-                  value={formData.ubicacion} 
-                  onChange={handleChange} 
-                  placeholder="Ej: Almacén A, Estante 3..."
-                />
+            <div className="insumo-section-card insumo-section-card--inventory">
+              <div className="insumo-section-head">
+                <div>
+                  <div className="insumo-section-kicker">Inventario</div>
+                  <h6 className="mb-0">Stock y estado</h6>
+                </div>
+                <i className="bi bi-archive"></i>
               </div>
+              <div className="row g-3 align-items-end">
+                <div className="col-md-6">
+                  <label className="form-label fw-semibold">Stock Actual</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    name="stockActual"
+                    className={inputClass("stockActual")}
+                    value={formData.stockActual}
+                    onChange={handleChange}
+                  />
+                </div>
 
-              <div className="col-md-2">
-                <label className="form-label fw-semibold">Fila</label>
-                <input 
-                  type="text" 
-                  name="fila" 
-                  className={inputClass("fila")} 
-                  value={formData.fila} 
-                  onChange={handleChange} 
-                  placeholder="A01"
-                />
-              </div>
+                <div className="col-md-6">
+                  <label className="form-label fw-semibold">Stock Mínimo</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    name="stockMinimo"
+                    className={inputClass("stockMinimo")}
+                    value={formData.stockMinimo}
+                    onChange={handleChange}
+                  />
+                </div>
 
-              <div className="col-md-2">
-                <label className="form-label fw-semibold">Columna</label>
-                <input 
-                  type="text" 
-                  name="columna" 
-                  className={inputClass("columna")} 
-                  value={formData.columna} 
-                  onChange={handleChange} 
-                  placeholder="B02"
-                />
-              </div>
-
-              <div className="col-md-2">
-                <label className="form-label fw-semibold">Stock Actual</label>
-                <input 
-                  type="number" 
-                  step="0.01" 
-                  min="0"
-                  name="stockActual" 
-                  className={inputClass("stockActual")} 
-                  value={formData.stockActual} 
-                  onChange={handleChange} 
-                />
-              </div>
-
-              <div className="col-md-2">
-                <label className="form-label fw-semibold">Stock Mínimo</label>
-                <input 
-                  type="number" 
-                  step="0.01" 
-                  min="0"
-                  name="stockMinimo" 
-                  className={inputClass("stockMinimo")} 
-                  value={formData.stockMinimo} 
-                  onChange={handleChange} 
-                />
-              </div>
-
-              <div className="col-md-12">
-                <div className="border-top pt-3 mt-2">
-                  <div className="d-flex align-items-center">
+                <div className="col-12">
+                  <div className="insumo-active-strip">
                     <div className="form-check form-switch mb-0">
-                      <input 
-                        className="form-check-input" 
-                        type="checkbox" 
-                        name="activo" 
-                        checked={formData.activo} 
-                        onChange={handleChange} 
-                        id="activoSwitch" 
+                      <input
+                        className="form-check-input"
+                        type="checkbox"
+                        name="activo"
+                        checked={formData.activo}
+                        onChange={handleChange}
+                        id="activoSwitch"
                         style={{ width: "40px", height: "20px", cursor: "pointer" }}
                       />
                     </div>
                     <div className="ms-3">
                       <label className="form-check-label fw-semibold d-block" htmlFor="activoSwitch" style={{ cursor: "pointer" }}>
-                        Insumo {formData.activo ? 'Activo' : 'Inactivo'}
+                        Insumo {formData.activo ? "Activo" : "Inactivo"}
                       </label>
                       <small className="text-muted">
-                        {formData.activo 
-                          ? 'El insumo está habilitado para su uso' 
-                          : 'El insumo está deshabilitado'}
+                        {formData.activo
+                          ? "El insumo está habilitado para su uso"
+                          : "El insumo está deshabilitado"}
                       </small>
                     </div>
                   </div>
@@ -405,20 +613,29 @@ export default function InsumoForm({
 
         {formData.codigoBarras && (
           <div className="card insumo-barcode-card mb-4">
-            <div className="card-header bg-white py-3 d-flex align-items-center justify-content-between">
+            <div className="card-header insumo-barcode-header py-3 d-flex align-items-center justify-content-between">
               <h5 className="mb-0 text-secondary">
                 <i className="bi bi-upc-scan me-2"></i>Codigo de barras
               </h5>
-              <button type="button" className="btn btn-outline-success btn-sm" onClick={imprimirEtiqueta}>
-                <i className="bi bi-printer me-1"></i>
-                Imprimir etiqueta
-              </button>
+              <div className="d-flex gap-2">
+                <button type="button" className="btn btn-outline-secondary btn-sm" onClick={descargarEtiquetaPng}>
+                  <i className="bi bi-download me-1"></i>
+                  Descargar PNG
+                </button>
+                <button type="button" className="btn btn-outline-success btn-sm" onClick={imprimirEtiqueta}>
+                  <i className="bi bi-printer me-1"></i>
+                  Imprimir etiqueta
+                </button>
+              </div>
             </div>
             <div className="card-body">
               <div className="row g-3 align-items-center">
                 <div className="col-md-5">
-                  <div className="insumo-barcode-preview">
-                    <Ean13BarcodeSvg value={formData.codigoBarras} />
+                  <div className="insumo-barcode-preview" ref={barcodePreviewRef}>
+                    <Ean13BarcodeSvg
+                      value={formData.codigoBarras}
+                      title={formData.nombre || "Insumo"}
+                    />
                     <div className="insumo-barcode-number">{formData.codigoBarras}</div>
                   </div>
                 </div>
@@ -439,24 +656,8 @@ export default function InsumoForm({
           </div>
         )}
 
-        <div className="d-flex justify-content-between align-items-center bg-white p-3 rounded shadow-sm">
-          {esModal && (
-            <div className="form-check form-switch">
-              <input 
-                className="form-check-input" 
-                type="checkbox" 
-                name="activo" 
-                checked={formData.activo} 
-                onChange={handleChange} 
-                id="switchActivoModal" 
-              />
-              <label className="form-check-label fw-semibold" htmlFor="switchActivoModal">
-                Insumo {formData.activo ? 'Activo' : 'Inactivo'}
-              </label>
-            </div>
-          )}
-          
-          <div className={`gap-2 d-flex ${esModal ? 'ms-auto' : ''}`}>
+        <div className="insumo-form-actions d-flex justify-content-end align-items-center">
+          <div className="gap-2 d-flex">
             <button 
               type="button" 
               className="btn btn-light px-4" 

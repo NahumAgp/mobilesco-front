@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { login, getCurrentUser, isAuthenticated } from "../../services/authService";
+import "./Login.css";
 
 export default function Login() {
 
@@ -14,6 +15,7 @@ export default function Login() {
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
 
@@ -71,78 +73,123 @@ export default function Login() {
   };
 
   return (
+    <div className="login-page">
+      <div className="login-shell">
+        <section className="login-form-panel">
+          <div className="login-brand">
+            <img src="/logo-mobilesco-firmeza.svg" alt="Mobilesco" />
+          </div>
 
-    <div className="container d-flex align-items-center justify-content-center min-vh-100">
+          <div className="login-kicker">Mobilesco ERP</div>
+          <h1 className="login-title">Iniciar sesión</h1>
 
-      <div className="card shadow" style={{ width: "400px" }}>
-
-        <div className="card-body p-5">
-
-          <h2 className="text-center mb-4">Iniciar sesión</h2>
-
-          <form onSubmit={handleSubmit}>
-
-            <div className="mb-3">
-
-              <label className="form-label">Correo</label>
-
-              <input
-                type="email"
-                name="email"
-                className="form-control"
-                value={credentials.email}
-                onChange={handleChange}
-                disabled={loading}
-                required
-              />
-
-            </div>
-
-            <div className="mb-3">
-
-              <label className="form-label">Contraseña</label>
-
-              <input
-                type="password"
-                name="password"
-                className="form-control"
-                value={credentials.password}
-                onChange={handleChange}
-                disabled={loading}
-                required
-              />
-
-            </div>
-
-            {error && (
-              <div className="alert alert-danger py-2">
-                {error}
+          <div className="login-card">
+            <form onSubmit={handleSubmit} className="login-form">
+              <div className="login-field">
+                <label htmlFor="login-email">Correo</label>
+                <div className="login-input-wrap">
+                  <i className="bi bi-envelope login-input-icon"></i>
+                  <input
+                    id="login-email"
+                    type="email"
+                    name="email"
+                    className="login-input"
+                    placeholder="nombre@mobilesco.com"
+                    value={credentials.email}
+                    onChange={handleChange}
+                    disabled={loading}
+                    autoComplete="email"
+                    required
+                  />
+                </div>
               </div>
-            )}
 
-            <button
-              type="submit"
-              className="btn btn-primary w-100"
-              disabled={loading}
-            >
+              <div className="login-field">
+                <label htmlFor="login-password">Contraseña</label>
+                <div className="login-password-row">
+                  <div className="login-input-wrap">
+                    <i className="bi bi-lock login-input-icon"></i>
+                    <input
+                      id="login-password"
+                      type={showPassword ? "text" : "password"}
+                      name="password"
+                      className="login-input"
+                      placeholder="••••••••"
+                      value={credentials.password}
+                      onChange={handleChange}
+                      disabled={loading}
+                      autoComplete="current-password"
+                      required
+                    />
+                  </div>
 
-              {loading ? (
-                <>
-                  <span className="spinner-border spinner-border-sm me-2"></span>
-                  Entrando...
-                </>
-              ) : (
-                "Entrar"
-              )}
+                  <button
+                    type="button"
+                    className="login-toggle"
+                    onClick={() => setShowPassword((value) => !value)}
+                    aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                    disabled={loading}
+                  >
+                    <i className={`bi ${showPassword ? "bi-eye-slash" : "bi-eye"}`}></i>
+                  </button>
+                </div>
+              </div>
 
-            </button>
+              {error && <div className="login-message">{error}</div>}
 
-          </form>
+              <button
+                type="submit"
+                className="login-button"
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm me-2"></span>
+                    Entrando...
+                  </>
+                ) : (
+                  "Entrar"
+                )}
+              </button>
 
-        </div>
+              <button
+                type="button"
+                className="login-link"
+                onClick={() => navigate("/registro")}
+                disabled={loading}
+              >
+                Tengo una invitación
+              </button>
 
+              <div className="login-footer">
+                <span>Administración centralizada</span>
+                <span>Seguridad y trazabilidad</span>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <aside className="login-visual-panel" aria-hidden="true">
+          <div className="login-visual-content">
+            <div className="login-visual-top">
+              <i className="bi bi-headset me-2"></i>
+              Support
+            </div>
+
+            <div className="login-feature-card">
+              <h3>Controla tu operación con una sola plataforma</h3>
+              <p>
+                Inventario, costos, producción y compras en una vista clara, consistente y alineada con la marca Mobilesco.
+              </p>
+              <button type="button" className="login-feature-button">
+                Conocer más
+              </button>
+            </div>
+
+            <div className="login-hero-accent"></div>
+          </div>
+        </aside>
       </div>
-
     </div>
 
   );

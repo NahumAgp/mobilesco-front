@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { 
   obtenerProductoPorId,
   obtenerInsumosDeProducto,
@@ -30,6 +30,7 @@ export default function ProductoInsumosBOMPage() {
   const [mostrarCrearUnidad, setMostrarCrearUnidad] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
+  const [busquedaInsumo, setBusquedaInsumo] = useState("");
   
   const [nuevosInsumos, setNuevosInsumos] = useState([
     { insumoId: "", cantidad: 1, desperdicioPorcentaje: 0, observaciones: "" }
@@ -55,6 +56,22 @@ export default function ProductoInsumosBOMPage() {
   useEffect(() => {
     cargarDatos();
   }, [id]);
+
+  const insumosFiltrados = useMemo(() => {
+    const termino = busquedaInsumo.trim().toLowerCase();
+    if (!termino) return insumosDisponibles;
+
+    return insumosDisponibles.filter((insumo) => {
+      const nombre = String(insumo.nombre || "").toLowerCase();
+      const codigoBarras = String(insumo.codigoBarras || "").toLowerCase();
+      const codigo = String(insumo.codigo || "").toLowerCase();
+      return (
+        nombre.includes(termino) ||
+        codigoBarras.includes(termino) ||
+        codigo.includes(termino)
+      );
+    });
+  }, [busquedaInsumo, insumosDisponibles]);
 
   const cargarDatos = async () => {
     try {
@@ -386,6 +403,18 @@ export default function ProductoInsumosBOMPage() {
             Crear insumo
           </button>
         </div>
+        <div className="row g-2 mb-3">
+          <div className="col-md-6">
+            <label className="form-label fw-semibold small">Buscar insumo</label>
+            <input
+              type="search"
+              className="form-control"
+              value={busquedaInsumo}
+              onChange={(e) => setBusquedaInsumo(e.target.value)}
+              placeholder="Buscar por nombre o código de barras"
+            />
+          </div>
+        </div>
         <div className="table-responsive">
           <table className="table">
             <thead className="table-light">
@@ -401,18 +430,30 @@ export default function ProductoInsumosBOMPage() {
               {nuevosInsumos.map((item, index) => (
                 <tr key={index}>
                   <td>
-                    <select
-                      className={`form-select form-select-sm ${erroresBom[`${index}.insumoId`] ? "is-invalid" : ""}`}
-                      value={item.insumoId}
-                      onChange={(e) => handleNuevoInsumoChange(index, "insumoId", e.target.value)}
-                    >
-                      <option value="">Seleccionar...</option>
-                      {insumosDisponibles.map(ins => (
-                        <option key={ins.id} value={ins.id}>
-                          {ins.nombre} ({ins.unidadMedida?.simbolo})
-                        </option>
-                      ))}
-                    </select>
+                    <div className="input-group input-group-sm">
+                      <select
+                        className={`form-select form-select-sm ${erroresBom[`${index}.insumoId`] ? "is-invalid" : ""}`}
+                        value={item.insumoId}
+                        onChange={(e) => handleNuevoInsumoChange(index, "insumoId", e.target.value)}
+                      >
+                        <option value="">Seleccionar...</option>
+                        {insumosFiltrados.map(ins => (
+                          <option key={ins.id} value={ins.id}>
+                            {ins.nombre} {ins.codigoBarras ? `- ${ins.codigoBarras}` : ""} ({ins.unidadMedida?.simbolo})
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        className="btn btn-outline-secondary"
+                        title="Busca por nombre o código"
+                        onClick={() => {
+                          document.querySelector('input[placeholder="Buscar por nombre o código de barras"]')?.focus();
+                        }}
+                      >
+                        <i className="bi bi-search"></i>
+                      </button>
+                    </div>
                     <div className="invalid-feedback">{erroresBom[`${index}.insumoId`]}</div>
                   </td>
                   <td style={{width: '120px'}}>
@@ -475,7 +516,7 @@ export default function ProductoInsumosBOMPage() {
         </div>
       </Card>
 
-        {mostrarCrearInsumo ? (
+      {mostrarCrearInsumo ? (
           <div className="producto-bom-modal-backdrop">
             <div className="producto-bom-modal">
               <div className="producto-bom-modal-header">
@@ -590,6 +631,7 @@ export default function ProductoInsumosBOMPage() {
             </div>
           </div>
         ) : null}
+
     </div>
   );
 }

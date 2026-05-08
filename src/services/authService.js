@@ -18,12 +18,48 @@ export async function login(credentials) {
   return data;
 }
 
+// ============================
+// REGISTRO POR INVITACION
+// ============================
+export async function registerWithInvitation(payload) {
+  return request(API_PATHS.AUTH_REGISTER, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
 
 // ============================
 // OBTENER USUARIO ACTUAL
 // ============================
 export function getCurrentUser() {
   return request(API_PATHS.AUTH_ME);
+}
+
+// ============================
+// ROLES DISPONIBLES
+// ============================
+export function getAvailableRoles() {
+  return request(API_PATHS.AUTH_ROLES);
+}
+
+// ============================
+// INVITACIONES
+// ============================
+export function createInvitation(payload) {
+  return request(API_PATHS.AUTH_INVITACIONES, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function getPendingUsers() {
+  return request(API_PATHS.AUTH_PENDIENTES);
+}
+
+export function approvePendingUser(id) {
+  return request(`${API_PATHS.AUTH_PENDIENTES}/${id}/aprobar`, {
+    method: "POST"
+  });
 }
 
 

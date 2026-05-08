@@ -86,7 +86,6 @@ export default function InsumosPage() {
         const palabras = terminoBusqueda.split(" ");
         const infoInsumo = [
           insumo.id,
-          insumo.codigo,
           insumo.codigoBarras,
           insumo.nombre,
           insumo.descripcion,
@@ -291,7 +290,7 @@ export default function InsumosPage() {
               <input
                 type="text"
                 className="form-control"
-                placeholder="Buscar por codigo, nombre, unidad o ubicacion..."
+                placeholder="Buscar por nombre, unidad o ubicacion..."
                 value={busqueda}
                 onChange={cambiarBusqueda}
               />
