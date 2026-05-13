@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Select from 'react-select';
 import { 
   obtenerProductoPorId,
+  obtenerProductos,
   obtenerOperacionesDeProducto,
   agregarOperacionesMasivo,
   eliminarOperacionDeProducto
@@ -21,6 +22,9 @@ export default function ProductoOperacionesBOMPage() {
   const [loading, setLoading] = useState(true);
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
+  const [productosModelo, setProductosModelo] = useState([]);
+  const [productoOrigenId, setProductoOrigenId] = useState("");
+  const [copiandoBom, setCopiandoBom] = useState(false);
   
   const [nuevasOperaciones, setNuevasOperaciones] = useState([
     { operacionId: "", cantidad: 1, observaciones: "" }
@@ -30,11 +34,38 @@ export default function ProductoOperacionesBOMPage() {
     cargarDatos();
   }, [id]);
 
+  const getLista = (respuesta) => {
+    if (Array.isArray(respuesta)) return respuesta;
+    if (Array.isArray(respuesta?.content)) return respuesta.content;
+    return [];
+  };
+
+  const getModeloId = (item) =>
+    item?.modeloId ||
+    item?.id_modelo ||
+    item?.modelo_id ||
+    item?.productoBaseId ||
+    item?.modelo?.id ||
+    item?.productoBase?.id ||
+    "";
+
+  const getProductoLabel = (item) => {
+    const partes = [
+      item?.sku,
+      item?.nombre,
+      item?.nivelNombre || item?.categoriaNombre || item?.nombre_nivel,
+      item?.materialNombre || item?.nombre_material,
+      item?.colorNombre || item?.nombre_color
+    ].filter(Boolean);
+    return partes.join(" - ");
+  };
+
   const cargarDatos = async () => {
     try {
       setLoading(true);
-      const [productoData, operacionesData, operacionesProductoData] = await Promise.all([
+      const [productoData, productosData, operacionesData, operacionesProductoData] = await Promise.all([
         obtenerProductoPorId(id),
+        obtenerProductos(),
         obtenerOperaciones(),
         obtenerOperacionesDeProducto(id)
       ]);
@@ -45,12 +76,59 @@ export default function ProductoOperacionesBOMPage() {
       const operacionesOrdenadas = (operacionesProductoData || [])
         .sort((a, b) => (a.orden || 0) - (b.orden || 0));
       setOperacionesProducto(operacionesOrdenadas);
+
+      const modeloActualId = String(getModeloId(productoData));
+      const productosDelModelo = getLista(productosData)
+        .filter((item) => String(item?.id) !== String(id))
+        .filter((item) => !modeloActualId || String(getModeloId(item)) === modeloActualId)
+        .sort((a, b) => getProductoLabel(a).localeCompare(getProductoLabel(b), "es"));
+      setProductosModelo(productosDelModelo);
     } catch (error) {
       console.error("Error cargando datos:", error);
       setToastType("danger");
       setToastMessage("Error al cargar los datos");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const copiarOperacionesDesdeProducto = async () => {
+    if (!productoOrigenId) {
+      setToastType("danger");
+      setToastMessage("Selecciona una variante origen para copiar operaciones");
+      return;
+    }
+
+    try {
+      setCopiandoBom(true);
+      const operacionesOrigen = await obtenerOperacionesDeProducto(productoOrigenId);
+      const existentes = new Set(operacionesProducto.map((item) => String(item.operacionId)));
+      const inicioOrden = operacionesProducto.length + 1;
+      const operacionesCopiables = (operacionesOrigen || [])
+        .filter((item) => item?.operacionId && !existentes.has(String(item.operacionId)))
+        .map((item, index) => ({
+          operacionId: Number(item.operacionId),
+          cantidad: Number(item.cantidad || 1),
+          observaciones: item.observaciones || "",
+          orden: inicioOrden + index
+        }));
+
+      if (operacionesCopiables.length === 0) {
+        setToastType("danger");
+        setToastMessage("No hay operaciones nuevas para copiar desde esa variante");
+        return;
+      }
+
+      await agregarOperacionesMasivo(id, operacionesCopiables);
+      setToastType("success");
+      setToastMessage(`${operacionesCopiables.length} operaciones copiadas. Ajusta cantidades si cambia el proceso.`);
+      setProductoOrigenId("");
+      await cargarDatos();
+    } catch (error) {
+      setToastType("danger");
+      setToastMessage(error.message || "No se pudieron copiar las operaciones");
+    } finally {
+      setCopiandoBom(false);
     }
   };
 
@@ -197,6 +275,43 @@ export default function ProductoOperacionesBOMPage() {
         )}
       </Card>
 
+
+<Card title="Copiar operaciones desde otra variante" icon="bi-copy" className="mb-4">
+  <div className="alert alert-info py-2">
+    Copia el proceso de una variante del mismo modelo y despues ajusta cantidades o tiempos desde el catalogo de operaciones si hace falta.
+  </div>
+  <div className="row g-2 align-items-end">
+    <div className="col-lg-8">
+      <label className="form-label fw-semibold small">Variante origen</label>
+      <select
+        className="form-select"
+        value={productoOrigenId}
+        onChange={(event) => setProductoOrigenId(event.target.value)}
+        disabled={copiandoBom || productosModelo.length === 0}
+      >
+        <option value="">
+          {productosModelo.length === 0 ? "No hay otras variantes del mismo modelo" : "Seleccionar variante..."}
+        </option>
+        {productosModelo.map((item) => (
+          <option key={item.id} value={item.id}>
+            {getProductoLabel(item)}
+          </option>
+        ))}
+      </select>
+    </div>
+    <div className="col-lg-4">
+      <button
+        type="button"
+        className="btn btn-primary w-100"
+        onClick={copiarOperacionesDesdeProducto}
+        disabled={copiandoBom || !productoOrigenId}
+      >
+        <i className="bi bi-copy me-2"></i>
+        {copiandoBom ? "Copiando..." : "Copiar operaciones"}
+      </button>
+    </div>
+  </div>
+</Card>
 
 {/* Agregar nuevas */}
 <Card title="Agregar operaciones" icon="bi-plus-circle">
