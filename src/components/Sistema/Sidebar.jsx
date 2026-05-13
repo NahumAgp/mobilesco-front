@@ -177,6 +177,11 @@ export default function Sidebar() {
               Categoria
             </NavLink>
 
+            <NavLink to="/materiales" className="sidebar-link sidebar-link--sub">
+              <i className="bi bi-layers me-2"></i>
+              Materiales
+            </NavLink>
+
             <NavLink to="/colores" className="sidebar-link sidebar-link--sub">
               <i className="bi bi-palette me-2"></i>
               Colores

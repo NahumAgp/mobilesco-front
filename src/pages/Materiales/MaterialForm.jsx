@@ -21,9 +21,9 @@ export default function MaterialForm({
   const esEdicion = Boolean(materialId) || Boolean(material);
 
   const [formData, setFormData] = useState({
+    codigo: "",
     nombre: "",
     descripcion: "",
-    unidadMedida: "",
     activo: true
   });
 
@@ -68,13 +68,19 @@ export default function MaterialForm({
 
     try {
       setErroresBackend({});
+      const payload = {
+        ...formData,
+        codigo: formData.codigo?.trim().toUpperCase() || "",
+        nombre: formData.nombre?.trim() || "",
+        descripcion: formData.descripcion?.trim() || null
+      };
 
       let respuesta;
       if (esEdicion) {
         const id = material?.id || materialId;
-        respuesta = await actualizarMaterial(id, formData);
+        respuesta = await actualizarMaterial(id, payload);
       } else {
-        respuesta = await crearMaterial(formData);
+        respuesta = await crearMaterial(payload);
       }
 
       if (esModal) {
@@ -133,6 +139,22 @@ export default function MaterialForm({
           </div>
           <div className="card-body">
             <div className="row g-3">
+              <div className="col-md-6">
+                <label className="form-label fw-semibold">
+                  Codigo <span className="text-danger">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="codigo"
+                  className={inputClass("codigo")}
+                  value={formData.codigo}
+                  onChange={handleChange}
+                  placeholder="Ej: NAT, FOR"
+                  maxLength="10"
+                />
+                <div className="invalid-feedback">{erroresBackend.codigo || erroresExternos.codigo}</div>
+              </div>
+
               <div className="col-md-6">
                 <label className="form-label fw-semibold">
                   Nombre del Material <span className="text-danger">*</span>

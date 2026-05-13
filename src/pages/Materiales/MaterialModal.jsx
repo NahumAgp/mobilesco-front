@@ -17,9 +17,9 @@ export default function MaterialModal({
   const esEdicion = Boolean(material);
 
   const [formData, setFormData] = useState({
+    codigo: material?.codigo || "",
     nombre: material?.nombre || "",
     descripcion: material?.descripcion || "",
-    unidadMedida: material?.unidadMedida || "",
     activo: material?.activo ?? true
   });
 
@@ -44,12 +44,18 @@ export default function MaterialModal({
     e.preventDefault();
     try {
       setErroresBackend({});
+      const payload = {
+        ...formData,
+        codigo: formData.codigo?.trim().toUpperCase() || "",
+        nombre: formData.nombre?.trim() || "",
+        descripcion: formData.descripcion?.trim() || null
+      };
 
       let respuesta;
       if (esEdicion) {
-        respuesta = await actualizarMaterial(material.id, formData);
+        respuesta = await actualizarMaterial(material.id, payload);
       } else {
-        respuesta = await crearMaterial(formData);
+        respuesta = await crearMaterial(payload);
       }
 
       setToastType("success");
@@ -91,6 +97,18 @@ export default function MaterialModal({
               <form onSubmit={handleSubmit} noValidate>
                 <div className="row g-3">
                   <div className="col-md-6">
+                    <label className="form-label fw-semibold">Codigo *</label>
+                    <input
+                      type="text"
+                      name="codigo"
+                      className={inputClass("codigo")}
+                      value={formData.codigo}
+                      onChange={handleChange}
+                    />
+                    <div className="invalid-feedback">{erroresBackend.codigo || erroresExternos.codigo}</div>
+                  </div>
+
+                  <div className="col-md-6">
                     <label className="form-label fw-semibold">Nombre *</label>
                     <input 
                       type="text" 
@@ -100,18 +118,6 @@ export default function MaterialModal({
                       onChange={handleChange} 
                     />
                     <div className="invalid-feedback">{erroresBackend.nombre || erroresExternos.nombre}</div>
-                  </div>
-
-                  <div className="col-md-6">
-                    <label className="form-label fw-semibold">Unidad Medida</label>
-                    <input 
-                      type="text" 
-                      name="unidadMedida" 
-                      className={inputClass("unidadMedida")} 
-                      value={formData.unidadMedida} 
-                      onChange={handleChange} 
-                    />
-                    <div className="invalid-feedback">{erroresBackend.unidadMedida || erroresExternos.unidadMedida}</div>
                   </div>
 
                   <div className="col-md-12">

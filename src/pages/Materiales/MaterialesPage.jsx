@@ -59,8 +59,8 @@ export default function MaterialesPage() {
 
     const infoMaterial = [
       material.nombre,
+      material.codigo,
       material.descripcion,
-      material.unidadMedida
     ].filter(Boolean).join(' ').toLowerCase();
 
     return palabras.every(palabra => infoMaterial.includes(palabra));

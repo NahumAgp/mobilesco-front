@@ -21,6 +21,7 @@ export default function MaterialesTable({ data, onEditar, onEliminar }) {
           >
             <tr>
               <th>ID</th>
+              <th>Codigo</th>
               <th>Nombre</th>
               <th>Descripción</th>
               <th>Estado</th>
@@ -38,6 +39,7 @@ export default function MaterialesTable({ data, onEditar, onEliminar }) {
                   onClick={() => onEditar(material)}
                 >
                   <td>{material.id}</td>
+                  <td><span className="badge bg-secondary">{material.codigo || "-"}</span></td>
                   <td>
                     <span className="fw-semibold">{material.nombre}</span>
                   </td>
@@ -99,7 +101,7 @@ export default function MaterialesTable({ data, onEditar, onEliminar }) {
               ))
             ) : (
               <tr>
-                <td colSpan="7" className="text-center text-muted py-5">
+                <td colSpan="8" className="text-center text-muted py-5">
                   <i className="bi bi-box-seam fs-1 d-block mb-3 text-secondary"></i>
                   <span className="fs-5">No hay materiales registrados</span>
                   <p className="text-secondary mt-2">Comienza creando un nuevo material</p>

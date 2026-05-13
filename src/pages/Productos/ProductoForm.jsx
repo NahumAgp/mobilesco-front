@@ -5,6 +5,7 @@ import { obtenerProductoPorId, crearProducto, actualizarProducto } from "../../s
 import { obtenerModelos } from "../../services/modelos.js";
 import { obtenerNiveles } from "../../services/niveles.js";
 import { obtenerColores } from "../../services/color.js";
+import { obtenerMaterialesActivos } from "../../services/materiales.js";
 import {
   obtenerImagenesPorProducto,
   obtenerImagenPrincipalPorProducto,
@@ -160,6 +161,7 @@ export default function ProductoForm({
 
   const [modelos, setModelos] = useState([]);
   const [niveles, setNiveles] = useState([]);
+  const [materiales, setMateriales] = useState([]);
   const [colores, setColores] = useState([]);
   const [imagenes, setImagenes] = useState([]);
   const [imagenPrincipal, setImagenPrincipal] = useState(null);
@@ -171,6 +173,7 @@ export default function ProductoForm({
     descripcion: "",
     modeloId: "",
     nivelId: "",
+    materialId: "",
     colorId: "",
     activo: true,
   });
@@ -178,14 +181,16 @@ export default function ProductoForm({
   useEffect(() => {
     const cargarCatalogos = async () => {
       try {
-        const [modelosData, nivelesData, coloresData] = await Promise.all([
+        const [modelosData, nivelesData, materialesData, coloresData] = await Promise.all([
           obtenerModelos(),
           obtenerNiveles(),
+          obtenerMaterialesActivos(),
           obtenerColores(),
         ]);
 
         setModelos(getLista(modelosData));
         setNiveles(getLista(nivelesData));
+        setMateriales(getLista(materialesData));
         setColores(getLista(coloresData));
       } catch (error) {
         console.error("Error cargando catalogos:", error);
@@ -231,6 +236,7 @@ export default function ProductoForm({
           descripcion: producto.descripcion || "",
           modeloId: producto.id_modelo || producto.modeloId || "",
           nivelId: producto.id_nivel || producto.nivelId || "",
+          materialId: producto.id_material || producto.materialId || "",
           colorId: producto.id_color || producto.colorId || "",
           activo: producto.activo ?? true,
         });
@@ -247,6 +253,7 @@ export default function ProductoForm({
             descripcion: data.descripcion || "",
             modeloId: data.id_modelo || data.modeloId || data.id_producto_base || data.productoBaseId || "",
             nivelId: data.id_nivel || data.nivelId || "",
+            materialId: data.id_material || data.materialId || "",
             colorId: data.id_color || data.colorId || "",
             activo: data.activo ?? true,
           });
@@ -361,8 +368,8 @@ export default function ProductoForm({
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.sku || !formData.nombre || !formData.modeloId || !formData.nivelId || !formData.colorId) {
-      alert("Completa los campos obligatorios: SKU, Nombre, Producto Base, Nivel y Color");
+    if (!formData.sku || !formData.nombre || !formData.modeloId || !formData.nivelId || !formData.materialId || !formData.colorId) {
+      alert("Completa los campos obligatorios: SKU, Nombre, Producto Base, Nivel, Material y Color");
       return;
     }
 
@@ -372,6 +379,7 @@ export default function ProductoForm({
       descripcion: formData.descripcion?.trim() || null,
       id_modelo: Number(formData.modeloId),
       id_nivel: Number(formData.nivelId),
+      id_material: Number(formData.materialId),
       id_color: Number(formData.colorId),
       activo: formData.activo,
     };
@@ -485,6 +493,16 @@ export default function ProductoForm({
                   ))}
                 </select>
                 <small className="text-muted">Ej: Preescolar, Primaria, Secundaria</small>
+              </div>
+              <div className="col-md-6">
+                <label className="form-label fw-semibold">Material <span className="text-danger">*</span></label>
+                <select name="materialId" className={selectClass("materialId")} value={formData.materialId} onChange={handleChange}>
+                  <option value="">Seleccionar material...</option>
+                  {materiales.map((material) => (
+                    <option key={material.id} value={material.id}>[{material.codigo}] {material.nombre}</option>
+                  ))}
+                </select>
+                <small className="text-muted">Ej: Natural, Formaica, Laminado</small>
               </div>
               <div className="col-md-6">
                 <label className="form-label fw-semibold">Color <span className="text-danger">*</span></label>

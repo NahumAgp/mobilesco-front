@@ -13,7 +13,7 @@ const PASOS = [
 
 const MENSAJES_VALIDACION = {
   1: "Selecciona un modelo existente o completa codigo, nombre y familia para crear uno nuevo.",
-  2: "Agrega al menos una variante con categoria, color y SKU generado.",
+  2: "Agrega al menos una variante con categoria, material, color y SKU generado.",
   3: "Puedes continuar sin im\u00e1genes o agregar al menos una imagen."
 };
 
@@ -68,7 +68,7 @@ export default function ProductoWizard({ onComplete, onCancel }) {
       }
 
       return productoData.variantes.every((variante) =>
-        Boolean(variante?.categoriaId) && Boolean(variante?.colorId) && Boolean(variante?.sku?.trim())
+        Boolean(variante?.categoriaId) && Boolean(variante?.materialId) && Boolean(variante?.colorId) && Boolean(variante?.sku?.trim())
       );
     }
 

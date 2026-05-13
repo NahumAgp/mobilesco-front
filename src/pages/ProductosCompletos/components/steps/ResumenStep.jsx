@@ -108,6 +108,7 @@ export default function ResumenStep({ data }) {
               <thead>
                 <tr>
                   <th>Categoria</th>
+                  <th>Material</th>
                   <th>Color</th>
                   <th>SKU</th>
                 </tr>
@@ -115,7 +116,7 @@ export default function ResumenStep({ data }) {
               <tbody>
                 {variantes.length === 0 && (
                   <tr>
-                    <td colSpan="3" className="text-center text-muted py-3">
+                    <td colSpan="4" className="text-center text-muted py-3">
                       No hay variantes agregadas.
                     </td>
                   </tr>
@@ -125,6 +126,10 @@ export default function ResumenStep({ data }) {
                     <td>
                       {variante.categoriaCodigo ? `[${variante.categoriaCodigo}] ` : ""}
                       {variante.categoriaNombre || "-"}
+                    </td>
+                    <td>
+                      {variante.materialCodigo ? `[${variante.materialCodigo}] ` : ""}
+                      {variante.materialNombre || "-"}
                     </td>
                     <td>
                       <div className="d-flex gap-2 align-items-center">

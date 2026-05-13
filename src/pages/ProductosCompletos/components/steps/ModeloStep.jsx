@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
-import { obtenerFamilias } from "../../../../services/familias.js";
-import { obtenerModelos } from "../../../../services/modelos.js";
+import { useEffect, useMemo, useState } from "react";
+
+import { obtenerFamiliasActivas } from "../../../../services/familias.js";
+import { obtenerModelosActivos } from "../../../../services/modelos.js";
 import SearchableSelect from "../../../../components/ui/SearchableSelect.jsx";
 
 const getLista = (respuesta) => {
@@ -9,296 +10,201 @@ const getLista = (respuesta) => {
   return [];
 };
 
-const getModeloId = (modelo) =>
-  modelo?.id || modelo?.modeloId || modelo?.id_producto_base || modelo?.productoBaseId || "";
-
-const getFamiliaId = (modelo) =>
-  modelo?.familiaId || modelo?.familia_id || modelo?.familia?.id || "";
-
 export default function ModeloStep({ data, onUpdate }) {
-  const [errores, setErrores] = useState({});
-  const [touched, setTouched] = useState({});
   const [familias, setFamilias] = useState([]);
   const [modelos, setModelos] = useState([]);
-  const [cargandoFamilias, setCargandoFamilias] = useState(true);
-  const [cargandoModelos, setCargandoModelos] = useState(true);
-  const [errorFamilias, setErrorFamilias] = useState("");
-  const [errorModelos, setErrorModelos] = useState("");
+  const [cargando, setCargando] = useState(true);
 
-  const modo = data.modelo.modo || "existente";
+  const modelo = data?.modelo || {};
+  const modo = modelo.modo || "existente";
 
   useEffect(() => {
-    const cargarFamilias = async () => {
+    const cargarCatalogos = async () => {
       try {
-        setCargandoFamilias(true);
-        setErrorFamilias("");
-        setFamilias(getLista(await obtenerFamilias()));
+        const [familiasResp, modelosResp] = await Promise.all([
+          obtenerFamiliasActivas(),
+          obtenerModelosActivos()
+        ]);
+
+        setFamilias(getLista(familiasResp));
+        setModelos(getLista(modelosResp));
       } catch (error) {
-        setFamilias([]);
-        setErrorFamilias(error?.message || "No se pudieron cargar las familias.");
+        console.error("Error cargando datos basicos del producto:", error);
       } finally {
-        setCargandoFamilias(false);
+        setCargando(false);
       }
     };
 
-    cargarFamilias();
+    cargarCatalogos();
   }, []);
 
-  useEffect(() => {
-    const cargarModelos = async () => {
-      try {
-        setCargandoModelos(true);
-        setErrorModelos("");
-        setModelos(getLista(await obtenerModelos()));
-      } catch (error) {
-        setModelos([]);
-        setErrorModelos(error?.message || "No se pudieron cargar los modelos.");
-      } finally {
-        setCargandoModelos(false);
-      }
-    };
+  const modeloSeleccionado = useMemo(
+    () => modelos.find((item) => String(item.id) === String(modelo.id || "")) || null,
+    [modelos, modelo.id]
+  );
 
-    cargarModelos();
-  }, []);
-
-  const validarCampo = (name, rawValue) => {
-    const value = typeof rawValue === "string" ? rawValue.trim() : rawValue;
-
-    if (name === "id" && modo === "existente" && !value) return "Selecciona un modelo";
-    if (name === "codigo" && !value) return "El codigo es requerido";
-    if (name === "nombre" && !value) return "El nombre es requerido";
-    if (name === "familiaId" && !value) return "La familia es requerida";
-
-    return null;
-  };
-
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    const nextValue = type === "checkbox" ? checked : value;
-
+  const handleChange = (event) => {
+    const { name, value, type, checked } = event.target;
     onUpdate("modelo", {
-      [name]: nextValue
+      [name]: type === "checkbox" ? checked : value
     });
-
-    if (touched[name]) {
-      setErrores((prev) => ({
-        ...prev,
-        [name]: validarCampo(name, nextValue)
-      }));
-    }
   };
 
-  const handleBlur = (e) => {
-    const { name, value, type, checked } = e.target;
-    const fieldValue = type === "checkbox" ? checked : value;
-
-    setTouched((prev) => ({ ...prev, [name]: true }));
-    setErrores((prev) => ({
-      ...prev,
-      [name]: validarCampo(name, fieldValue)
-    }));
-  };
-
-  const handleModoChange = (nuevoModo) => {
+  const cambiarModo = (nuevoModo) => {
     onUpdate("modelo", {
       modo: nuevoModo,
-      id: null,
-      codigo: "",
-      nombre: "",
-      descripcion: "",
-      familiaId: "",
-      activo: true
+      id: nuevoModo === "nuevo" ? null : modelo.id || null
     });
-    setErrores({});
-    setTouched({});
   };
 
-  const handleModeloExistenteChange = (e) => {
-    const modeloId = e.target.value;
-    const modelo = modelos.find((item) => String(getModeloId(item)) === String(modeloId));
-
+  const seleccionarModelo = (modeloId, opcion) => {
     onUpdate("modelo", {
-      modo: "existente",
       id: modeloId || null,
-      codigo: modelo?.codigo || "",
-      nombre: modelo?.nombre || "",
-      descripcion: modelo?.descripcion || "",
-      familiaId: getFamiliaId(modelo),
-      activo: modelo?.activo ?? true
+      codigo: opcion?.codigo || "",
+      nombre: opcion?.nombre || "",
+      descripcion: opcion?.descripcion || "",
+      familiaId: opcion?.familiaId || opcion?.familia?.id || ""
     });
-
-    if (touched.id) {
-      setErrores((prev) => ({
-        ...prev,
-        id: validarCampo("id", modeloId)
-      }));
-    }
   };
 
-  const familiaSeleccionada =
-    familias.find((familia) => String(familia.id) === String(data.modelo.familiaId)) || null;
+  if (cargando) {
+    return (
+      <div className="text-center py-4">
+        <div className="spinner-border text-primary" role="status">
+          <span className="visually-hidden">Cargando...</span>
+        </div>
+        <p className="mb-0 mt-2">Cargando informacion basica...</p>
+      </div>
+    );
+  }
 
   return (
     <div>
       <h4 className="mb-4">
-        <i className="bi bi-box me-2 text-primary"></i>
-        Modelo del Producto
+        <i className="bi bi-info-circle me-2 text-primary"></i>
+        Informacion basica
       </h4>
 
-      <div className="btn-group mb-4" role="group" aria-label="Modo de modelo">
-        <input
-          type="radio"
-          className="btn-check"
-          name="modoModelo"
-          id="modoModeloExistente"
-          checked={modo === "existente"}
-          onChange={() => handleModoChange("existente")}
-        />
-        <label className="btn btn-outline-primary" htmlFor="modoModeloExistente">
-          Usar modelo existente
-        </label>
-
-        <input
-          type="radio"
-          className="btn-check"
-          name="modoModelo"
-          id="modoModeloNuevo"
-          checked={modo === "nuevo"}
-          onChange={() => handleModoChange("nuevo")}
-        />
-        <label className="btn btn-outline-primary" htmlFor="modoModeloNuevo">
-          Crear modelo nuevo
-        </label>
+      <div className="btn-group mb-4" role="group" aria-label="Modo de producto">
+        <button
+          type="button"
+          className={`btn ${modo === "existente" ? "btn-primary" : "btn-outline-primary"}`}
+          onClick={() => cambiarModo("existente")}
+        >
+          Modelo existente
+        </button>
+        <button
+          type="button"
+          className={`btn ${modo === "nuevo" ? "btn-primary" : "btn-outline-primary"}`}
+          onClick={() => cambiarModo("nuevo")}
+        >
+          Nuevo modelo
+        </button>
       </div>
 
       {modo === "existente" && (
-        <div className="row g-3">
-          <div className="col-md-8">
-            <label className="form-label fw-semibold">
-              Modelo <span className="text-danger">*</span>
-            </label>
-            <SearchableSelect
-              value={data.modelo.id || ""}
-              options={modelos}
-              onChange={(value) =>
-                handleModeloExistenteChange({ target: { value } })
-              }
-              onBlur={handleBlur}
-              disabled={cargandoModelos}
-              placeholder={cargandoModelos ? "Cargando modelos..." : "Seleccionar modelo..."}
-              searchPlaceholder="Escribe código, nombre o descripción del modelo..."
-              error={errores.id}
-              getOptionValue={getModeloId}
-              getOptionLabel={(modelo) => `${modelo.codigo ? `[${modelo.codigo}] ` : ""}${modelo.nombre || "-"}`}
-              getOptionSearchText={(modelo) =>
-                [modelo.codigo, modelo.nombre, modelo.descripcion].filter(Boolean).join(" ").toLowerCase()
-              }
-            />
-            {errorModelos && <div className="form-text text-danger">{errorModelos}</div>}
-          </div>
-
-          <div className="col-md-4">
-            <label className="form-label fw-semibold">Familia</label>
-            <input
-              type="text"
-              className="form-control"
-              value={familiaSeleccionada?.nombre || data.modelo.familiaId || "-"}
-              readOnly
-            />
-          </div>
-
-          <div className="col-12">
-            <label className="form-label fw-semibold">Descripcion</label>
-            <textarea className="form-control" rows="2" value={data.modelo.descripcion || ""} readOnly />
-          </div>
+        <div className="mb-4">
+          <SearchableSelect
+            label="Modelo"
+            value={modelo.id || ""}
+            options={modelos}
+            onChange={seleccionarModelo}
+            placeholder="Seleccionar modelo..."
+            searchPlaceholder="Busca por codigo, nombre o descripcion..."
+            getOptionValue={(item) => item.id}
+            getOptionLabel={(item) => `${item.codigo ? `[${item.codigo}] ` : ""}${item.nombre}`}
+            getOptionSearchText={(item) =>
+              [item.codigo, item.nombre, item.descripcion].filter(Boolean).join(" ").toLowerCase()
+            }
+          />
         </div>
       )}
 
-      {modo === "nuevo" && (
-        <div className="row g-3">
-          <div className="col-md-4">
-            <label className="form-label fw-semibold">
-              Codigo <span className="text-danger">*</span>
-            </label>
-            <input
-              type="text"
-              name="codigo"
-              className={`form-control ${errores.codigo ? "is-invalid" : ""}`}
-              value={data.modelo.codigo}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              placeholder="Ej: PROD-001"
-            />
-            {errores.codigo && <div className="invalid-feedback">{errores.codigo}</div>}
-          </div>
+      <div className="row g-3">
+        <div className="col-md-4">
+          <label className="form-label fw-semibold">Codigo *</label>
+          <input
+            type="text"
+            name="codigo"
+            className="form-control"
+            value={modelo.codigo || ""}
+            onChange={handleChange}
+            disabled={modo === "existente"}
+            placeholder="Ej. MOD001"
+          />
+        </div>
 
-          <div className="col-md-8">
-            <label className="form-label fw-semibold">
-              Nombre <span className="text-danger">*</span>
-            </label>
-            <input
-              type="text"
-              name="nombre"
-              className={`form-control ${errores.nombre ? "is-invalid" : ""}`}
-              value={data.modelo.nombre}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              placeholder="Ej: Silla Ejecutiva"
-            />
-            {errores.nombre && <div className="invalid-feedback">{errores.nombre}</div>}
-          </div>
+        <div className="col-md-8">
+          <label className="form-label fw-semibold">Nombre *</label>
+          <input
+            type="text"
+            name="nombre"
+            className="form-control"
+            value={modelo.nombre || ""}
+            onChange={handleChange}
+            disabled={modo === "existente"}
+            placeholder="Nombre del producto"
+          />
+        </div>
 
-          <div className="col-md-4">
-            <label className="form-label fw-semibold">
-              Familia <span className="text-danger">*</span>
-            </label>
-            <SearchableSelect
-              value={data.modelo.familiaId}
-              options={familias}
-              onChange={(value) => handleChange({ target: { name: "familiaId", value } })}
-              onBlur={handleBlur}
-              disabled={cargandoFamilias}
-              placeholder={cargandoFamilias ? "Cargando familias..." : "Seleccionar familia..."}
-              searchPlaceholder="Escribe nombre o descripción de la familia..."
-              error={errores.familiaId}
-              getOptionValue={(familia) => familia.id}
-              getOptionLabel={(familia) => familia.nombre}
-              getOptionSearchText={(familia) =>
-                [familia.codigo, familia.nombre, familia.descripcion].filter(Boolean).join(" ").toLowerCase()
-              }
-            />
-            {errorFamilias && <div className="form-text text-danger">{errorFamilias}</div>}
-          </div>
+        <div className="col-md-5">
+          <label className="form-label fw-semibold">Familia *</label>
+          <select
+            name="familiaId"
+            className="form-select"
+            value={modelo.familiaId || ""}
+            onChange={handleChange}
+            disabled={modo === "existente"}
+          >
+            <option value="">Seleccionar familia...</option>
+            {familias.map((familia) => (
+              <option key={familia.id} value={familia.id}>
+                {familia.codigo ? `[${familia.codigo}] ` : ""}
+                {familia.nombre}
+              </option>
+            ))}
+          </select>
+        </div>
 
-          <div className="col-12">
-            <label className="form-label fw-semibold">Descripcion</label>
-            <textarea
-              name="descripcion"
-              className="form-control"
-              rows="3"
-              value={data.modelo.descripcion || ""}
-              onChange={handleChange}
-              placeholder="Descripcion detallada del producto..."
-            />
-          </div>
+        <div className="col-md-7 d-flex align-items-end">
+          {modeloSeleccionado && (
+            <div className="text-muted small pb-2">
+              Se usara este modelo como base para crear las combinaciones de material, categoria y color.
+            </div>
+          )}
+        </div>
 
+        <div className="col-12">
+          <label className="form-label fw-semibold">Descripcion</label>
+          <textarea
+            name="descripcion"
+            className="form-control"
+            rows="3"
+            value={modelo.descripcion || ""}
+            onChange={handleChange}
+            disabled={modo === "existente"}
+            placeholder="Descripcion corta del producto"
+          />
+        </div>
+
+        {modo === "nuevo" && (
           <div className="col-12">
             <div className="form-check form-switch">
               <input
                 className="form-check-input"
                 type="checkbox"
                 name="activo"
-                checked={data.modelo.activo}
+                checked={modelo.activo !== false}
                 onChange={handleChange}
-                id="activoSwitch"
+                id="modelo-activo"
               />
-              <label className="form-check-label fw-semibold" htmlFor="activoSwitch">
-                Modelo activo
+              <label className="form-check-label" htmlFor="modelo-activo">
+                Producto activo
               </label>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

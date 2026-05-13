@@ -8,6 +8,7 @@ import { obtenerProductos, eliminarProducto, exportarProductosExcel } from "../.
 import { obtenerModelos } from "../../services/modelos";
 import { obtenerNiveles } from "../../services/niveles";
 import { obtenerColores } from "../../services/color";
+import { obtenerMaterialesActivos } from "../../services/materiales";
 import VariantesTable from "../Variantes/VariantesTable";
 import PageHeader from "../../components/Sistema/PageHeader";
 import Toast from "../../components/ui/Toast";
@@ -157,6 +158,7 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
   const [productos, setProductos] = useState([]);
   const [modelosCatalogo, setModelosCatalogo] = useState([]);
   const [categoriasCatalogo, setCategoriasCatalogo] = useState([]);
+  const [materialesCatalogo, setMaterialesCatalogo] = useState([]);
   const [coloresCatalogo, setColoresCatalogo] = useState([]);
   const [loadingLista, setLoadingLista] = useState(false);
   const [errorLista, setErrorLista] = useState("");
@@ -191,14 +193,16 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
 
   const cargarCatalogos = async () => {
     try {
-      const [modelosResp, categoriasResp, coloresResp] = await Promise.all([
+      const [modelosResp, categoriasResp, materialesResp, coloresResp] = await Promise.all([
         obtenerModelos(),
         obtenerNiveles(),
+        obtenerMaterialesActivos(),
         obtenerColores()
       ]);
 
       setModelosCatalogo(getLista(modelosResp));
       setCategoriasCatalogo(getLista(categoriasResp));
+      setMaterialesCatalogo(getLista(materialesResp));
       setColoresCatalogo(getLista(coloresResp));
     } catch (error) {
       console.error("No se pudieron cargar los catalogos de variantes:", error);
@@ -268,6 +272,11 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
     [coloresCatalogo]
   );
 
+  const materialesPorId = useMemo(
+    () => new Map(materialesCatalogo.map((material) => [String(material?.id), material?.nombre || ""])),
+    [materialesCatalogo]
+  );
+
   const enriquecerProducto = (producto) => {
     const modeloNombre =
       producto?.nombre_modelo ||
@@ -316,6 +325,17 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
       coloresPorId.get(String(getRelacionadoId(producto, ["id_color", "colorId", "color_id"]))) ||
       "";
 
+    const materialNombre =
+      producto?.nombre_material ||
+      getNombrePorCatalogo(
+        producto,
+        materialesCatalogo,
+        ["id_material", "materialId", "material_id"],
+        ["materialNombre"]
+      ) ||
+      materialesPorId.get(String(getRelacionadoId(producto, ["id_material", "materialId", "material_id"]))) ||
+      "";
+
     return {
       ...producto,
       lineaNombre: producto?.lineaNombre || producto?.linea?.nombre || producto?.modelo?.familia?.linea?.nombre || "",
@@ -326,6 +346,8 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
       modeloNombre: modeloNombre || producto?.modeloNombre || producto?.productoBaseNombre || "",
       nivelNombre: categoriaNombre || producto?.nivelNombre || producto?.categoriaNombre || "",
       categoriaNombre: categoriaNombre || producto?.categoriaNombre || producto?.nivelNombre || "",
+      materialNombre: materialNombre || producto?.materialNombre || "",
+      nombre_material: materialNombre || producto?.nombre_material || "",
       colorNombre: colorNombre || producto?.colorNombre || "",
       productoBaseNombre: modeloNombre || producto?.productoBaseNombre || ""
     };
@@ -421,13 +443,14 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
       for (const variante of variantes) {
         const payloadVariante = {
           sku: variante?.sku?.trim().toUpperCase() || "",
-          nombre: `${nuevoProducto?.modelo?.nombre || "Modelo"} ${variante?.categoriaNombre || ""} ${variante?.colorNombre || ""}`
+          nombre: `${nuevoProducto?.modelo?.nombre || "Modelo"} ${variante?.categoriaNombre || ""} ${variante?.materialNombre || ""} ${variante?.colorNombre || ""}`
             .trim()
             .replace(/\s+/g, " "),
-          descripcion: `Variante ${variante?.categoriaNombre || "sin categoria"} - ${variante?.colorNombre || "sin color"}`,
+          descripcion: `Variante ${variante?.categoriaNombre || "sin categoria"} - ${variante?.materialNombre || "sin material"} - ${variante?.colorNombre || "sin color"}`,
           activo: true,
           id_modelo: Number(modeloId),
           id_nivel: variante?.categoriaId ? Number(variante.categoriaId) : null,
+          id_material: variante?.materialId ? Number(variante.materialId) : null,
           id_color: variante?.colorId ? Number(variante.colorId) : null
         };
 
@@ -502,7 +525,7 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
 
   const productosEnriquecidos = useMemo(
     () => productos.map((producto) => enriquecerProducto(producto)),
-    [productos, modelosCatalogo, categoriasCatalogo, coloresCatalogo, modelosPorId, categoriasPorId, coloresPorId]
+    [productos, modelosCatalogo, categoriasCatalogo, materialesCatalogo, coloresCatalogo, modelosPorId, categoriasPorId, materialesPorId, coloresPorId]
   );
 
   const modelosDisponibles = useMemo(() => {
@@ -552,6 +575,8 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
         productoEnriquecido?.nivelNombre,
         productoEnriquecido?.nombre_nivel,
         productoEnriquecido?.categoriaNombre,
+        productoEnriquecido?.materialNombre,
+        productoEnriquecido?.nombre_material,
         productoEnriquecido?.colorNombre,
         productoEnriquecido?.nombre_color,
         productoEnriquecido?.activo ? "activo" : "inactivo"

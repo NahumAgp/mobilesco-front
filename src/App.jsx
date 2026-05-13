@@ -34,6 +34,8 @@ import CategoriaFormPage from "./pages/Categoria/CategoriaFormPage.jsx";
 
 import ModelosPage from "./pages/Modelos/ModelosPage.jsx";
 import ModelosFormPage from "./pages/Modelos/ModelosFormPage.jsx";
+import MaterialesPage from "./pages/Materiales/MaterialesPage.jsx";
+import MaterialFormPage from "./pages/Materiales/MaterialFormPage.jsx";
 import ColorPage from "./pages/colores/ColorPage.jsx";
 import ColorFormPage from "./pages/colores/ColorFormPage.jsx";
 
@@ -134,9 +136,9 @@ export default function App() {
         <Route path="/categorias/:id" element={<CategoriaFormPage />} />
 
         {/* MATERIALES */}
-        <Route path="/materiales" element={<Navigate to="/productos" replace />} />
-        <Route path="/materiales/nuevo" element={<Navigate to="/productos" replace />} />
-        <Route path="/materiales/:id" element={<Navigate to="/productos" replace />} />
+        <Route path="/materiales" element={<MaterialesPage />} />
+        <Route path="/materiales/nuevo" element={<MaterialFormPage />} />
+        <Route path="/materiales/:id" element={<MaterialFormPage />} />
 
         {/* MODELOS */}
         <Route path="/modelos" element={<ModelosPage />} />
