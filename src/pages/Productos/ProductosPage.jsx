@@ -6,6 +6,7 @@ import ProductosTable from "./ProductosTable.jsx";
 
 import PageHeader from "../../components/Sistema/PageHeader.jsx";
 import Toast from "../../components/ui/Toast.jsx";
+import { getUser } from "../../services/authService.js";
 
 export default function ProductosPage() {
   const navigate = useNavigate();
@@ -17,8 +18,12 @@ export default function ProductosPage() {
     productos,
     loadingLista,
     error,
-    eliminarProducto
+    desactivarProducto
   } = useProductos();
+  const user = getUser();
+  const puedeEliminarDefinitivo = user?.roles?.some((rol) =>
+    ["ADMIN", "SUPER_ADMIN", "DIRECTOR_GENERAL"].includes(rol)
+  );
 
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstatus, setFiltroEstatus] = useState("TODOS");
@@ -33,14 +38,14 @@ export default function ProductosPage() {
     navigate(`/productos/${producto.id}/ver`);
   };
 
-  const manejarEliminar = async (id) => {
-    const confirmacion = window.confirm("¿Seguro que deseas eliminar este producto?");
+  const manejarDesactivar = async (id) => {
+    const confirmacion = window.confirm("Eliminar este producto del catalogo? Seguira existiendo, pero quedara inactivo.");
     if (!confirmacion) return;
 
     try {
-      await eliminarProducto(id);
+      await desactivarProducto(id);
       setToastType("success");
-      setToastMessage("Producto eliminado correctamente");
+      setToastMessage("Producto eliminado del catalogo");
     } catch {
       setToastType("danger");
       setToastMessage("Error al eliminar producto");
@@ -151,7 +156,8 @@ export default function ProductosPage() {
         data={productosFiltrados}
         onVer={abrirVer}
         onEditar={abrirEditar}
-        onEliminar={manejarEliminar}
+        onDesactivar={manejarDesactivar}
+        canEliminarDefinitivo={puedeEliminarDefinitivo}
       />
     </>
   );

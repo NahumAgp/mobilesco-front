@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import {
   obtenerProductos,
-  eliminarProducto as eliminarService
+  desactivarProducto as desactivarService,
+  eliminarProductoDefinitivo as eliminarDefinitivoService
 } from "../../services/productos.js";
 
 export function useProductos() {
@@ -38,8 +39,13 @@ export function useProductos() {
     cargar();
   }, []);
 
-  async function eliminarProducto(id) {
-    await eliminarService(id);
+  async function desactivarProducto(id) {
+    await desactivarService(id);
+    await cargar();
+  }
+
+  async function eliminarProductoDefinitivo(id) {
+    await eliminarDefinitivoService(id);
     await cargar();
   }
 
@@ -47,7 +53,8 @@ export function useProductos() {
     productos,
     loadingLista,
     error,
-    eliminarProducto
+    desactivarProducto,
+    eliminarProductoDefinitivo
   };
 }
 

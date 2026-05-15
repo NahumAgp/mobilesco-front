@@ -39,9 +39,29 @@ export function actualizarProducto(id, data) {
   });
 }
 
-export function eliminarProducto(id) {
+export function desactivarProducto(id) {
   const url = `${API_PATHS.PRODUCTOS}/${id}`;
-  console.log("🌐 DELETE Producto - URL:", url);
+  console.log("🌐 DELETE/Desactivar Producto - URL:", url);
+  return request(url, {
+    method: "DELETE",
+  });
+}
+
+export function eliminarProducto(id) {
+  return desactivarProducto(id);
+}
+
+export function activarProducto(id) {
+  const url = `${API_PATHS.PRODUCTOS}/${id}/activar`;
+  console.log("🌐 PATCH/Activar Producto - URL:", url);
+  return request(url, {
+    method: "PATCH",
+  });
+}
+
+export function eliminarProductoDefinitivo(id) {
+  const url = `${API_PATHS.PRODUCTOS}/${id}/definitivo`;
+  console.log("🌐 DELETE Definitivo Producto - URL:", url);
   return request(url, {
     method: "DELETE",
   });

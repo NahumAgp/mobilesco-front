@@ -4,7 +4,7 @@ import ProductoWizard from "./components/ProductoWizard";
 import { crearModelo, actualizarModelo, subirImagenModelo } from "../../services/modelos";
 import { crearVariante } from "../../services/variantes";
 import { crearImagen, subirImagenArchivo } from "../../services/imagenes";
-import { obtenerProductos, eliminarProducto, exportarProductosExcel } from "../../services/productos";
+import { activarProducto, obtenerProductos, eliminarProducto, exportarProductosExcel } from "../../services/productos";
 import { obtenerModelos } from "../../services/modelos";
 import { obtenerNiveles } from "../../services/niveles";
 import { obtenerColores } from "../../services/color";
@@ -508,18 +508,25 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
     }
   };
 
-  const manejarEliminar = async (id) => {
-    const confirmar = window.confirm("¿Seguro que deseas eliminar esta variante?");
+  const manejarCambiarEstado = async (producto) => {
+    const id = producto?.id;
+    const estaActivo = Boolean(producto?.activo);
+    const accion = estaActivo ? "desactivar" : "activar";
+    const confirmar = window.confirm(`¿Seguro que deseas ${accion} esta variante?`);
     if (!confirmar) return;
 
     try {
-      await eliminarProducto(id);
+      if (estaActivo) {
+        await eliminarProducto(id);
+      } else {
+        await activarProducto(id);
+      }
       setTipoMensaje("success");
-      setMensaje("Variante eliminada correctamente.");
+      setMensaje(estaActivo ? "Variante desactivada correctamente." : "Variante activada correctamente.");
       await cargarProductos();
     } catch (error) {
       setTipoMensaje("danger");
-      setMensaje(error?.message || "No se pudo eliminar la variante.");
+      setMensaje(error?.message || `No se pudo ${accion} la variante.`);
     }
   };
 
@@ -816,7 +823,7 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
             <VariantesTable
               data={productosPaginados}
               onEditar={(variante) => navigate(`/productos/${variante.id}`)}
-              onEliminar={manejarEliminar}
+              onCambiarEstado={manejarCambiarEstado}
               sortField={sortField}
               sortDirection={sortDirection}
               onSort={manejarOrden}

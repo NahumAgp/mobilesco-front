@@ -1,4 +1,10 @@
-export default function ProductosTable({ data, onVer, onEditar, onEliminar }) {
+export default function ProductosTable({
+  data,
+  onVer,
+  onEditar,
+  onDesactivar,
+  canEliminarDefinitivo = false
+}) {
   return (
     <div className="card">
       <div
@@ -84,16 +90,20 @@ export default function ProductosTable({ data, onVer, onEditar, onEliminar }) {
                       >
                         <i className="bi bi-pencil"></i>
                       </button>
-                      <button
-                        className="btn btn-outline-danger"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onEliminar(producto.id);
-                        }}
-                        title="Eliminar"
-                      >
-                        <i className="bi bi-trash"></i>
-                      </button>
+                      {canEliminarDefinitivo && (
+                        <button
+                          className="btn btn-outline-danger"
+                          disabled={!producto.activo}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDesactivar(producto.id);
+                          }}
+                          title={producto.activo ? "Eliminar" : "Producto inactivo"}
+                        >
+                          <i className="bi bi-slash-circle me-1"></i>
+                          Eliminar
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

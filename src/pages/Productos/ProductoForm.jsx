@@ -144,6 +144,8 @@ export default function ProductoForm({
   costSummary = null,
   costDetails = null,
   errores: erroresExternos = {},
+  canEliminarDefinitivo = false,
+  onEliminarDefinitivo = null,
 }) {
   const navigate = useNavigate();
   const esModal = Boolean(onSave);
@@ -454,13 +456,25 @@ export default function ProductoForm({
               </div>
               <div className="col-12">
                 <div className="producto-form-status-box">
-                  <div className="form-check form-switch mb-0">
-                    <input className="form-check-input" type="checkbox" name="activo" checked={formData.activo} onChange={handleChange} id="activoSwitch" />
-                    <label className="form-check-label fw-semibold ms-2" htmlFor="activoSwitch">
-                      Producto {formData.activo ? "Activo" : "Inactivo"}
-                    </label>
+                  <div>
+                    <div className="form-check form-switch mb-0">
+                      <input className="form-check-input" type="checkbox" name="activo" checked={formData.activo} onChange={handleChange} id="activoSwitch" />
+                      <label className="form-check-label fw-semibold ms-2" htmlFor="activoSwitch">
+                        Producto {formData.activo ? "Activo" : "Inactivo"}
+                      </label>
+                    </div>
+                    <small className="text-muted">{formData.activo ? "Visible en el catalogo" : "Oculto del catalogo"}</small>
                   </div>
-                  <small className="text-muted">{formData.activo ? "Visible en el catalogo" : "Oculto del catalogo"}</small>
+                  {esEdicion && canEliminarDefinitivo && (
+                    <button
+                      type="button"
+                      className="btn producto-form-danger"
+                      onClick={onEliminarDefinitivo}
+                    >
+                      <i className="bi bi-trash me-2"></i>
+                      Eliminar
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

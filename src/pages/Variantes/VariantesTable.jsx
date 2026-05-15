@@ -161,7 +161,7 @@ const toPreviewUrl = (url) => {
 export default function VariantesTable({
   data,
   onEditar,
-  onEliminar,
+  onCambiarEstado,
   sortField = "sku",
   sortDirection = "asc",
   onSort
@@ -231,6 +231,7 @@ export default function VariantesTable({
                 const productoId = getProductoId(producto);
                 const imagen = getImagenRepresentativa(producto);
                 const imagenUrl = toPreviewUrl(imagen?.url);
+                const estaActivo = Boolean(producto?.activo);
 
                 return (
                   <tr
@@ -304,12 +305,12 @@ export default function VariantesTable({
                           className="btn btn-sm productos-brand-danger"
                           onClick={(event) => {
                             event.stopPropagation();
-                            onEliminar?.(productoId);
+                            onCambiarEstado?.(producto);
                           }}
-                          disabled={!onEliminar || !productoId}
+                          disabled={!onCambiarEstado || !productoId}
                         >
-                          <i className="bi bi-trash me-1"></i>
-                          Eliminar
+                          <i className={`bi ${estaActivo ? "bi-slash-circle" : "bi-check-circle"} me-1`}></i>
+                          {estaActivo ? "Desactivar" : "Activar"}
                         </button>
                       </div>
                     </td>
