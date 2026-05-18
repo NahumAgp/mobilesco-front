@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useLineasProducto } from "./useLineasProducto";
-import { exportarLineasProductoExcel } from "../../services/lineaProducto";
+import { lineaProductoGateway } from "../../gateways/lineaProductoGateway.js";
 
 import LineaProductoTable from "./LineaProductoTable.jsx";
 import PageHeader from "../../components/Sistema/PageHeader.jsx";
@@ -176,7 +176,7 @@ export default function LineaProductoPage() {
     try {
       setExportandoExcel(true);
 
-      const blob = await exportarLineasProductoExcel({
+      const blob = await lineaProductoGateway.exportarLineasProductoExcel({
         activo: soloActivos ? true : undefined,
         busqueda: terminoBusqueda || undefined,
         sortBy: sortField,

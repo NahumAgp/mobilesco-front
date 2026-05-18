@@ -1,10 +1,6 @@
 // src/pages/LineaProducto/useLineasProducto.js
 import { useCallback, useEffect, useState } from "react";
-import {
-  obtenerLineasProducto,
-  activarLineaProducto,
-  desactivarLineaProducto
-} from "../../services/lineaProducto.js";
+import { lineaProductoGateway } from "../../gateways/lineaProductoGateway.js";
 
 const PAGE_INFO_DEFAULT = {
   totalElements: 0,
@@ -42,9 +38,9 @@ export function useLineasProducto({ page, sortBy = "nombre", direction = "asc" }
       setError("");
 
       const data =
-        page === undefined || page === null
-          ? await obtenerLineasProducto()
-          : await obtenerLineasProducto({ page, sortBy, direction });
+          page === undefined || page === null
+          ? await lineaProductoGateway.obtenerLineasProducto()
+          : await lineaProductoGateway.obtenerLineasProducto({ page, sortBy, direction });
 
       if (data?.content) {
         setLineasProducto(data.content);
@@ -76,9 +72,9 @@ export function useLineasProducto({ page, sortBy = "nombre", direction = "asc" }
 
   async function cambiarEstadoLineaProducto(id, activo) {
     if (activo) {
-      await activarLineaProducto(id);
+      await lineaProductoGateway.activarLineaProducto(id);
     } else {
-      await desactivarLineaProducto(id);
+      await lineaProductoGateway.desactivarLineaProducto(id);
     }
 
     await cargar();

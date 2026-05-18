@@ -1,9 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-  obtenerFamilias,
-  activarFamilia,
-  desactivarFamilia
-} from "../../services/familias.js";
+import { familiaGateway } from "../../gateways/familiaGateway.js";
 
 const PAGE_INFO_DEFAULT = {
   totalElements: 0,
@@ -41,9 +37,9 @@ export function useFamilias({ page, size = 10, sortBy = "nombre", direction = "a
       setError("");
 
       const data =
-        page === undefined || page === null
-          ? await obtenerFamilias()
-          : await obtenerFamilias({ page, size, sortBy, direction });
+          page === undefined || page === null
+          ? await familiaGateway.obtenerFamilias()
+          : await familiaGateway.obtenerFamilias({ page, size, sortBy, direction });
 
       if (data?.content) {
         setFamilias(data.content);
@@ -75,9 +71,9 @@ export function useFamilias({ page, size = 10, sortBy = "nombre", direction = "a
 
   async function cambiarEstadoFamilia(id, activo) {
     if (activo) {
-      await activarFamilia(id);
+      await familiaGateway.activarFamilia(id);
     } else {
-      await desactivarFamilia(id);
+      await familiaGateway.desactivarFamilia(id);
     }
 
     await cargar();

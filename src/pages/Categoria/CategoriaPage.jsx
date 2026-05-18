@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useCategorias } from "./useCategorias";
-import { activarCategoria, desactivarCategoria, exportarCategoriasExcel } from "../../services/categorias.js";
+import { categoriaGateway } from "../../gateways/categoriaGateway.js";
 
 import CategoriaTable from "./CategoriaTable.jsx";
 import PageHeader from "../../components/Sistema/PageHeader.jsx";
@@ -32,9 +32,9 @@ export default function CategoriaPage() {
     try {
       const nuevoEstado = !categoria.activo;
       if (nuevoEstado) {
-        await activarCategoria(categoria.id);
+        await categoriaGateway.activarCategoria(categoria.id);
       } else {
-        await desactivarCategoria(categoria.id);
+        await categoriaGateway.desactivarCategoria(categoria.id);
       }
 
       setToastType("success");
@@ -52,7 +52,7 @@ export default function CategoriaPage() {
     try {
       setExportandoExcel(true);
 
-      const blob = await exportarCategoriasExcel({
+      const blob = await categoriaGateway.exportarCategoriasExcel({
         activo: filtroEstatus === "TODOS" ? undefined : filtroEstatus === "ACTIVO",
         busqueda: busqueda || undefined
       });

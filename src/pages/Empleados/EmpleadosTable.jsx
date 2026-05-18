@@ -117,22 +117,26 @@ export default function EmpleadosTable({ data, onEditar, onEliminar }) {
                       </span>
                     </td>
 
-                    <td className="text-end">
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-outline-primary me-2"
-                        onClick={() => onEditar?.(e)}
-                      >
-                        Editar
-                      </button>
+                    <td className="empleados-actions text-end">
+                      <div className="btn-group btn-group-sm" role="group">
+                        <button
+                          type="button"
+                          className="btn empleados-brand-outline"
+                          onClick={() => onEditar?.(e)}
+                        >
+                          <i className="bi bi-pencil me-1"></i>
+                          Editar
+                        </button>
 
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-outline-danger"
-                        onClick={() => onEliminar?.(e.id)}
-                      >
-                        Eliminar
-                      </button>
+                        <button
+                          type="button"
+                          className="btn empleados-brand-danger"
+                          onClick={() => onEliminar?.(e.id)}
+                        >
+                          <i className="bi bi-trash me-1"></i>
+                          Eliminar
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

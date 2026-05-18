@@ -42,6 +42,7 @@
 
 .variantes-col-modelo,
 .variantes-col-nivel,
+.variantes-col-material,
 .variantes-col-color {
   width: 120px;
 }
@@ -99,5 +100,13 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  white-space: nowrap;
+}
+
+.variantes-table-chip-text {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }

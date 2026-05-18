@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { crearMaterial, actualizarMaterial } from "../../services/materiales.js";
+import { materialGateway } from "../../gateways/materialGateway.js";
 import Toast from "../../components/ui/Toast.jsx";
 
 export default function MaterialModal({
@@ -53,9 +53,9 @@ export default function MaterialModal({
 
       let respuesta;
       if (esEdicion) {
-        respuesta = await actualizarMaterial(material.id, payload);
+        respuesta = await materialGateway.actualizarMaterial(material.id, payload);
       } else {
-        respuesta = await crearMaterial(payload);
+        respuesta = await materialGateway.crearMaterial(payload);
       }
 
       setToastType("success");

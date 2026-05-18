@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { obtenerCategoriaPorId, crearCategoria, actualizarCategoria, eliminarCategoria } from "../../services/categorias.js";
+import { categoriaGateway } from "../../gateways/categoriaGateway.js";
 import Toast from "../../components/ui/Toast.jsx";
 import "./CategoriaPage.css";
 
@@ -43,7 +43,7 @@ export default function CategoriaForm({
 
       if (!esModal && categoriaId) {
         try {
-          const data = await obtenerCategoriaPorId(categoriaId);
+          const data = await categoriaGateway.obtenerCategoriaPorId(categoriaId);
           setFormData(mapCategoriaToForm(data));
         } catch (error) {
           console.error("Error cargando:", error);
@@ -87,9 +87,9 @@ export default function CategoriaForm({
       let respuesta;
       if (esEdicion) {
         const id = categoria?.id || categoriaId;
-        respuesta = await actualizarCategoria(id, dataToSend);
+        respuesta = await categoriaGateway.actualizarCategoria(id, dataToSend);
       } else {
-        respuesta = await crearCategoria(dataToSend);
+        respuesta = await categoriaGateway.crearCategoria(dataToSend);
       }
 
       if (esModal) {
@@ -136,7 +136,7 @@ export default function CategoriaForm({
     }
 
     try {
-      await eliminarCategoria(id);
+      await categoriaGateway.eliminarCategoria(id);
       setToastType("success");
       setToastMessage("Categoria eliminada con exito");
       setTimeout(() => navigate("/categorias"), 1200);

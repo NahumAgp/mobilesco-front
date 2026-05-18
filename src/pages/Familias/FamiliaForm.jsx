@@ -1,13 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import {
-  obtenerFamiliaPorId,
-  crearFamilia,
-  actualizarFamilia,
-  eliminarFamilia
-} from "../../services/familias";
-import { obtenerLineasProducto } from "../../services/lineaProducto";
+import { familiaGateway } from "../../gateways/familiaGateway.js";
+import { lineaProductoGateway } from "../../gateways/lineaProductoGateway.js";
 import { obtenerModelos } from "../../services/modelos";
 import Toast from "../../components/ui/Toast.jsx";
 import SearchableSelect from "../../components/ui/SearchableSelect.jsx";
@@ -46,7 +41,7 @@ export default function FamiliaForm({ familiaId }) {
   useEffect(() => {
     const cargarLineas = async () => {
       try {
-        const data = await obtenerLineasProducto();
+        const data = await lineaProductoGateway.obtenerLineasProducto();
 
         if (data?.content) {
           setLineas(data.content);
@@ -68,7 +63,7 @@ export default function FamiliaForm({ familiaId }) {
       if (!familiaId) return;
 
       try {
-        const data = await obtenerFamiliaPorId(familiaId);
+        const data = await familiaGateway.obtenerFamiliaPorId(familiaId);
         setFormData({
           codigo: data.codigo || "",
           nombre: data.nombre || "",
@@ -188,9 +183,9 @@ export default function FamiliaForm({ familiaId }) {
       setErroresBackend({});
 
       if (esEdicion) {
-        await actualizarFamilia(familiaId, payload);
+        await familiaGateway.actualizarFamilia(familiaId, payload);
       } else {
-        await crearFamilia(payload);
+        await familiaGateway.crearFamilia(payload);
       }
 
       setToastType("success");
@@ -242,7 +237,7 @@ export default function FamiliaForm({ familiaId }) {
     if (!confirmacion) return;
 
     try {
-      await eliminarFamilia(familiaId);
+      await familiaGateway.eliminarFamilia(familiaId);
       setToastType("success");
       setToastMessage("Familia eliminada correctamente");
       setTimeout(() => navigate("/familias"), 1500);

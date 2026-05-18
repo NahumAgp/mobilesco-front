@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 import { useColor } from "./useColor.js";
 import ColorTable from "./ColorTable.jsx";
-import { activarColor, desactivarColor } from "../../services/color.js";
+import { colorGateway } from "../../gateways/colorGateway.js";
 import PageHeader from "../../components/Sistema/PageHeader.jsx";
 import Toast from "../../components/ui/Toast.jsx";
 import "./ColorPage.css";
@@ -48,9 +48,9 @@ export default function ColorPage() {
     try {
       const nuevoEstado = !color.activo;
       if (nuevoEstado) {
-        await activarColor(color.id);
+        await colorGateway.activarColor(color.id);
       } else {
-        await desactivarColor(color.id);
+        await colorGateway.desactivarColor(color.id);
       }
 
       setToastType("success");

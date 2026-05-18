@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { obtenerColorPorId, crearColor, actualizarColor, eliminarColor } from "../../services/color.js";
+import { colorGateway } from "../../gateways/colorGateway.js";
 import Toast from "../../components/ui/Toast.jsx";
 import "./ColorPage.css";
 
@@ -37,7 +37,7 @@ export default function ColorForm({ colorId, color, onSave, onCancel, errores: e
 
       if (!esModal && colorId) {
         try {
-          const data = await obtenerColorPorId(colorId);
+          const data = await colorGateway.obtenerColorPorId(colorId);
           setFormData(mapColorToForm(data));
         } catch (error) {
           console.error("Error cargando:", error);
@@ -81,9 +81,9 @@ export default function ColorForm({ colorId, color, onSave, onCancel, errores: e
       let respuesta;
       if (esEdicion) {
         const id = color?.id || colorId;
-        respuesta = await actualizarColor(id, dataToSend);
+        respuesta = await colorGateway.actualizarColor(id, dataToSend);
       } else {
-        respuesta = await crearColor(dataToSend);
+        respuesta = await colorGateway.crearColor(dataToSend);
       }
 
       if (esModal) {
@@ -130,7 +130,7 @@ export default function ColorForm({ colorId, color, onSave, onCancel, errores: e
     }
 
     try {
-      await eliminarColor(id);
+      await colorGateway.eliminarColor(id);
       setToastType("success");
       setToastMessage("Color eliminado con exito");
       setTimeout(() => navigate("/colores"), 1200);

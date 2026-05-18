@@ -1,7 +1,7 @@
 // pages/Materiales/components/MaterialForm.jsx
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { obtenerMaterialPorId, crearMaterial, actualizarMaterial } from "../../services/materiales.js";
+import { materialGateway } from "../../gateways/materialGateway.js";
 import Toast from "../../components/ui/Toast.jsx";
 
 export default function MaterialForm({ 
@@ -36,7 +36,7 @@ export default function MaterialForm({
 
       if (!esModal && materialId) {
         try {
-          const data = await obtenerMaterialPorId(materialId);
+          const data = await materialGateway.obtenerMaterialPorId(materialId);
           setFormData({ ...data });
         } catch (error) {
           console.error("Error cargando:", error);
@@ -78,9 +78,9 @@ export default function MaterialForm({
       let respuesta;
       if (esEdicion) {
         const id = material?.id || materialId;
-        respuesta = await actualizarMaterial(id, payload);
+        respuesta = await materialGateway.actualizarMaterial(id, payload);
       } else {
-        respuesta = await crearMaterial(payload);
+        respuesta = await materialGateway.crearMaterial(payload);
       }
 
       if (esModal) {
@@ -102,6 +102,22 @@ export default function MaterialForm({
           setToastMessage(error.message || "Error al guardar los datos");
         }
       }
+    }
+  }
+
+  async function handleEliminar() {
+    const confirmacion = window.confirm("Seguro que deseas eliminar este material?");
+    if (!confirmacion) return;
+
+    try {
+      const id = material?.id || materialId;
+      await materialGateway.eliminarMaterial(id);
+      setToastType("success");
+      setToastMessage("Material eliminado correctamente");
+      setTimeout(() => navigate("/materiales"), 1500);
+    } catch (error) {
+      setToastType("danger");
+      setToastMessage(error.message || "Error al eliminar el material");
     }
   }
 
@@ -234,6 +250,18 @@ export default function MaterialForm({
                 Material {formData.activo ? 'Activo' : 'Inactivo'}
               </label>
             </div>
+          )}
+
+          {!esModal && esEdicion ? (
+            <button
+              type="button"
+              className="btn btn-outline-danger px-4"
+              onClick={handleEliminar}
+            >
+              Eliminar
+            </button>
+          ) : (
+            <span />
           )}
           
           <div className={`gap-2 d-flex ${esModal ? 'ms-auto' : ''}`}>

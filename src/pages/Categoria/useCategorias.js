@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { obtenerCategorias, eliminarCategoria as eliminarService } from "../../services/categorias.js";
+import { categoriaGateway } from "../../gateways/categoriaGateway.js";
 
 export function useCategorias() {
   const [categorias, setCategorias] = useState([]);
@@ -11,7 +11,7 @@ export function useCategorias() {
       setLoadingLista(true);
       setError("");
 
-      const data = await obtenerCategorias();
+      const data = await categoriaGateway.obtenerCategorias();
       const lista = data?.content || data || [];
       setCategorias(Array.isArray(lista) ? lista : []);
     } catch {
@@ -27,7 +27,7 @@ export function useCategorias() {
   }, []);
 
   async function eliminarCategoria(id) {
-    await eliminarService(id);
+    await categoriaGateway.eliminarCategoria(id);
     await cargar();
   }
 

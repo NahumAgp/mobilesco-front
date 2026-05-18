@@ -273,8 +273,16 @@ export default function VariantesTable({
                     <td>{getFamiliaNombre(producto)}</td>
                     <td>{getProductoBaseNombre(producto)}</td>
                     <td>{getNivelNombre(producto)}</td>
-                    <td>{getMaterialNombre(producto)}</td>
-                    <td>{getColorNombre(producto)}</td>
+                    <td>
+                      <span className="variantes-table-chip-text" title={getMaterialNombre(producto)}>
+                        {getMaterialNombre(producto)}
+                      </span>
+                    </td>
+                    <td>
+                      <span className="variantes-table-chip-text" title={getColorNombre(producto)}>
+                        {getColorNombre(producto)}
+                      </span>
+                    </td>
                     <td>
                       <span
                         className={
@@ -319,7 +327,7 @@ export default function VariantesTable({
               })
             ) : (
               <tr>
-                <td colSpan="10" className="text-center text-muted py-5">
+                <td colSpan="11" className="text-center text-muted py-5">
                   <i className="bi bi-box fs-1 d-block mb-3 text-secondary"></i>
                   <span className="fs-5">No hay productos registrados</span>
                   <p className="text-secondary mt-2">Crea un producto para comenzar</p>

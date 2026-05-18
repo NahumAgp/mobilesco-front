@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import LineaProductoForm from "./LineaProductoForm.jsx";
-import { obtenerLineaProductoPorId } from "../../services/lineaProducto.js";
-import { obtenerFamilias } from "../../services/familias.js";
+import { lineaProductoGateway } from "../../gateways/lineaProductoGateway.js";
+import { familiaGateway } from "../../gateways/familiaGateway.js";
 
 export default function LineaProductoFormPage() {
   const { id } = useParams(); // si existe, estamos editando
@@ -21,7 +21,7 @@ export default function LineaProductoFormPage() {
       }
 
       try {
-        const data = await obtenerLineaProductoPorId(id);
+        const data = await lineaProductoGateway.obtenerLineaProductoPorId(id);
         setLineaProducto(data || null);
       } catch {
         setLineaProducto(null);
@@ -42,7 +42,7 @@ export default function LineaProductoFormPage() {
         setCargandoFamilias(true);
         setErrorFamilias("");
 
-        const data = await obtenerFamilias();
+        const data = await familiaGateway.obtenerFamilias();
         const lista = Array.isArray(data)
           ? data
           : Array.isArray(data?.content)

@@ -1,11 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  obtenerLineaProductoPorId,
-  crearLineaProducto,
-  actualizarLineaProducto,
-  eliminarLineaProducto
-} from "../../services/lineaProducto.js";
+import { lineaProductoGateway } from "../../gateways/lineaProductoGateway.js";
 import Toast from "../../components/ui/Toast.jsx";
 
 export default function LineaProductoForm({
@@ -47,7 +42,7 @@ export default function LineaProductoForm({
 
       if (!esModal && lineaProductoId) {
         try {
-          const data = await obtenerLineaProductoPorId(lineaProductoId);
+          const data = await lineaProductoGateway.obtenerLineaProductoPorId(lineaProductoId);
           setFormData(mapLineaToForm(data));
         } catch (error) {
           console.error("Error cargando:", error);
@@ -91,9 +86,9 @@ export default function LineaProductoForm({
       let respuesta;
       if (esEdicion) {
         const id = lineaProducto?.id || lineaProductoId;
-        respuesta = await actualizarLineaProducto(id, dataToSend);
+        respuesta = await lineaProductoGateway.actualizarLineaProducto(id, dataToSend);
       } else {
-        respuesta = await crearLineaProducto(dataToSend);
+        respuesta = await lineaProductoGateway.crearLineaProducto(dataToSend);
       }
 
       if (esModal) {
@@ -121,7 +116,7 @@ export default function LineaProductoForm({
 
     try {
       const id = lineaProducto?.id || lineaProductoId;
-      await eliminarLineaProducto(id);
+      await lineaProductoGateway.eliminarLineaProducto(id);
       setToastType("success");
       setToastMessage("Linea de producto eliminada correctamente");
       setTimeout(() => navigate("/lineas-producto"), 1500);

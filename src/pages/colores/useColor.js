@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { obtenerColores, eliminarColor as eliminarColorService } from "../../services/color.js";
+import { colorGateway } from "../../gateways/colorGateway.js";
 
 export function useColor() {
   const [colores, setColores] = useState([]);
@@ -11,7 +11,7 @@ export function useColor() {
       setLoadingLista(true);
       setError("");
 
-      const data = await obtenerColores();
+      const data = await colorGateway.obtenerColores();
       const lista = data?.content || data || [];
       setColores(Array.isArray(lista) ? lista : []);
     } catch {
@@ -27,7 +27,7 @@ export function useColor() {
   }, []);
 
   async function eliminarColor(id) {
-    await eliminarColorService(id);
+    await colorGateway.eliminarColor(id);
     await cargar();
   }
 

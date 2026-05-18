@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useFamilias } from "./useFamilias";
-import { obtenerLineasProducto } from "../../services/lineaProducto";
-import { exportarFamiliasExcel } from "../../services/familias.js";
+import { lineaProductoGateway } from "../../gateways/lineaProductoGateway.js";
+import { familiaGateway } from "../../gateways/familiaGateway.js";
 
 import FamiliasTable from "./FamiliasTable";
 import PageHeader from "../../components/Sistema/PageHeader";
@@ -75,7 +75,7 @@ export default function FamiliasPage() {
 
     const cargarLineas = async () => {
       try {
-        const data = await obtenerLineasProducto();
+        const data = await lineaProductoGateway.obtenerLineasProducto();
         const lista = Array.isArray(data)
           ? data
           : Array.isArray(data?.content)
@@ -198,7 +198,7 @@ export default function FamiliasPage() {
     try {
       setExportandoExcel(true);
 
-      const blob = await exportarFamiliasExcel({
+      const blob = await familiaGateway.exportarFamiliasExcel({
         activo: soloActivos ? true : undefined,
         busqueda: terminoBusqueda || undefined,
         lineaId: lineaFiltroId || undefined,
