@@ -1,5 +1,5 @@
 import { Navigate } from "react-router-dom";
-import { getUser, isAuthenticated } from "../../services/authService";
+import { getUser, isAuthenticated } from "../../modules/auth/services/authService";
 
 function hasAllowedRole(user, allowedRoles = []) {
   if (!allowedRoles.length) {

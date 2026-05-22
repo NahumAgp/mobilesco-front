@@ -1,0 +1,286 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { categoriaGateway } from "../services/categoriaGateway.js";
+import Toast from "../../../components/ui/Toast.jsx";
+import "./CategoriaPage.css";
+
+export default function CategoriaForm({
+  categoriaId,
+  categoria,
+  onSave,
+  onCancel,
+  errores: erroresExternos = {}
+}) {
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState("success");
+  const [erroresBackend, setErroresBackend] = useState({});
+
+  const navigate = useNavigate();
+
+  const esModal = Boolean(onSave);
+  const esEdicion = Boolean(categoriaId) || Boolean(categoria);
+
+  const [formData, setFormData] = useState({
+    codigo: "",
+    nombre: "",
+    descripcion: "",
+    activo: true
+  });
+
+  const mapCategoriaToForm = (data = {}) => ({
+    codigo: data.codigo || "",
+    nombre: data.nombre || "",
+    descripcion: data.descripcion || "",
+    activo: data.activo ?? true
+  });
+
+  useEffect(() => {
+    const cargar = async () => {
+      if (esModal && categoria) {
+        setFormData(mapCategoriaToForm(categoria));
+        return;
+      }
+
+      if (!esModal && categoriaId) {
+        try {
+          const data = await categoriaGateway.obtenerCategoriaPorId(categoriaId);
+          setFormData(mapCategoriaToForm(data));
+        } catch (error) {
+          console.error("Error cargando:", error);
+        }
+      }
+    };
+
+    cargar();
+  }, [categoriaId, categoria, esModal]);
+
+  function handleChange(e) {
+    const { name, value, type, checked } = e.target;
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value
+    }));
+
+    if (erroresBackend[name]) {
+      setErroresBackend((prev) => {
+        const copia = { ...prev };
+        delete copia[name];
+        return copia;
+      });
+    }
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+
+    try {
+      setErroresBackend({});
+
+      const dataToSend = {
+        codigo: formData.codigo?.toString().trim() || "",
+        nombre: formData.nombre?.trim() || "",
+        descripcion: formData.descripcion?.trim() || "",
+        activo: Boolean(formData.activo)
+      };
+
+      let respuesta;
+      if (esEdicion) {
+        const id = categoria?.id || categoriaId;
+        respuesta = await categoriaGateway.actualizarCategoria(id, dataToSend);
+      } else {
+        respuesta = await categoriaGateway.crearCategoria(dataToSend);
+      }
+
+      if (esModal) {
+        onSave(respuesta);
+      } else {
+        setToastType("success");
+        setToastMessage(esEdicion ? "Categoria actualizada con exito" : "Categoria registrada con exito");
+        setTimeout(() => navigate("/categorias"), 1500);
+      }
+    } catch (error) {
+      if (error.errors) {
+        setErroresBackend(error.errors);
+      } else if (esModal) {
+        console.error("Error en modal:", error);
+      } else {
+        setToastType("danger");
+        setToastMessage(error.message || "Error al guardar los datos");
+      }
+    }
+  }
+
+  const inputClass = (field) =>
+    `form-control ${(erroresBackend[field] || erroresExternos[field]) ? "is-invalid" : "border-soft"}`;
+
+  const handleCancel = () => {
+    if (esModal) {
+      onCancel();
+    } else {
+      navigate("/categorias");
+    }
+  };
+
+  const handleEliminar = async () => {
+    if (!esEdicion || esModal) return;
+
+    const confirmado = window.confirm("¿Seguro que deseas eliminar esta categoria?");
+    if (!confirmado) return;
+
+    const id = categoria?.id || categoriaId;
+    if (!id) {
+      setToastType("danger");
+      setToastMessage("No se encontro el ID de la categoria para eliminar.");
+      return;
+    }
+
+    try {
+      await categoriaGateway.eliminarCategoria(id);
+      setToastType("success");
+      setToastMessage("Categoria eliminada con exito");
+      setTimeout(() => navigate("/categorias"), 1200);
+    } catch (error) {
+      setToastType("danger");
+      setToastMessage(error.message || "No se pudo eliminar la categoria");
+    }
+  };
+
+  return (
+    <div className={esModal ? "" : "container py-4 categorias-page-shell"}>
+      {!esModal && <Toast message={toastMessage} type={toastType} onClose={() => setToastMessage("")} />}
+
+      {!esModal && (
+        <div className="d-flex justify-content-between align-items-center mb-4">
+          <h2 className="fw-bold text-primary">{esEdicion ? "Editar Categoria" : "Nueva Categoria"}</h2>
+          <span className={`badge ${formData.activo ? "bg-success" : "bg-secondary"}`}>
+            {formData.activo ? "Activa" : "Inactiva"}
+          </span>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} noValidate>
+        <div className="card shadow-sm border-0 mb-4 categorias-table-card">
+          <div className="card-header bg-white py-3">
+            <h5 className="mb-0 text-secondary">
+              <i className="bi bi-folder me-2"></i>Informacion de la Categoria
+            </h5>
+          </div>
+
+          <div className="card-body">
+            <div className="row g-3">
+              <div className="col-md-4">
+                <label className="form-label fw-semibold">
+                  Codigo <span className="text-danger">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="codigo"
+                  className={inputClass("codigo")}
+                  value={formData.codigo}
+                  onChange={handleChange}
+                  placeholder="Ej: 72"
+                />
+                <div className="invalid-feedback">{erroresBackend.codigo || erroresExternos.codigo}</div>
+              </div>
+
+              <div className="col-md-8">
+                <label className="form-label fw-semibold">
+                  Nombre de la Categoria <span className="text-danger">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="nombre"
+                  className={inputClass("nombre")}
+                  value={formData.nombre}
+                  onChange={handleChange}
+                  placeholder="Ej: Primaria, Secundaria"
+                />
+                <div className="invalid-feedback">{erroresBackend.nombre || erroresExternos.nombre}</div>
+              </div>
+
+              <div className="col-md-12">
+                <label className="form-label fw-semibold">Descripcion</label>
+                <textarea
+                  name="descripcion"
+                  className={inputClass("descripcion")}
+                  value={formData.descripcion || ""}
+                  onChange={handleChange}
+                  rows="4"
+                  placeholder="Descripcion detallada de la categoria"
+                />
+                <div className="invalid-feedback">{erroresBackend.descripcion || erroresExternos.descripcion}</div>
+                <div className="form-text text-muted">Maximo 500 caracteres</div>
+              </div>
+
+              <div className="col-md-12">
+                <div className="border-top pt-3 mt-2">
+                  <div className="d-flex align-items-center">
+                    <div className="form-check form-switch mb-0">
+                      <input
+                        className="form-check-input"
+                        type="checkbox"
+                        name="activo"
+                        checked={formData.activo}
+                        onChange={handleChange}
+                        id="activoSwitch"
+                        style={{ width: "40px", height: "20px", cursor: "pointer" }}
+                      />
+                    </div>
+                    <div className="ms-3">
+                      <label
+                        className="form-check-label fw-semibold d-block"
+                        htmlFor="activoSwitch"
+                        style={{ cursor: "pointer" }}
+                      >
+                        Categoria {formData.activo ? "Activa" : "Inactiva"}
+                      </label>
+                      <small className="text-muted">
+                        {formData.activo
+                          ? "La categoria esta habilitada y visible en el sistema"
+                          : "La categoria esta deshabilitada y no estara disponible"}
+                      </small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="d-flex justify-content-between align-items-center bg-white p-3 rounded shadow-sm">
+          {esModal && (
+            <div className="form-check form-switch">
+              <input
+                className="form-check-input"
+                type="checkbox"
+                name="activo"
+                checked={formData.activo}
+                onChange={handleChange}
+                id="switchActivoModal"
+              />
+              <label className="form-check-label fw-semibold" htmlFor="switchActivoModal">
+                Categoria {formData.activo ? "Activa" : "Inactiva"}
+              </label>
+            </div>
+          )}
+
+          <div className={`gap-2 d-flex ${esModal ? "ms-auto" : ""}`}>
+            {!esModal && esEdicion && (
+              <button type="button" className="btn categorias-brand-danger px-4" onClick={handleEliminar}>
+                Eliminar
+              </button>
+            )}
+            <button type="button" className="btn btn-light px-4" onClick={handleCancel}>
+              Cancelar
+            </button>
+            <button type="submit" className="btn categorias-brand-primary px-5 fw-bold">
+              {esEdicion ? "Guardar Cambios" : "Guardar"}
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  );
+}
+

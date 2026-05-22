@@ -1,6 +1,6 @@
 import "./Sidebar.css";
 import { NavLink, useNavigate } from "react-router-dom";
-import { logout, getUser } from "../../services/authService";
+import { logout, getUser } from "../../modules/auth/services/authService";
 import { useState, useRef, useEffect } from "react";
 import { API_BASE_URL } from "../../config/apiConfig";
 
@@ -33,7 +33,9 @@ export default function Sidebar() {
   };
 
   const rol = rolMap[user?.roles?.[0]] || user?.roles?.[0] || "";
-  const puedeGestionarUsuarios = user?.roles?.some((r) => r === "ADMIN" || r === "DIRECTOR_GENERAL");
+  const puedeGestionarUsuarios = user?.roles?.some(
+    (r) => r === "ADMIN" || r === "DIRECTOR_GENERAL" || r === "SUBDIRECCION_ADMINISTRATIVA"
+  );
 
   const foto = user?.fotoUrl
     ? `${API_BASE_URL}${user.fotoUrl}`

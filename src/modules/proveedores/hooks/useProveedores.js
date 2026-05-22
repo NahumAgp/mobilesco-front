@@ -1,0 +1,142 @@
+import { useCallback, useEffect, useState } from "react";
+import {
+  obtenerProveedores,
+  actualizarProveedor,
+  eliminarProveedor as eliminarService
+} from "../services/proveedores.js";
+
+export function useProveedores({
+  activo,
+  busqueda,
+  tipoInsumo,
+  page = 0,
+  size = 10,
+  sortBy = "id",
+  direction = "asc"
+} = {}) {
+  const [proveedores, setProveedores] = useState([]);
+  const [pageInfo, setPageInfo] = useState({
+    page: 0,
+    size: 10,
+    totalPages: null,
+    totalElements: null,
+    numberOfElements: 0,
+    first: true,
+    last: true,
+    empty: true,
+    hasNext: false,
+    hasPrevious: false
+  });
+  const [loadingLista, setLoadingLista] = useState(false);
+  const [error, setError] = useState("");
+
+  const cargar = useCallback(async () => {
+    try {
+      setLoadingLista(true);
+      setError("");
+
+      const data = await obtenerProveedores({
+        activo,
+        busqueda,
+        tipoInsumo,
+        page,
+        size,
+        sortBy,
+        direction
+      });
+
+      if (Array.isArray(data)) {
+        setProveedores(data);
+        setPageInfo({
+          page,
+          size,
+          totalPages: 0,
+          totalElements: 0,
+          numberOfElements: data.length,
+          first: page === 0,
+          last: data.length < size,
+          empty: data.length === 0,
+          hasNext: data.length === size,
+          hasPrevious: page > 0
+        });
+        return;
+      }
+
+      if (data?.content) {
+        setProveedores(data.content);
+        setPageInfo({
+          page: data.number ?? page,
+          size: data.size ?? size,
+          totalPages: data.totalPages ?? 0,
+          totalElements: data.totalElements ?? data.content.length,
+          numberOfElements: data.numberOfElements ?? data.content.length,
+          first: data.first ?? false,
+          last: data.last ?? false,
+          empty: data.empty ?? false,
+          hasNext: data.last === false,
+          hasPrevious: data.first === false
+        });
+        return;
+      }
+
+      setProveedores([]);
+      setPageInfo({
+        page,
+        size,
+        totalPages: 0,
+        totalElements: 0,
+        numberOfElements: 0,
+        first: page === 0,
+        last: true,
+        empty: true,
+        hasNext: false,
+        hasPrevious: page > 0
+      });
+    } catch {
+      setError("Error cargando proveedores");
+    } finally {
+      setLoadingLista(false);
+    }
+  }, [activo, busqueda, direction, page, size, sortBy, tipoInsumo]);
+
+  useEffect(() => {
+    cargar();
+  }, [cargar]);
+
+  async function eliminarProveedor(id) {
+    await eliminarService(id);
+    await cargar();
+  }
+
+  async function cambiarEstadoProveedor(proveedor, activo) {
+    await actualizarProveedor(proveedor.id, {
+      razonSocial: proveedor.razonSocial,
+      rfc: proveedor.rfc,
+      nombre: proveedor.nombre,
+      apellidoPaterno: proveedor.apellidoPaterno,
+      apellidoMaterno: proveedor.apellidoMaterno,
+      estado: proveedor.estado,
+      ciudad: proveedor.ciudad,
+      colonia: proveedor.colonia,
+      calle: proveedor.calle,
+      numeroExterior: proveedor.numeroExterior,
+      numeroInterior: proveedor.numeroInterior,
+      codigoPostal: proveedor.codigoPostal,
+      tipoInsumo: proveedor.tipoInsumo,
+      telefono: proveedor.telefono,
+      correo: proveedor.correo,
+      activo
+    });
+    await cargar();
+  }
+
+  return {
+    proveedores,
+    pageInfo,
+    loadingLista,
+    error,
+    eliminarProveedor,
+    cambiarEstadoProveedor
+  };
+}
+

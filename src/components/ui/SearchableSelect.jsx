@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 const defaultGetValue = (option) => option?.id ?? option?.value ?? "";
 const defaultGetLabel = (option) => option?.nombre ?? option?.name ?? "";
@@ -41,12 +41,6 @@ export default function SearchableSelect({
     [options, value, getOptionValue]
   );
 
-  useEffect(() => {
-    if (!open) {
-      setQuery(selectedOption ? getOptionLabel(selectedOption) : "");
-    }
-  }, [selectedOption, getOptionLabel, open]);
-
   const filteredOptions = useMemo(() => {
     const termino = query.toLowerCase().trim();
     if (!termino) return options;
@@ -75,8 +69,11 @@ export default function SearchableSelect({
           <input
             type="text"
             className={`form-control ${error ? "is-invalid" : ""}`}
-            value={open ? query : query || (selectedOption ? getOptionLabel(selectedOption) : "")}
-            onFocus={() => setOpen(true)}
+            value={open ? query : selectedOption ? getOptionLabel(selectedOption) : ""}
+            onFocus={() => {
+              setQuery(selectedOption ? getOptionLabel(selectedOption) : "");
+              setOpen(true);
+            }}
             onChange={(e) => {
               setQuery(e.target.value);
               setOpen(true);

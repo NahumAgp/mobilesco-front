@@ -1,17 +1,1 @@
-import request from "./api";
-import { API_PATHS } from "../config/apiPaths";
-
-export function obtenerSalidasInsumos() {
-  return request(API_PATHS.SALIDAS_INSUMOS);
-}
-
-export function obtenerSalidaInsumoPorId(id) {
-  return request(`${API_PATHS.SALIDAS_INSUMOS}/${id}`);
-}
-
-export function crearSalidaInsumo(data) {
-  return request(API_PATHS.SALIDAS_INSUMOS, {
-    method: "POST",
-    body: JSON.stringify(data)
-  });
-}
+export * from "../modules/salidas-insumos/services/salidasInsumos";

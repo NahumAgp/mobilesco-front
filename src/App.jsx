@@ -2,66 +2,66 @@ import { Navigate, Route, Routes } from "react-router-dom";
 
 import AppLayout from "./layout/AppLayout";
 
-import Tablero from "./pages/Tablero";
-import UnidadMedida from "./pages/UnidadMedida.jsx";
-import NuevaCotizacion from "./pages/NuevaCotizacion.jsx";
-import Cotizacion from "./pages/Cotizaciones.jsx";
+import Tablero from "./modules/tablero/pages/Tablero";
+import UnidadMedida from "./modules/unidades-medida/legacy/UnidadMedida.jsx";
+import NuevaCotizacion from "./modules/cotizaciones/pages/NuevaCotizacion.jsx";
+import Cotizacion from "./modules/cotizaciones/pages/Cotizaciones.jsx";
 
-import ProveedoresPage from "./pages/Proveedores/ProveedoresPage.jsx";
-import ProveedorFormPage from "./pages/Proveedores/ProveedorFormPage.jsx";
+import ProveedoresPage from "./modules/proveedores/pages/ProveedoresPage.jsx";
+import ProveedorFormPage from "./modules/proveedores/pages/ProveedorFormPage.jsx";
 
-import UnidadesMedidaPage from "./pages/UnidadMedidas/UnidadMedidaPage.jsx";
-import UnidadMedidaFormPage from "./pages/UnidadMedidas/UnidadMedidaFormPage.jsx";
+import UnidadesMedidaPage from "./modules/unidades-medida/pages/UnidadMedidaPage.jsx";
+import UnidadMedidaFormPage from "./modules/unidades-medida/pages/UnidadMedidaFormPage.jsx";
 
-import Login from "./pages/auth/Login.jsx";
-import Register from "./pages/auth/Register.jsx";
+import Login from "./modules/auth/pages/Login.jsx";
+import Register from "./modules/auth/pages/Register.jsx";
 
-import EmpleadoFormPage from "./pages/Empleados/EmpleadoFormPage.jsx";
-import EmpleadosPage from "./pages/Empleados/EmpleadoPage.jsx";
+import EmpleadoFormPage from "./modules/empleados/pages/EmpleadoFormPage.jsx";
+import EmpleadosPage from "./modules/empleados/pages/EmpleadoPage.jsx";
 
-import PerfilPage from "./pages/Perfil/PerfilPage.jsx";
+import PerfilPage from "./modules/perfil/pages/PerfilPage.jsx";
 
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import RoleRoute from "./components/auth/RoleRoute";
-import FamiliasPage from "./pages/Familias/FamiliasPage.jsx";
-import FamiliaFormPage from "./pages/Familias/FamiliaFormPage.jsx";
+import FamiliasPage from "./modules/familias/pages/FamiliasPage.jsx";
+import FamiliaFormPage from "./modules/familias/pages/FamiliaFormPage.jsx";
 
-import LineaProductoFormPage from "./pages/LineaProducto/LineaProductoFormPage.jsx";
-import LineaProductoPage from "./pages/LineaProducto/LineaProductoPage.jsx";
+import LineaProductoFormPage from "./modules/lineas-producto/pages/LineaProductoFormPage.jsx";
+import LineaProductoPage from "./modules/lineas-producto/pages/LineaProductoPage.jsx";
 
-import CategoriaPage from "./pages/Categoria/CategoriaPage.jsx";
-import CategoriaFormPage from "./pages/Categoria/CategoriaFormPage.jsx";
+import CategoriaPage from "./modules/categorias/pages/CategoriaPage.jsx";
+import CategoriaFormPage from "./modules/categorias/pages/CategoriaFormPage.jsx";
 
-import ModelosPage from "./pages/Modelos/ModelosPage.jsx";
-import ModelosFormPage from "./pages/Modelos/ModelosFormPage.jsx";
-import MaterialesPage from "./pages/Materiales/MaterialesPage.jsx";
-import MaterialFormPage from "./pages/Materiales/MaterialFormPage.jsx";
-import ColorPage from "./pages/colores/ColorPage.jsx";
-import ColorFormPage from "./pages/colores/ColorFormPage.jsx";
+import ModelosPage from "./modules/modelos/pages/ModelosPage.jsx";
+import ModelosFormPage from "./modules/modelos/pages/ModelosFormPage.jsx";
+import MaterialesPage from "./modules/materiales/pages/MaterialesPage.jsx";
+import MaterialFormPage from "./modules/materiales/pages/MaterialFormPage.jsx";
+import ColorPage from "./modules/colores/pages/ColorPage.jsx";
+import ColorFormPage from "./modules/colores/pages/ColorFormPage.jsx";
 
-import  InsumosPage from "./pages/Insumos/InsumosPage.jsx";
-import  InsumosFormPage from "./pages/Insumos/InsumoFormPage.jsx";
-import SalidasInsumosPage from "./pages/SalidasInsumos/SalidasInsumosPage.jsx";
-import SalidasInsumosNuevaPage from "./pages/SalidasInsumos/SalidasInsumosNuevaPage.jsx";
+import  InsumosPage from "./modules/insumos/pages/InsumosPage.jsx";
+import  InsumosFormPage from "./modules/insumos/pages/InsumoFormPage.jsx";
+import SalidasInsumosPage from "./modules/salidas-insumos/pages/SalidasInsumosPage.jsx";
+import SalidasInsumosNuevaPage from "./modules/salidas-insumos/pages/SalidasInsumosNuevaPage.jsx";
 
-import CentrosTrabajoPage from "./pages/CentrosTrabajo/CentrosTrabajoPage.jsx";
-import CentrosTrabajoFormPage from "./pages/CentrosTrabajo/CentroTrabajoFormPage.jsx";
+import CentrosTrabajoPage from "./modules/centros-trabajo/pages/CentrosTrabajoPage.jsx";
+import CentrosTrabajoFormPage from "./modules/centros-trabajo/pages/CentroTrabajoFormPage.jsx";
 
-import OperacionesPage from "./pages/Operaciones/OperacionesPage.jsx";
-import OperacionesFormPage from "./pages/Operaciones/OperacionFormPage.jsx";
+import OperacionesPage from "./modules/operaciones/pages/OperacionesPage.jsx";
+import OperacionesFormPage from "./modules/operaciones/pages/OperacionFormPage.jsx";
 
-import ComprasPage from "./pages/Compras/ComprasPage.jsx";
-import ComprasFormPage from "./pages/Compras/CompraFormPage.jsx";
+import ComprasPage from "./modules/compras/pages/ComprasPage.jsx";
+import ComprasFormPage from "./modules/compras/pages/CompraFormPage.jsx";
 
-import KardexPage from "./pages/Kardex/KardexPage"; 
-import CompraDetallePage from "./pages/Compras/CompraDetallePage.jsx";
+import KardexPage from "./modules/kardex/pages/KardexPage"; 
+import CompraDetallePage from "./modules/compras/pages/CompraDetallePage.jsx";
 
-import ProductoFormPage from "./pages/Productos/ProductoFormPage.jsx";
-import ProductosCompletosPage from "./pages/ProductosCompletos/ProductosCompletosPage.jsx";
-import ProductoDetallePage from "./pages/Productos/ProductoDetallePage.jsx";
-import ProductoInsumosBOMPage from "./pages/Productos/ProductoInsumosBOMPage.jsx";
-import ProductoOperacionesBOMPage from "./pages/Productos/ProductoOperacionesBOMPage.jsx";
-import UsuariosAccesoPage from "./pages/Usuarios/UsuariosAccesoPage.jsx";
+import ProductoFormPage from "./modules/productos/pages/Productos/ProductoFormPage.jsx";
+import ProductosCompletosPage from "./modules/productos/pages/ProductosCompletos/ProductosCompletosPage.jsx";
+import ProductoDetallePage from "./modules/productos/pages/Productos/ProductoDetallePage.jsx";
+import ProductoInsumosBOMPage from "./modules/productos/pages/Productos/ProductoInsumosBOMPage.jsx";
+import ProductoOperacionesBOMPage from "./modules/productos/pages/Productos/ProductoOperacionesBOMPage.jsx";
+import UsuariosAccesoPage from "./modules/usuarios/pages/UsuariosAccesoPage.jsx";
 
 export default function App() {
 
@@ -104,7 +104,7 @@ export default function App() {
         <Route
           path="/usuarios/accesos"
           element={
-            <RoleRoute allowedRoles={["ADMIN", "DIRECTOR_GENERAL"]}>
+            <RoleRoute allowedRoles={["ADMIN", "DIRECTOR_GENERAL", "SUBDIRECCION_ADMINISTRATIVA"]}>
               <UsuariosAccesoPage />
             </RoleRoute>
           }
