@@ -254,6 +254,13 @@ export default function InsumosPage() {
         actions={
           <div className="insumos-header-actions">
             <button
+              className="btn btn-outline-primary me-2"
+              onClick={() => navigate("/insumos/costos")}
+            >
+              <i className="bi bi-cash-coin me-1"></i>
+              Costos
+            </button>
+            <button
               className="btn btn-outline-success me-2"
               onClick={exportarExcel}
               disabled={exportandoExcel}

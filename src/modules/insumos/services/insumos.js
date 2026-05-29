@@ -29,6 +29,21 @@ export function obtenerInsumos(params = {}) {
   });
 }
 
+export function obtenerCostosInsumos(params = {}) {
+  const searchParams = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      searchParams.set(key, String(value));
+    }
+  });
+
+  const query = searchParams.toString();
+  const endpoint = query ? `${API_PATHS.INSUMOS}/costos?${query}` : `${API_PATHS.INSUMOS}/costos`;
+
+  return request(endpoint);
+}
+
 export function obtenerInsumoPorId(id) {
   const url = `${API_PATHS.INSUMOS}/${id}`;
   return request(url).then((data) => transformarInsumo(data));
@@ -60,6 +75,13 @@ export function actualizarInsumo(id, data) {
   return request(`${API_PATHS.INSUMOS}/${id}`, {
     method: "PUT",
     body: JSON.stringify(data)
+  });
+}
+
+export function actualizarCostoCotizacion(id, costoCotizacion) {
+  return request(`${API_PATHS.INSUMOS}/${id}/costo-cotizacion`, {
+    method: "PATCH",
+    body: JSON.stringify({ costoCotizacion })
   });
 }
 

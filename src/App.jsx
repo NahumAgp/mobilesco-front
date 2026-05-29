@@ -40,6 +40,7 @@ import ColorPage from "./modules/colores/pages/ColorPage.jsx";
 import ColorFormPage from "./modules/colores/pages/ColorFormPage.jsx";
 
 import  InsumosPage from "./modules/insumos/pages/InsumosPage.jsx";
+import InsumosCostosPage from "./modules/insumos/pages/InsumosCostosPage.jsx";
 import  InsumosFormPage from "./modules/insumos/pages/InsumoFormPage.jsx";
 import SalidasInsumosPage from "./modules/salidas-insumos/pages/SalidasInsumosPage.jsx";
 import SalidasInsumosNuevaPage from "./modules/salidas-insumos/pages/SalidasInsumosNuevaPage.jsx";
@@ -152,6 +153,7 @@ export default function App() {
 
         {/* Inusmos */}
         <Route path="/insumos" element={<InsumosPage />} />
+        <Route path="/insumos/costos" element={<InsumosCostosPage />} />
         <Route path="/insumos/nuevo" element={<InsumosFormPage />} />
         <Route path="/insumos/:id" element={<InsumosFormPage />} />
         <Route path="/salidas-insumos" element={<SalidasInsumosPage />} />

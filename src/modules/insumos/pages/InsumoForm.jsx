@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { obtenerInsumoPorId, crearInsumo, actualizarInsumo } from "../services/insumos.js";
 import { obtenerUnidadesMedida, crearUnidadMedida } from "../../unidades-medida/services/unidadMedidas.js";
+import { getUser } from "../../auth/services/authService.js";
 import Toast from "../../../components/ui/Toast.jsx";
 import { Ean13BarcodeSvg } from "../components/barcode/Ean13Barcode.jsx";
 import { obtenerBitsEan13 } from "../components/barcode/ean13Utils.js";
+import { puedeGestionarCostosInsumos } from "../utils/costosPermisos.js";
 import "./InsumoForm.css";
 
 export default function InsumoForm({ 
@@ -32,6 +34,7 @@ export default function InsumoForm({
   
   const esModal = Boolean(onSave);
   const esEdicion = Boolean(insumoId) || Boolean(insumo);
+  const puedeGestionarCostos = puedeGestionarCostosInsumos(getUser());
 
   const [formData, setFormData] = useState({
     codigoBarras: "",
@@ -43,6 +46,7 @@ export default function InsumoForm({
     unidadMedidaId: "",
     stockActual: 0,
     stockMinimo: 0,
+    costoCotizacion: "",
     activo: true
   });
 
@@ -77,6 +81,7 @@ export default function InsumoForm({
           unidadMedidaId: insumo.unidadMedida?.id || "",
           stockActual: insumo.stockActual || 0,
           stockMinimo: insumo.stockMinimo || 0,
+          costoCotizacion: insumo.costoCotizacion || "",
           activo: insumo.activo ?? true
         });
         return;
@@ -95,6 +100,7 @@ export default function InsumoForm({
             unidadMedidaId: data.unidadMedida?.id || "",
             stockActual: data.stockActual || 0,
             stockMinimo: data.stockMinimo || 0,
+            costoCotizacion: data.costoCotizacion || "",
             activo: data.activo ?? true
           });
         } catch (error) {
@@ -189,11 +195,18 @@ export default function InsumoForm({
       setErroresBackend({});
 
       let respuesta;
+      const payload = { ...formData };
+      if (!puedeGestionarCostos) {
+        delete payload.costoCotizacion;
+      } else if (payload.costoCotizacion === "") {
+        payload.costoCotizacion = null;
+      }
+
       if (esEdicion) {
         const id = insumo?.id || insumoId;
-        respuesta = await actualizarInsumo(id, formData);
+        respuesta = await actualizarInsumo(id, payload);
       } else {
-        respuesta = await crearInsumo(formData);
+        respuesta = await crearInsumo(payload);
       }
 
       if (esModal) {
@@ -580,6 +593,26 @@ export default function InsumoForm({
                     value={formData.stockMinimo}
                     onChange={handleChange}
                   />
+                </div>
+
+                <div className="col-md-6">
+                  <label className="form-label fw-semibold">Costo de cotizacion</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    name="costoCotizacion"
+                    className={inputClass("costoCotizacion")}
+                    value={formData.costoCotizacion}
+                    onChange={handleChange}
+                    disabled={!puedeGestionarCostos}
+                  />
+                  <div className="invalid-feedback">{erroresBackend.costoCotizacion || erroresExternos.costoCotizacion}</div>
+                  {!puedeGestionarCostos && (
+                    <small className="text-muted d-block mt-1">
+                      Solo Dev/Admin y Subdireccion administrativa pueden modificar este costo.
+                    </small>
+                  )}
                 </div>
 
                 <div className="col-12">

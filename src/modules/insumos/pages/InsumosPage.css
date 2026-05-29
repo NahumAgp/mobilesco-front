@@ -38,6 +38,7 @@
 .insumos-table-scroll {
   height: auto;
   min-height: 0;
+  overflow-x: auto;
   overflow-y: visible;
 }
 
@@ -48,14 +49,151 @@
   background: linear-gradient(180deg, #f7faf9 0%, #f4f8fb 100%);
   border-bottom: 1px solid var(--insumos-brand-sage-soft);
   color: var(--insumos-brand-ink);
+  vertical-align: middle;
+  line-height: 1.05;
+  padding-block: 0.48rem;
+}
+
+.insumos-table-card .table {
+  table-layout: fixed;
+}
+
+.insumos-main-table {
+  min-width: 1210px;
+}
+
+.insumos-costos-table {
+  min-width: 980px;
+}
+
+.insumos-header-label {
+  display: inline-flex;
+  flex-direction: column;
+  line-height: 1.05;
+  white-space: normal;
 }
 
 .insumos-sort-button {
   display: inline-flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 0.25rem;
   color: inherit !important;
   font-weight: 600;
+  line-height: 1.05;
+  white-space: normal;
+}
+
+.insumos-sort-button .bi {
+  flex: 0 0 auto;
+}
+
+.insumos-table-card td {
+  vertical-align: middle;
+}
+
+.insumos-main-table th:nth-child(1),
+.insumos-main-table td:nth-child(1) {
+  width: 48px;
+}
+
+.insumos-main-table th:nth-child(2),
+.insumos-main-table td:nth-child(2) {
+  width: 76px;
+}
+
+.insumos-main-table th:nth-child(3),
+.insumos-main-table td:nth-child(3) {
+  width: 125px;
+}
+
+.insumos-main-table th:nth-child(4),
+.insumos-main-table td:nth-child(4) {
+  width: 125px;
+}
+
+.insumos-main-table th:nth-child(5),
+.insumos-main-table td:nth-child(5) {
+  width: 108px;
+}
+
+.insumos-main-table th:nth-child(6),
+.insumos-main-table td:nth-child(6) {
+  width: 70px;
+}
+
+.insumos-main-table th:nth-child(7),
+.insumos-main-table td:nth-child(7),
+.insumos-main-table th:nth-child(8),
+.insumos-main-table td:nth-child(8) {
+  width: 84px;
+}
+
+.insumos-main-table th:nth-child(9),
+.insumos-main-table td:nth-child(9),
+.insumos-main-table th:nth-child(10),
+.insumos-main-table td:nth-child(10),
+.insumos-main-table th:nth-child(11),
+.insumos-main-table td:nth-child(11) {
+  width: 95px;
+}
+
+.insumos-main-table th:nth-child(12),
+.insumos-main-table td:nth-child(12) {
+  width: 88px;
+}
+
+.insumos-main-table th:nth-child(13),
+.insumos-main-table td:nth-child(13) {
+  width: 102px;
+}
+
+.insumos-main-table td:nth-child(3),
+.insumos-main-table td:nth-child(5),
+.insumos-main-table td:nth-child(7),
+.insumos-main-table td:nth-child(8),
+.insumos-main-table td:nth-child(9),
+.insumos-main-table td:nth-child(10),
+.insumos-main-table td:nth-child(11),
+.insumos-costos-table td:nth-child(4),
+.insumos-costos-table td:nth-child(5),
+.insumos-costos-table td:nth-child(6) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.insumos-costos-table th:nth-child(1),
+.insumos-costos-table td:nth-child(1) {
+  width: 88px;
+}
+
+.insumos-costos-table th:nth-child(2),
+.insumos-costos-table td:nth-child(2) {
+  width: 180px;
+}
+
+.insumos-costos-table th:nth-child(3),
+.insumos-costos-table td:nth-child(3) {
+  width: 76px;
+}
+
+.insumos-costos-table th:nth-child(4),
+.insumos-costos-table td:nth-child(4),
+.insumos-costos-table th:nth-child(5),
+.insumos-costos-table td:nth-child(5),
+.insumos-costos-table th:nth-child(6),
+.insumos-costos-table td:nth-child(6) {
+  width: 108px;
+}
+
+.insumos-costos-table th:nth-child(7),
+.insumos-costos-table td:nth-child(7),
+.insumos-costos-table th:nth-child(8),
+.insumos-costos-table td:nth-child(8),
+.insumos-costos-table th:nth-child(9),
+.insumos-costos-table td:nth-child(9) {
+  width: 94px;
 }
 
 .insumos-sort-button:hover,
@@ -96,6 +234,15 @@
 
 .insumos-actions {
   white-space: nowrap;
+}
+
+.insumos-cost-edit-cell {
+  min-width: 108px;
+}
+
+.insumos-cost-edit-cell .form-control {
+  max-width: 100px;
+  margin-left: auto;
 }
 
 .insumos-pagination-panel {

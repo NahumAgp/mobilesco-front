@@ -121,7 +121,7 @@ export default function ProductoCostosPanel({ productoId, embedded = false, summ
         setEstructura(await obtenerEstructuraCostos(productoId));
       } catch (e) {
         console.error("Error cargando estructura de costos:", e);
-        setError("No fue posible cargar la estructura de costos del producto.");
+        setError(e.message || "No fue posible cargar la estructura de costos del producto.");
       } finally {
         setLoading(false);
       }

@@ -28,7 +28,7 @@ export default function ProductoDetallePage() {
       setProducto(productoData);
       setEstructuraCostos(costosData);
     } catch (error) {
-      setError("Error cargando el producto");
+      setError(error.message || "Error cargando el producto");
       console.error(error);
     } finally {
       setLoading(false);

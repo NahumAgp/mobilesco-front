@@ -1,5 +1,4 @@
-import { useState, useEffect } from "react";
-import { obtenerCostoPromedio } from "../../kardex/services/kardex.js";
+import { useState } from "react";
 
 const COLUMNAS_ORDENABLES = {
   id: "ID",
@@ -7,6 +6,7 @@ const COLUMNAS_ORDENABLES = {
   ubicacion: "Ubicacion",
   stockActual: "Stock actual",
   stockMinimo: "Stock minimo",
+  costoCotizacion: "Costo cotizacion",
   activo: "Estado",
   fechaRegistro: "Creado"
 };
@@ -19,6 +19,18 @@ function obtenerIconoOrden(sortField, sortDirection, field) {
   return sortDirection === "asc"
     ? "bi bi-sort-down-alt text-primary"
     : "bi bi-sort-up text-primary";
+}
+
+function renderHeaderLabel(label) {
+  return (
+    <span className="insumos-header-label">
+      {String(label)
+        .split(" ")
+        .map((parte) => (
+          <span key={parte}>{parte}</span>
+        ))}
+    </span>
+  );
 }
 
 export default function InsumosTable({
@@ -35,35 +47,6 @@ export default function InsumosTable({
   const [cantidad, setCantidad] = useState("");
   const [tipoAjuste, setTipoAjuste] = useState("ENTRADA");
   const [motivo, setMotivo] = useState("");
-  const [costosPromedio, setCostosPromedio] = useState({});
-  const [loadingCostos, setLoadingCostos] = useState(false);
-
-  useEffect(() => {
-    const cargarCostos = async () => {
-      if (!data || data.length === 0) return;
-
-      setLoadingCostos(true);
-      const costos = {};
-
-      try {
-        await Promise.all(
-          data.map(async (insumo) => {
-            try {
-              const costo = await obtenerCostoPromedio(insumo.id);
-              costos[insumo.id] = costo;
-            } catch {
-              costos[insumo.id] = 0;
-            }
-          })
-        );
-        setCostosPromedio(costos);
-      } finally {
-        setLoadingCostos(false);
-      }
-    };
-
-    cargarCostos();
-  }, [data]);
 
   const renderHeader = (field, label) => {
     const esOrdenable = Boolean(onSort) && Object.prototype.hasOwnProperty.call(COLUMNAS_ORDENABLES, field);
@@ -82,11 +65,11 @@ export default function InsumosTable({
             className="btn btn-link p-0 text-decoration-none insumos-sort-button"
             onClick={() => onSort(field)}
           >
-            <span>{label}</span>
+            {renderHeaderLabel(label)}
             <i className={`${obtenerIconoOrden(sortField, sortDirection, field)} ms-2`}></i>
           </button>
         ) : (
-          label
+          renderHeaderLabel(label)
         )}
       </th>
     );
@@ -132,20 +115,22 @@ export default function InsumosTable({
     <>
       <div className="card shadow-sm border-0 insumos-table-card">
         <div className="table-responsive insumos-table-scroll">
-          <table className="table table-hover align-middle mb-0">
+          <table className="table table-hover align-middle mb-0 insumos-main-table">
             <thead className="table-light insumos-table-head">
               <tr>
                 {renderHeader("id", "ID")}
-                <th>Codigo</th>
+                <th>{renderHeaderLabel("Codigo")}</th>
                 {renderHeader("nombre", "Nombre")}
-                <th>Descripcion</th>
+                <th>{renderHeaderLabel("Descripcion")}</th>
                 {renderHeader("ubicacion", "Ubicacion")}
-                <th>Unidad</th>
+                <th>{renderHeaderLabel("Unidad")}</th>
                 {renderHeader("stockActual", "Stock actual")}
                 {renderHeader("stockMinimo", "Stock minimo")}
-                <th>Costo promedio</th>
+                <th className="text-end">{renderHeaderLabel("Ultimo costo")}</th>
+                <th>{renderHeaderLabel("Costo promedio")}</th>
+                {renderHeader("costoCotizacion", "Costo cotizacion")}
                 {renderHeader("activo", "Estado")}
-                <th>Acciones</th>
+                <th>{renderHeaderLabel("Acciones")}</th>
               </tr>
             </thead>
             <tbody>
@@ -189,13 +174,19 @@ export default function InsumosTable({
                           : "-"}
                       </td>
                       <td className="text-end">
-                        {loadingCostos ? (
-                          <span className="spinner-border spinner-border-sm" role="status" />
-                        ) : (
-                          <span className="fw-bold text-primary">
-                            {formatCurrency(costosPromedio[insumo.id])}
-                          </span>
-                        )}
+                        <span className="fw-bold text-secondary">
+                          {formatCurrency(insumo.ultimoCostoCompra)}
+                        </span>
+                      </td>
+                      <td className="text-end">
+                        <span className="fw-bold text-primary">
+                          {formatCurrency(insumo.costoPromedio)}
+                        </span>
+                      </td>
+                      <td className="text-end">
+                        <span className={Number(insumo.costoCotizacion || 0) > 0 ? "fw-bold text-success" : "fw-bold text-danger"}>
+                          {formatCurrency(insumo.costoCotizacion)}
+                        </span>
                       </td>
                       <td>
                         <div className="d-flex flex-column gap-1">
@@ -256,7 +247,7 @@ export default function InsumosTable({
                 })
               ) : (
                 <tr>
-                  <td colSpan="11" className="text-center text-muted py-5">
+                  <td colSpan="13" className="text-center text-muted py-5">
                     <i className="bi bi-boxes fs-1 d-block mb-3 text-secondary"></i>
                     <span className="fs-5 d-block">No hay insumos registrados</span>
                     <p className="text-secondary mt-2 mb-0">Comienza creando un nuevo insumo</p>
@@ -297,7 +288,7 @@ export default function InsumosTable({
                   <input
                     type="text"
                     className="form-control bg-light text-primary fw-bold"
-                    value={formatCurrency(costosPromedio[insumoSeleccionado.id])}
+                    value={formatCurrency(insumoSeleccionado.costoPromedio)}
                     readOnly
                   />
                 </div>
