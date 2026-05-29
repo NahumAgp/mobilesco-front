@@ -165,7 +165,7 @@ export default function ProveedoresPage() {
               <input
                 type="text"
                 className="form-control"
-                placeholder="Buscar por razÃ³n social, contacto, RFC, correo o telÃ©fono..."
+                placeholder="Buscar por razón social, contacto, RFC, correo o teléfono..."
                 value={busqueda}
                 onChange={cambiarBusqueda}
               />

@@ -38,6 +38,7 @@ export const API_PATHS = {
   
   // Operaciones
   OPERACION: `${API_VERSION}/operaciones`,
+  CIF: `${API_VERSION}/cif`,
 
   // Compras
    COMPRAS: `${API_VERSION}/compras`,

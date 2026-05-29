@@ -52,6 +52,7 @@
   vertical-align: middle;
   line-height: 1.05;
   padding-block: 0.48rem;
+  text-align: center;
 }
 
 .insumos-table-card .table {
@@ -59,7 +60,7 @@
 }
 
 .insumos-main-table {
-  min-width: 1210px;
+  min-width: 1240px;
 }
 
 .insumos-costos-table {
@@ -76,12 +77,13 @@
 .insumos-sort-button {
   display: inline-flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   gap: 0.25rem;
   color: inherit !important;
   font-weight: 600;
   line-height: 1.05;
   white-space: normal;
+  width: 100%;
 }
 
 .insumos-sort-button .bi {
@@ -90,6 +92,12 @@
 
 .insumos-table-card td {
   vertical-align: middle;
+  text-align: center;
+}
+
+.insumos-main-table .text-end,
+.insumos-costos-table .text-end {
+  text-align: center !important;
 }
 
 .insumos-main-table th:nth-child(1),
@@ -99,22 +107,22 @@
 
 .insumos-main-table th:nth-child(2),
 .insumos-main-table td:nth-child(2) {
-  width: 76px;
+  width: 130px;
 }
 
 .insumos-main-table th:nth-child(3),
 .insumos-main-table td:nth-child(3) {
-  width: 125px;
+  width: 115px;
 }
 
 .insumos-main-table th:nth-child(4),
 .insumos-main-table td:nth-child(4) {
-  width: 125px;
+  width: 110px;
 }
 
 .insumos-main-table th:nth-child(5),
 .insumos-main-table td:nth-child(5) {
-  width: 108px;
+  width: 100px;
 }
 
 .insumos-main-table th:nth-child(6),
@@ -126,7 +134,7 @@
 .insumos-main-table td:nth-child(7),
 .insumos-main-table th:nth-child(8),
 .insumos-main-table td:nth-child(8) {
-  width: 84px;
+  width: 76px;
 }
 
 .insumos-main-table th:nth-child(9),
@@ -135,7 +143,7 @@
 .insumos-main-table td:nth-child(10),
 .insumos-main-table th:nth-child(11),
 .insumos-main-table td:nth-child(11) {
-  width: 95px;
+  width: 90px;
 }
 
 .insumos-main-table th:nth-child(12),
@@ -145,7 +153,7 @@
 
 .insumos-main-table th:nth-child(13),
 .insumos-main-table td:nth-child(13) {
-  width: 102px;
+  width: 180px;
 }
 
 .insumos-main-table td:nth-child(3),
@@ -223,6 +231,10 @@
 .insumos-unit-badge {
   font-size: 0.8rem;
   letter-spacing: 0.02em;
+  max-width: 100%;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
 }
 
 .insumos-description {
@@ -234,6 +246,15 @@
 
 .insumos-actions {
   white-space: nowrap;
+}
+
+.insumos-row-actions {
+  display: inline-flex;
+}
+
+.insumos-row-actions .btn {
+  min-width: 82px;
+  padding-inline: 0.75rem;
 }
 
 .insumos-cost-edit-cell {

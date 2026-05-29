@@ -236,6 +236,11 @@ export default function Sidebar() {
           Operaciones
         </NavLink>
 
+        <NavLink to="/cif" className="sidebar-link">
+          <i className="bi bi-diagram-3 me-2"></i>
+          CIF
+        </NavLink>
+
         {/* Compras */}
         <NavLink to="/compras" className="sidebar-link">
           <i className="bi bi-cart-check me-2"></i>

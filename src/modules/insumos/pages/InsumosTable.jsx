@@ -1,4 +1,4 @@
-import { useState } from "react";
+import CatalogRowActions from "../../../components/ui/CatalogRowActions.jsx";
 
 const COLUMNAS_ORDENABLES = {
   id: "ID",
@@ -36,18 +36,12 @@ function renderHeaderLabel(label) {
 export default function InsumosTable({
   data,
   onEditar,
-  onEliminar,
-  onAjustarStock,
+  onCambiarEstado,
+  puedeGestionar = false,
   sortField = "nombre",
   sortDirection = "asc",
   onSort
 }) {
-  const [insumoSeleccionado, setInsumoSeleccionado] = useState(null);
-  const [showAjusteModal, setShowAjusteModal] = useState(false);
-  const [cantidad, setCantidad] = useState("");
-  const [tipoAjuste, setTipoAjuste] = useState("ENTRADA");
-  const [motivo, setMotivo] = useState("");
-
   const renderHeader = (field, label) => {
     const esOrdenable = Boolean(onSort) && Object.prototype.hasOwnProperty.call(COLUMNAS_ORDENABLES, field);
     const ariaSort =
@@ -73,28 +67,6 @@ export default function InsumosTable({
         )}
       </th>
     );
-  };
-
-  const abrirModalAjuste = (insumo, e) => {
-    e.stopPropagation();
-    setInsumoSeleccionado(insumo);
-    setShowAjusteModal(true);
-    setCantidad("");
-    setMotivo("");
-  };
-
-  const cerrarModal = () => {
-    setShowAjusteModal(false);
-    setInsumoSeleccionado(null);
-  };
-
-  const handleAjustarStock = () => {
-    if (!cantidad || parseFloat(cantidad) <= 0) {
-      alert("Ingresa una cantidad valida");
-      return;
-    }
-    onAjustarStock(insumoSeleccionado.id, parseFloat(cantidad), tipoAjuste, motivo);
-    cerrarModal();
   };
 
   const getStockStatus = (insumo) => {
@@ -212,35 +184,15 @@ export default function InsumosTable({
                         </div>
                       </td>
                       <td className="insumos-actions">
-                        <div className="btn-group btn-group-sm" role="group">
-                          <button
-                            className="btn insumos-brand-outline"
-                            onClick={(e) => abrirModalAjuste(insumo, e)}
-                            title="Ajustar stock"
-                          >
-                            <i className="bi bi-plus-slash-minus"></i>
-                          </button>
-                          <button
-                            className="btn insumos-brand-outline"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onEditar(insumo);
-                            }}
-                            title="Editar"
-                          >
-                            <i className="bi bi-pencil"></i>
-                          </button>
-                          <button
-                            className="btn insumos-brand-danger"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onEliminar(insumo.id);
-                            }}
-                            title="Eliminar"
-                          >
-                            <i className="bi bi-trash"></i>
-                          </button>
-                        </div>
+                        {puedeGestionar && (
+                          <CatalogRowActions
+                            item={insumo}
+                            active={insumo.activo}
+                            onEdit={onEditar}
+                            onToggle={onCambiarEstado}
+                            className="insumos-row-actions"
+                          />
+                        )}
                       </td>
                     </tr>
                   );
@@ -259,117 +211,6 @@ export default function InsumosTable({
         </div>
       </div>
 
-      {showAjusteModal && insumoSeleccionado && (
-        <div
-          className="modal fade show"
-          style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)" }}
-        >
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">
-                  Ajustar stock: {insumoSeleccionado.nombre}
-                </h5>
-                <button type="button" className="btn-close" onClick={cerrarModal}></button>
-              </div>
-              <div className="modal-body">
-                <div className="mb-3">
-                  <label className="form-label fw-semibold">Stock actual</label>
-                  <input
-                    type="text"
-                    className="form-control bg-light"
-                    value={`${Number(insumoSeleccionado.stockActual || 0).toFixed(2)} ${insumoSeleccionado.unidadMedida?.simbolo || insumoSeleccionado.unidadMedida?.nombre || ""}`}
-                    readOnly
-                  />
-                </div>
-
-                <div className="mb-3">
-                  <label className="form-label fw-semibold">Costo promedio actual</label>
-                  <input
-                    type="text"
-                    className="form-control bg-light text-primary fw-bold"
-                    value={formatCurrency(insumoSeleccionado.costoPromedio)}
-                    readOnly
-                  />
-                </div>
-
-                <div className="mb-3">
-                  <label className="form-label fw-semibold">Tipo de ajuste</label>
-                  <div className="d-flex gap-3">
-                    <div className="form-check">
-                      <input
-                        className="form-check-input"
-                        type="radio"
-                        name="tipoAjuste"
-                        id="entrada"
-                        value="ENTRADA"
-                        checked={tipoAjuste === "ENTRADA"}
-                        onChange={(e) => setTipoAjuste(e.target.value)}
-                      />
-                      <label className="form-check-label" htmlFor="entrada">
-                        <span className="text-success">Entrada (+)</span>
-                      </label>
-                    </div>
-                    <div className="form-check">
-                      <input
-                        className="form-check-input"
-                        type="radio"
-                        name="tipoAjuste"
-                        id="salida"
-                        value="SALIDA"
-                        checked={tipoAjuste === "SALIDA"}
-                        onChange={(e) => setTipoAjuste(e.target.value)}
-                      />
-                      <label className="form-check-label" htmlFor="salida">
-                        <span className="text-danger">Salida (-)</span>
-                      </label>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mb-3">
-                  <label className="form-label fw-semibold">
-                    Cantidad <span className="text-danger">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0.01"
-                    className="form-control"
-                    value={cantidad}
-                    onChange={(e) => setCantidad(e.target.value)}
-                    placeholder="0.00"
-                  />
-                </div>
-
-                <div className="mb-3">
-                  <label className="form-label fw-semibold">Motivo</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={motivo}
-                    onChange={(e) => setMotivo(e.target.value)}
-                    placeholder="Ej: compra, ajuste, merma..."
-                  />
-                </div>
-
-                <div className="alert alert-info small">
-                  <i className="bi bi-info-circle me-2"></i>
-                  El stock se actualizara en la unidad base: {insumoSeleccionado.unidadMedida?.simbolo || insumoSeleccionado.unidadMedida?.nombre || "N/A"}
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-light" onClick={cerrarModal}>
-                  Cancelar
-                </button>
-                <button type="button" className="btn btn-primary" onClick={handleAjustarStock}>
-                  Aplicar ajuste
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }

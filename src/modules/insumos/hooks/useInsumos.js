@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   obtenerInsumos,
   eliminarInsumo as eliminarService,
+  actualizarEstadoInsumo as actualizarEstadoService,
   ajustarStock as ajustarStockService
 } from "../services/insumos.js";
 
@@ -78,6 +79,11 @@ export function useInsumos({ page, size = 10, sortBy = "nombre", direction = "as
     await cargar();
   }
 
+  async function actualizarEstadoInsumo(id, activo) {
+    await actualizarEstadoService(id, activo);
+    await cargar();
+  }
+
   async function ajustarStock(id, cantidad, tipo, motivo) {
     await ajustarStockService(id, cantidad, tipo, motivo);
     await cargar();
@@ -89,6 +95,7 @@ export function useInsumos({ page, size = 10, sortBy = "nombre", direction = "as
     loadingLista,
     error,
     eliminarInsumo,
+    actualizarEstadoInsumo,
     ajustarStock
   };
 }

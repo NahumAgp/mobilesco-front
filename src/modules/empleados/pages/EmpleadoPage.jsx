@@ -116,8 +116,8 @@ export default function EmpleadoPage() {
       />
 
       <PageHeader
-        title="CatÃ¡logo de Empleados"
-        subtitle="AdministraciÃ³n de empleados y colaboradores"
+        title="Catálogo de Empleados"
+        subtitle="Administración de empleados y colaboradores"
         actions={puedeGestionarEmpleados ? (
           <div className="d-flex flex-wrap gap-2">
             <button
@@ -150,7 +150,7 @@ export default function EmpleadoPage() {
               <input
                 type="text"
                 className="form-control"
-                placeholder="Buscar por nombre, apellidos, telÃ©fono, correo o ID..."
+                placeholder="Buscar por nombre, apellidos, teléfono, correo o ID..."
                 value={busqueda}
                 onChange={handleBusquedaChange}
               />

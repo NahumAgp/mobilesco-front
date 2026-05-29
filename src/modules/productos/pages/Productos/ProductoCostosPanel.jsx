@@ -176,7 +176,13 @@ export default function ProductoCostosPanel({ productoId, embedded = false, summ
           <CostCard title="Costo primo" value={formatCurrency(estructura.costoPrimo)} description="Insumos + operaciones" icon="bi-clipboard-data" tone="dark" />
         </div>
         <div className="col-12 col-md-6 col-xl-4">
-          <CostCard title="CIF / SIF" value={formatCurrency(estructura.costoCif)} description="Costos indirectos asignados" icon="bi-diagram-3" tone="warning" />
+          <CostCard
+            title="CIF / SIF"
+            value={formatCurrency(estructura.costoCif)}
+            description={`${Number(estructura.tiempoOperacionesMinutos || 0).toFixed(2)} min x ${formatCurrency(estructura.tasaCifMinuto)}/min`}
+            icon="bi-diagram-3"
+            tone="warning"
+          />
         </div>
         <div className="col-12 col-md-6 col-xl-4">
           <CostCard title="Costo total" value={formatCurrency(estructura.costoTotal)} description="Costo final del producto" icon="bi-cash-coin" tone="info" />
@@ -285,9 +291,9 @@ export default function ProductoCostosPanel({ productoId, embedded = false, summ
 
       <CostAccordionItem id={`cif-${productoId}`} title="CIF" icon="bi bi-diagram-3">
         <CostSectionActions>
-          <button type="button" className="btn producto-form-primary" disabled title="No hay pantalla de asignacion CIF disponible aun">
-            <i className="bi bi-plus-circle me-2"></i>
-            Agregar CIF
+          <button type="button" className="btn producto-form-primary" onClick={() => navigate("/cif")}>
+            <i className="bi bi-diagram-3 me-2"></i>
+            Gestionar CIF
           </button>
         </CostSectionActions>
         {estructura.costosIndirectos?.length ? (

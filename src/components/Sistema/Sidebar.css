@@ -1,14 +1,72 @@
 /* ===== BOTÓN PADRE ===== */
+:root {
+  --sidebar-expanded-width: 306px;
+  --sidebar-rail-width: 18px;
+}
+
 .app-sidebar {
-  width: 306px;
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 1040;
+  width: var(--sidebar-rail-width, 18px);
   height: 100vh;
   flex-shrink: 0;
   box-sizing: border-box;
-  padding: 18px;
+  padding: 18px 0;
   background: linear-gradient(180deg, #2f4f4f 0%, #274241 100%);
   color: #ffffff;
   overflow-y: auto;
   overflow-x: hidden;
+  box-shadow: 4px 0 18px rgba(15, 23, 42, 0.16);
+  transition:
+    width 0.22s ease,
+    padding 0.22s ease,
+    box-shadow 0.22s ease;
+  scrollbar-gutter: stable;
+}
+
+.app-sidebar::after {
+  content: "";
+  position: fixed;
+  left: 5px;
+  top: 50%;
+  width: 5px;
+  height: 58px;
+  border-radius: 999px;
+  background: rgba(215, 123, 49, 0.92);
+  box-shadow: 0 0 12px rgba(215, 123, 49, 0.45);
+  transform: translateY(-50%);
+  opacity: 0.95;
+  transition: opacity 0.18s ease;
+}
+
+.app-sidebar:hover,
+.app-sidebar:focus-within {
+  width: var(--sidebar-expanded-width);
+  padding: 18px;
+  box-shadow: 14px 0 32px rgba(15, 23, 42, 0.28);
+}
+
+.app-sidebar:hover::after,
+.app-sidebar:focus-within::after {
+  opacity: 0;
+}
+
+.app-sidebar > * {
+  min-width: calc(var(--sidebar-expanded-width) - 36px);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-10px);
+  transition:
+    opacity 0.14s ease,
+    transform 0.18s ease;
+}
+
+.app-sidebar:hover > *,
+.app-sidebar:focus-within > * {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
 }
 
 .sidebar-profile {
@@ -79,7 +137,7 @@
   border-radius: 8px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
   overflow: hidden;
-  z-index: 3;
+  z-index: 1041;
 }
 
 .sidebar-user-menu button {
@@ -450,4 +508,23 @@
   opacity: 1;
   color: #ffffff;
   border-left: 3px solid #d77b31;
+}
+
+@media (max-width: 768px) {
+  .app-sidebar,
+  .app-sidebar:hover,
+  .app-sidebar:focus-within {
+    width: min(86vw, var(--sidebar-expanded-width));
+    padding: 18px;
+  }
+
+  .app-sidebar::after {
+    display: none;
+  }
+
+  .app-sidebar > * {
+    opacity: 1;
+    pointer-events: auto;
+    transform: none;
+  }
 }

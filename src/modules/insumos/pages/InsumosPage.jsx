@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 
 import { useInsumos } from "../hooks/useInsumos";
 import { exportarInsumosExcel } from "../services/insumos.js";
+import { getUser } from "../../auth/services/authService.js";
+import { puedeGestionarCatalogoInsumos } from "../utils/costosPermisos.js";
 import InsumosTable from "./InsumosTable.jsx";
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
@@ -31,6 +33,7 @@ function construirRangoPaginas(totalPages, currentPage) {
 
 export default function InsumosPage() {
   const navigate = useNavigate();
+  const puedeGestionarInsumos = puedeGestionarCatalogoInsumos(getUser());
 
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
@@ -48,8 +51,7 @@ export default function InsumosPage() {
     pageInfo,
     loadingLista,
     error,
-    eliminarInsumo,
-    ajustarStock
+    actualizarEstadoInsumo
   } = useInsumos({ page, size: PAGE_SIZE, sortBy: sortField, direction: sortDirection });
 
   const totalElements = pageInfo.totalElements ?? 0;
@@ -140,28 +142,19 @@ export default function InsumosPage() {
     navigate(`/insumos/${insumo.id}`);
   };
 
-  const manejarEliminar = async (id) => {
-    const confirmacion = window.confirm("Seguro que deseas eliminar este insumo?");
+  const manejarCambiarEstado = async (insumo) => {
+    const siguienteEstado = !insumo.activo;
+    const accion = siguienteEstado ? "activar" : "desactivar";
+    const confirmacion = window.confirm(`Seguro que deseas ${accion} este insumo?`);
     if (!confirmacion) return;
 
     try {
-      await eliminarInsumo(id);
+      await actualizarEstadoInsumo(insumo.id, siguienteEstado);
       setToastType("success");
-      setToastMessage("Insumo eliminado correctamente");
-    } catch {
+      setToastMessage(`Insumo ${siguienteEstado ? "activado" : "desactivado"} correctamente`);
+    } catch (err) {
       setToastType("danger");
-      setToastMessage("Error al eliminar insumo");
-    }
-  };
-
-  const manejarAjusteStock = async (id, cantidad, tipo, motivo) => {
-    try {
-      await ajustarStock(id, cantidad, tipo, motivo);
-      setToastType("success");
-      setToastMessage(`Stock ${tipo === "ENTRADA" ? "incrementado" : "reducido"} correctamente`);
-    } catch {
-      setToastType("danger");
-      setToastMessage("Error al ajustar stock");
+      setToastMessage(err.message || `Error al ${accion} insumo`);
     }
   };
 
@@ -268,12 +261,14 @@ export default function InsumosPage() {
               <i className="bi bi-file-earmark-excel me-1"></i>
               {exportandoExcel ? "Generando..." : "Reporte Excel"}
             </button>
-            <button
-              className="btn insumos-brand-primary"
-              onClick={() => navigate("/insumos/nuevo")}
-            >
-              Nuevo insumo
-            </button>
+            {puedeGestionarInsumos && (
+              <button
+                className="btn insumos-brand-primary"
+                onClick={() => navigate("/insumos/nuevo")}
+              >
+                Nuevo insumo
+              </button>
+            )}
           </div>
         }
       />
@@ -375,8 +370,8 @@ export default function InsumosPage() {
             <InsumosTable
               data={insumosFiltrados}
               onEditar={abrirEditar}
-              onEliminar={manejarEliminar}
-              onAjustarStock={manejarAjusteStock}
+              onCambiarEstado={manejarCambiarEstado}
+              puedeGestionar={puedeGestionarInsumos}
               sortField={sortField}
               sortDirection={sortDirection}
               onSort={manejarOrden}

@@ -50,6 +50,8 @@ import CentrosTrabajoFormPage from "./modules/centros-trabajo/pages/CentroTrabaj
 
 import OperacionesPage from "./modules/operaciones/pages/OperacionesPage.jsx";
 import OperacionesFormPage from "./modules/operaciones/pages/OperacionFormPage.jsx";
+import CifPage from "./modules/cif/pages/CifPage.jsx";
+import CifFormPage from "./modules/cif/pages/CifFormPage.jsx";
 
 import ComprasPage from "./modules/compras/pages/ComprasPage.jsx";
 import ComprasFormPage from "./modules/compras/pages/CompraFormPage.jsx";
@@ -168,6 +170,9 @@ export default function App() {
         <Route path="/operaciones" element={<OperacionesPage />} />
         <Route path="/operaciones/nuevo" element={<OperacionesFormPage />} />
         <Route path="/operaciones/:id" element={<OperacionesFormPage />} />
+        <Route path="/cif" element={<CifPage />} />
+        <Route path="/cif/nuevo" element={<CifFormPage />} />
+        <Route path="/cif/:id" element={<CifFormPage />} />
 
          {/* Compras */}
         <Route path="/compras" element={<ComprasPage />} />

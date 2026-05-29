@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { obtenerInsumoPorId, crearInsumo, actualizarInsumo } from "../services/insumos.js";
+import { obtenerInsumoPorId, crearInsumo, actualizarInsumo, eliminarInsumo } from "../services/insumos.js";
 import { obtenerUnidadesMedida, crearUnidadMedida } from "../../unidades-medida/services/unidadMedidas.js";
 import { getUser } from "../../auth/services/authService.js";
 import Toast from "../../../components/ui/Toast.jsx";
 import { Ean13BarcodeSvg } from "../components/barcode/Ean13Barcode.jsx";
 import { obtenerBitsEan13 } from "../components/barcode/ean13Utils.js";
-import { puedeGestionarCostosInsumos } from "../utils/costosPermisos.js";
+import { puedeGestionarCatalogoInsumos, puedeGestionarCostosInsumos } from "../utils/costosPermisos.js";
 import "./InsumoForm.css";
 
 export default function InsumoForm({ 
@@ -34,7 +34,9 @@ export default function InsumoForm({
   
   const esModal = Boolean(onSave);
   const esEdicion = Boolean(insumoId) || Boolean(insumo);
-  const puedeGestionarCostos = puedeGestionarCostosInsumos(getUser());
+  const usuarioActual = getUser();
+  const puedeGestionarCostos = puedeGestionarCostosInsumos(usuarioActual);
+  const puedeGestionarInsumos = puedeGestionarCatalogoInsumos(usuarioActual);
 
   const [formData, setFormData] = useState({
     codigoBarras: "",
@@ -47,6 +49,7 @@ export default function InsumoForm({
     stockActual: 0,
     stockMinimo: 0,
     costoCotizacion: "",
+    puedeEliminar: false,
     activo: true
   });
 
@@ -82,6 +85,7 @@ export default function InsumoForm({
           stockActual: insumo.stockActual || 0,
           stockMinimo: insumo.stockMinimo || 0,
           costoCotizacion: insumo.costoCotizacion || "",
+          puedeEliminar: insumo.puedeEliminar || false,
           activo: insumo.activo ?? true
         });
         return;
@@ -101,6 +105,7 @@ export default function InsumoForm({
             stockActual: data.stockActual || 0,
             stockMinimo: data.stockMinimo || 0,
             costoCotizacion: data.costoCotizacion || "",
+            puedeEliminar: data.puedeEliminar || false,
             activo: data.activo ?? true
           });
         } catch (error) {
@@ -194,6 +199,12 @@ export default function InsumoForm({
     try {
       setErroresBackend({});
 
+      if (!puedeGestionarInsumos) {
+        setToastType("danger");
+        setToastMessage("No tienes permisos para guardar insumos");
+        return;
+      }
+
       let respuesta;
       const payload = { ...formData };
       if (!puedeGestionarCostos) {
@@ -243,6 +254,23 @@ export default function InsumoForm({
       onCancel();
     } else {
       navigate("/insumos");
+    }
+  };
+
+  const handleEliminarDefinitivo = async () => {
+    if (!esEdicion || !puedeGestionarInsumos || !formData.puedeEliminar) return;
+
+    const confirmacion = window.confirm("Seguro que deseas eliminar definitivamente este insumo?");
+    if (!confirmacion) return;
+
+    try {
+      await eliminarInsumo(insumo?.id || insumoId);
+      setToastType("success");
+      setToastMessage("Insumo eliminado definitivamente");
+      window.setTimeout(() => navigate("/insumos"), 900);
+    } catch (error) {
+      setToastType("danger");
+      setToastMessage(error.message || "No se pudo eliminar el insumo");
     }
   };
 
@@ -371,9 +399,16 @@ export default function InsumoForm({
         <Toast message={toastMessage} type={toastType} onClose={() => setToastMessage("")} />
       )}
 
+      {!puedeGestionarInsumos && (
+        <div className="alert alert-info">
+          Puedes consultar el insumo, pero solo Almacen, Dev/Admin y Subdireccion administrativa pueden crear, editar o eliminar.
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} noValidate>
         <div className="card shadow-sm border-0 mb-4 insumo-form-card">
           <div className="card-body">
+            <fieldset className="border-0 p-0 m-0" disabled={!puedeGestionarInsumos}>
             <div className="insumo-section-card insumo-section-card--base mb-3">
               <div className="insumo-section-head">
                 <div>
@@ -642,6 +677,7 @@ export default function InsumoForm({
                 </div>
               </div>
             </div>
+            </fieldset>
           </div>
         </div>
 
@@ -691,7 +727,17 @@ export default function InsumoForm({
         )}
 
         <div className="insumo-form-actions d-flex justify-content-end align-items-center">
-          <div className="gap-2 d-flex">
+          <div className="gap-2 d-flex flex-wrap justify-content-end">
+            {esEdicion && puedeGestionarInsumos && formData.puedeEliminar && (
+              <button
+                type="button"
+                className="btn btn-outline-danger px-4"
+                onClick={handleEliminarDefinitivo}
+              >
+                <i className="bi bi-trash me-1"></i>
+                Eliminar
+              </button>
+            )}
             <button 
               type="button" 
               className="btn btn-light px-4" 
@@ -699,12 +745,14 @@ export default function InsumoForm({
             >
               Cancelar
             </button>
-            <button 
-              type="submit" 
-              className="btn btn-primary px-5 fw-bold"
-            >
-              {esEdicion ? 'Guardar Cambios' : 'Guardar'}
-            </button>
+            {puedeGestionarInsumos && (
+              <button
+                type="submit"
+                className="btn btn-primary px-5 fw-bold"
+              >
+                {esEdicion ? 'Guardar Cambios' : 'Guardar'}
+              </button>
+            )}
           </div>
         </div>
       </form>

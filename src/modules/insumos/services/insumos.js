@@ -85,6 +85,13 @@ export function actualizarCostoCotizacion(id, costoCotizacion) {
   });
 }
 
+export function actualizarEstadoInsumo(id, activo) {
+  return request(`${API_PATHS.INSUMOS}/${id}/estado`, {
+    method: "PATCH",
+    body: JSON.stringify({ activo })
+  }).then((data) => transformarInsumo(data));
+}
+
 export function eliminarInsumo(id) {
   return request(`${API_PATHS.INSUMOS}/${id}`, {
     method: "DELETE"
