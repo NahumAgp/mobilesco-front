@@ -95,7 +95,7 @@ export default function ProductoOperacionesBOMPage() {
   const copiarOperacionesDesdeProducto = async () => {
     if (!productoOrigenId) {
       setToastType("danger");
-      setToastMessage("Selecciona una variante origen para copiar operaciones");
+      setToastMessage("Selecciona un producto origen para copiar operaciones");
       return;
     }
 
@@ -115,7 +115,7 @@ export default function ProductoOperacionesBOMPage() {
 
       if (operacionesCopiables.length === 0) {
         setToastType("danger");
-        setToastMessage("No hay operaciones nuevas para copiar desde esa variante");
+        setToastMessage("No hay operaciones nuevas para copiar desde ese producto");
         return;
       }
 
@@ -276,13 +276,13 @@ export default function ProductoOperacionesBOMPage() {
       </Card>
 
 
-<Card title="Copiar operaciones desde otra variante" icon="bi-copy" className="mb-4">
+<Card title="Copiar operaciones desde otro producto" icon="bi-copy" className="mb-4">
   <div className="alert alert-info py-2">
-    Copia el proceso de una variante del mismo modelo y despues ajusta cantidades o tiempos desde el catalogo de operaciones si hace falta.
+    Copia el proceso de otro producto del mismo modelo y despues ajusta cantidades o tiempos desde el catalogo de operaciones si hace falta.
   </div>
   <div className="row g-2 align-items-end">
     <div className="col-lg-8">
-      <label className="form-label fw-semibold small">Variante origen</label>
+      <label className="form-label fw-semibold small">Producto origen</label>
       <select
         className="form-select"
         value={productoOrigenId}
@@ -290,7 +290,7 @@ export default function ProductoOperacionesBOMPage() {
         disabled={copiandoBom || productosModelo.length === 0}
       >
         <option value="">
-          {productosModelo.length === 0 ? "No hay otras variantes del mismo modelo" : "Seleccionar variante..."}
+          {productosModelo.length === 0 ? "No hay otros productos del mismo modelo" : "Seleccionar producto..."}
         </option>
         {productosModelo.map((item) => (
           <option key={item.id} value={item.id}>

@@ -271,7 +271,7 @@ export default function ImagenesStep({ data, onUpdate }) {
       </h4>
 
       <div className="alert alert-info py-2">
-        Sube una sola galeria por color. Las variantes del mismo color usaran esas mismas imagenes.
+        Sube una sola galeria por color. Los productos del mismo color usaran esas mismas imagenes.
       </div>
 
       <div className="card mb-4">
@@ -331,11 +331,11 @@ export default function ImagenesStep({ data, onUpdate }) {
                 value={colorSeleccionado?.key || ""}
                 onChange={(e) => setColorSeleccionadoKey(e.target.value)}
               >
-                {colores.length === 0 && <option value="">Primero agrega variantes...</option>}
+                {colores.length === 0 && <option value="">Primero agrega productos...</option>}
                 {colores.map((color) => (
                   <option key={color.key} value={color.key}>
                     {color.colorCodigo ? `[${color.colorCodigo}] ` : ""}
-                    {color.colorNombre} ({color.variantes.length} variantes)
+                    {color.colorNombre} ({color.variantes.length} productos)
                   </option>
                 ))}
               </select>
@@ -369,7 +369,7 @@ export default function ImagenesStep({ data, onUpdate }) {
       )}
 
       {colores.length === 0 && (
-        <div className="text-muted">Primero agrega variantes para definir los colores del producto.</div>
+        <div className="text-muted">Primero agrega productos para definir los colores disponibles.</div>
       )}
 
       {colores.map((grupoColor) => {

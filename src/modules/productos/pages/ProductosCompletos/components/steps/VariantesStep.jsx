@@ -108,7 +108,7 @@ export default function VariantesStep({ data, onUpdate }) {
       try {
         await Promise.all([cargarCategorias(), cargarMateriales(), cargarColores()]);
       } catch (error) {
-        console.error("Error cargando catalogos de variantes:", error);
+        console.error("Error cargando catalogos de productos:", error);
       } finally {
         setCargandoCatalogos(false);
       }
@@ -360,7 +360,7 @@ export default function VariantesStep({ data, onUpdate }) {
     });
 
     onUpdate("variantes", nuevas);
-    setMensaje(`${nuevas.length} variantes listas${omitidas ? `, ${omitidas} duplicadas omitidas` : ""}.`);
+    setMensaje(`${nuevas.length} productos listos${omitidas ? `, ${omitidas} duplicados omitidos` : ""}.`);
   };
 
   const eliminarVariante = (index) => {
@@ -392,10 +392,10 @@ export default function VariantesStep({ data, onUpdate }) {
   };
 
   const limpiarVariantes = () => {
-    if (!window.confirm("Eliminar todas las variantes generadas?")) return;
+    if (!window.confirm("Eliminar todos los productos generados?")) return;
     setSeleccion({});
     onUpdate("variantes", []);
-    setMensaje("Variantes limpiadas.");
+    setMensaje("Productos limpiados.");
   };
 
   const crearMaterialRapido = async () => {
@@ -564,7 +564,7 @@ export default function VariantesStep({ data, onUpdate }) {
                     {material.codigo ? `[${material.codigo}] ` : ""}
                     {material.nombre}
                   </span>
-                  {totalMaterial > 0 && <span className="badge bg-primary ms-3">{totalMaterial} variantes</span>}
+                  {totalMaterial > 0 && <span className="badge bg-primary ms-3">{totalMaterial} productos</span>}
                 </button>
               </h2>
 
@@ -658,7 +658,7 @@ export default function VariantesStep({ data, onUpdate }) {
 
       <div className="d-flex flex-wrap align-items-center gap-2 mb-4">
         <button type="button" className="btn btn-primary" onClick={generarVariantes} disabled={totalSeleccionado === 0}>
-          Generar variantes seleccionadas
+          Generar productos seleccionados
         </button>
         {variantes.length > 0 && (
           <button type="button" className="btn btn-outline-danger" onClick={limpiarVariantes}>
@@ -728,7 +728,7 @@ export default function VariantesStep({ data, onUpdate }) {
           </div>
         ))
       ) : (
-        <div className="text-muted">Aun no hay variantes generadas. Marca las combinaciones y genera la lista.</div>
+        <div className="text-muted">Aun no hay productos generados. Marca las combinaciones y genera la lista.</div>
       )}
     </div>
   );

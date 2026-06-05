@@ -6,14 +6,14 @@ import ResumenStep from "./steps/ResumenStep";
 
 const PASOS = [
   { id: 1, nombre: "Modelo", icono: "bi-box" },
-  { id: 2, nombre: "Variantes", icono: "bi-palette" },
+  { id: 2, nombre: "Colores", icono: "bi-palette" },
   { id: 3, nombre: "Im\u00e1genes", icono: "bi-image" },
   { id: 4, nombre: "Resumen", icono: "bi-check-circle" }
 ];
 
 const MENSAJES_VALIDACION = {
   1: "Selecciona un modelo existente o completa codigo, nombre y familia para crear uno nuevo.",
-  2: "Agrega al menos una variante con categoria, material, color y SKU generado.",
+  2: "Agrega al menos un producto con categoria, material, color y SKU generado.",
   3: "Puedes continuar sin im\u00e1genes o agregar al menos una imagen."
 };
 

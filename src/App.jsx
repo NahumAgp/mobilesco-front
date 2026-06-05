@@ -62,6 +62,7 @@ import CompraDetallePage from "./modules/compras/pages/CompraDetallePage.jsx";
 import ProductoFormPage from "./modules/productos/pages/Productos/ProductoFormPage.jsx";
 import ProductosCompletosPage from "./modules/productos/pages/ProductosCompletos/ProductosCompletosPage.jsx";
 import ProductoDetallePage from "./modules/productos/pages/Productos/ProductoDetallePage.jsx";
+import ProductoCatalogoPage from "./modules/productos/pages/Productos/ProductoCatalogoPage.jsx";
 import ProductoInsumosBOMPage from "./modules/productos/pages/Productos/ProductoInsumosBOMPage.jsx";
 import ProductoOperacionesBOMPage from "./modules/productos/pages/Productos/ProductoOperacionesBOMPage.jsx";
 import UsuariosAccesoPage from "./modules/usuarios/pages/UsuariosAccesoPage.jsx";
@@ -186,6 +187,8 @@ export default function App() {
         
         {/* Productos */}
         <Route path="/productos" element={<ProductosCompletosPage />} />
+        <Route path="/productos/catalogo" element={<ProductoCatalogoPage />} />
+        <Route path="/productos/catalogo/:id" element={<ProductoCatalogoPage />} />
         <Route path="/productos/nuevo" element={<ProductosCompletosPage iniciarCreacion />} />
         <Route path="/productos/:id" element={<ProductoFormPage />} />
         <Route path="/productos/:id/ver" element={<ProductoDetallePage />} />

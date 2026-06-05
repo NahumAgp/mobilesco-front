@@ -6,7 +6,8 @@ import {
   obtenerEmpleadoPorId,
   actualizarEmpleado,
   eliminarEmpleado,
-  subirFotoEmpleado
+  subirFotoEmpleado,
+  eliminarFotoEmpleado
 } from "../services/empleados";
 import { getCurrentUser, getUser } from "../../auth/services/authService";
 import { API_BASE_URL } from "../../../config/apiConfig";
@@ -56,6 +57,7 @@ export default function EmpleadoFormPage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [subiendoFoto, setSubiendoFoto] = useState(false);
+  const [eliminandoFoto, setEliminandoFoto] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   const [errors, setErrors] = useState({});
@@ -274,6 +276,32 @@ export default function EmpleadoFormPage() {
     }
   };
 
+  const handleEliminarFoto = async () => {
+    if (!id || !fotoUrl) return;
+
+    const confirmacion = window.confirm("Eliminar la foto de perfil de este empleado?");
+    if (!confirmacion) return;
+
+    try {
+      setEliminandoFoto(true);
+      await eliminarFotoEmpleado(id);
+      setFotoUrl("");
+
+      if (esMiPerfil) {
+        await refrescarUsuarioActual();
+      }
+
+      setToastType("success");
+      setToastMessage("Foto de perfil eliminada");
+    } catch (error) {
+      console.error("Error al eliminar foto del empleado:", error);
+      setToastType("danger");
+      setToastMessage(error.message || "No se pudo eliminar la foto");
+    } finally {
+      setEliminandoFoto(false);
+    }
+  };
+
   const handleEliminarEmpleado = async () => {
     if (!puedeEliminarEmpleado) return;
 
@@ -360,17 +388,31 @@ export default function EmpleadoFormPage() {
                     Actualiza la imagen que se muestra en el perfil y en el listado.
                   </div>
 
-                  <label className={`btn empleados-brand-outline ${subiendoFoto ? "disabled" : ""}`}>
-                    <i className="bi bi-camera me-1"></i>
-                    {subiendoFoto ? "Subiendo..." : fotoPreview ? "Cambiar foto" : "Agregar foto"}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      hidden
-                      disabled={subiendoFoto}
-                      onChange={handleFotoChange}
-                    />
-                  </label>
+                  <div className="d-flex flex-wrap gap-2">
+                    <label className={`btn empleados-brand-outline ${subiendoFoto || eliminandoFoto ? "disabled" : ""}`}>
+                      <i className="bi bi-camera me-1"></i>
+                      {subiendoFoto ? "Subiendo..." : fotoPreview ? "Cambiar foto" : "Agregar foto"}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        hidden
+                        disabled={subiendoFoto || eliminandoFoto}
+                        onChange={handleFotoChange}
+                      />
+                    </label>
+
+                    {fotoPreview && (
+                      <button
+                        type="button"
+                        className="btn btn-outline-danger"
+                        onClick={handleEliminarFoto}
+                        disabled={subiendoFoto || eliminandoFoto}
+                      >
+                        <i className="bi bi-trash me-1"></i>
+                        {eliminandoFoto ? "Eliminando..." : "Eliminar foto"}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             )}

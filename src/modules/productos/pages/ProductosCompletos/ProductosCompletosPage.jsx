@@ -2,14 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ProductoWizard from "./components/ProductoWizard";
 import { crearModelo, actualizarModelo, subirImagenModelo } from "../../../modelos/services/modelos";
-import { crearVariante } from "../../services/variantes";
 import { crearImagen, subirImagenArchivo } from "../../services/imagenes";
-import { activarProducto, obtenerProductos, eliminarProducto, exportarProductosExcel } from "../../services/productos";
+import { activarProducto, crearProducto, obtenerProductos, eliminarProducto, exportarProductosExcel } from "../../services/productos";
 import { obtenerModelos } from "../../../modelos/services/modelos";
 import { obtenerNiveles } from "../../services/niveles";
 import { obtenerColores } from "../../../colores/services/color";
 import { obtenerMaterialesActivos } from "../../../materiales/services/materiales";
-import VariantesTable from "../../legacy/Variantes/VariantesTable";
+import ProductosListadoTable from "./components/ProductosListadoTable";
 import PageHeader from "../../../../components/Sistema/PageHeader";
 import CatalogPagination from "../../../../components/ui/CatalogPagination";
 import Toast from "../../../../components/ui/Toast";
@@ -179,7 +178,7 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
       setMaterialesCatalogo(getLista(materialesResp));
       setColoresCatalogo(getLista(coloresResp));
     } catch (error) {
-      console.error("No se pudieron cargar los catalogos de variantes:", error);
+      console.error("No se pudieron cargar los catalogos de productos:", error);
     }
   };
 
@@ -360,7 +359,7 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
     if (imagen?.file instanceof File) {
       return subirImagenArchivo({
         archivo: imagen.file,
-        varianteId,
+        productoId: varianteId,
         esPrincipal,
         orden,
         altTexto
@@ -375,7 +374,7 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
       esPrincipal,
       orden,
       altTexto,
-      varianteId
+      productoId: varianteId
     });
   };
 
@@ -405,7 +404,7 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
       }
 
       if (!modeloId) {
-        throw new Error("No se recibio el ID del modelo para guardar variantes.");
+        throw new Error("No se recibio el ID del modelo para guardar productos.");
       }
 
       const variantes = Array.isArray(nuevoProducto?.variantes) ? nuevoProducto.variantes : [];
@@ -429,7 +428,7 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
           nombre: `${nuevoProducto?.modelo?.nombre || "Modelo"} ${variante?.categoriaNombre || ""} ${variante?.materialNombre || ""} ${variante?.colorNombre || ""}`
             .trim()
             .replace(/\s+/g, " "),
-          descripcion: `Variante ${variante?.categoriaNombre || "sin categoria"} - ${variante?.materialNombre || "sin material"} - ${variante?.colorNombre || "sin color"}`,
+          descripcion: `Producto ${variante?.categoriaNombre || "sin categoria"} - ${variante?.materialNombre || "sin material"} - ${variante?.colorNombre || "sin color"}`,
           activo: true,
           id_modelo: Number(modeloId),
           id_nivel: variante?.categoriaId ? Number(variante.categoriaId) : null,
@@ -437,11 +436,11 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
           id_color: variante?.colorId ? Number(variante.colorId) : null
         };
 
-        const varianteGuardada = await crearVariante(payloadVariante);
+        const varianteGuardada = await crearProducto(payloadVariante);
 
         const varianteIdBd = obtenerIdVariante(varianteGuardada);
         if (!varianteIdBd) {
-          throw new Error(`No se recibio ID de la variante ${variante?.sku || ""}.`);
+          throw new Error(`No se recibio ID del producto ${variante?.sku || ""}.`);
         }
 
         mapaVariantes.set(String(variante.id), Number(varianteIdBd));
@@ -480,7 +479,7 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
 
       setTipoMensaje("success");
       setMensaje(
-        "Producto guardado en BD (modelo, variantes e imagenes)."
+        "Producto guardado en BD (modelo, colores e imagenes)."
       );
       cerrarModoCreacion();
       await cargarProductos();
@@ -495,7 +494,7 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
     const id = producto?.id;
     const estaActivo = Boolean(producto?.activo);
     const accion = estaActivo ? "desactivar" : "activar";
-    const confirmar = window.confirm(`¿Seguro que deseas ${accion} esta variante?`);
+    const confirmar = window.confirm(`¿Seguro que deseas ${accion} este producto?`);
     if (!confirmar) return;
 
     try {
@@ -505,11 +504,11 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
         await activarProducto(id);
       }
       setTipoMensaje("success");
-      setMensaje(estaActivo ? "Variante desactivada correctamente." : "Variante activada correctamente.");
+      setMensaje(estaActivo ? "Producto desactivado correctamente." : "Producto activado correctamente.");
       await cargarProductos();
     } catch (error) {
       setTipoMensaje("danger");
-      setMensaje(error?.message || `No se pudo ${accion} la variante.`);
+      setMensaje(error?.message || `No se pudo ${accion} el producto.`);
     }
   };
 
@@ -661,9 +660,16 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
 
       <PageHeader
         title="Productos"
-        subtitle="Catalogo paginado de modelos, variantes e imagenes"
+        subtitle="Catalogo paginado de productos, colores e imagenes"
         actions={
           <div className="productos-header-actions">
+            <button
+              className="btn productos-brand-outline me-2"
+              onClick={() => navigate("/productos/catalogo")}
+            >
+              <i className="bi bi-images me-1"></i>
+              Catalogo visual
+            </button>
             <button
               className="btn productos-brand-outline me-2"
               onClick={exportarExcel}
@@ -690,7 +696,7 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
               <input
                 type="text"
                 className="form-control"
-                placeholder="Buscar por SKU, variante, modelo, nivel o color..."
+                placeholder="Buscar por SKU, producto, modelo, nivel o color..."
                 value={busqueda}
                 onChange={(event) => {
                   setBusqueda(event.target.value);
@@ -794,7 +800,7 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
               </div>
             </div>
           ) : (
-            <VariantesTable
+            <ProductosListadoTable
               data={productosPaginados}
               onEditar={(variante) => navigate(`/productos/${variante.id}`)}
               onCambiarEstado={manejarCambiarEstado}

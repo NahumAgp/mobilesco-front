@@ -100,7 +100,7 @@ export default function ResumenStep({ data }) {
       <div className="card mb-4">
         <div className="card-header bg-info text-white">
           <i className="bi bi-palette me-2"></i>
-          Variantes ({variantes.length})
+          Productos generados ({variantes.length})
         </div>
         <div className="card-body p-0">
           <div className="table-responsive">
@@ -117,7 +117,7 @@ export default function ResumenStep({ data }) {
                 {variantes.length === 0 && (
                   <tr>
                     <td colSpan="4" className="text-center text-muted py-3">
-                      No hay variantes agregadas.
+                      No hay productos agregados.
                     </td>
                   </tr>
                 )}
@@ -193,7 +193,7 @@ export default function ResumenStep({ data }) {
                     {grupoColor.colorNombre}
                   </strong>
                   <span className="text-muted">
-                    ({lista.length} imagenes para {grupoColor.variantes.length} variantes)
+                    ({lista.length} imagenes para {grupoColor.variantes.length} productos)
                   </span>
                 </div>
                 <div className="d-flex flex-wrap gap-2">

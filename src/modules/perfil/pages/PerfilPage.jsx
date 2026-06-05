@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { getCurrentUser } from "../../auth/services/authService";
 import "./PerfilPage.css";
-import { subirFotoPerfil } from "../../empleados/services/empleados";
+import { eliminarFotoPerfil, subirFotoPerfil } from "../../empleados/services/empleados";
 import { API_BASE_URL } from "../../../config/apiConfig";
 
 export default function PerfilPage() {
@@ -9,6 +9,10 @@ export default function PerfilPage() {
   const [perfil, setPerfil] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
+  const [eliminandoFoto, setEliminandoFoto] = useState(false);
+
+  const iniciales = `${perfil?.nombre?.trim()?.charAt(0) || ""}${perfil?.apellidoPaterno?.trim()?.charAt(0) || ""}`.toUpperCase() || "U";
 
   const cargarPerfil = async () => {
     try {
@@ -42,6 +46,7 @@ export default function PerfilPage() {
 
     try {
 
+      setSubiendoFoto(true);
       await subirFotoPerfil(file);
       await cargarPerfil();
       window.dispatchEvent(new Event("userUpdated"));
@@ -49,9 +54,30 @@ export default function PerfilPage() {
     } catch (error) {
 
       console.error("Error subiendo foto:", error);
+      setError(error.message || "No se pudo subir la foto");
 
+    } finally {
+      setSubiendoFoto(false);
+      e.target.value = "";
     }
 
+  };
+
+  const handleEliminarFoto = async () => {
+    if (!perfil?.fotoUrl) return;
+
+    try {
+      setEliminandoFoto(true);
+      setError("");
+      await eliminarFotoPerfil();
+      await cargarPerfil();
+      window.dispatchEvent(new Event("userUpdated"));
+    } catch (error) {
+      console.error("Error eliminando foto:", error);
+      setError(error.message || "No se pudo eliminar la foto");
+    } finally {
+      setEliminandoFoto(false);
+    }
   };
 
   return (
@@ -84,8 +110,7 @@ export default function PerfilPage() {
   ) : (
 
     <div className="perfil-avatar placeholder">
-        {perfil?.nombre?.charAt(0)}
-        {perfil?.apellidoPaterno?.charAt(0)}
+        {iniciales}
         </div>
 
     )}
@@ -97,11 +122,24 @@ export default function PerfilPage() {
         accept="image/*"
         hidden
         onChange={handleFotoChange}
+        disabled={subiendoFoto || eliminandoFoto}
         />
 
-        +
+        {subiendoFoto ? "..." : "+"}
 
     </label>
+
+    {perfil?.fotoUrl && (
+      <button
+        type="button"
+        className="perfil-avatar-delete"
+        onClick={handleEliminarFoto}
+        disabled={eliminandoFoto || subiendoFoto}
+        title="Eliminar foto"
+      >
+        <i className="bi bi-trash" />
+      </button>
+    )}
 
     </div>
 

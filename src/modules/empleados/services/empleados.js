@@ -82,3 +82,15 @@ export function subirFotoEmpleado(id, file) {
     body: formData
   });
 }
+
+export function eliminarFotoPerfil() {
+  return request(API_PATHS.EMPLEADOS_ME_FOTO, {
+    method: "DELETE"
+  });
+}
+
+export function eliminarFotoEmpleado(id) {
+  return request(`${API_PATHS.EMPLEADOS}/${id}/foto`, {
+    method: "DELETE"
+  });
+}

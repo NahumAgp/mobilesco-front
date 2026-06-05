@@ -55,6 +55,7 @@ export default function Sidebar() {
   useEffect(() => {
     const updateUser = () => {
       setUser(getUser());
+      setFailedFoto(null);
     };
 
     window.addEventListener("userUpdated", updateUser);
@@ -192,6 +193,11 @@ export default function Sidebar() {
             <NavLink to="/productos" className="sidebar-link">
               <i className="bi bi-box-seam me-2"></i>
               Productos
+            </NavLink>
+
+            <NavLink to="/productos/catalogo" className="sidebar-link sidebar-link--sub">
+              <i className="bi bi-images me-2"></i>
+              Catalogo visual
             </NavLink>
 
           </div>

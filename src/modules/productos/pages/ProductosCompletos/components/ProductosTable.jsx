@@ -7,12 +7,12 @@ const contarImagenes = (imagenes) => {
   if (Array.isArray(imagenes)) return imagenes.length;
   if (!imagenes || typeof imagenes !== "object") return 0;
 
-  const totalVariantes = Object.values(imagenes.variantes || {}).reduce((acc, lista) => {
+  const totalProductosColor = Object.values(imagenes.variantes || {}).reduce((acc, lista) => {
     if (!Array.isArray(lista)) return acc;
     return acc + lista.length;
   }, 0);
 
-  return totalVariantes + (imagenes.modelo ? 1 : 0);
+  return totalProductosColor + (imagenes.modelo ? 1 : 0);
 };
 
 export default function ProductosTable({ data }) {
@@ -37,7 +37,7 @@ export default function ProductosTable({ data }) {
               <th>ID</th>
               <th>Codigo</th>
               <th>Nombre</th>
-              <th>Variantes</th>
+              <th>Productos</th>
               <th>Imagenes</th>
               <th>Estado</th>
               <th>Fecha</th>
@@ -46,7 +46,7 @@ export default function ProductosTable({ data }) {
           <tbody>
             {data.map((producto) => {
               const modelo = producto?.modelo || {};
-              const variantes = Array.isArray(producto?.variantes) ? producto.variantes : [];
+              const productosColor = Array.isArray(producto?.variantes) ? producto.variantes : [];
               const totalImagenes = contarImagenes(producto?.imagenes);
 
               return (
@@ -57,7 +57,7 @@ export default function ProductosTable({ data }) {
                   </td>
                   <td className="fw-semibold">{modelo.nombre || "-"}</td>
                   <td>
-                    <span className="badge bg-info">{variantes.length} variantes</span>
+                    <span className="badge bg-info">{productosColor.length} productos</span>
                   </td>
                   <td>
                     <span className="badge bg-warning">{totalImagenes} imagenes</span>

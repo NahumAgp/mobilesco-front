@@ -129,7 +129,7 @@ export default function ProductoImagenesPanel({ productoId }) {
                   onChange={handleSeleccion}
                 />
                 <small className="text-muted d-block mt-1">
-                  Se aplicaran a todas las variantes del mismo producto base y color.
+                  Se aplicaran a todos los productos del mismo modelo y color.
                 </small>
               </div>
               <div className="col-12 col-lg-5">

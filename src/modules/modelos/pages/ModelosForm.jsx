@@ -9,7 +9,7 @@ import {
   eliminarImagenModelo
 } from "../services/modelos.js";
 import { obtenerFamilias } from "../../familias/services/familias.js";
-import { obtenerProductos } from "../../productos/services/variantes.js";
+import { obtenerProductos } from "../../productos/services/productos.js";
 import { API_BASE_URL } from "../../../config/apiConfig.js";
 import Toast from "../../../components/ui/Toast.jsx";
 import SearchableSelect from "../../../components/ui/SearchableSelect.jsx";

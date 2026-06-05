@@ -5,7 +5,7 @@ import { obtenerFamiliaPorId } from "../../familias/services/familias.js";
 import { obtenerLineaProductoPorId } from "../../lineas-producto/services/lineaProducto.js";
 import { obtenerNiveles, crearNivel } from "../../productos/services/niveles.js";
 import { obtenerColores, crearColor } from "../../colores/services/color.js";
-import { crearProducto } from "../../productos/services/variantes.js";
+import { crearProducto } from "../../productos/services/productos.js";
 import { subirImagenArchivo } from "../../productos/services/imagenes.js";
 import { API_BASE_URL } from "../../../config/apiConfig.js";
 import SearchableSelect from "../../../components/ui/SearchableSelect.jsx";
@@ -176,7 +176,7 @@ export default function ProductoRapidoDrawer({ show, modeloId, onClose, onSaved 
 
   const descripcionGenerada = useMemo(
     () =>
-      `Variante ${categoriaSeleccionada?.nombre || "sin categoria"} - ${colorSeleccionado?.nombre || "sin color"}`,
+      `Producto ${categoriaSeleccionada?.nombre || "sin categoria"} - ${colorSeleccionado?.nombre || "sin color"}`,
     [categoriaSeleccionada, colorSeleccionado]
   );
 
@@ -864,7 +864,7 @@ export default function ProductoRapidoDrawer({ show, modeloId, onClose, onSaved 
                   <div>
                     <div className="fw-semibold">Imagen del modelo</div>
                     <small className="text-muted">
-                      Se guarda en el modelo y sirve como respaldo cuando una variante no tiene imagen por color.
+                      Se guarda en el modelo y sirve como respaldo cuando un producto no tiene imagen por color.
                     </small>
                   </div>
                   <span className={`badge ${imagenModeloUrl ? "bg-success" : "bg-secondary"}`}>

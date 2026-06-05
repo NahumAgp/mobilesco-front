@@ -541,7 +541,7 @@ export default function ProductoForm({
             {esEdicion ? (
               <>
                 <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-                  <div className="text-muted">Estas imagenes se comparten con variantes del mismo producto base y color.</div>
+                  <div className="text-muted">Estas imagenes se comparten con productos del mismo modelo y color.</div>
                   <div className="d-flex gap-2">
                     <span className="badge producto-form-count-badge">{imagenes.length}</span>
                     <span className={`badge ${productoPrincipal ? "producto-form-success-badge" : "text-bg-secondary"}`}>
@@ -567,7 +567,7 @@ export default function ProductoForm({
                       <input id="producto-images-input" type="file" accept="image/*" multiple className="d-none" onChange={handleFileChange} />
                       <i className="bi bi-cloud-upload fs-2"></i>
                       <p className="mt-2 mb-0">Arrastra imagenes aqui o haz clic para seleccionar</p>
-                      <small>Se aplicaran a todas las variantes del mismo color.</small>
+                      <small>Se aplicaran a todos los productos del mismo color.</small>
                       {subiendoImagenes && <div className="mt-2 fw-semibold">Subiendo...</div>}
                     </div>
 

@@ -137,7 +137,7 @@ export default function ProductoInsumosBOMPage() {
   const copiarInsumosDesdeProducto = async () => {
     if (!productoOrigenId) {
       setToastType("danger");
-      setToastMessage("Selecciona una variante origen para copiar insumos");
+      setToastMessage("Selecciona un producto origen para copiar insumos");
       return;
     }
 
@@ -157,7 +157,7 @@ export default function ProductoInsumosBOMPage() {
 
       if (insumosCopiables.length === 0) {
         setToastType("danger");
-        setToastMessage("No hay insumos nuevos para copiar desde esa variante");
+        setToastMessage("No hay insumos nuevos para copiar desde ese producto");
         return;
       }
 
@@ -471,14 +471,14 @@ export default function ProductoInsumosBOMPage() {
         )}
       </Card>
 
-      <Card title="Copiar materiales desde otra variante" icon="bi-copy" className="mb-4 producto-bom-card">
+      <Card title="Copiar materiales desde otro producto" icon="bi-copy" className="mb-4 producto-bom-card">
         <div className="producto-bom-helper">
           <i className="bi bi-copy"></i>
-          <span>Copia insumos de una variante del mismo modelo y despues ajusta las cantidades para esta categoria o tamano.</span>
+          <span>Copia insumos de otro producto del mismo modelo y despues ajusta las cantidades para esta categoria o tamano.</span>
         </div>
         <div className="row g-2 align-items-end">
           <div className="col-lg-8">
-            <label className="form-label fw-semibold small">Variante origen</label>
+            <label className="form-label fw-semibold small">Producto origen</label>
             <select
               className="form-select"
               value={productoOrigenId}
@@ -486,7 +486,7 @@ export default function ProductoInsumosBOMPage() {
               disabled={copiandoBom || productosModelo.length === 0}
             >
               <option value="">
-                {productosModelo.length === 0 ? "No hay otras variantes del mismo modelo" : "Seleccionar variante..."}
+                {productosModelo.length === 0 ? "No hay otros productos del mismo modelo" : "Seleccionar producto..."}
               </option>
               {productosModelo.map((item) => (
                 <option key={item.id} value={item.id}>

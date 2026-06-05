@@ -1,7 +1,7 @@
-import "./VariantesTable.css";
-import { API_BASE_URL } from "../../../../config/apiConfig.js";
-import CatalogRowActions from "../../../../components/ui/CatalogRowActions.jsx";
-import CatalogStatusBadge from "../../../../components/ui/CatalogStatusBadge.jsx";
+import "./ProductosListadoTable.css";
+import { API_BASE_URL } from "../../../../../config/apiConfig.js";
+import CatalogRowActions from "../../../../../components/ui/CatalogRowActions.jsx";
+import CatalogStatusBadge from "../../../../../components/ui/CatalogStatusBadge.jsx";
 
 const COLUMNAS_ORDENABLES = {
   sku: "SKU",
@@ -160,7 +160,7 @@ const toPreviewUrl = (url) => {
   return `${API_BASE_URL}/${url}`;
 };
 
-export default function VariantesTable({
+export default function ProductosListadoTable({
   data,
   onEditar,
   onCambiarEstado,
