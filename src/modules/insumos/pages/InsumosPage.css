@@ -2,7 +2,8 @@
 .insumos-empty-card,
 .insumos-table-card,
 .insumos-pagination-panel,
-.insumos-filters-card {
+.insumos-filters-card,
+.tipos-insumo-panel {
   --insumos-brand-ink: #30404a;
   --insumos-brand-ink-strong: #22303a;
   --insumos-brand-teal: #2f7f7f;
@@ -19,6 +20,107 @@
 .insumos-filters-card.card {
   border: 1px solid rgba(15, 23, 42, 0.08);
   box-shadow: none;
+}
+
+.tipos-insumo-panel.card {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background:
+    radial-gradient(circle at top right, rgba(88, 194, 169, 0.12), transparent 28%),
+    linear-gradient(180deg, rgba(247, 250, 249, 0.95), rgba(255, 255, 255, 1));
+}
+
+.tipos-insumo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.tipos-insumo-eyebrow {
+  display: inline-flex;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(88, 194, 169, 0.12);
+  color: #1f6a55;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 0.65rem;
+}
+
+.tipos-insumo-title {
+  color: var(--insumos-brand-ink-strong);
+}
+
+.tipos-insumo-stats {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.tipos-insumo-stat {
+  min-width: 96px;
+  padding: 0.8rem 1rem;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(47, 127, 127, 0.14);
+  box-shadow: 0 10px 20px rgba(48, 64, 74, 0.05);
+  text-align: center;
+}
+
+.tipos-insumo-stat strong {
+  display: block;
+  font-size: 1.2rem;
+  color: var(--insumos-brand-ink-strong);
+}
+
+.tipos-insumo-stat span {
+  display: block;
+  color: #64748b;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.tipos-insumo-form-card,
+.tipos-insumo-table-card {
+  height: 100%;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 12px 24px rgba(48, 64, 74, 0.05);
+}
+
+.tipos-insumo-form-card {
+  padding: 1.25rem;
+}
+
+.tipos-insumo-table-card {
+  overflow: hidden;
+}
+
+.tipos-insumo-table-card table {
+  margin-bottom: 0;
+}
+
+.tipos-insumo-table-card thead th {
+  background: linear-gradient(180deg, #f7faf9 0%, #f4f8fb 100%);
+  color: var(--insumos-brand-ink);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  white-space: nowrap;
+}
+
+.tipos-insumo-table-card td,
+.tipos-insumo-table-card th {
+  vertical-align: middle;
+}
+
+.tipos-insumo-code-badge {
+  font-size: 0.78rem;
+  letter-spacing: 0.05em;
 }
 
 .insumos-filters-switch-col {
@@ -403,5 +505,11 @@
 
   .insumos-header-actions {
     margin-right: 0;
+  }
+}
+
+@media (max-width: 992px) {
+  .tipos-insumo-header {
+    flex-direction: column;
   }
 }

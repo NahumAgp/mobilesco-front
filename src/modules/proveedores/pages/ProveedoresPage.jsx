@@ -8,9 +8,9 @@ import PageHeader from "../../../components/Sistema/PageHeader.jsx";
 import CatalogPagination from "../../../components/ui/CatalogPagination.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
 import {
-  obtenerTiposInsumo,
   exportarProveedoresExcel
 } from "../services/proveedores.js";
+import { obtenerTiposInsumo } from "../../insumos/services/tiposInsumo.js";
 
 export default function ProveedoresPage() {
   const navigate = useNavigate();
@@ -179,8 +179,8 @@ export default function ProveedoresPage() {
               >
                 <option value="">Todos los tipos</option>
                 {tiposInsumo.map((tipo) => (
-                  <option key={tipo} value={tipo}>
-                    {tipo.replace(/_/g, " ")}
+                  <option key={tipo.id || tipo.codigo} value={tipo.codigo}>
+                    {tipo.nombre}
                   </option>
                 ))}
               </select>

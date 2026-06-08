@@ -32,6 +32,7 @@ export const API_PATHS = {
   MATERIALES: `${API_VERSION}/materiales`,
   // Insumos
   INSUMOS: `${API_VERSION}/insumos`,
+  TIPOS_INSUMO: `${API_VERSION}/tipos-insumo`,
 
   // Maquinas y centros de Trabajo
   CENTRO_TRABAJO: `${API_VERSION}/centros-trabajo`,

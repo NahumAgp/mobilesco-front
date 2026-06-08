@@ -39,7 +39,7 @@ export default function ProveedoresTable({ data, onEditar, onCambiarEstado }) {
                       .filter(Boolean)
                       .join(" ") || "-"}
                   </td>
-                  <td>{proveedor.tipoInsumo || "-"}</td>
+                  <td>{proveedor.tipoInsumoNombre || proveedor.tipoInsumo || "-"}</td>
                   <td>{proveedor.correo || "-"}</td>
                   <td>{proveedor.telefono || "-"}</td>
                   <td>

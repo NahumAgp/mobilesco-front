@@ -1,11 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   obtenerProveedorPorId,
   crearProveedor,
-  actualizarProveedor,
-  obtenerTiposInsumo
+  actualizarProveedor
 } from "../services/proveedores.js";
+import {
+  crearTipoInsumo,
+  obtenerPreviewTipoInsumo,
+  obtenerTiposInsumo
+} from "../../insumos/services/tiposInsumo.js";
 import Toast from "../../../components/ui/Toast.jsx";
 
 const emptyForm = {
@@ -28,12 +32,23 @@ const emptyForm = {
 };
 
 const normalizeText = (value) => (value == null ? "" : String(value).trim());
+const emptyTipoPreview = {
+  codigo: "",
+  disponible: false,
+  mensaje: "Escribe un nombre para generar un codigo de 1 a 3 letras"
+};
 
 export default function ProveedorForm({ proveedorId, proveedor: proveedorProp, errores: erroresExternos = {} }) {
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
   const [erroresBackend, setErroresBackend] = useState({});
   const [tiposInsumo, setTiposInsumo] = useState([]);
+  const [mostrarModalTipo, setMostrarModalTipo] = useState(false);
+  const [nuevoTipoNombre, setNuevoTipoNombre] = useState("");
+  const [previewTipo, setPreviewTipo] = useState(emptyTipoPreview);
+  const [previewTipoLoading, setPreviewTipoLoading] = useState(false);
+  const [guardandoTipo, setGuardandoTipo] = useState(false);
+  const [errorTipoRapido, setErrorTipoRapido] = useState("");
 
   const navigate = useNavigate();
   const esEdicion = Boolean(proveedorId || proveedorProp?.id);
@@ -52,18 +67,18 @@ export default function ProveedorForm({ proveedorId, proveedor: proveedorProp, e
   const inputClass = (field) => `form-control ${campoTieneError(field) ? "is-invalid" : "border-soft"}`;
   const selectClass = (field) => `form-select ${campoTieneError(field) ? "is-invalid" : "border-soft"}`;
 
-  useEffect(() => {
-    const cargarTiposInsumo = async () => {
-      try {
-        const tipos = await obtenerTiposInsumo();
-        setTiposInsumo(Array.isArray(tipos) ? tipos.filter(Boolean) : []);
-      } catch (error) {
-        console.error("Error cargando tipos de insumo:", error);
-      }
-    };
-
-    cargarTiposInsumo();
+  const cargarTiposInsumo = useCallback(async () => {
+    try {
+      const tipos = await obtenerTiposInsumo();
+      setTiposInsumo(Array.isArray(tipos) ? tipos.filter(Boolean) : []);
+    } catch (error) {
+      console.error("Error cargando tipos de insumo:", error);
+    }
   }, []);
+
+  useEffect(() => {
+    void cargarTiposInsumo();
+  }, [cargarTiposInsumo]);
 
   useEffect(() => {
     const cargarProveedor = async () => {
@@ -84,6 +99,41 @@ export default function ProveedorForm({ proveedorId, proveedor: proveedorProp, e
 
     cargarProveedor();
   }, [proveedorId, proveedorProp]);
+
+  useEffect(() => {
+    if (!mostrarModalTipo) {
+      setPreviewTipo(emptyTipoPreview);
+      setPreviewTipoLoading(false);
+      return undefined;
+    }
+
+    const nombre = nuevoTipoNombre.trim();
+
+    if (!nombre) {
+      setPreviewTipo(emptyTipoPreview);
+      setPreviewTipoLoading(false);
+      return undefined;
+    }
+
+    setPreviewTipoLoading(true);
+    const timer = window.setTimeout(async () => {
+      try {
+        const data = await obtenerPreviewTipoInsumo(nombre);
+        setPreviewTipo(data || emptyTipoPreview);
+        setErrorTipoRapido("");
+      } catch (error) {
+        setPreviewTipo({
+          codigo: "",
+          disponible: false,
+          mensaje: error.message || "No se pudo validar el codigo sugerido"
+        });
+      } finally {
+        setPreviewTipoLoading(false);
+      }
+    }, 300);
+
+    return () => window.clearTimeout(timer);
+  }, [mostrarModalTipo, nuevoTipoNombre]);
 
   function handleChange(e) {
     const { name, value, type, checked } = e.target;
@@ -166,6 +216,66 @@ export default function ProveedorForm({ proveedorId, proveedor: proveedorProp, e
   const renderFieldError = (field) =>
     campoTieneError(field) ? <div className="invalid-feedback d-block">{textoError(field)}</div> : null;
 
+  const tiposDisponibles = useMemo(
+    () => tiposInsumo.filter((tipo) => tipo?.activo || tipo?.codigo === formData.tipoInsumo),
+    [formData.tipoInsumo, tiposInsumo]
+  );
+
+  const abrirModalTipo = () => {
+    setMostrarModalTipo(true);
+    setNuevoTipoNombre("");
+    setPreviewTipo(emptyTipoPreview);
+    setPreviewTipoLoading(false);
+    setErrorTipoRapido("");
+  };
+
+  const cerrarModalTipo = () => {
+    setMostrarModalTipo(false);
+    setNuevoTipoNombre("");
+    setPreviewTipo(emptyTipoPreview);
+    setPreviewTipoLoading(false);
+    setErrorTipoRapido("");
+  };
+
+  const guardarTipoRapido = async (e) => {
+    e.preventDefault();
+
+    const nombre = nuevoTipoNombre.trim();
+
+    if (!nombre) {
+      setErrorTipoRapido("Escribe el nombre del tipo de insumo");
+      return;
+    }
+
+    if (!previewTipo.disponible) {
+      setErrorTipoRapido(previewTipo.mensaje || "Corrige el nombre antes de guardar");
+      return;
+    }
+
+    try {
+      setGuardandoTipo(true);
+      const creado = await crearTipoInsumo({ nombre });
+      await cargarTiposInsumo();
+      setFormData((prev) => ({
+        ...prev,
+        tipoInsumo: creado.codigo || ""
+      }));
+      setErroresBackend((prev) => {
+        const copia = { ...prev };
+        delete copia.tipoInsumo;
+        return copia;
+      });
+      cerrarModalTipo();
+      setToastType("success");
+      setToastMessage("Tipo de insumo creado y seleccionado correctamente");
+    } catch (error) {
+      const errorNombre = error?.errors?.nombre;
+      setErrorTipoRapido(errorNombre || error.message || "No se pudo crear el tipo de insumo");
+    } finally {
+      setGuardandoTipo(false);
+    }
+  };
+
   return (
     <div className="container py-4">
       <Toast message={toastMessage} type={toastType} onClose={() => setToastMessage("")} />
@@ -203,20 +313,30 @@ export default function ProveedorForm({ proveedorId, proveedor: proveedorProp, e
                   <i className="bi bi-tags me-1"></i>
                   Tipo de Insumo <span className="text-danger">*</span>
                 </label>
-                <select
-                  name="tipoInsumo"
-                  className={selectClass("tipoInsumo")}
-                  value={formData.tipoInsumo}
-                  onChange={handleChange}
-                  required
-                >
-                  <option value="">Selecciona un tipo...</option>
-                  {tiposInsumo.map((tipo) => (
-                    <option key={tipo} value={tipo}>
-                      {tipo.replace(/_/g, " ")}
-                    </option>
-                  ))}
-                </select>
+                <div className="d-flex gap-2 align-items-start">
+                  <select
+                    name="tipoInsumo"
+                    className={`${selectClass("tipoInsumo")} flex-grow-1`}
+                    value={formData.tipoInsumo}
+                    onChange={handleChange}
+                    required
+                  >
+                    <option value="">Selecciona un tipo...</option>
+                    {tiposDisponibles.map((tipo) => (
+                      <option key={tipo.id || tipo.codigo} value={tipo.codigo}>
+                        {tipo.nombre}{tipo.activo ? "" : " (inactivo)"}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary"
+                    title="Agregar tipo de insumo"
+                    onClick={abrirModalTipo}
+                  >
+                    <i className="bi bi-plus-lg"></i>
+                  </button>
+                </div>
                 {renderFieldError("tipoInsumo")}
               </div>
 
@@ -344,6 +464,94 @@ export default function ProveedorForm({ proveedorId, proveedor: proveedorProp, e
           </div>
         </div>
       </form>
+
+      {mostrarModalTipo ? (
+        <div
+          className="modal fade show"
+          style={{ display: "block", backgroundColor: "rgba(15, 23, 42, 0.45)" }}
+        >
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <form onSubmit={guardarTipoRapido} noValidate>
+                <div className="modal-header">
+                  <div>
+                    <h5 className="modal-title mb-1">Nuevo tipo de insumo</h5>
+                    <p className="text-muted small mb-0">
+                      Aqui solo capturas el nombre. El codigo usa la inicial y, si se repite, toma hasta 3 letras.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-close"
+                    onClick={cerrarModalTipo}
+                    disabled={guardandoTipo}
+                  ></button>
+                </div>
+
+                <div className="modal-body">
+                  <div className="mb-3">
+                    <label className="form-label fw-semibold">Nombre del tipo</label>
+                    <input
+                      type="text"
+                      className={`form-control ${errorTipoRapido ? "is-invalid" : ""}`}
+                      value={nuevoTipoNombre}
+                      onChange={(e) => {
+                        setNuevoTipoNombre(e.target.value);
+                        setErrorTipoRapido("");
+                      }}
+                      placeholder="Ej. Pintura electrostatica"
+                      autoFocus
+                    />
+                    {errorTipoRapido ? (
+                      <div className="invalid-feedback d-block">{errorTipoRapido}</div>
+                    ) : null}
+                  </div>
+
+                  <div className="mb-0">
+                    <label className="form-label fw-semibold">Codigo sugerido</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={previewTipo.codigo || ""}
+                      readOnly
+                      placeholder={previewTipoLoading ? "Generando..." : "Aun sin codigo"}
+                    />
+                    <div
+                      className={`form-text ${
+                        previewTipoLoading
+                          ? "text-muted"
+                          : previewTipo.disponible
+                            ? "text-success"
+                            : "text-danger"
+                      }`}
+                    >
+                      {previewTipoLoading ? "Validando contra la base de datos..." : previewTipo.mensaje}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="modal-footer">
+                  <button
+                    type="button"
+                    className="btn btn-light"
+                    onClick={cerrarModalTipo}
+                    disabled={guardandoTipo}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                    disabled={guardandoTipo || previewTipoLoading || !previewTipo.disponible}
+                  >
+                    {guardandoTipo ? "Guardando..." : "Crear y seleccionar"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

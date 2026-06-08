@@ -247,6 +247,11 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
               Insumos
             </NavLink>
 
+            <NavLink to="/insumos/tipos" className="sidebar-link sidebar-link--sub" onClick={handleNavigation}>
+              <i className="bi bi-tags me-2"></i>
+              Tipos de insumo
+            </NavLink>
+
             <NavLink to="/salidas-insumos" className="sidebar-link sidebar-link--sub" onClick={handleNavigation}>
               <i className="bi bi-box-arrow-right me-2"></i>
               Salidas
