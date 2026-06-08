@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { obtenerFamiliasActivas } from "../../../../../familias/services/familias.js";
 import { obtenerModelosActivos } from "../../../../../modelos/services/modelos.js";
 import SearchableSelect from "../../../../../../components/ui/SearchableSelect.jsx";
+import { ModeloDraftModal } from "../WizardDraftModal.jsx";
 
 const getLista = (respuesta) => {
   if (Array.isArray(respuesta)) return respuesta;
@@ -10,32 +10,18 @@ const getLista = (respuesta) => {
   return [];
 };
 
-export default function ModeloStep({ data, onUpdate }) {
-  const [familias, setFamilias] = useState([]);
+export default function ModeloStep({ data, onUpdate, borradores, onUpsertDraft }) {
   const [modelos, setModelos] = useState([]);
   const [cargando, setCargando] = useState(true);
+  const [mostrarNuevoModelo, setMostrarNuevoModelo] = useState(false);
 
   const modelo = data?.modelo || {};
-  const modo = modelo.modo || "existente";
 
   useEffect(() => {
-    const cargarCatalogos = async () => {
-      try {
-        const [familiasResp, modelosResp] = await Promise.all([
-          obtenerFamiliasActivas(),
-          obtenerModelosActivos()
-        ]);
-
-        setFamilias(getLista(familiasResp));
-        setModelos(getLista(modelosResp));
-      } catch (error) {
-        console.error("Error cargando datos basicos del producto:", error);
-      } finally {
-        setCargando(false);
-      }
-    };
-
-    cargarCatalogos();
+    obtenerModelosActivos()
+      .then((respuesta) => setModelos(getLista(respuesta)))
+      .catch((error) => console.error("Error cargando modelos:", error))
+      .finally(() => setCargando(false));
   }, []);
 
   const modeloSeleccionado = useMemo(
@@ -43,168 +29,104 @@ export default function ModeloStep({ data, onUpdate }) {
     [modelos, modelo.id]
   );
 
-  const handleChange = (event) => {
-    const { name, value, type, checked } = event.target;
-    onUpdate("modelo", {
-      [name]: type === "checkbox" ? checked : value
-    });
-  };
-
-  const cambiarModo = (nuevoModo) => {
-    onUpdate("modelo", {
-      modo: nuevoModo,
-      id: nuevoModo === "nuevo" ? null : modelo.id || null
-    });
+  const limpiarVariantesDelModelo = () => {
+    onUpdate("variantes", []);
+    onUpdate("imagenes", { variantes: {} });
   };
 
   const seleccionarModelo = (modeloId, opcion) => {
+    limpiarVariantesDelModelo();
     onUpdate("modelo", {
+      modo: "existente",
       id: modeloId || null,
+      ref: undefined,
+      _pending: false,
       codigo: opcion?.codigo || "",
       nombre: opcion?.nombre || "",
       descripcion: opcion?.descripcion || "",
-      familiaId: opcion?.familiaId || opcion?.familia?.id || ""
+      familiaId: opcion?.familiaId || opcion?.familia?.id || "",
+      familiaRef: undefined,
+      familia: opcion?.familia || null,
+      linea: opcion?.linea || null,
+      categorias: Array.isArray(opcion?.categorias) ? opcion.categorias : []
     });
   };
 
   if (cargando) {
     return (
       <div className="text-center py-4">
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Cargando...</span>
-        </div>
+        <div className="spinner-border text-primary" role="status"><span className="visually-hidden">Cargando...</span></div>
         <p className="mb-0 mt-2">Cargando informacion basica...</p>
       </div>
     );
   }
 
+  const visible = modeloSeleccionado || (modelo?._pending ? modelo : null);
+
   return (
-    <div>
-      <h4 className="mb-4">
-        <i className="bi bi-info-circle me-2 text-primary"></i>
-        Informacion basica
-      </h4>
+    <>
+      <div>
+        <div className="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
+          <div>
+            <h4 className="mb-1"><i className="bi bi-box-seam me-2 text-primary"></i>Selecciona el modelo</h4>
+            <p className="text-muted mb-0">El modelo define la familia y las categorias disponibles para los nuevos productos.</p>
+          </div>
+          <button type="button" className="btn productos-brand-primary" onClick={() => setMostrarNuevoModelo(true)}>
+            <i className="bi bi-plus-circle me-2"></i>Crear nuevo modelo
+          </button>
+        </div>
 
-      <div className="btn-group mb-4" role="group" aria-label="Modo de producto">
-        <button
-          type="button"
-          className={`btn ${modo === "existente" ? "btn-primary" : "btn-outline-primary"}`}
-          onClick={() => cambiarModo("existente")}
-        >
-          Modelo existente
-        </button>
-        <button
-          type="button"
-          className={`btn ${modo === "nuevo" ? "btn-primary" : "btn-outline-primary"}`}
-          onClick={() => cambiarModo("nuevo")}
-        >
-          Nuevo modelo
-        </button>
-      </div>
-
-      {modo === "existente" && (
-        <div className="mb-4">
+        <div className="producto-modelo-selector">
           <SearchableSelect
             label="Modelo"
-            value={modelo.id || ""}
+            value={modelo?._pending ? "" : modelo.id || ""}
             options={modelos}
             onChange={seleccionarModelo}
             placeholder="Seleccionar modelo..."
             searchPlaceholder="Busca por codigo, nombre o descripcion..."
             getOptionValue={(item) => item.id}
             getOptionLabel={(item) => `${item.codigo ? `[${item.codigo}] ` : ""}${item.nombre}`}
-            getOptionSearchText={(item) =>
-              [item.codigo, item.nombre, item.descripcion].filter(Boolean).join(" ").toLowerCase()
-            }
+            getOptionSearchText={(item) => [item.codigo, item.nombre, item.descripcion].filter(Boolean).join(" ").toLowerCase()}
           />
-        </div>
-      )}
 
-      <div className="row g-3">
-        <div className="col-md-4">
-          <label className="form-label fw-semibold">Codigo *</label>
-          <input
-            type="text"
-            name="codigo"
-            className="form-control"
-            value={modelo.codigo || ""}
-            onChange={handleChange}
-            disabled={modo === "existente"}
-            placeholder="Ej. MOD001"
-          />
-        </div>
-
-        <div className="col-md-8">
-          <label className="form-label fw-semibold">Nombre *</label>
-          <input
-            type="text"
-            name="nombre"
-            className="form-control"
-            value={modelo.nombre || ""}
-            onChange={handleChange}
-            disabled={modo === "existente"}
-            placeholder="Nombre del producto"
-          />
-        </div>
-
-        <div className="col-md-5">
-          <label className="form-label fw-semibold">Familia *</label>
-          <select
-            name="familiaId"
-            className="form-select"
-            value={modelo.familiaId || ""}
-            onChange={handleChange}
-            disabled={modo === "existente"}
-          >
-            <option value="">Seleccionar familia...</option>
-            {familias.map((familia) => (
-              <option key={familia.id} value={familia.id}>
-                {familia.codigo ? `[${familia.codigo}] ` : ""}
-                {familia.nombre}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="col-md-7 d-flex align-items-end">
-          {modeloSeleccionado && (
-            <div className="text-muted small pb-2">
-              Se usara este modelo como base para crear las combinaciones de material, categoria y color.
+          {visible ? (
+            <div className="producto-modelo-seleccionado mt-4">
+              <div className="producto-modelo-seleccionado-icon"><i className="bi bi-check-lg"></i></div>
+              <div>
+                <div className="fw-semibold">
+                  {visible.nombre}
+                  {modelo?._pending && <span className="badge text-bg-warning ms-2">Pendiente</span>}
+                </div>
+                <div className="small text-muted">
+                  {[visible.codigo, visible.familiaNombre || visible.familia?.nombre].filter(Boolean).join(" - ")}
+                </div>
+              </div>
+              <span className="badge text-bg-light ms-auto">{(visible.categorias || []).length} categorias</span>
+              {modelo?._pending && (
+                <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => setMostrarNuevoModelo(true)}>Editar</button>
+              )}
+            </div>
+          ) : (
+            <div className="producto-modelo-ayuda mt-4">
+              <i className="bi bi-lightbulb me-2"></i>Busca un modelo existente o crea uno nuevo sin salir del wizard.
             </div>
           )}
         </div>
-
-        <div className="col-12">
-          <label className="form-label fw-semibold">Descripcion</label>
-          <textarea
-            name="descripcion"
-            className="form-control"
-            rows="3"
-            value={modelo.descripcion || ""}
-            onChange={handleChange}
-            disabled={modo === "existente"}
-            placeholder="Descripcion corta del producto"
-          />
-        </div>
-
-        {modo === "nuevo" && (
-          <div className="col-12">
-            <div className="form-check form-switch">
-              <input
-                className="form-check-input"
-                type="checkbox"
-                name="activo"
-                checked={modelo.activo !== false}
-                onChange={handleChange}
-                id="modelo-activo"
-              />
-              <label className="form-check-label" htmlFor="modelo-activo">
-                Producto activo
-              </label>
-            </div>
-          </div>
-        )}
       </div>
-    </div>
+
+      <ModeloDraftModal
+        show={mostrarNuevoModelo}
+        initialValue={modelo?._pending ? modelo : null}
+        modelos={modelos}
+        borradores={borradores}
+        onUpsertDraft={onUpsertDraft}
+        onClose={() => setMostrarNuevoModelo(false)}
+        onSave={(borrador) => {
+          limpiarVariantesDelModelo();
+          onUpdate("modelo", borrador);
+          setMostrarNuevoModelo(false);
+        }}
+      />
+    </>
   );
 }

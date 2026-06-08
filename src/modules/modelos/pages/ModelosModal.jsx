@@ -13,7 +13,7 @@ export default function ModelosModal({
 
   return (
     <div
-      className="modal fade show"
+      className="modal fade show modelos-modal-popout"
       style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)" }}
     >
       <div className="modal-dialog modal-lg modal-dialog-centered">

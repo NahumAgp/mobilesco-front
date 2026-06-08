@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { obtenerNiveles, crearNivel } from "../../../../services/niveles.js";
-import { obtenerColores, crearColor } from "../../../../../colores/services/color.js";
-import { obtenerMaterialesActivos, crearMaterial } from "../../../../../materiales/services/materiales.js";
+import { obtenerNiveles } from "../../../../services/niveles.js";
+import { obtenerColores } from "../../../../../colores/services/color.js";
+import { obtenerMaterialesActivos } from "../../../../../materiales/services/materiales.js";
 import { obtenerFamiliaPorId } from "../../../../../familias/services/familias.js";
 import { obtenerLineaProductoPorId } from "../../../../../lineas-producto/services/lineaProducto.js";
+import { SimpleDraftModal } from "../WizardDraftModal.jsx";
 
 const getLista = (respuesta) => {
   if (Array.isArray(respuesta)) return respuesta;
@@ -69,9 +70,14 @@ const getParKey = (categoriaId, materialId, colorId) => `${categoriaId}::${mater
 const getCategoriaKey = (categoriaId) => String(categoriaId);
 const getMaterialKey = (materialId) => String(materialId);
 const getColorKey = (colorId) => String(colorId);
+const SECCION_BORRADOR_POR_TIPO = {
+  material: "materiales",
+  color: "colores"
+};
 
-export default function VariantesStep({ data, onUpdate }) {
+export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraft }) {
   const [categorias, setCategorias] = useState([]);
+  const [categoriasGlobales, setCategoriasGlobales] = useState([]);
   const [materiales, setMateriales] = useState([]);
   const [colores, setColores] = useState([]);
   const [cargandoCatalogos, setCargandoCatalogos] = useState(true);
@@ -79,34 +85,54 @@ export default function VariantesStep({ data, onUpdate }) {
   const [lineaActual, setLineaActual] = useState(null);
   const [seleccion, setSeleccion] = useState({});
   const [mensaje, setMensaje] = useState("");
+  const [modalBorrador, setModalBorrador] = useState("");
+  const [borradorEditando, setBorradorEditando] = useState(null);
 
   const variantes = useMemo(
     () => (Array.isArray(data.variantes) ? data.variantes : []),
     [data.variantes]
   );
 
-  const cargarCategorias = async () => {
-    const lista = getLista(await obtenerNiveles());
-    setCategorias(lista);
-    return lista;
-  };
+  const categoriasDisponibles = useMemo(() => {
+    if (data?.modelo?.modo === "nuevo") return data?.modelo?.categorias || [];
+    return [
+      ...(borradores?.categorias || []).filter((item) => String(item.modeloId) === String(data?.modelo?.id)),
+      ...categorias
+    ];
+  }, [borradores?.categorias, categorias, data?.modelo?.categorias, data?.modelo?.id, data?.modelo?.modo]);
 
-  const cargarColores = async () => {
-    const lista = getLista(await obtenerColores());
-    setColores(lista);
-    return lista;
-  };
+  const materialesDisponibles = useMemo(
+    () => [...(borradores?.materiales || []), ...materiales],
+    [borradores?.materiales, materiales]
+  );
 
-  const cargarMateriales = async () => {
-    const lista = getLista(await obtenerMaterialesActivos());
-    setMateriales(lista);
-    return lista;
-  };
+  const coloresDisponibles = useMemo(
+    () => [...(borradores?.colores || []), ...colores],
+    [borradores?.colores, colores]
+  );
+
+  const pendientes = useMemo(() => ({
+    categorias: categoriasDisponibles.filter((item) => item?._pending),
+    materiales: materialesDisponibles.filter((item) => item?._pending),
+    colores: coloresDisponibles.filter((item) => item?._pending)
+  }), [categoriasDisponibles, coloresDisponibles, materialesDisponibles]);
 
   useEffect(() => {
     const cargarCatalogos = async () => {
       try {
-        await Promise.all([cargarCategorias(), cargarMateriales(), cargarColores()]);
+        const categoriasPromise = data?.modelo?.modo === "nuevo"
+          ? Promise.resolve(Array.isArray(data?.modelo?.categorias) ? data.modelo.categorias : [])
+          : obtenerNiveles(data?.modelo?.id).then(getLista);
+        const [categoriasLista, categoriasGlobalesLista, materialesLista, coloresLista] = await Promise.all([
+          categoriasPromise,
+          obtenerNiveles().then(getLista),
+          obtenerMaterialesActivos().then(getLista),
+          obtenerColores().then(getLista)
+        ]);
+        setCategorias(categoriasLista);
+        setCategoriasGlobales(categoriasGlobalesLista);
+        setMateriales(materialesLista);
+        setColores(coloresLista);
       } catch (error) {
         console.error("Error cargando catalogos de productos:", error);
       } finally {
@@ -115,10 +141,15 @@ export default function VariantesStep({ data, onUpdate }) {
     };
 
     cargarCatalogos();
-  }, []);
+  }, [data?.modelo?.id, data?.modelo?.modo, data?.modelo?.categorias]);
 
   useEffect(() => {
     const cargarContextoSku = async () => {
+      if (data?.modelo?._pending) {
+        setFamiliaActual(data.modelo.familia || null);
+        setLineaActual(data.modelo.linea || null);
+        return;
+      }
       const familiaId = Number(data?.modelo?.familiaId);
 
       if (!familiaId) {
@@ -142,7 +173,7 @@ export default function VariantesStep({ data, onUpdate }) {
     };
 
     cargarContextoSku();
-  }, [data?.modelo?.familiaId]);
+  }, [data?.modelo?._pending, data?.modelo?.familia, data?.modelo?.familiaId, data?.modelo?.linea]);
 
   useEffect(() => {
     if (cargandoCatalogos || variantes.length === 0) return;
@@ -172,18 +203,18 @@ export default function VariantesStep({ data, onUpdate }) {
   }, [cargandoCatalogos, variantes]);
 
   const categoriasPorId = useMemo(
-    () => new Map(categorias.map((categoria) => [String(categoria.id), categoria])),
-    [categorias]
+    () => new Map(categoriasDisponibles.map((categoria) => [String(categoria.id), categoria])),
+    [categoriasDisponibles]
   );
 
   const materialesPorId = useMemo(
-    () => new Map(materiales.map((material) => [String(material.id), material])),
-    [materiales]
+    () => new Map(materialesDisponibles.map((material) => [String(material.id), material])),
+    [materialesDisponibles]
   );
 
   const coloresPorId = useMemo(
-    () => new Map(colores.map((color) => [String(color.id), color])),
-    [colores]
+    () => new Map(coloresDisponibles.map((color) => [String(color.id), color])),
+    [coloresDisponibles]
   );
 
   const variantesPorPar = useMemo(() => {
@@ -271,7 +302,7 @@ export default function VariantesStep({ data, onUpdate }) {
   const seleccionarTodosLosColores = (materialId, categoriaId) => {
     const materialKey = getMaterialKey(materialId);
     const categoriaKey = getCategoriaKey(categoriaId);
-    const todos = colores.map((color) => getColorKey(color.id));
+    const todos = coloresDisponibles.map((color) => getColorKey(color.id));
 
     setSeleccion((prev) => {
       const materialActual = prev[materialKey] || { categorias: {} };
@@ -342,13 +373,13 @@ export default function VariantesStep({ data, onUpdate }) {
 
           nuevas.push({
             id: existente?.id || `${Date.now()}-${nuevas.length}`,
-            categoriaId: Number(categoria.id),
+            categoriaId: categoria.id,
             categoriaNombre: categoria.nombre || "",
             categoriaCodigo: categoria.codigo || "",
-            materialId: Number(material.id),
+            materialId: material.id,
             materialNombre: material.nombre || "",
             materialCodigo: material.codigo || "",
-            colorId: Number(color.id),
+            colorId: color.id,
             colorNombre: color.nombre || "",
             colorCodigo: color.codigo || "",
             colorHex: color.hex || "",
@@ -398,85 +429,81 @@ export default function VariantesStep({ data, onUpdate }) {
     setMensaje("Productos limpiados.");
   };
 
-  const crearMaterialRapido = async () => {
-    const nombre = window.prompt("Nombre del material:");
-    if (!nombre || !nombre.trim()) return;
+  const guardarBorradorRapido = (tipo, borrador) => {
+    const borradorKey = String(borrador.ref || borrador.id);
 
-    const codigoSugerido = nombre
-      .trim()
-      .split(/\s+/)
-      .map((p) => p[0]?.toUpperCase())
-      .filter(Boolean)
-      .join("")
-      .slice(0, 3)
-      .padEnd(3, "X");
-
-    const codigo = window.prompt("Codigo corto de material (ej: NAT, FOR):", codigoSugerido);
-
-    try {
-      await crearMaterial({
-        codigo: (codigo || codigoSugerido).trim().toUpperCase(),
-        nombre: nombre.trim(),
-        descripcion: "Creado desde wizard de producto"
+    if (tipo === "categoria" && data?.modelo?.modo === "nuevo") {
+      onUpdate("modelo", {
+        categorias: [
+          borrador,
+          ...(data?.modelo?.categorias || []).filter(
+            (item) => String(item.ref || item.id) !== String(borrador.ref || borrador.id)
+          )
+        ]
       });
-
-      await cargarMateriales();
-    } catch (error) {
-      console.error("Error creando material:", error);
-      alert(error.message || "No se pudo crear el material.");
+    } else if (tipo === "categoria") {
+      onUpsertDraft("categorias", { ...borrador, modeloId: Number(data?.modelo?.id) });
+    } else {
+      onUpsertDraft(SECCION_BORRADOR_POR_TIPO[tipo], borrador);
     }
+
+    if (!borradorEditando && tipo === "material") {
+      setSeleccion((prev) => ({
+        ...prev,
+        [borradorKey]: prev[borradorKey] || { categorias: {} }
+      }));
+      setMensaje("Material pendiente creado y activado.");
+    } else if (!borradorEditando && tipo === "categoria") {
+      setSeleccion((prev) => {
+        const siguiente = {};
+        Object.entries(prev).forEach(([materialKey, materialSeleccionado]) => {
+          siguiente[materialKey] = {
+            categorias: {
+              ...(materialSeleccionado?.categorias || {}),
+              [borradorKey]: materialSeleccionado?.categorias?.[borradorKey] || []
+            }
+          };
+        });
+        return siguiente;
+      });
+      setMensaje(
+        Object.keys(seleccion).length
+          ? "Categoria pendiente agregada a los materiales activos."
+          : "Categoria pendiente creada. Activa un material para asignarla."
+      );
+    } else if (!borradorEditando && tipo === "color") {
+      setSeleccion((prev) => {
+        const siguiente = {};
+        Object.entries(prev).forEach(([materialKey, materialSeleccionado]) => {
+          const categoriasSiguientes = {};
+          Object.entries(materialSeleccionado?.categorias || {}).forEach(([categoriaKey, colorIds]) => {
+            categoriasSiguientes[categoriaKey] = colorIds.includes(borradorKey)
+              ? colorIds
+              : [...colorIds, borradorKey];
+          });
+          siguiente[materialKey] = { categorias: categoriasSiguientes };
+        });
+        return siguiente;
+      });
+      setMensaje(
+        totalSeleccionado || Object.keys(seleccion).length
+          ? "Color pendiente agregado a las categorias activas."
+          : "Color pendiente creado. Activa un material y una categoria para asignarlo."
+      );
+    }
+
+    if (borradorEditando) {
+      onUpdate("variantes", []);
+      onUpdate("imagenes", { variantes: {} });
+      setMensaje("Borrador actualizado. Vuelve a generar los productos.");
+    }
+    setModalBorrador("");
+    setBorradorEditando(null);
   };
 
-  const crearCategoriaRapida = async () => {
-    const nombre = window.prompt("Nombre de la categoria:");
-    if (!nombre || !nombre.trim()) return;
-
-    const codigoSugerido = String(categorias.length + 1).padStart(2, "0");
-    const codigo = window.prompt("Codigo corto de categoria (ej: 01):", codigoSugerido);
-
-    try {
-      await crearNivel({
-        codigo: (codigo || codigoSugerido).trim(),
-        nombre: nombre.trim(),
-        descripcion: "Creada desde wizard de producto",
-        activo: true
-      });
-
-      await cargarCategorias();
-    } catch (error) {
-      console.error("Error creando categoria:", error);
-      alert(error.message || "No se pudo crear la categoria.");
-    }
-  };
-
-  const crearColorRapido = async () => {
-    const nombre = window.prompt("Nombre del color:");
-    if (!nombre || !nombre.trim()) return;
-
-    const codigoSugerido = nombre
-      .trim()
-      .split(/\s+/)
-      .map((p) => p[0]?.toUpperCase())
-      .filter(Boolean)
-      .join("")
-      .slice(0, 2)
-      .padEnd(2, "X");
-
-    const codigo = window.prompt("Codigo corto de color (ej: AE):", codigoSugerido);
-    const hex = window.prompt("HEX del color (ej: #1E90FF):", "#808080");
-
-    try {
-      await crearColor({
-        codigo: (codigo || codigoSugerido).trim().toUpperCase(),
-        nombre: nombre.trim(),
-        hex: (hex || "#808080").trim().toUpperCase()
-      });
-
-      await cargarColores();
-    } catch (error) {
-      console.error("Error creando color:", error);
-      alert(error.message || "No se pudo crear el color.");
-    }
+  const abrirBorrador = (tipo, borrador = null) => {
+    setBorradorEditando(borrador);
+    setModalBorrador(tipo);
   };
 
   const variantesPorMaterial = useMemo(() => {
@@ -519,19 +546,42 @@ export default function VariantesStep({ data, onUpdate }) {
       </div>
 
       <div className="d-flex flex-wrap gap-2 mb-3">
-        <button type="button" className="btn btn-outline-secondary btn-sm" onClick={crearMaterialRapido}>
+        <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => abrirBorrador("material")}>
           + Material
         </button>
-        <button type="button" className="btn btn-outline-secondary btn-sm" onClick={crearCategoriaRapida}>
+        <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => abrirBorrador("categoria")}>
           + Categoria
         </button>
-        <button type="button" className="btn btn-outline-secondary btn-sm" onClick={crearColorRapido}>
+        <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => abrirBorrador("color")}>
           + Color
         </button>
       </div>
 
+      {(pendientes.materiales.length > 0 || pendientes.categorias.length > 0 || pendientes.colores.length > 0) && (
+        <div className="border rounded bg-light p-3 mb-3">
+          <div className="small fw-semibold mb-2">Borradores pendientes de guardar</div>
+          <div className="d-flex flex-wrap gap-2">
+            {pendientes.materiales.map((item) => (
+              <button key={item.id} type="button" className="btn btn-sm btn-outline-warning" onClick={() => abrirBorrador("material", item)}>
+                Material: [{item.codigo}] {item.nombre} <i className="bi bi-pencil ms-1"></i>
+              </button>
+            ))}
+            {pendientes.categorias.map((item) => (
+              <button key={item.id} type="button" className="btn btn-sm btn-outline-warning" onClick={() => abrirBorrador("categoria", item)}>
+                Categoria: [{item.codigo}] {item.nombre} <i className="bi bi-pencil ms-1"></i>
+              </button>
+            ))}
+            {pendientes.colores.map((item) => (
+              <button key={item.id} type="button" className="btn btn-sm btn-outline-warning" onClick={() => abrirBorrador("color", item)}>
+                Color: [{item.codigo}] {item.nombre} <i className="bi bi-pencil ms-1"></i>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="accordion mb-4" id="accordion-materiales-producto">
-        {materiales.map((material) => {
+        {materialesDisponibles.map((material) => {
           const materialKey = getMaterialKey(material.id);
           const materialActivo = Boolean(seleccion[materialKey]);
           const categoriasSeleccionadas = seleccion[materialKey]?.categorias || {};
@@ -542,7 +592,7 @@ export default function VariantesStep({ data, onUpdate }) {
 
           return (
             <div className="accordion-item" key={material.id}>
-              <h2 className="accordion-header">
+              <h2 className="accordion-header d-flex align-items-stretch">
                 <button
                   className={`accordion-button ${materialActivo ? "" : "collapsed"}`}
                   type="button"
@@ -564,8 +614,19 @@ export default function VariantesStep({ data, onUpdate }) {
                     {material.codigo ? `[${material.codigo}] ` : ""}
                     {material.nombre}
                   </span>
+                  {material._pending && <span className="badge text-bg-warning ms-3">Pendiente</span>}
                   {totalMaterial > 0 && <span className="badge bg-primary ms-3">{totalMaterial} productos</span>}
                 </button>
+                {material._pending && (
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary rounded-0"
+                    onClick={() => abrirBorrador("material", material)}
+                    title="Editar material pendiente"
+                  >
+                    <i className="bi bi-pencil"></i>
+                  </button>
+                )}
               </h2>
 
               <div
@@ -578,7 +639,7 @@ export default function VariantesStep({ data, onUpdate }) {
                     <div className="text-muted">Activa este material para asignar categorias y colores.</div>
                   ) : (
                     <div className="row g-3">
-                      {categorias.map((categoria) => {
+                      {categoriasDisponibles.map((categoria) => {
                         const categoriaKey = getCategoriaKey(categoria.id);
                         const categoriaActiva = Object.prototype.hasOwnProperty.call(categoriasSeleccionadas, categoriaKey);
                         const coloresCategoria = categoriasSeleccionadas[categoriaKey] || [];
@@ -587,18 +648,33 @@ export default function VariantesStep({ data, onUpdate }) {
                           <div className="col-12" key={categoria.id}>
                             <div className="border rounded p-3">
                               <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
-                                <div className="form-check">
-                                  <input
-                                    className="form-check-input"
-                                    type="checkbox"
-                                    checked={categoriaActiva}
-                                    onChange={() => toggleCategoria(material.id, categoria.id)}
-                                    id={`categoria-${material.id}-${categoria.id}`}
-                                  />
-                                  <label className="form-check-label fw-semibold" htmlFor={`categoria-${material.id}-${categoria.id}`}>
-                                    {categoria.codigo ? `[${categoria.codigo}] ` : ""}
-                                    {categoria.nombre}
-                                  </label>
+                                <div className="d-flex align-items-center gap-2">
+                                  <div className="form-check">
+                                    <input
+                                      className="form-check-input"
+                                      type="checkbox"
+                                      checked={categoriaActiva}
+                                      onChange={() => toggleCategoria(material.id, categoria.id)}
+                                      id={`categoria-${material.id}-${categoria.id}`}
+                                    />
+                                    <label className="form-check-label fw-semibold" htmlFor={`categoria-${material.id}-${categoria.id}`}>
+                                      {categoria.codigo ? `[${categoria.codigo}] ` : ""}
+                                      {categoria.nombre}
+                                    </label>
+                                  </div>
+                                  {categoria._pending && (
+                                    <>
+                                      <span className="badge text-bg-warning">Pendiente</span>
+                                      <button
+                                        type="button"
+                                        className="btn btn-sm btn-outline-secondary"
+                                        onClick={() => abrirBorrador("categoria", categoria)}
+                                        title="Editar categoria pendiente"
+                                      >
+                                        <i className="bi bi-pencil"></i>
+                                      </button>
+                                    </>
+                                  )}
                                 </div>
 
                                 {categoriaActiva && (
@@ -623,22 +699,34 @@ export default function VariantesStep({ data, onUpdate }) {
 
                               {categoriaActiva && (
                                 <div className="d-flex flex-wrap gap-2">
-                                  {colores.map((color) => {
+                                  {coloresDisponibles.map((color) => {
                                     const selected = coloresCategoria.includes(getColorKey(color.id));
                                     return (
-                                      <button
-                                        key={color.id}
-                                        type="button"
-                                        className={`btn btn-sm ${selected ? "btn-success" : "btn-outline-success"}`}
-                                        onClick={() => toggleColor(material.id, categoria.id, color.id)}
-                                      >
-                                        <span
-                                          className="d-inline-block rounded-circle border me-1"
-                                          style={{ width: "12px", height: "12px", backgroundColor: color.hex || "#ccc" }}
-                                        />
-                                        {color.codigo ? `[${color.codigo}] ` : ""}
-                                        {color.nombre}
-                                      </button>
+                                      <div key={color.id} className="d-inline-flex">
+                                        <button
+                                          type="button"
+                                          className={`btn btn-sm ${selected ? "btn-success" : "btn-outline-success"} ${color._pending ? "rounded-end-0" : ""}`}
+                                          onClick={() => toggleColor(material.id, categoria.id, color.id)}
+                                        >
+                                          <span
+                                            className="d-inline-block rounded-circle border me-1"
+                                            style={{ width: "12px", height: "12px", backgroundColor: color.hex || "#ccc" }}
+                                          />
+                                          {color.codigo ? `[${color.codigo}] ` : ""}
+                                          {color.nombre}
+                                          {color._pending ? " (Pendiente)" : ""}
+                                        </button>
+                                        {color._pending && (
+                                          <button
+                                            type="button"
+                                            className={`btn btn-sm ${selected ? "btn-success" : "btn-outline-success"} rounded-start-0 border-start`}
+                                            onClick={() => abrirBorrador("color", color)}
+                                            title="Editar color pendiente"
+                                          >
+                                            <i className="bi bi-pencil"></i>
+                                          </button>
+                                        )}
+                                      </div>
                                     );
                                   })}
                                 </div>
@@ -730,6 +818,24 @@ export default function VariantesStep({ data, onUpdate }) {
       ) : (
         <div className="text-muted">Aun no hay productos generados. Marca las combinaciones y genera la lista.</div>
       )}
+
+      <SimpleDraftModal
+        show={Boolean(modalBorrador)}
+        tipo={modalBorrador || "material"}
+        initialValue={borradorEditando}
+        existingItems={
+          modalBorrador === "material"
+            ? materialesDisponibles
+            : modalBorrador === "color"
+              ? coloresDisponibles
+              : [...categoriasGlobales, ...categoriasDisponibles]
+        }
+        onClose={() => {
+          setModalBorrador("");
+          setBorradorEditando(null);
+        }}
+        onSave={(borrador) => guardarBorradorRapido(modalBorrador, borrador)}
+      />
     </div>
   );
 }

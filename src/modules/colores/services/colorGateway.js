@@ -1,6 +1,7 @@
 import {
   obtenerColores,
   obtenerColorPorId,
+  obtenerCodigoSugerido,
   crearColor,
   actualizarColor,
   activarColor,
@@ -12,6 +13,7 @@ export function createHttpColorGateway() {
   return {
     obtenerColores,
     obtenerColorPorId,
+    obtenerCodigoSugerido,
     crearColor,
     actualizarColor,
     activarColor,

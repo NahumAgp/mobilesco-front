@@ -1,8 +1,14 @@
 import request from "../../../services/api";
 import { API_PATHS } from "../../../config/apiPaths";
 
-export function obtenerNiveles() {
-  return request(API_PATHS.NIVELES);
+export function obtenerNiveles(modeloId) {
+  return modeloId
+    ? request(`${API_PATHS.NIVELES}/por-modelo/${modeloId}`)
+    : request(API_PATHS.NIVELES);
+}
+
+export function obtenerNivelesActivosPorModelo(modeloId) {
+  return request(`${API_PATHS.NIVELES}/por-modelo/${modeloId}?soloActivos=true`);
 }
 
 export function obtenerNivelPorId(id) {
@@ -12,7 +18,10 @@ export function obtenerNivelPorId(id) {
 export function crearNivel(data) {
   return request(API_PATHS.NIVELES, {
     method: "POST",
-    body: JSON.stringify(data),
+    body: JSON.stringify({
+      ...data,
+      modelo_id: data.modelo_id ?? data.modeloId
+    }),
   });
 }
 

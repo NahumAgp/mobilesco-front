@@ -1,6 +1,7 @@
 import {
   obtenerFamilias,
   obtenerFamiliaPorId,
+  obtenerCodigoSugerido,
   crearFamilia,
   actualizarFamilia,
   activarFamilia,
@@ -14,6 +15,7 @@ export function createHttpFamiliaGateway() {
   return {
     obtenerFamilias,
     obtenerFamiliaPorId,
+    obtenerCodigoSugerido,
     crearFamilia,
     actualizarFamilia,
     activarFamilia,

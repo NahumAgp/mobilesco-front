@@ -183,15 +183,13 @@ export default function ProductoForm({
   useEffect(() => {
     const cargarCatalogos = async () => {
       try {
-        const [modelosData, nivelesData, materialesData, coloresData] = await Promise.all([
+        const [modelosData, materialesData, coloresData] = await Promise.all([
           obtenerModelos(),
-          obtenerNiveles(),
           obtenerMaterialesActivos(),
           obtenerColores(),
         ]);
 
         setModelos(getLista(modelosData));
-        setNiveles(getLista(nivelesData));
         setMateriales(getLista(materialesData));
         setColores(getLista(coloresData));
       } catch (error) {
@@ -201,6 +199,32 @@ export default function ProductoForm({
 
     cargarCatalogos();
   }, []);
+
+  useEffect(() => {
+    const cargarNivelesModelo = async () => {
+      if (!formData.modeloId) {
+        setNiveles([]);
+        return;
+      }
+
+      try {
+        const data = await obtenerNiveles(formData.modeloId);
+        const lista = getLista(data);
+        setNiveles(lista);
+        setFormData((prev) => ({
+          ...prev,
+          nivelId: lista.some((nivel) => String(nivel.id) === String(prev.nivelId))
+            ? prev.nivelId
+            : ""
+        }));
+      } catch (error) {
+        console.error("Error cargando categorias del modelo:", error);
+        setNiveles([]);
+      }
+    };
+
+    cargarNivelesModelo();
+  }, [formData.modeloId]);
 
   const recargarImagenes = useCallback(async (productoActualId = idProducto, dataBase = null) => {
     if (!productoActualId) return;
@@ -276,6 +300,7 @@ export default function ProductoForm({
     setFormData((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
+      ...(name === "modeloId" ? { nivelId: "" } : {}),
     }));
 
     if (erroresBackend[name]) {
@@ -499,14 +524,14 @@ export default function ProductoForm({
                 <small className="text-muted">Producto base al que pertenece este producto</small>
               </div>
               <div className="col-md-6">
-                <label className="form-label fw-semibold">Nivel <span className="text-danger">*</span></label>
+                <label className="form-label fw-semibold">Categoria del modelo <span className="text-danger">*</span></label>
                 <select name="nivelId" className={selectClass("nivelId")} value={formData.nivelId} onChange={handleChange}>
-                  <option value="">Seleccionar nivel...</option>
+                  <option value="">{formData.modeloId ? "Seleccionar categoria..." : "Primero selecciona un modelo..."}</option>
                   {niveles.map((nivel) => (
                     <option key={nivel.id} value={nivel.id}>[{nivel.codigo}] {nivel.nombre}</option>
                   ))}
                 </select>
-                <small className="text-muted">Ej: Preescolar, Primaria, Secundaria</small>
+                <small className="text-muted">Solo se muestran categorias propias del modelo</small>
               </div>
               <div className="col-md-6">
                 <label className="form-label fw-semibold">Material <span className="text-danger">*</span></label>

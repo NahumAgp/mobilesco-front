@@ -20,34 +20,6 @@ const getImagenModelo = (imagenes) => {
   return null;
 };
 
-const getColorKey = (variante) =>
-  String(variante?.colorId || variante?.colorCodigo || variante?.colorNombre || variante?.id || "");
-
-const agruparVariantesPorColor = (variantes = []) => {
-  const grupos = new Map();
-
-  variantes.forEach((variante) => {
-    const key = getColorKey(variante);
-    if (!key) return;
-
-    if (!grupos.has(key)) {
-      grupos.set(key, {
-        key,
-        colorId: variante.colorId || null,
-        colorCodigo: variante.colorCodigo || "",
-        colorNombre: variante.colorNombre || "Sin color",
-        colorHex: variante.colorHex || "#d1d5db",
-        representante: variante,
-        variantes: []
-      });
-    }
-
-    grupos.get(key).variantes.push(variante);
-  });
-
-  return Array.from(grupos.values());
-};
-
 const primeraImagenDisponible = (mapaVariantes) => {
   const entradas = Object.values(mapaVariantes || {});
   for (const lista of entradas) {
@@ -59,22 +31,20 @@ const primeraImagenDisponible = (mapaVariantes) => {
 };
 
 export default function ImagenesStep({ data, onUpdate }) {
-  const [dragActiveColorKey, setDragActiveColorKey] = useState("");
+  const [dragActiveVarianteKey, setDragActiveVarianteKey] = useState("");
   const [errorArchivos, setErrorArchivos] = useState("");
-  const [colorSeleccionadoKey, setColorSeleccionadoKey] = useState("");
+  const [varianteSeleccionadaKey, setVarianteSeleccionadaKey] = useState("");
 
   const fileInputModeloRef = useRef(null);
-  const fileInputColorRef = useRef(null);
+  const fileInputVarianteRef = useRef(null);
 
   const variantes = useMemo(
     () => (Array.isArray(data.variantes) ? data.variantes : []),
     [data.variantes]
   );
-  const colores = useMemo(() => agruparVariantesPorColor(variantes), [variantes]);
-
-  const colorSeleccionado = useMemo(
-    () => colores.find((color) => color.key === colorSeleccionadoKey) || colores[0] || null,
-    [colores, colorSeleccionadoKey]
+  const varianteSeleccionada = useMemo(
+    () => variantes.find((variante) => String(variante.id) === varianteSeleccionadaKey) || variantes[0] || null,
+    [variantes, varianteSeleccionadaKey]
   );
 
   const imagenesPorVariante = useMemo(() => getImagenesPorVariante(data.imagenes), [data.imagenes]);
@@ -87,8 +57,8 @@ export default function ImagenesStep({ data, onUpdate }) {
     });
   };
 
-  const getImagenesColor = (grupoColor) => {
-    const key = String(grupoColor?.representante?.id || "");
+  const getImagenesVariante = (variante) => {
+    const key = String(variante?.id || "");
     return Array.isArray(imagenesPorVariante[key]) ? imagenesPorVariante[key] : [];
   };
 
@@ -126,11 +96,11 @@ export default function ImagenesStep({ data, onUpdate }) {
     updateImagenes(nuevaImagenModelo, imagenesPorVariante);
   };
 
-  const subirImagenesColor = (grupoColor, files) => {
-    const varianteRepresentanteId = grupoColor?.representante?.id;
-    if (!varianteRepresentanteId || files.length === 0) return;
+  const subirImagenesVariante = (variante, files) => {
+    const varianteId = variante?.id;
+    if (!varianteId || files.length === 0) return;
 
-    const key = String(varianteRepresentanteId);
+    const key = String(varianteId);
     const listaActual = Array.isArray(imagenesPorVariante[key]) ? imagenesPorVariante[key] : [];
 
     const nuevas = files.map((file, idx) => ({
@@ -138,9 +108,11 @@ export default function ImagenesStep({ data, onUpdate }) {
       nombre: file.name,
       file,
       url: URL.createObjectURL(file),
-      varianteId: Number(varianteRepresentanteId),
-      colorId: grupoColor.colorId,
-      colorNombre: grupoColor.colorNombre,
+      varianteId,
+      materialId: variante.materialId,
+      materialNombre: variante.materialNombre,
+      colorId: variante.colorId,
+      colorNombre: variante.colorNombre,
       principal: listaActual.length === 0 && idx === 0
     }));
 
@@ -178,8 +150,8 @@ export default function ImagenesStep({ data, onUpdate }) {
     );
   };
 
-  const establecerPrincipalColor = (grupoColor, imagenId) => {
-    const key = String(grupoColor?.representante?.id || "");
+  const establecerPrincipalVariante = (variante, imagenId) => {
+    const key = String(variante?.id || "");
     const lista = Array.isArray(imagenesPorVariante[key]) ? imagenesPorVariante[key] : [];
 
     const actualizada = lista.map((img) => ({
@@ -190,8 +162,8 @@ export default function ImagenesStep({ data, onUpdate }) {
     updateImagenes(imagenModelo, { ...imagenesPorVariante, [key]: actualizada });
   };
 
-  const eliminarImagenColor = (grupoColor, imagenId) => {
-    const key = String(grupoColor?.representante?.id || "");
+  const eliminarImagenVariante = (variante, imagenId) => {
+    const key = String(variante?.id || "");
     const lista = Array.isArray(imagenesPorVariante[key]) ? imagenesPorVariante[key] : [];
 
     const imagenEliminada = lista.find((img) => img.id === imagenId);
@@ -216,8 +188,8 @@ export default function ImagenesStep({ data, onUpdate }) {
     let modeloActualizado = imagenModelo;
     if (
       imagenModelo?.origen === "variante" &&
-      Number(imagenModelo?.varianteId) === Number(grupoColor?.representante?.id) &&
-      Number(imagenModelo?.imagenId) === Number(imagenId)
+      String(imagenModelo?.varianteId) === String(variante?.id) &&
+      String(imagenModelo?.imagenId) === String(imagenId)
     ) {
       const reemplazo = primeraImagenDisponible(mapaActualizado);
       modeloActualizado = reemplazo
@@ -242,36 +214,36 @@ export default function ImagenesStep({ data, onUpdate }) {
     e.target.value = "";
   };
 
-  const handleColorSelect = (e) => {
+  const handleVarianteSelect = (e) => {
     const files = Array.from(e.target.files || []);
     const validas = validarArchivos(files);
-    subirImagenesColor(colorSeleccionado, validas);
+    subirImagenesVariante(varianteSeleccionada, validas);
     e.target.value = "";
   };
 
-  const handleDrag = (grupoColor, active) => {
-    setDragActiveColorKey(active ? grupoColor.key : "");
+  const handleDrag = (variante, active) => {
+    setDragActiveVarianteKey(active ? String(variante.id) : "");
   };
 
-  const handleDrop = (e, grupoColor) => {
+  const handleDrop = (e, variante) => {
     e.preventDefault();
     e.stopPropagation();
-    setDragActiveColorKey("");
+    setDragActiveVarianteKey("");
 
     const files = Array.from(e.dataTransfer.files || []);
     const validas = validarArchivos(files);
-    subirImagenesColor(grupoColor, validas);
+    subirImagenesVariante(variante, validas);
   };
 
   return (
     <div>
       <h4 className="mb-4">
         <i className="bi bi-images me-2 text-primary"></i>
-        Imagenes por color
+        Imagenes por variante
       </h4>
 
       <div className="alert alert-info py-2">
-        Sube una sola galeria por color. Los productos del mismo color usaran esas mismas imagenes.
+        Cada combinacion de categoria, material y color tiene su propia galeria de imagenes.
       </div>
 
       <div className="card mb-4">
@@ -282,7 +254,7 @@ export default function ImagenesStep({ data, onUpdate }) {
               Cargar portada
             </button>
             <button className="btn btn-outline-secondary" onClick={usarPrimeraDeColorComoModelo}>
-              Usar primera imagen de color
+              Usar primera imagen de variante
             </button>
             {imagenModelo && (
               <button className="btn btn-outline-danger" onClick={eliminarImagenModelo}>
@@ -309,7 +281,7 @@ export default function ImagenesStep({ data, onUpdate }) {
                 <div className="fw-semibold">{imagenModelo.nombre || "Portada"}</div>
                 <small className="text-muted">
                   {imagenModelo.origen === "variante"
-                    ? "Tomada automaticamente de una imagen por color"
+                    ? "Tomada automaticamente de una imagen de variante"
                     : "Cargada manualmente"}
                 </small>
               </div>
@@ -321,21 +293,20 @@ export default function ImagenesStep({ data, onUpdate }) {
       </div>
 
       <div className="card mb-4">
-        <div className="card-header bg-light fw-semibold">Agregar imagenes a un color</div>
+        <div className="card-header bg-light fw-semibold">Agregar imagenes a una variante</div>
         <div className="card-body">
           <div className="row g-3 align-items-end">
             <div className="col-md-8">
-              <label className="form-label fw-semibold">Color</label>
+              <label className="form-label fw-semibold">Variante</label>
               <select
                 className="form-select"
-                value={colorSeleccionado?.key || ""}
-                onChange={(e) => setColorSeleccionadoKey(e.target.value)}
+                value={varianteSeleccionada?.id || ""}
+                onChange={(e) => setVarianteSeleccionadaKey(e.target.value)}
               >
-                {colores.length === 0 && <option value="">Primero agrega productos...</option>}
-                {colores.map((color) => (
-                  <option key={color.key} value={color.key}>
-                    {color.colorCodigo ? `[${color.colorCodigo}] ` : ""}
-                    {color.colorNombre} ({color.variantes.length} productos)
+                {variantes.length === 0 && <option value="">Primero agrega productos...</option>}
+                {variantes.map((variante) => (
+                  <option key={variante.id} value={variante.id}>
+                    {variante.sku} - {variante.materialNombre} - {variante.colorNombre} - {variante.categoriaNombre}
                   </option>
                 ))}
               </select>
@@ -343,18 +314,18 @@ export default function ImagenesStep({ data, onUpdate }) {
             <div className="col-md-4">
               <button
                 className="btn btn-primary w-100"
-                disabled={!colorSeleccionado}
-                onClick={() => fileInputColorRef.current?.click()}
+                disabled={!varianteSeleccionada}
+                onClick={() => fileInputVarianteRef.current?.click()}
               >
                 Agregar imagenes
               </button>
               <input
-                ref={fileInputColorRef}
+                ref={fileInputVarianteRef}
                 type="file"
                 multiple
                 accept="image/*"
                 className="d-none"
-                onChange={handleColorSelect}
+                onChange={handleVarianteSelect}
               />
             </div>
           </div>
@@ -368,33 +339,30 @@ export default function ImagenesStep({ data, onUpdate }) {
         </div>
       )}
 
-      {colores.length === 0 && (
-        <div className="text-muted">Primero agrega productos para definir los colores disponibles.</div>
+      {variantes.length === 0 && (
+        <div className="text-muted">Primero agrega productos para definir las variantes disponibles.</div>
       )}
 
-      {colores.map((grupoColor) => {
-        const imagenesColor = getImagenesColor(grupoColor);
-        const dragActivo = dragActiveColorKey === grupoColor.key;
+      {variantes.map((variante) => {
+        const imagenesVariante = getImagenesVariante(variante);
+        const dragActivo = dragActiveVarianteKey === String(variante.id);
 
         return (
-          <div key={grupoColor.key} className="card mb-3">
+          <div key={variante.id} className="card mb-3">
             <div className="card-header d-flex justify-content-between align-items-center">
               <div className="d-flex align-items-center gap-2">
                 <span
                   className="rounded-circle border"
-                  style={{ width: "18px", height: "18px", backgroundColor: grupoColor.colorHex }}
+                  style={{ width: "18px", height: "18px", backgroundColor: variante.colorHex }}
                 />
                 <div>
                   <strong>
-                    {grupoColor.colorCodigo ? `[${grupoColor.colorCodigo}] ` : ""}
-                    {grupoColor.colorNombre}
+                    {variante.sku}
                   </strong>
-                  <small className="text-muted ms-2">
-                    {grupoColor.variantes.map((v) => v.sku).join(", ")}
-                  </small>
+                  <small className="text-muted ms-2">{variante.categoriaNombre} / {variante.materialNombre} / {variante.colorNombre}</small>
                 </div>
               </div>
-              <span className="badge bg-secondary">{imagenesColor.length} imagenes</span>
+              <span className="badge bg-secondary">{imagenesVariante.length} imagenes</span>
             </div>
             <div className="card-body">
               <div
@@ -404,26 +372,26 @@ export default function ImagenesStep({ data, onUpdate }) {
                 style={{ borderStyle: "dashed", transition: "all 0.2s" }}
                 onDragEnter={(e) => {
                   e.preventDefault();
-                  handleDrag(grupoColor, true);
+                  handleDrag(variante, true);
                 }}
                 onDragLeave={(e) => {
                   e.preventDefault();
-                  handleDrag(grupoColor, false);
+                  handleDrag(variante, false);
                 }}
                 onDragOver={(e) => {
                   e.preventDefault();
-                  handleDrag(grupoColor, true);
+                  handleDrag(variante, true);
                 }}
-                onDrop={(e) => handleDrop(e, grupoColor)}
+                onDrop={(e) => handleDrop(e, variante)}
               >
-                Arrastra imagenes aqui para {grupoColor.colorNombre}
+                Arrastra imagenes aqui para {variante.sku}
               </div>
 
-              {imagenesColor.length === 0 ? (
-                <div className="text-muted">Sin imagenes para este color.</div>
+              {imagenesVariante.length === 0 ? (
+                <div className="text-muted">Sin imagenes para esta variante.</div>
               ) : (
                 <div className="row g-3">
-                  {imagenesColor.map((imagen) => (
+                  {imagenesVariante.map((imagen) => (
                     <div key={imagen.id} className="col-md-3">
                       <div className="card h-100 shadow-sm">
                         <img
@@ -438,7 +406,7 @@ export default function ImagenesStep({ data, onUpdate }) {
                           ) : (
                             <button
                               className="btn btn-sm btn-outline-primary"
-                              onClick={() => establecerPrincipalColor(grupoColor, imagen.id)}
+                              onClick={() => establecerPrincipalVariante(variante, imagen.id)}
                             >
                               Principal
                             </button>
@@ -446,7 +414,7 @@ export default function ImagenesStep({ data, onUpdate }) {
 
                           <button
                             className="btn btn-sm btn-outline-danger"
-                            onClick={() => eliminarImagenColor(grupoColor, imagen.id)}
+                            onClick={() => eliminarImagenVariante(variante, imagen.id)}
                           >
                             <i className="bi bi-trash"></i>
                           </button>

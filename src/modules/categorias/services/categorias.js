@@ -4,21 +4,27 @@ import { API_PATHS } from "../../../config/apiPaths";
 // En productos, "Categoria" visualmente corresponde al catalogo backend de niveles.
 const CATEGORIAS_PRODUCTO_PATH = API_PATHS.NIVELES;
 
-export function obtenerCategorias() {
-  return request(CATEGORIAS_PRODUCTO_PATH);
+export function obtenerCategorias(modeloId) {
+  return modeloId
+    ? request(`${CATEGORIAS_PRODUCTO_PATH}/por-modelo/${modeloId}`)
+    : request(CATEGORIAS_PRODUCTO_PATH);
 }
 
 export function obtenerCategoriaPorId(id) {
   return request(`${CATEGORIAS_PRODUCTO_PATH}/${id}`);
 }
 
+export function obtenerCodigoSugerido(nombre, modeloId) {
+  return request(`${CATEGORIAS_PRODUCTO_PATH}/codigo-sugerido?nombre=${encodeURIComponent(nombre)}&modeloId=${modeloId}`);
+}
+
 export function crearCategoria(data) {
   return request(CATEGORIAS_PRODUCTO_PATH, {
     method: "POST",
     body: JSON.stringify({
-      codigo: data.codigo,
       nombre: data.nombre,
-      descripcion: data.descripcion
+      descripcion: data.descripcion,
+      modelo_id: data.modelo_id ?? data.modeloId
     }),
   });
 }

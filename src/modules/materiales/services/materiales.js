@@ -37,6 +37,10 @@ export function obtenerMaterialPorId(id) {
   return request(`${API_PATHS.MATERIALES}/${id}`);
 }
 
+export function obtenerCodigoSugerido(nombre) {
+  return request(`${API_PATHS.MATERIALES}/codigo-sugerido?nombre=${encodeURIComponent(nombre)}`);
+}
+
 export function crearMaterial(data) {
   return request(API_PATHS.MATERIALES, {
     method: "POST",

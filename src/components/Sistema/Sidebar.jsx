@@ -4,14 +4,30 @@ import { logout, getUser } from "../../modules/auth/services/authService";
 import { useState, useRef, useEffect } from "react";
 import { API_BASE_URL } from "../../config/apiConfig";
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen, toggleSidebar }) {
 
   const navigate = useNavigate();
   const [user, setUser] = useState(getUser());
   const [failedFoto, setFailedFoto] = useState(null);
 
   const [openMenu, setOpenMenu] = useState(false);
+  const [openSubmenu, setOpenSubmenu] = useState(null);
   const menuRef = useRef(null);
+
+  const handleNavigation = () => {
+    setOpenSubmenu(null);
+    setOpenMenu(false);
+  };
+
+  const toggleSubmenu = (submenu) => {
+    setOpenMenu(false);
+    setOpenSubmenu((current) => current === submenu ? null : submenu);
+  };
+
+  const handleSidebarToggle = () => {
+    handleNavigation();
+    toggleSidebar();
+  };
 
   const nombre = user?.nombre || "";
   const apellido = user?.apellidoPaterno || "";
@@ -74,13 +90,16 @@ export default function Sidebar() {
   }, []);
 
   return (
-    <aside className="app-sidebar">
+    <aside className={`app-sidebar ${isOpen ? "" : "app-sidebar--compact"}`}>
 
       {/* PERFIL */}
       <div ref={menuRef} className="sidebar-profile">
 
         <div
-          onClick={() => setOpenMenu(!openMenu)}
+          onClick={() => {
+            setOpenSubmenu(null);
+            setOpenMenu((current) => !current);
+          }}
           className="sidebar-profile-button"
         >
           <div className="sidebar-profile-avatar">
@@ -105,7 +124,10 @@ export default function Sidebar() {
         {openMenu && (
           <div className="sidebar-user-menu">
             <button
-              onClick={() => navigate("/perfil")}
+              onClick={() => {
+                handleNavigation();
+                navigate("/perfil");
+              }}
             >
               <i className="bi bi-person me-2"></i>
               Perfil
@@ -124,33 +146,39 @@ export default function Sidebar() {
       {/* MENÚ */}
       <nav className="sidebar-menu-list">
 
-        <NavLink to="/tablero" className="sidebar-link">
+        <NavLink to="/tablero" className="sidebar-link" onClick={handleNavigation}>
           <i className="bi bi-speedometer2 me-2"></i>
           Tablero
         </NavLink>
 
         {puedeGestionarUsuarios && (
-          <NavLink to="/usuarios/accesos" className="sidebar-link">
+          <NavLink to="/usuarios/accesos" className="sidebar-link" onClick={handleNavigation}>
             <i className="bi bi-shield-check me-2"></i>
             Usuarios y accesos
           </NavLink>
         )}
 
         {/* EMPLEADOS */}
-        <NavLink to="/empleados" className="sidebar-link">
+        <NavLink to="/empleados" className="sidebar-link" onClick={handleNavigation}>
           <i className="bi bi-people me-2"></i>
           Empleados
         </NavLink>
 
         {/* PROVEEDORES */}
-        <NavLink to="/proveedores" className="sidebar-link">
+        <NavLink to="/proveedores" className="sidebar-link" onClick={handleNavigation}>
           <i className="bi bi-truck me-2"></i>
           Proveedores
         </NavLink>
 
         {/* PRODUCTOS */}
         <div>
-          <button className="sidebar-parent" data-bs-toggle="collapse" data-bs-target="#menuProductoS">
+          <button
+            type="button"
+            className={`sidebar-parent ${openSubmenu === "productos" ? "" : "collapsed"}`}
+            onClick={() => toggleSubmenu("productos")}
+            aria-expanded={openSubmenu === "productos"}
+            aria-controls="menuProductos"
+          >
             <div className="sidebar-parent-content">
               <i className="bi bi-box-seam me-2"></i>
               <span>Productos</span>
@@ -158,44 +186,39 @@ export default function Sidebar() {
             <i className="bi bi-chevron-down sidebar-chevron"></i>
           </button>
 
-          <div className="collapse sidebar-submenu" id="menuProductoS">
+          <div className={`collapse sidebar-submenu ${openSubmenu === "productos" ? "show" : ""}`} id="menuProductos">
 
-            <NavLink to="/lineas-producto" className="sidebar-link sidebar-link--sub">
+            <NavLink to="/lineas-producto" className="sidebar-link sidebar-link--sub" onClick={handleNavigation}>
               <i className="bi bi-collection me-2"></i>
               Lineas
             </NavLink>
 
-            <NavLink to="/familias" className="sidebar-link sidebar-link--sub">
+            <NavLink to="/familias" className="sidebar-link sidebar-link--sub" onClick={handleNavigation}>
               <i className="bi bi-diagram-3 me-2"></i>
               Familias
             </NavLink>
 
-            <NavLink to="/modelos" className="sidebar-link sidebar-link--sub">
+            <NavLink to="/modelos" className="sidebar-link sidebar-link--sub" onClick={handleNavigation}>
               <i className="bi bi-boxes me-2"></i>
               Modelos
             </NavLink>
 
-            <NavLink to="/categorias" className="sidebar-link sidebar-link--sub">
-              <i className="bi bi-tag me-2"></i>
-              Categoria
-            </NavLink>
-
-            <NavLink to="/materiales" className="sidebar-link sidebar-link--sub">
+            <NavLink to="/materiales" className="sidebar-link sidebar-link--sub" onClick={handleNavigation}>
               <i className="bi bi-layers me-2"></i>
               Materiales
             </NavLink>
 
-            <NavLink to="/colores" className="sidebar-link sidebar-link--sub">
+            <NavLink to="/colores" className="sidebar-link sidebar-link--sub" onClick={handleNavigation}>
               <i className="bi bi-palette me-2"></i>
               Colores
             </NavLink>
 
-            <NavLink to="/productos" className="sidebar-link">
+            <NavLink to="/productos" className="sidebar-link" onClick={handleNavigation}>
               <i className="bi bi-box-seam me-2"></i>
               Productos
             </NavLink>
 
-            <NavLink to="/productos/catalogo" className="sidebar-link sidebar-link--sub">
+            <NavLink to="/productos/catalogo" className="sidebar-link sidebar-link--sub" onClick={handleNavigation}>
               <i className="bi bi-images me-2"></i>
               Catalogo visual
             </NavLink>
@@ -205,25 +228,31 @@ export default function Sidebar() {
 
         {/* INSUMOS */}
         <div>
-          <button className="sidebar-parent" data-bs-toggle="collapse" data-bs-target="#menuInsumos">
+          <button
+            type="button"
+            className={`sidebar-parent ${openSubmenu === "insumos" ? "" : "collapsed"}`}
+            onClick={() => toggleSubmenu("insumos")}
+            aria-expanded={openSubmenu === "insumos"}
+            aria-controls="menuInsumos"
+          >
             <div className="sidebar-parent-content">
               <i className="bi bi-boxes me-2"></i>
               <span>Insumos</span>
             </div>
             <i className="bi bi-chevron-down sidebar-chevron"></i>
           </button>
-          <div className="collapse sidebar-submenu" id="menuInsumos">
-            <NavLink to="/insumos" className="sidebar-link sidebar-link--sub">
+          <div className={`collapse sidebar-submenu ${openSubmenu === "insumos" ? "show" : ""}`} id="menuInsumos">
+            <NavLink to="/insumos" className="sidebar-link sidebar-link--sub" onClick={handleNavigation}>
               <i className="bi bi-boxes me-2"></i>
               Insumos
             </NavLink>
 
-            <NavLink to="/salidas-insumos" className="sidebar-link sidebar-link--sub">
+            <NavLink to="/salidas-insumos" className="sidebar-link sidebar-link--sub" onClick={handleNavigation}>
               <i className="bi bi-box-arrow-right me-2"></i>
               Salidas
             </NavLink>
 
-            <NavLink to="/unidades-medida" className="sidebar-link sidebar-link--sub">
+            <NavLink to="/unidades-medida" className="sidebar-link sidebar-link--sub" onClick={handleNavigation}>
               <i className="bi bi-aspect-ratio me-2"></i>
               Unidad Medida
             </NavLink>
@@ -231,41 +260,51 @@ export default function Sidebar() {
         </div>
 
         {/* Centros de Trabajo */}
-        <NavLink to="/centros-trabajo" className="sidebar-link">
+        <NavLink to="/centros-trabajo" className="sidebar-link" onClick={handleNavigation}>
           <i className="bi bi-building me-2"></i>
           Centros de Trabajo
         </NavLink>
 
         {/* OPERACIONES */}
-        <NavLink to="/operaciones" className="sidebar-link">
+        <NavLink to="/operaciones" className="sidebar-link" onClick={handleNavigation}>
           <i className="bi bi-gear me-2"></i>
           Operaciones
         </NavLink>
 
-        <NavLink to="/cif" className="sidebar-link">
+        <NavLink to="/cif" className="sidebar-link" onClick={handleNavigation}>
           <i className="bi bi-diagram-3 me-2"></i>
           CIF
         </NavLink>
 
         {/* Compras */}
-        <NavLink to="/compras" className="sidebar-link">
+        <NavLink to="/compras" className="sidebar-link" onClick={handleNavigation}>
           <i className="bi bi-cart-check me-2"></i>
           Compras
         </NavLink>
 
         {/* KARDEX */}
-        <NavLink to="/kardex" className="sidebar-link">
+        <NavLink to="/kardex" className="sidebar-link" onClick={handleNavigation}>
           <i className="bi bi-journal-text me-2"></i>
           kardex
         </NavLink>
 
         {/* Cotizaciones */}
-        <NavLink to="/cotizaciones" className="sidebar-link">
+        <NavLink to="/cotizaciones" className="sidebar-link" onClick={handleNavigation}>
           <i className="bi bi-file-earmark-text me-2"></i>
           Cotizaciones
         </NavLink>
 
       </nav>
+
+      <button
+        type="button"
+        className="sidebar-collapse-button"
+        onClick={handleSidebarToggle}
+        aria-label={isOpen ? "Colapsar menu" : "Expandir menu"}
+        title={isOpen ? "Colapsar menu" : "Expandir menu"}
+      >
+        <i className="bi bi-layout-sidebar-inset"></i>
+      </button>
     </aside>
   );
 }

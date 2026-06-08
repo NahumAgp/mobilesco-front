@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { categoriaGateway } from "../services/categoriaGateway.js";
 import Toast from "../../../components/ui/Toast.jsx";
 import "./CategoriaPage.css";
+import { useGeneratedCatalogCode } from "../../../hooks/useGeneratedCatalogCode.js";
 
 export default function CategoriaForm({
   categoriaId,
@@ -26,6 +27,11 @@ export default function CategoriaForm({
     descripcion: "",
     activo: true
   });
+  const { codigoGenerado, generandoCodigo } = useGeneratedCatalogCode(
+    formData.nombre,
+    !esEdicion,
+    categoriaGateway.obtenerCodigoSugerido
+  );
 
   const mapCategoriaToForm = (data = {}) => ({
     codigo: data.codigo || "",
@@ -78,11 +84,13 @@ export default function CategoriaForm({
       setErroresBackend({});
 
       const dataToSend = {
-        codigo: formData.codigo?.toString().trim() || "",
         nombre: formData.nombre?.trim() || "",
         descripcion: formData.descripcion?.trim() || "",
         activo: Boolean(formData.activo)
       };
+      if (esEdicion) {
+        dataToSend.codigo = formData.codigo?.toString().trim() || "";
+      }
 
       let respuesta;
       if (esEdicion) {
@@ -169,21 +177,6 @@ export default function CategoriaForm({
 
           <div className="card-body">
             <div className="row g-3">
-              <div className="col-md-4">
-                <label className="form-label fw-semibold">
-                  Codigo <span className="text-danger">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="codigo"
-                  className={inputClass("codigo")}
-                  value={formData.codigo}
-                  onChange={handleChange}
-                  placeholder="Ej: 72"
-                />
-                <div className="invalid-feedback">{erroresBackend.codigo || erroresExternos.codigo}</div>
-              </div>
-
               <div className="col-md-8">
                 <label className="form-label fw-semibold">
                   Nombre de la Categoria <span className="text-danger">*</span>
@@ -197,6 +190,23 @@ export default function CategoriaForm({
                   placeholder="Ej: Primaria, Secundaria"
                 />
                 <div className="invalid-feedback">{erroresBackend.nombre || erroresExternos.nombre}</div>
+              </div>
+
+              <div className="col-md-4">
+                <label className="form-label fw-semibold">
+                  Codigo generado <span className="text-danger">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="codigo"
+                  className={`${inputClass("codigo")} ${!esEdicion ? "bg-light text-secondary" : ""}`}
+                  value={esEdicion ? formData.codigo : codigoGenerado}
+                  onChange={handleChange}
+                  readOnly={!esEdicion}
+                  maxLength="3"
+                  placeholder={generandoCodigo ? "Generando..." : "Automatico"}
+                />
+                <div className="invalid-feedback">{erroresBackend.codigo || erroresExternos.codigo}</div>
               </div>
 
               <div className="col-md-12">

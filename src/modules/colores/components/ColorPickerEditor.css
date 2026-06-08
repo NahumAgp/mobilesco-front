@@ -1,0 +1,124 @@
+.color-picker-editor {
+  display: grid;
+  grid-template-columns: minmax(240px, 340px) 96px;
+  gap: 16px;
+  max-width: 460px;
+}
+
+.color-picker-main {
+  min-width: 0;
+}
+
+.color-picker-saturation {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1.75 / 1;
+  cursor: crosshair;
+  touch-action: none;
+  border: 1px solid #cbd2da;
+  background-image:
+    linear-gradient(to top, #000000, transparent),
+    linear-gradient(to right, #ffffff, transparent);
+}
+
+.color-picker-cursor {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.55), 0 1px 4px rgba(0, 0, 0, 0.45);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.color-picker-hue-wrap {
+  margin-top: 12px;
+}
+
+.color-picker-hue {
+  width: 100%;
+  height: 24px;
+  margin: 0;
+  appearance: none;
+  cursor: pointer;
+  border: 0;
+  border-radius: 0;
+  background: linear-gradient(
+    to right,
+    #ff0000,
+    #ffff00,
+    #00ff00,
+    #00ffff,
+    #0000ff,
+    #ff00ff,
+    #ff0000
+  );
+}
+
+.color-picker-hue::-webkit-slider-thumb {
+  width: 16px;
+  height: 28px;
+  appearance: none;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 0 2px #263de0;
+  background: transparent;
+}
+
+.color-picker-hue::-moz-range-thumb {
+  width: 14px;
+  height: 26px;
+  border: 2px solid #ffffff;
+  border-radius: 0;
+  box-shadow: 0 0 0 2px #263de0;
+  background: transparent;
+}
+
+.color-picker-values {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.color-picker-preview {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  margin-bottom: 2px;
+  border: 1px solid #3347bd;
+}
+
+.color-picker-values label {
+  display: grid;
+  gap: 3px;
+  color: #26365a;
+  font-size: 0.78rem;
+}
+
+.color-picker-values input {
+  width: 100%;
+  height: 28px;
+  padding: 4px 10px;
+  border: 1px solid #cfd7e3;
+  color: #555b66;
+  text-align: right;
+  background: #ffffff;
+}
+
+.color-picker-error {
+  color: #dc3545;
+  font-size: 0.8rem;
+}
+
+@media (max-width: 576px) {
+  .color-picker-editor {
+    grid-template-columns: 1fr;
+  }
+
+  .color-picker-values {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .color-picker-preview {
+    max-width: 120px;
+  }
+}

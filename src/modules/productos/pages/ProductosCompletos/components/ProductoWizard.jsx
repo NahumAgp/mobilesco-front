@@ -12,7 +12,7 @@ const PASOS = [
 ];
 
 const MENSAJES_VALIDACION = {
-  1: "Selecciona un modelo existente o completa codigo, nombre y familia para crear uno nuevo.",
+  1: "Selecciona un modelo para continuar. Puedes crear uno nuevo desde la ventana flotante.",
   2: "Agrega al menos un producto con categoria, material, color y SKU generado.",
   3: "Puedes continuar sin im\u00e1genes o agregar al menos una imagen."
 };
@@ -21,6 +21,13 @@ export default function ProductoWizard({ onComplete, onCancel }) {
   const [pasoActual, setPasoActual] = useState(1);
   const [errorPaso, setErrorPaso] = useState("");
   const [guardando, setGuardando] = useState(false);
+  const [borradores, setBorradores] = useState({
+    lineas: [],
+    familias: [],
+    categorias: [],
+    materiales: [],
+    colores: []
+  });
   const [productoData, setProductoData] = useState({
     modelo: {
       modo: "existente",
@@ -29,7 +36,8 @@ export default function ProductoWizard({ onComplete, onCancel }) {
       nombre: "",
       descripcion: "",
       familiaId: "",
-      activo: true
+      activo: true,
+      categorias: []
     },
     variantes: [],
     imagenes: {
@@ -51,15 +59,37 @@ export default function ProductoWizard({ onComplete, onCancel }) {
     });
   };
 
+  const upsertBorrador = (seccion, borrador) => {
+    if (!Object.prototype.hasOwnProperty.call(borradores, seccion)) {
+      throw new Error(`Seccion de borrador no soportada: ${seccion}`);
+    }
+
+    setBorradores((prev) => ({
+      ...prev,
+      [seccion]: [
+        borrador,
+        ...(prev[seccion] || []).filter(
+          (item) => String(item.ref || item.id) !== String(borrador.ref || borrador.id)
+        )
+      ]
+    }));
+  };
+
   const validarPasoActual = () => {
     if (pasoActual === 1) {
-      const { modo, id, codigo, nombre, familiaId } = productoData.modelo;
+      const { modo, id, nombre, familiaId, familiaRef, categorias } = productoData.modelo;
 
       if (modo === "existente") {
         return Boolean(id);
       }
 
-      return Boolean(codigo?.trim() && nombre?.trim() && familiaId);
+      return Boolean(
+        nombre?.trim()
+        && (familiaId || familiaRef)
+        && Array.isArray(categorias)
+        && categorias.length > 0
+        && categorias.every((categoria) => categoria?.nombre?.trim())
+      );
     }
 
     if (pasoActual === 2) {
@@ -92,6 +122,7 @@ export default function ProductoWizard({ onComplete, onCancel }) {
 
     const nuevoProducto = {
       ...productoData,
+      borradores,
       id: Date.now(),
       createdAt: new Date().toISOString()
     };
@@ -116,10 +147,10 @@ export default function ProductoWizard({ onComplete, onCancel }) {
   let pasoContenido = null;
   switch (pasoActual) {
     case 1:
-      pasoContenido = <ModeloStep data={productoData} onUpdate={actualizarDatos} />;
+      pasoContenido = <ModeloStep data={productoData} onUpdate={actualizarDatos} borradores={borradores} onUpsertDraft={upsertBorrador} />;
       break;
     case 2:
-      pasoContenido = <VariantesStep data={productoData} onUpdate={actualizarDatos} />;
+      pasoContenido = <VariantesStep data={productoData} onUpdate={actualizarDatos} borradores={borradores} onUpsertDraft={upsertBorrador} />;
       break;
     case 3:
       pasoContenido = <ImagenesStep data={productoData} onUpdate={actualizarDatos} />;
@@ -132,7 +163,7 @@ export default function ProductoWizard({ onComplete, onCancel }) {
   }
 
   return (
-    <div className="container py-4">
+    <div className="container py-4 producto-wizard-shell">
       <div className="mb-5">
         <div className="d-flex justify-content-between">
           {PASOS.map((paso) => {

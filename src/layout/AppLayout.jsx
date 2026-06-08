@@ -12,7 +12,7 @@ const AppLayout = () => {
   };
 
   return (
-    <div className="app-layout">
+    <div className={`app-layout ${sidebarOpen ? "" : "sidebar-is-compact"}`}>
       <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
       <main className="main-content">
         <div className="content-wrapper">

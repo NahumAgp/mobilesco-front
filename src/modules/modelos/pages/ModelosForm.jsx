@@ -6,7 +6,8 @@ import {
   actualizarModelo,
   eliminarModelo,
   subirImagenModelo,
-  eliminarImagenModelo
+  eliminarImagenModelo,
+  obtenerCodigoSugerido
 } from "../services/modelos.js";
 import { obtenerFamilias } from "../../familias/services/familias.js";
 import { obtenerProductos } from "../../productos/services/productos.js";
@@ -14,6 +15,7 @@ import { API_BASE_URL } from "../../../config/apiConfig.js";
 import Toast from "../../../components/ui/Toast.jsx";
 import SearchableSelect from "../../../components/ui/SearchableSelect.jsx";
 import "./ModelosPage.css";
+import { useGeneratedCatalogCode } from "../../../hooks/useGeneratedCatalogCode.js";
 
 const getLista = (respuesta) => {
   if (Array.isArray(respuesta)) return respuesta;
@@ -127,6 +129,14 @@ const toPreviewUrl = (url) => {
   return `${API_BASE_URL}/${url}`;
 };
 
+const crearCategoriaVacia = () => ({
+  tempId: `categoria-${Date.now()}-${Math.random()}`,
+  codigo: "",
+  nombre: "",
+  descripcion: "",
+  activo: true
+});
+
 const getImagenActiva = (imagen) =>
   imagen?.activo ?? imagen?.active ?? imagen?.habilitada ?? true;
 
@@ -200,8 +210,14 @@ export default function ModeloForm({
     nombre: "",
     descripcion: "",
     familiaId: "",
-    activo: true
+    activo: true,
+    categorias: esEdicion ? [] : [crearCategoriaVacia()]
   });
+  const { codigoGenerado, generandoCodigo } = useGeneratedCatalogCode(
+    formData.nombre,
+    !esEdicion,
+    obtenerCodigoSugerido
+  );
 
   useEffect(() => {
     const cargarCatalogos = async () => {
@@ -267,7 +283,8 @@ export default function ModeloForm({
           nombre: modelo.nombre || "",
           descripcion: modelo.descripcion || "",
           familiaId: modelo.familiaId || modelo.familia_id || modelo.familia?.id || "",
-          activo: modelo.activo ?? true
+          activo: modelo.activo ?? true,
+          categorias: Array.isArray(modelo.categorias) ? modelo.categorias : []
         });
 
         await cargarImagenPrincipalModelo(modelo);
@@ -282,7 +299,8 @@ export default function ModeloForm({
             nombre: data.nombre || "",
             descripcion: data.descripcion || "",
             familiaId: data.familiaId || data.familia_id || data.familia?.id || "",
-            activo: data.activo ?? true
+            activo: data.activo ?? true,
+            categorias: Array.isArray(data.categorias) ? data.categorias : []
           });
 
           await cargarImagenPrincipalModelo(data || modeloId);
@@ -312,6 +330,29 @@ export default function ModeloForm({
     }
   }
 
+  const handleCategoriaChange = (index, field, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      categorias: prev.categorias.map((categoria, categoriaIndex) =>
+        categoriaIndex === index ? { ...categoria, [field]: value } : categoria
+      )
+    }));
+  };
+
+  const agregarCategoria = () => {
+    setFormData((prev) => ({
+      ...prev,
+      categorias: [...prev.categorias, crearCategoriaVacia()]
+    }));
+  };
+
+  const quitarCategoria = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      categorias: prev.categorias.filter((_, categoriaIndex) => categoriaIndex !== index)
+    }));
+  };
+
   async function handleSubmit(e) {
     e.preventDefault();
 
@@ -328,13 +369,31 @@ export default function ModeloForm({
         return;
       }
 
+      const categorias = formData.categorias.map((categoria) => ({
+        id: categoria.id || null,
+        codigo: categoria.codigo?.trim().toUpperCase() || null,
+        nombre: categoria.nombre?.trim() || "",
+        descripcion: categoria.descripcion?.trim() || "",
+        activo: categoria.activo !== false
+      }));
+      if (!categorias.length || categorias.some((categoria) => !categoria.nombre)) {
+        setErroresBackend((prev) => ({
+          ...prev,
+          categorias: "El modelo debe tener al menos una categoria y todas deben tener nombre"
+        }));
+        return;
+      }
+
       const dataToSend = {
-        codigo: formData.codigo?.toString().trim() || "",
         nombre: formData.nombre?.trim() || "",
         descripcion: formData.descripcion?.trim() || "",
         familia_id: familiaIdNormalizado,
-        activo: Boolean(formData.activo)
+        activo: Boolean(formData.activo),
+        categorias
       };
+      if (esEdicion) {
+        dataToSend.codigo = formData.codigo?.toString().trim() || "";
+      }
 
       let respuesta;
       if (esEdicion) {
@@ -478,21 +537,6 @@ export default function ModeloForm({
                 <div className="row g-3">
                   <div className="col-md-4">
                     <label className="form-label fw-semibold">
-                      Codigo <span className="text-danger">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="codigo"
-                      className={inputClass("codigo")}
-                      value={formData.codigo}
-                      onChange={handleChange}
-                      placeholder="Ej: MOD-001"
-                    />
-                    <div className="invalid-feedback">{erroresBackend.codigo || erroresExternos.codigo}</div>
-                  </div>
-
-                  <div className="col-md-4">
-                    <label className="form-label fw-semibold">
                       Nombre del Modelo <span className="text-danger">*</span>
                     </label>
                     <input
@@ -504,6 +548,23 @@ export default function ModeloForm({
                       placeholder="Ej: Silla, Con Paleta, Plegable"
                     />
                     <div className="invalid-feedback">{erroresBackend.nombre || erroresExternos.nombre}</div>
+                  </div>
+
+                  <div className="col-md-4">
+                    <label className="form-label fw-semibold">
+                      Codigo generado <span className="text-danger">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="codigo"
+                      className={`${inputClass("codigo")} ${!esEdicion ? "bg-light text-secondary" : ""}`}
+                      value={esEdicion ? formData.codigo : codigoGenerado}
+                      onChange={handleChange}
+                      readOnly={!esEdicion}
+                      maxLength="3"
+                      placeholder={generandoCodigo ? "Generando..." : "Automatico"}
+                    />
+                    <div className="invalid-feedback">{erroresBackend.codigo || erroresExternos.codigo}</div>
                   </div>
 
                   <div className="col-md-4">
@@ -535,6 +596,83 @@ export default function ModeloForm({
                     />
                     <div className="invalid-feedback">{erroresBackend.descripcion || erroresExternos.descripcion}</div>
                     <div className="form-text text-muted">Maximo 500 caracteres</div>
+                  </div>
+
+                  <div className="col-md-12">
+                    <div className="d-flex justify-content-between align-items-center border-top pt-3 mt-2 mb-3">
+                      <div>
+                        <div className="fw-semibold">Categorias propias del modelo</div>
+                        <small className="text-muted">Cada producto de este modelo solo podra usar estas categorias.</small>
+                      </div>
+                      <button type="button" className="btn btn-outline-primary btn-sm" onClick={agregarCategoria}>
+                        <i className="bi bi-plus-lg me-1"></i>
+                        Agregar categoria
+                      </button>
+                    </div>
+
+                    {erroresBackend.categorias && (
+                      <div className="alert alert-warning py-2">{erroresBackend.categorias}</div>
+                    )}
+
+                    <div className="d-flex flex-column gap-2">
+                      {formData.categorias.map((categoria, index) => (
+                        <div className="border rounded p-3 bg-light" key={categoria.id || categoria.tempId || index}>
+                          <div className="row g-2 align-items-end">
+                            <div className="col-md-2">
+                              <label className="form-label small fw-semibold">Codigo</label>
+                              <input
+                                className="form-control bg-white text-secondary"
+                                value={categoria.codigo || ""}
+                                onChange={(event) => handleCategoriaChange(index, "codigo", event.target.value.toUpperCase())}
+                                maxLength="3"
+                                placeholder="Auto"
+                                readOnly={!categoria.id}
+                              />
+                            </div>
+                            <div className="col-md-4">
+                              <label className="form-label small fw-semibold">Nombre *</label>
+                              <input
+                                className="form-control"
+                                value={categoria.nombre || ""}
+                                onChange={(event) => handleCategoriaChange(index, "nombre", event.target.value)}
+                                placeholder="Ej: Primaria"
+                              />
+                            </div>
+                            <div className="col-md-4">
+                              <label className="form-label small fw-semibold">Descripcion</label>
+                              <input
+                                className="form-control"
+                                value={categoria.descripcion || ""}
+                                onChange={(event) => handleCategoriaChange(index, "descripcion", event.target.value)}
+                                placeholder="Descripcion opcional"
+                              />
+                            </div>
+                            <div className="col-md-1">
+                              <div className="form-check form-switch pb-2">
+                                <input
+                                  className="form-check-input"
+                                  type="checkbox"
+                                  checked={categoria.activo !== false}
+                                  onChange={(event) => handleCategoriaChange(index, "activo", event.target.checked)}
+                                  title="Categoria activa"
+                                />
+                              </div>
+                            </div>
+                            <div className="col-md-1 text-end">
+                              <button
+                                type="button"
+                                className="btn btn-outline-danger"
+                                onClick={() => quitarCategoria(index)}
+                                disabled={formData.categorias.length <= 1}
+                                title="Eliminar categoria"
+                              >
+                                <i className="bi bi-trash"></i>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
                   <div className="col-md-12">

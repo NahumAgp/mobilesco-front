@@ -1,6 +1,7 @@
 import {
   obtenerCategorias,
   obtenerCategoriaPorId,
+  obtenerCodigoSugerido,
   crearCategoria,
   actualizarCategoria,
   activarCategoria,
@@ -15,6 +16,7 @@ export function createHttpCategoriaGateway() {
   return {
     obtenerCategorias,
     obtenerCategoriaPorId,
+    obtenerCodigoSugerido,
     crearCategoria,
     actualizarCategoria,
     activarCategoria,

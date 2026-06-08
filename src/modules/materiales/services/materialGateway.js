@@ -1,6 +1,7 @@
 import {
   obtenerMateriales,
   obtenerMaterialPorId,
+  obtenerCodigoSugerido,
   crearMaterial,
   actualizarMaterial,
   activarMaterial,
@@ -14,6 +15,7 @@ export function createHttpMaterialGateway() {
   return {
     obtenerMateriales,
     obtenerMaterialPorId,
+    obtenerCodigoSugerido,
     crearMaterial,
     actualizarMaterial,
     activarMaterial,

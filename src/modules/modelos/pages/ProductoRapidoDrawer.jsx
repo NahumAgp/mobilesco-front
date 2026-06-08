@@ -264,7 +264,7 @@ export default function ProductoRapidoDrawer({ show, modeloId, onClose, onSaved 
 
         const [modeloResp, categoriasResp, coloresResp] = await Promise.all([
           modeloId ? obtenerModeloPorId(modeloId) : Promise.resolve(null),
-          obtenerNiveles(),
+          modeloId ? obtenerNiveles(modeloId) : Promise.resolve([]),
           obtenerColores()
         ]);
 
@@ -340,7 +340,7 @@ export default function ProductoRapidoDrawer({ show, modeloId, onClose, onSaved 
   };
 
   const refrescarCategorias = async () => {
-    const respuesta = await obtenerNiveles();
+    const respuesta = await obtenerNiveles(modeloId);
     const lista = getLista(respuesta);
     setCategorias(lista);
     return lista;
@@ -368,6 +368,7 @@ export default function ProductoRapidoDrawer({ show, modeloId, onClose, onSaved 
         codigo: (formCategoria.codigo || codigoSugerido).trim(),
         nombre,
         descripcion: "Creada desde el panel rapido de producto",
+        modelo_id: Number(modeloId),
         activo: true
       });
 

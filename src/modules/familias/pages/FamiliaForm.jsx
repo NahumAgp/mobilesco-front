@@ -6,6 +6,7 @@ import { lineaProductoGateway } from "../../lineas-producto/services/lineaProduc
 import { obtenerModelos } from "../../modelos/services/modelos";
 import Toast from "../../../components/ui/Toast.jsx";
 import SearchableSelect from "../../../components/ui/SearchableSelect.jsx";
+import { useGeneratedCatalogCode } from "../../../hooks/useGeneratedCatalogCode.js";
 
 export default function FamiliaForm({ familiaId }) {
   const navigate = useNavigate();
@@ -25,6 +26,11 @@ export default function FamiliaForm({ familiaId }) {
   const [modelosFamilia, setModelosFamilia] = useState([]);
   const [cargandoModelos, setCargandoModelos] = useState(false);
   const [errorModelos, setErrorModelos] = useState("");
+  const { codigoGenerado, generandoCodigo } = useGeneratedCatalogCode(
+    formData.nombre,
+    !esEdicion,
+    familiaGateway.obtenerCodigoSugerido
+  );
 
   const obtenerErrorCampo = (campo) =>
     erroresBackend[campo] ||
@@ -151,7 +157,7 @@ export default function FamiliaForm({ familiaId }) {
       const descripcion = formData.descripcion?.trim() || "";
       const lineaIdNormalizado = formData.lineaId ? Number(formData.lineaId) : null;
 
-      if (!codigo) {
+      if (esEdicion && !codigo) {
         erroresValidacion.codigo = "El codigo es obligatorio";
       }
 
@@ -169,13 +175,13 @@ export default function FamiliaForm({ familiaId }) {
       }
 
       const payload = {
-        codigo,
         nombre,
         descripcion,
         lineaId: lineaIdNormalizado,
         linea_id: lineaIdNormalizado,
         activo: Boolean(formData.activo)
       };
+      if (esEdicion) payload.codigo = codigo;
 
       setErroresBackend({});
 
@@ -250,21 +256,6 @@ export default function FamiliaForm({ familiaId }) {
       <Toast message={toastMessage} type={toastType} onClose={() => setToastMessage("")} />
 
       <div className="row g-3">
-        <div className="col-md-2">
-          <label className="form-label">Codigo</label>
-          <input
-            type="text"
-            name="codigo"
-            className={inputClass("codigo")}
-            value={formData.codigo}
-            onChange={handleChange}
-            placeholder="Ej: A, B, M, MO"
-          />
-          <div className="invalid-feedback">
-            {obtenerErrorCampo("codigo")}
-          </div>
-        </div>
-
         <div className="col-md-5">
           <label className="form-label">Nombre</label>
           <input
@@ -277,6 +268,23 @@ export default function FamiliaForm({ familiaId }) {
           />
           <div className="invalid-feedback">
             {obtenerErrorCampo("nombre")}
+          </div>
+        </div>
+
+        <div className="col-md-2">
+          <label className="form-label">Codigo generado</label>
+          <input
+            type="text"
+            name="codigo"
+            className={`${inputClass("codigo")} ${!esEdicion ? "bg-light text-secondary" : ""}`}
+            value={esEdicion ? formData.codigo : codigoGenerado}
+            onChange={handleChange}
+            readOnly={!esEdicion}
+            maxLength="3"
+            placeholder={generandoCodigo ? "Generando..." : "Automatico"}
+          />
+          <div className="invalid-feedback">
+            {obtenerErrorCampo("codigo")}
           </div>
         </div>
 

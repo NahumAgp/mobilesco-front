@@ -13,6 +13,7 @@ export default function LineaProductoForm({
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
   const [erroresBackend, setErroresBackend] = useState({});
+  const [generandoCodigo, setGenerandoCodigo] = useState(false);
 
   const navigate = useNavigate();
 
@@ -53,6 +54,41 @@ export default function LineaProductoForm({
     cargar();
   }, [lineaProductoId, lineaProducto, esModal]);
 
+  useEffect(() => {
+    if (esEdicion) return undefined;
+
+    const nombre = formData.nombre.trim();
+    if (!nombre) {
+      setFormData((prev) => ({ ...prev, codigo: "" }));
+      setGenerandoCodigo(false);
+      return undefined;
+    }
+
+    let vigente = true;
+    const timeoutId = setTimeout(async () => {
+      try {
+        setGenerandoCodigo(true);
+        const respuesta = await lineaProductoGateway.obtenerCodigoSugerido(nombre);
+        if (vigente) {
+          setFormData((prev) => ({ ...prev, codigo: respuesta?.codigo || "" }));
+        }
+      } catch {
+        if (vigente) {
+          setFormData((prev) => ({ ...prev, codigo: "" }));
+        }
+      } finally {
+        if (vigente) {
+          setGenerandoCodigo(false);
+        }
+      }
+    }, 200);
+
+    return () => {
+      vigente = false;
+      clearTimeout(timeoutId);
+    };
+  }, [esEdicion, formData.nombre]);
+
   function handleChange(e) {
     const { name, value, type, checked } = e.target;
 
@@ -77,11 +113,14 @@ export default function LineaProductoForm({
       setErroresBackend({});
 
       const dataToSend = {
-        codigo: formData.codigo?.toString().trim() || "",
         nombre: formData.nombre?.trim() || "",
         descripcion: formData.descripcion?.trim() || "",
         activo: Boolean(formData.activo)
       };
+
+      if (esEdicion) {
+        dataToSend.codigo = formData.codigo?.toString().trim() || "";
+      }
 
       let respuesta;
       if (esEdicion) {
@@ -159,21 +198,6 @@ export default function LineaProductoForm({
           </div>
           <div className="card-body">
             <div className="row g-3">
-              <div className="col-md-4">
-                <label className="form-label fw-semibold">
-                  Codigo <span className="text-danger">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="codigo"
-                  className={inputClass("codigo")}
-                  value={formData.codigo}
-                  onChange={handleChange}
-                  placeholder="Ej: E, H, O, ..."
-                />
-                <div className="invalid-feedback">{erroresBackend.codigo || erroresExternos.codigo}</div>
-              </div>
-
               <div className="col-md-8">
                 <label className="form-label fw-semibold">
                   Nombre de la Linea <span className="text-danger">*</span>
@@ -187,6 +211,23 @@ export default function LineaProductoForm({
                   placeholder="Ej: Escolar, Hogar, Oficina, ..."
                 />
                 <div className="invalid-feedback">{erroresBackend.nombre || erroresExternos.nombre}</div>
+              </div>
+
+              <div className="col-md-4">
+                <label className="form-label fw-semibold">
+                  Codigo generado <span className="text-danger">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="codigo"
+                  className={`${inputClass("codigo")} ${!esEdicion ? "bg-light text-secondary" : ""}`}
+                  value={formData.codigo}
+                  onChange={handleChange}
+                  readOnly={!esEdicion}
+                  maxLength="3"
+                  placeholder={generandoCodigo ? "Generando..." : "Automatico"}
+                />
+                <div className="invalid-feedback">{erroresBackend.codigo || erroresExternos.codigo}</div>
               </div>
 
               <div className="col-md-12">

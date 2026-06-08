@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { colorGateway } from "../services/colorGateway.js";
 import Toast from "../../../components/ui/Toast.jsx";
 import "./ColorPage.css";
+import { useGeneratedCatalogCode } from "../../../hooks/useGeneratedCatalogCode.js";
+import ColorPickerEditor from "../components/ColorPickerEditor.jsx";
 
 export default function ColorForm({ colorId, color, onSave, onCancel, errores: erroresExternos = {} }) {
   const [toastMessage, setToastMessage] = useState("");
@@ -20,6 +22,11 @@ export default function ColorForm({ colorId, color, onSave, onCancel, errores: e
     descripcion: "",
     hex: "#FF107A"
   });
+  const { codigoGenerado, generandoCodigo } = useGeneratedCatalogCode(
+    formData.hex,
+    !esEdicion,
+    colorGateway.obtenerCodigoSugerido
+  );
 
   const mapColorToForm = (data = {}) => ({
     codigo: data.codigo || "",
@@ -72,11 +79,13 @@ export default function ColorForm({ colorId, color, onSave, onCancel, errores: e
       setErroresBackend({});
 
       const dataToSend = {
-        codigo: formData.codigo?.toString().trim() || "",
         nombre: formData.nombre?.trim() || "",
         descripcion: formData.descripcion?.trim() || "",
         hex: formData.hex?.trim() || ""
       };
+      if (esEdicion) {
+        dataToSend.codigo = formData.codigo?.toString().trim() || "";
+      }
 
       let respuesta;
       if (esEdicion) {
@@ -161,21 +170,6 @@ export default function ColorForm({ colorId, color, onSave, onCancel, errores: e
             <div className="row g-3">
               <div className="col-md-4">
                 <label className="form-label fw-semibold">
-                  Codigo <span className="text-danger">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="codigo"
-                  className={inputClass("codigo")}
-                  value={formData.codigo}
-                  onChange={handleChange}
-                  placeholder="Ej: ISV3ZXTEOR"
-                />
-                <div className="invalid-feedback">{erroresBackend.codigo || erroresExternos.codigo}</div>
-              </div>
-
-              <div className="col-md-4">
-                <label className="form-label fw-semibold">
                   Nombre <span className="text-danger">*</span>
                 </label>
                 <input
@@ -187,6 +181,23 @@ export default function ColorForm({ colorId, color, onSave, onCancel, errores: e
                   placeholder="Ej: Rosa Intenso"
                 />
                 <div className="invalid-feedback">{erroresBackend.nombre || erroresExternos.nombre}</div>
+              </div>
+
+              <div className="col-md-4">
+                <label className="form-label fw-semibold">
+                  Codigo generado <span className="text-danger">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="codigo"
+                  className={`${inputClass("codigo")} ${!esEdicion ? "bg-light text-secondary" : ""}`}
+                  value={esEdicion ? formData.codigo : codigoGenerado}
+                  onChange={handleChange}
+                  readOnly={!esEdicion}
+                  maxLength="3"
+                  placeholder={generandoCodigo ? "Generando..." : "Automatico"}
+                />
+                <div className="invalid-feedback">{erroresBackend.codigo || erroresExternos.codigo}</div>
               </div>
 
               <div className="col-md-12">
@@ -203,27 +214,15 @@ export default function ColorForm({ colorId, color, onSave, onCancel, errores: e
                 <div className="form-text text-muted">Maximo 255 caracteres</div>
               </div>
 
-              <div className="col-md-4">
+              <div className="col-md-12">
                 <label className="form-label fw-semibold">
-                  HEX <span className="text-danger">*</span>
+                  Editar color <span className="text-danger">*</span>
                 </label>
-                <div className="input-group">
-                  <input
-                    type="text"
-                    name="hex"
-                    className={inputClass("hex")}
-                    value={formData.hex}
-                    onChange={handleChange}
-                    placeholder="#FF107A"
-                  />
-                  <input
-                    type="color"
-                    value={/^#[0-9A-Fa-f]{6}$/.test(formData.hex) ? formData.hex : "#FF107A"}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, hex: e.target.value.toUpperCase() }))}
-                    style={{ width: 52, border: "1px solid #ced4da", borderRadius: "0 .375rem .375rem 0" }}
-                  />
-                </div>
-                <div className="invalid-feedback d-block">{erroresBackend.hex || erroresExternos.hex}</div>
+                <ColorPickerEditor
+                  value={formData.hex}
+                  onChange={(hex) => setFormData((prev) => ({ ...prev, hex }))}
+                  error={erroresBackend.hex || erroresExternos.hex}
+                />
               </div>
             </div>
           </div>

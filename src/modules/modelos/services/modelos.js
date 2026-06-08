@@ -54,6 +54,10 @@ export function actualizarModelo(id, data) {
   });
 }
 
+export function obtenerCodigoSugerido(nombre) {
+  return request(`${API_PATHS.MODELOS}/codigo-sugerido?nombre=${encodeURIComponent(nombre)}`);
+}
+
 export function subirImagenModelo(id, archivo) {
   const formData = new FormData();
   formData.append("archivo", archivo);

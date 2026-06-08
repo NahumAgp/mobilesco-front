@@ -1,4 +1,5 @@
 .productos-page-shell,
+.producto-wizard-shell,
 .productos-empty-card,
 .productos-table-card,
 .productos-pagination-panel,
@@ -192,6 +193,71 @@
   box-shadow: none;
 }
 
+.producto-modelo-selector {
+  max-width: 880px;
+  padding: 24px;
+  border: 1px solid rgba(48, 64, 74, 0.12);
+  border-radius: 16px;
+  background: linear-gradient(145deg, #ffffff, #f7faf9);
+}
+
+.producto-modelo-seleccionado {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid rgba(46, 195, 93, 0.28);
+  border-radius: 12px;
+  background: var(--productos-brand-green-soft);
+}
+
+.producto-modelo-seleccionado-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  border-radius: 50%;
+  background: var(--productos-brand-green-strong);
+  color: #ffffff;
+}
+
+.producto-modelo-ayuda {
+  padding: 13px 15px;
+  border-radius: 10px;
+  background: rgba(48, 64, 74, 0.06);
+  color: var(--productos-brand-ink);
+}
+
+.modelos-modal-popout {
+  z-index: 1080;
+  overflow-y: auto;
+  padding: 24px 12px;
+  backdrop-filter: blur(3px);
+}
+
+.modelos-modal-popout .modal-dialog {
+  max-width: min(1120px, calc(100vw - 32px));
+}
+
+.modelos-modal-popout .modal-content {
+  border: 0;
+  border-radius: 18px;
+  box-shadow: 0 28px 70px rgba(15, 23, 42, 0.28);
+}
+
+.modelos-modal-popout .modal-header {
+  padding: 18px 24px;
+  border-bottom-color: rgba(48, 64, 74, 0.1);
+}
+
+.modelos-modal-popout .modal-body {
+  max-height: calc(100vh - 150px);
+  overflow-y: auto;
+  padding: 22px;
+}
+
 @media (max-width: 576px) {
   .productos-pagination-panel {
     padding: 12px 14px;
@@ -209,5 +275,9 @@
 
   .productos-header-actions {
     margin-right: 0;
+  }
+
+  .producto-modelo-selector {
+    padding: 16px;
   }
 }

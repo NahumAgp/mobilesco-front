@@ -29,9 +29,6 @@ import FamiliaFormPage from "./modules/familias/pages/FamiliaFormPage.jsx";
 import LineaProductoFormPage from "./modules/lineas-producto/pages/LineaProductoFormPage.jsx";
 import LineaProductoPage from "./modules/lineas-producto/pages/LineaProductoPage.jsx";
 
-import CategoriaPage from "./modules/categorias/pages/CategoriaPage.jsx";
-import CategoriaFormPage from "./modules/categorias/pages/CategoriaFormPage.jsx";
-
 import ModelosPage from "./modules/modelos/pages/ModelosPage.jsx";
 import ModelosFormPage from "./modules/modelos/pages/ModelosFormPage.jsx";
 import MaterialesPage from "./modules/materiales/pages/MaterialesPage.jsx";
@@ -134,10 +131,7 @@ export default function App() {
         <Route path="/lineas-producto/nuevo" element={<LineaProductoFormPage />} />
         <Route path="/lineas-producto/:id" element={<LineaProductoFormPage />} />
 
-        {/* CATEGORIA */}
-        <Route path="/categorias" element={<CategoriaPage />} />
-        <Route path="/categorias/nuevo" element={<CategoriaFormPage />} />
-        <Route path="/categorias/:id" element={<CategoriaFormPage />} />
+        <Route path="/categorias/*" element={<Navigate to="/modelos" replace />} />
 
         {/* MATERIALES */}
         <Route path="/materiales" element={<MaterialesPage />} />

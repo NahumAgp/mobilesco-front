@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { materialGateway } from "../services/materialGateway.js";
 import Toast from "../../../components/ui/Toast.jsx";
+import { useGeneratedCatalogCode } from "../../../hooks/useGeneratedCatalogCode.js";
 
 export default function MaterialForm({ 
   materialId,     // para la página
@@ -26,6 +27,11 @@ export default function MaterialForm({
     descripcion: "",
     activo: true
   });
+  const { codigoGenerado, generandoCodigo } = useGeneratedCatalogCode(
+    formData.nombre,
+    !esEdicion,
+    materialGateway.obtenerCodigoSugerido
+  );
 
   useEffect(() => {
     const cargar = async () => {
@@ -70,10 +76,14 @@ export default function MaterialForm({
       setErroresBackend({});
       const payload = {
         ...formData,
-        codigo: formData.codigo?.trim().toUpperCase() || "",
         nombre: formData.nombre?.trim() || "",
         descripcion: formData.descripcion?.trim() || null
       };
+      if (esEdicion) {
+        payload.codigo = formData.codigo?.trim().toUpperCase() || "";
+      } else {
+        delete payload.codigo;
+      }
 
       let respuesta;
       if (esEdicion) {
@@ -157,33 +167,34 @@ export default function MaterialForm({
             <div className="row g-3">
               <div className="col-md-6">
                 <label className="form-label fw-semibold">
-                  Codigo <span className="text-danger">*</span>
+                  Nombre del Material <span className="text-danger">*</span>
                 </label>
                 <input
                   type="text"
-                  name="codigo"
-                  className={inputClass("codigo")}
-                  value={formData.codigo}
+                  name="nombre"
+                  className={inputClass("nombre")}
+                  value={formData.nombre}
                   onChange={handleChange}
-                  placeholder="Ej: NAT, FOR"
-                  maxLength="10"
+                  placeholder="Ej: Acero Inoxidable, PVC, Madera..."
                 />
-                <div className="invalid-feedback">{erroresBackend.codigo || erroresExternos.codigo}</div>
+                <div className="invalid-feedback">{erroresBackend.nombre || erroresExternos.nombre}</div>
               </div>
 
               <div className="col-md-6">
                 <label className="form-label fw-semibold">
-                  Nombre del Material <span className="text-danger">*</span>
+                  Codigo generado <span className="text-danger">*</span>
                 </label>
-                <input 
-                  type="text" 
-                  name="nombre" 
-                  className={inputClass("nombre")} 
-                  value={formData.nombre} 
-                  onChange={handleChange} 
-                  placeholder="Ej: Acero Inoxidable, PVC, Madera..."
+                <input
+                  type="text"
+                  name="codigo"
+                  className={`${inputClass("codigo")} ${!esEdicion ? "bg-light text-secondary" : ""}`}
+                  value={esEdicion ? formData.codigo : codigoGenerado}
+                  onChange={handleChange}
+                  readOnly={!esEdicion}
+                  maxLength="3"
+                  placeholder={generandoCodigo ? "Generando..." : "Automatico"}
                 />
-                <div className="invalid-feedback">{erroresBackend.nombre || erroresExternos.nombre}</div>
+                <div className="invalid-feedback">{erroresBackend.codigo || erroresExternos.codigo}</div>
               </div>
 
               

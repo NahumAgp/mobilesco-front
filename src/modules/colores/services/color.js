@@ -9,6 +9,10 @@ export function obtenerColorPorId(id) {
   return request(`${API_PATHS.COLORES}/${id}`);
 }
 
+export function obtenerCodigoSugerido(hex) {
+  return request(`${API_PATHS.COLORES}/codigo-sugerido?hex=${encodeURIComponent(hex)}`);
+}
+
 export function crearColor(data) {
   return request(API_PATHS.COLORES, {
     method: "POST",

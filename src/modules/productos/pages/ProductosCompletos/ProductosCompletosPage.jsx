@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ProductoWizard from "./components/ProductoWizard";
-import { crearModelo, actualizarModelo, subirImagenModelo } from "../../../modelos/services/modelos";
+import { actualizarModelo, subirImagenModelo } from "../../../modelos/services/modelos";
 import { crearImagen, subirImagenArchivo } from "../../services/imagenes";
-import { activarProducto, crearProducto, obtenerProductos, eliminarProducto, exportarProductosExcel } from "../../services/productos";
+import { activarProducto, crearProductoCompleto, obtenerProductos, eliminarProducto, exportarProductosExcel } from "../../services/productos";
 import { obtenerModelos } from "../../../modelos/services/modelos";
 import { obtenerNiveles } from "../../services/niveles";
 import { obtenerColores } from "../../../colores/services/color";
@@ -387,66 +387,104 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
 
   const handleSaveComplete = async (nuevoProducto) => {
     try {
-      const usarModeloExistente = nuevoProducto?.modelo?.modo === "existente";
-      let modeloId = usarModeloExistente ? Number(nuevoProducto?.modelo?.id) : null;
-
-      if (!usarModeloExistente) {
-        const modeloPayload = {
-          codigo: nuevoProducto?.modelo?.codigo?.trim() || "",
-          nombre: nuevoProducto?.modelo?.nombre?.trim() || "",
-          descripcion: nuevoProducto?.modelo?.descripcion?.trim() || "",
-          familia_id: Number(nuevoProducto?.modelo?.familiaId),
-          activo: Boolean(nuevoProducto?.modelo?.activo)
-        };
-
-        const modeloGuardado = await crearModelo(modeloPayload);
-        modeloId = obtenerIdModelo(modeloGuardado);
-      }
-
-      if (!modeloId) {
-        throw new Error("No se recibio el ID del modelo para guardar productos.");
-      }
-
       const variantes = Array.isArray(nuevoProducto?.variantes) ? nuevoProducto.variantes : [];
+      const borradores = nuevoProducto?.borradores || {};
+      const modelo = nuevoProducto?.modelo || {};
+      const esRef = (valor) => String(valor || "").startsWith("draft-");
+      const refsCategoria = new Set(variantes.map((item) => item?.categoriaId).filter(esRef).map(String));
+      const refsMaterial = new Set(variantes.map((item) => item?.materialId).filter(esRef).map(String));
+      const refsColor = new Set(variantes.map((item) => item?.colorId).filter(esRef).map(String));
+      const familiaBorrador = (borradores?.familias || []).find((item) => String(item.ref) === String(modelo?.familiaRef));
+      const refsLinea = new Set(familiaBorrador?.lineaRef ? [String(familiaBorrador.lineaRef)] : []);
+      const refsFamilia = new Set(modelo?.familiaRef ? [String(modelo.familiaRef)] : []);
+
+      const payload = {
+        lineas: (borradores?.lineas || [])
+          .filter((item) => refsLinea.has(String(item.ref)))
+          .map((item) => ({ ref: item.ref, codigo: item.codigo, nombre: item.nombre, descripcion: item.descripcion, orden: item.orden || 0 })),
+        familias: (borradores?.familias || [])
+          .filter((item) => refsFamilia.has(String(item.ref)))
+          .map((item) => ({
+            ref: item.ref,
+            codigo: item.codigo,
+            nombre: item.nombre,
+            descripcion: item.descripcion,
+            lineaId: item.lineaId || undefined,
+            lineaRef: item.lineaRef || undefined
+          })),
+        modelo: modelo?._pending
+          ? {
+              ref: modelo.ref,
+              codigo: modelo.codigo,
+              nombre: modelo.nombre,
+              descripcion: modelo.descripcion,
+              activo: modelo.activo !== false,
+              familiaId: modelo.familiaId || undefined,
+              familiaRef: modelo.familiaRef || undefined,
+              categorias: (modelo.categorias || []).map((item) => ({
+                ref: item.ref || item.id,
+                codigo: item.codigo,
+                nombre: item.nombre,
+                descripcion: item.descripcion,
+                activo: item.activo !== false
+              }))
+            }
+          : undefined,
+        categorias: modelo?._pending
+          ? []
+          : (borradores?.categorias || [])
+              .filter((item) => refsCategoria.has(String(item.ref)))
+              .map((item) => ({
+                ref: item.ref,
+                codigo: item.codigo,
+                nombre: item.nombre,
+                descripcion: item.descripcion,
+                activo: item.activo !== false,
+                modeloId: Number(modelo.id)
+              })),
+        materiales: (borradores?.materiales || [])
+          .filter((item) => refsMaterial.has(String(item.ref)))
+          .map((item) => ({ ref: item.ref, codigo: item.codigo, nombre: item.nombre, descripcion: item.descripcion })),
+        colores: (borradores?.colores || [])
+          .filter((item) => refsColor.has(String(item.ref)))
+          .map((item) => ({ ref: item.ref, codigo: item.codigo, nombre: item.nombre, descripcion: item.descripcion, hex: item.hex })),
+        variantes: variantes.map((variante) => ({
+          clientRef: String(variante.id),
+          nombre: `${modelo?.nombre || "Modelo"} ${variante?.categoriaNombre || ""} ${variante?.materialNombre || ""} ${variante?.colorNombre || ""}`.trim().replace(/\s+/g, " "),
+          descripcion: `Producto ${variante?.categoriaNombre || "sin categoria"} - ${variante?.materialNombre || "sin material"} - ${variante?.colorNombre || "sin color"}`,
+          activo: true,
+          modeloId: modelo?._pending ? undefined : Number(modelo.id),
+          modeloRef: modelo?._pending ? modelo.ref : undefined,
+          categoriaId: esRef(variante.categoriaId) ? undefined : Number(variante.categoriaId),
+          categoriaRef: esRef(variante.categoriaId) ? String(variante.categoriaId) : undefined,
+          materialId: esRef(variante.materialId) ? undefined : Number(variante.materialId),
+          materialRef: esRef(variante.materialId) ? String(variante.materialId) : undefined,
+          colorId: esRef(variante.colorId) ? undefined : Number(variante.colorId),
+          colorRef: esRef(variante.colorId) ? String(variante.colorId) : undefined
+        }))
+      };
+
+      const resultado = await crearProductoCompleto(payload);
+      const modeloId = obtenerIdModelo(resultado?.modelo) || Number(modelo.id);
       const { modelo: imagenModelo, variantes: imagenesPorVariante } = normalizarImagenes(
         nuevoProducto?.imagenes
       );
 
-      if (imagenModelo?.file instanceof File) {
-        await subirImagenModelo(Number(modeloId), imagenModelo.file);
-      } else {
-        const urlModelo = construirUrlPersistible(imagenModelo);
-        if (urlModelo) {
-          await actualizarModelo(Number(modeloId), { url_imagen: urlModelo });
+      const mapaVariantes = new Map(
+        (resultado?.productos || []).map((item) => [String(item.clientRef), Number(obtenerIdVariante(item.producto))])
+      );
+      const erroresImagen = [];
+
+      try {
+        if (imagenModelo?.file instanceof File) {
+          await subirImagenModelo(Number(modeloId), imagenModelo.file);
+        } else {
+          const urlModelo = construirUrlPersistible(imagenModelo);
+          if (urlModelo) await actualizarModelo(Number(modeloId), { url_imagen: urlModelo });
         }
+      } catch (error) {
+        erroresImagen.push(error?.message || "No se pudo guardar la portada del modelo.");
       }
-
-      const mapaVariantes = new Map();
-      for (const variante of variantes) {
-        const payloadVariante = {
-          sku: variante?.sku?.trim().toUpperCase() || "",
-          nombre: `${nuevoProducto?.modelo?.nombre || "Modelo"} ${variante?.categoriaNombre || ""} ${variante?.materialNombre || ""} ${variante?.colorNombre || ""}`
-            .trim()
-            .replace(/\s+/g, " "),
-          descripcion: `Producto ${variante?.categoriaNombre || "sin categoria"} - ${variante?.materialNombre || "sin material"} - ${variante?.colorNombre || "sin color"}`,
-          activo: true,
-          id_modelo: Number(modeloId),
-          id_nivel: variante?.categoriaId ? Number(variante.categoriaId) : null,
-          id_material: variante?.materialId ? Number(variante.materialId) : null,
-          id_color: variante?.colorId ? Number(variante.colorId) : null
-        };
-
-        const varianteGuardada = await crearProducto(payloadVariante);
-
-        const varianteIdBd = obtenerIdVariante(varianteGuardada);
-        if (!varianteIdBd) {
-          throw new Error(`No se recibio ID del producto ${variante?.sku || ""}.`);
-        }
-
-        mapaVariantes.set(String(variante.id), Number(varianteIdBd));
-      }
-
-      const coloresConImagenesGuardadas = new Set();
 
       for (const variante of variantes) {
         const varianteIdBd = mapaVariantes.get(String(variante.id));
@@ -456,31 +494,27 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
           ? imagenesPorVariante[String(variante.id)]
           : [];
 
-        const colorKey = variante?.colorId ? String(variante.colorId) : String(variante.id);
-        if (coloresConImagenesGuardadas.has(colorKey)) {
-          continue;
-        }
-
         for (let idx = 0; idx < listaImagenes.length; idx += 1) {
           const imagen = listaImagenes[idx];
-          await guardarImagenVariante({
-            imagen,
-            varianteId: varianteIdBd,
-            esPrincipal: Boolean(imagen?.principal),
-            orden: idx + 1,
-            altTexto: imagen?.nombre || `Imagen ${idx + 1}`
-          });
+          try {
+            await guardarImagenVariante({
+              imagen,
+              varianteId: varianteIdBd,
+              esPrincipal: Boolean(imagen?.principal),
+              orden: idx + 1,
+              altTexto: imagen?.nombre || `Imagen ${idx + 1}`
+            });
+          } catch (error) {
+            erroresImagen.push(error?.message || `No se pudo guardar una imagen de ${variante?.colorNombre || "producto"}.`);
+          }
         }
 
-        if (listaImagenes.length > 0) {
-          coloresConImagenesGuardadas.add(colorKey);
-        }
       }
 
-      setTipoMensaje("success");
-      setMensaje(
-        "Producto guardado en BD (modelo, colores e imagenes)."
-      );
+      setTipoMensaje(erroresImagen.length ? "warning" : "success");
+      setMensaje(erroresImagen.length
+        ? `Producto guardado. ${erroresImagen.length} imagenes no pudieron cargarse.`
+        : "Producto y catalogos relacionados guardados correctamente.");
       cerrarModoCreacion();
       await cargarProductos();
     } catch (error) {

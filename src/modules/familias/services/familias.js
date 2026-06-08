@@ -38,6 +38,10 @@ export function obtenerFamiliaPorId(id) {
   return request(`${API_PATHS.FAMILIAS}/${id}`);
 }
 
+export function obtenerCodigoSugerido(nombre) {
+  return request(`${API_PATHS.FAMILIAS}/codigo-sugerido?nombre=${encodeURIComponent(nombre)}`);
+}
+
 export function crearFamilia(data) {
   return request(API_PATHS.FAMILIAS, {
     method: "POST",

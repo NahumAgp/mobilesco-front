@@ -39,6 +39,10 @@ export function obtenerLineaProductoPorId(id) {
   return request(`${API_PATHS.LINEAS}/${id}`);
 }
 
+export function obtenerCodigoSugerido(nombre) {
+  return request(`${API_PATHS.LINEAS}/codigo-sugerido?nombre=${encodeURIComponent(nombre)}`);
+}
+
 export function crearLineaProducto(data) {
   return request(API_PATHS.LINEAS, {
     method: "POST",

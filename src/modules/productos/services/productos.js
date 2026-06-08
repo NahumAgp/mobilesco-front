@@ -47,6 +47,13 @@ export function desactivarProducto(id) {
   });
 }
 
+export function crearProductoCompleto(data) {
+  return request(`${API_PATHS.PRODUCTOS}/creacion-completa`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
 export function eliminarProducto(id) {
   return desactivarProducto(id);
 }
