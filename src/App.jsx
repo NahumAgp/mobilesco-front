@@ -42,6 +42,8 @@ import  InsumosFormPage from "./modules/insumos/pages/InsumoFormPage.jsx";
 import TiposInsumoPage from "./modules/insumos/pages/TiposInsumoPage.jsx";
 import SalidasInsumosPage from "./modules/salidas-insumos/pages/SalidasInsumosPage.jsx";
 import SalidasInsumosNuevaPage from "./modules/salidas-insumos/pages/SalidasInsumosNuevaPage.jsx";
+import EntradasPage from "./modules/almacen/entradas/pages/EntradasPage.jsx";
+import EntradaRecepcionPage from "./modules/almacen/entradas/pages/EntradaRecepcionPage.jsx";
 
 import CentrosTrabajoPage from "./modules/centros-trabajo/pages/CentrosTrabajoPage.jsx";
 import CentrosTrabajoFormPage from "./modules/centros-trabajo/pages/CentroTrabajoFormPage.jsx";
@@ -91,6 +93,7 @@ export default function App() {
 
 
         <Route path="/unidadMedida" element={<UnidadMedida />} />
+        <Route path="/almacen" element={<Navigate to="/insumos" replace />} />
 
         <Route path="/nuevaCotizacion" element={<NuevaCotizacion />} />
 
@@ -157,6 +160,22 @@ export default function App() {
         <Route path="/insumos/:id" element={<InsumosFormPage />} />
         <Route path="/salidas-insumos" element={<SalidasInsumosPage />} />
         <Route path="/salidas-insumos/nueva" element={<SalidasInsumosNuevaPage />} />
+        <Route
+          path="/almacen/entradas"
+          element={
+            <RoleRoute allowedRoles={["ADMIN", "SUPER_ADMIN", "DIRECTOR_GENERAL", "SUBDIRECCION_ADMINISTRATIVA", "JEFE_ALMACEN"]}>
+              <EntradasPage />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/almacen/entradas/:id"
+          element={
+            <RoleRoute allowedRoles={["ADMIN", "SUPER_ADMIN", "DIRECTOR_GENERAL", "SUBDIRECCION_ADMINISTRATIVA", "JEFE_ALMACEN"]}>
+              <EntradaRecepcionPage />
+            </RoleRoute>
+          }
+        />
 
          {/* Centros de Trabajo */}
         <Route path="/centros-trabajo" element={<CentrosTrabajoPage />} />

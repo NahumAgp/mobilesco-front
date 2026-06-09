@@ -4,8 +4,6 @@ export default function ComprasTable({
   data, 
   onVer, 
   onEliminar, 
-  onRecibir, 
-  onCancelar 
 }) {
   const [compraSeleccionada, setCompraSeleccionada] = useState(null);
   const [showDetallesModal, setShowDetallesModal] = useState(false);
@@ -19,6 +17,7 @@ export default function ComprasTable({
   const getBadgeColor = (estado) => {
     switch(estado) {
       case 'PENDIENTE': return 'warning';
+      case 'RECIBIDA_PARCIAL': return 'info';
       case 'RECIBIDA': return 'success';
       case 'CANCELADA': return 'danger';
       default: return 'secondary';
@@ -82,6 +81,7 @@ export default function ComprasTable({
                     onClick={() => onVer(compra)}
                     className={
                       compra.estado === 'CANCELADA' ? 'table-secondary' :
+                      compra.estado === 'RECIBIDA_PARCIAL' ? 'table-info' :
                       compra.estado === 'RECIBIDA' ? 'table-success' : ''
                     }
                   >
@@ -119,33 +119,6 @@ export default function ComprasTable({
                         >
                           <i className="bi bi-list-ul"></i>
                         </button>
-                        
-                        {compra.estado === 'PENDIENTE' && (
-                          <>
-                            <button
-                              className="btn btn-outline-success"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onRecibir(compra.id);
-                              }}
-                              title="Recibir compra"
-                            >
-                              <i className="bi bi-check-circle"></i>
-                            </button>
-                            <button
-                              className="btn btn-outline-danger"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onCancelar(compra.id);
-                              }}
-                              title="Cancelar compra"
-                            >
-                              <i className="bi bi-x-circle"></i>
-                            </button>
-                          </>
-                        )}
-                        
-                        
                         
                         {compra.estado === 'PENDIENTE' && (
                           <button
@@ -197,6 +170,7 @@ export default function ComprasTable({
                     <p><strong>Proveedor:</strong> {compraSeleccionada.proveedorRazonSocial}</p>
                     <p><strong>RFC:</strong> {compraSeleccionada.proveedorRfc}</p>
                     <p><strong>Contacto:</strong> {compraSeleccionada.proveedorNombreCompleto}</p>
+                    <p><strong>Entregado por:</strong> {compraSeleccionada.entregadoPor || "-"}</p>
                   </div>
                   <div className="col-md-6">
                     <p><strong>Documento:</strong> {compraSeleccionada.tipoDocumento} {compraSeleccionada.numeroDocumento}</p>
@@ -212,6 +186,8 @@ export default function ComprasTable({
                       <tr>
                         <th>Insumo</th>
                         <th className="text-end">Cantidad</th>
+                        <th className="text-end">Recibida</th>
+                        <th className="text-end">Pendiente</th>
                         <th>Unidad</th>
                         <th className="text-end">Precio Unit.</th>
                         <th className="text-end">Subtotal</th>
@@ -222,6 +198,8 @@ export default function ComprasTable({
                         <tr key={detalle.id}>
                           <td>{detalle.insumoNombre}</td>
                           <td className="text-end">{detalle.cantidad.toFixed(2)}</td>
+                          <td className="text-end">{Number(detalle.cantidadRecibida || 0).toFixed(2)}</td>
+                          <td className="text-end">{Number(detalle.cantidadPendiente || 0).toFixed(2)}</td>
                           <td>{detalle.unidadCompraSimbolo}</td>
                           <td className="text-end">{formatCurrency(detalle.precioUnitario)}</td>
                           <td className="text-end">{formatCurrency(detalle.subtotal)}</td>
@@ -230,19 +208,23 @@ export default function ComprasTable({
                     </tbody>
                     <tfoot className="table-light">
                       <tr>
-                        <td colSpan="4" className="text-end fw-bold">Subtotal:</td>
+                        <td colSpan="6" className="text-end fw-bold">Subtotal:</td>
                         <td className="text-end fw-bold">{formatCurrency(compraSeleccionada.subtotal)}</td>
                       </tr>
                       <tr>
-                        <td colSpan="4" className="text-end fw-bold">Impuesto:</td>
+                        <td colSpan="6" className="text-end fw-bold">Impuesto:</td>
                         <td className="text-end fw-bold">{formatCurrency(compraSeleccionada.impuesto)}</td>
                       </tr>
                       <tr>
-                        <td colSpan="4" className="text-end fw-bold">Total:</td>
+                        <td colSpan="6" className="text-end fw-bold">Total:</td>
                         <td className="text-end fw-bold text-primary">{formatCurrency(compraSeleccionada.total)}</td>
                       </tr>
                     </tfoot>
                   </table>
+                </div>
+
+                <div className="alert alert-light border mt-3 mb-0">
+                  <strong>Nota:</strong> la recepción y actualización de stock se gestionan desde <em>Almacén &gt; Entradas</em>.
                 </div>
 
                 {compraSeleccionada.observaciones && (

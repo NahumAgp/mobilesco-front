@@ -18,9 +18,7 @@ export default function ComprasPage() {
     compras,
     loadingLista,
     error,
-    eliminarCompra,
-    recibirCompra,
-    cancelarCompra
+    eliminarCompra
   } = useCompras();
 
   const [busqueda, setBusqueda] = useState("");
@@ -28,10 +26,6 @@ export default function ComprasPage() {
   const [filtroProveedor, setFiltroProveedor] = useState("");
   const [fechaInicio, setFechaInicio] = useState("");
   const [fechaFin, setFechaFin] = useState("");
-
-  const abrirEditar = (compra) => {
-    navigate(`/compras/${compra.id}`);
-  };
 
   const abrirVer = (compra) => {
     navigate(`/compras/${compra.id}/ver`);
@@ -48,34 +42,6 @@ export default function ComprasPage() {
     } catch {
       setToastType("danger");
       setToastMessage("Error al eliminar compra");
-    }
-  };
-
-  const manejarRecibir = async (id) => {
-    const confirmacion = window.confirm("¿Confirmas que quieres marcar esta compra como RECIBIDA? Esto actualizará el stock de los insumos.");
-    if (!confirmacion) return;
-
-    try {
-      await recibirCompra(id);
-      setToastType("success");
-      setToastMessage("Compra recibida y stock actualizado");
-    } catch (error) {
-      setToastType("danger");
-      setToastMessage("Error al recibir compra: " + (error.message || "Error desconocido"));
-    }
-  };
-
-  const manejarCancelar = async (id) => {
-    const motivo = window.prompt("Motivo de la cancelación:");
-    if (!motivo) return;
-
-    try {
-      await cancelarCompra(id, motivo);
-      setToastType("success");
-      setToastMessage("Compra cancelada");
-    } catch {
-      setToastType("danger");
-      setToastMessage("Error al cancelar compra");
     }
   };
 
@@ -148,6 +114,7 @@ export default function ComprasPage() {
               >
                 <option value="TODOS">Todos los estados</option>
                 <option value="PENDIENTE">Pendientes</option>
+                <option value="RECIBIDA_PARCIAL">Parciales</option>
                 <option value="RECIBIDA">Recibidas</option>
                 <option value="CANCELADA">Canceladas</option>
               </select>
@@ -207,10 +174,7 @@ export default function ComprasPage() {
       <ComprasTable
         data={comprasFiltradas}
         onVer={abrirVer}
-        onEditar={abrirEditar}
         onEliminar={manejarEliminar}
-        onRecibir={manejarRecibir}
-        onCancelar={manejarCancelar}
       />
     </>
   );

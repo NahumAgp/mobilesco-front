@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useCallback, useEffect, useState } from "react";
-import { obtenerCompraPorId, recibirCompra, cancelarCompra } from "../services/compras.js";
+import { obtenerCompraPorId } from "../services/compras.js";
 import Card from "../../../components/ui/Card.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
 
@@ -12,8 +12,6 @@ export default function CompraDetallePage() {
   const [error, setError] = useState("");
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
-  const [showCancelModal, setShowCancelModal] = useState(false);
-  const [motivoCancelacion, setMotivoCancelacion] = useState("");
 
   const cargarCompra = useCallback(async () => {
     try {
@@ -31,41 +29,6 @@ export default function CompraDetallePage() {
   useEffect(() => {
     cargarCompra();
   }, [cargarCompra]);
-
-  const handleRecibir = async () => {
-    if (!window.confirm("¿Confirmas que quieres marcar esta compra como RECIBIDA? Esto actualizará el stock de los insumos.")) {
-      return;
-    }
-
-    try {
-      await recibirCompra(id);
-      setToastType("success");
-      setToastMessage("Compra recibida y stock actualizado");
-      cargarCompra(); // Recargar para ver el cambio
-    } catch (error) {
-      setToastType("danger");
-      setToastMessage("Error al recibir compra: " + (error.message || "Error desconocido"));
-    }
-  };
-
-  const handleCancelar = async () => {
-    if (!motivoCancelacion.trim()) {
-      alert("Debes ingresar un motivo de cancelación");
-      return;
-    }
-
-    try {
-      await cancelarCompra(id, motivoCancelacion);
-      setToastType("success");
-      setToastMessage("Compra cancelada");
-      setShowCancelModal(false);
-      setMotivoCancelacion("");
-      cargarCompra(); // Recargar para ver el cambio
-    } catch {
-      setToastType("danger");
-      setToastMessage("Error al cancelar compra");
-    }
-  };
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('es-MX', { 
@@ -87,6 +50,7 @@ export default function CompraDetallePage() {
   const getEstadoBadge = (estado) => {
     const colores = {
       'PENDIENTE': 'warning',
+      'RECIBIDA_PARCIAL': 'info',
       'RECIBIDA': 'success',
       'CANCELADA': 'danger'
     };
@@ -127,24 +91,13 @@ export default function CompraDetallePage() {
           Detalle de Compra: {compra.folio}
         </h3>
         <div>
-          {compra.estado === 'PENDIENTE' && (
-            <>
-              <button 
-                className="btn btn-success me-2"
-                onClick={handleRecibir}
-              >
-                <i className="bi bi-check-circle me-2"></i>
-                Recibir Compra
-              </button>
-              <button 
-                className="btn btn-danger me-2"
-                onClick={() => setShowCancelModal(true)}
-              >
-                <i className="bi bi-x-circle me-2"></i>
-                Cancelar
-              </button>
-            </>
-          )}
+          <button
+            className="btn btn-primary me-2"
+            onClick={() => navigate(`/almacen/entradas/${id}`)}
+          >
+            <i className="bi bi-box-arrow-in-down me-2"></i>
+            Ir a Entradas
+          </button>
           {compra.estado === 'PENDIENTE' && (
             <button 
               className="btn btn-outline-primary me-2"
@@ -201,6 +154,15 @@ export default function CompraDetallePage() {
         </div>
       </div>
 
+      <div className="alert alert-info d-flex align-items-center justify-content-between">
+        <div>
+          <strong>Recepción operativa:</strong> se gestiona desde Entradas para permitir recepción parcial y actualización de stock.
+        </div>
+        <button className="btn btn-sm btn-outline-primary" onClick={() => navigate(`/almacen/entradas/${id}`)}>
+          Abrir recepción
+        </button>
+      </div>
+
       <div className="row">
         <div className="col-md-6">
           <Card title="Información General" icon="bi-info-circle">
@@ -221,6 +183,10 @@ export default function CompraDetallePage() {
                 <tr>
                   <th>Observaciones:</th>
                   <td>{compra.observaciones || '-'}</td>
+                </tr>
+                <tr>
+                  <th>Entregado por:</th>
+                  <td>{compra.entregadoPor || '-'}</td>
                 </tr>
               </tbody>
             </table>
@@ -268,6 +234,8 @@ export default function CompraDetallePage() {
               <tr>
                 <th>Insumo</th>
                 <th className="text-end">Cantidad</th>
+                <th className="text-end">Recibida</th>
+                <th className="text-end">Pendiente</th>
                 <th>Unidad</th>
                 <th className="text-end">Precio Unit.</th>
                 <th className="text-end">Subtotal</th>
@@ -283,8 +251,15 @@ export default function CompraDetallePage() {
                         Factor: {detalle.factorConversion} ({detalle.cantidadEnUnidadConsumo?.toFixed(2)} {detalle.unidadConsumoSimbolo})
                       </small>
                     )}
+                    {detalle.motivoNoRecepcion && (
+                      <small className="d-block text-warning">
+                        Motivo: {detalle.motivoNoRecepcion}
+                      </small>
+                    )}
                   </td>
                   <td className="text-end">{detalle.cantidad.toFixed(2)}</td>
+                  <td className="text-end">{Number(detalle.cantidadRecibida || 0).toFixed(2)}</td>
+                  <td className="text-end">{Number(detalle.cantidadPendiente || 0).toFixed(2)}</td>
                   <td>{detalle.unidadCompraSimbolo}</td>
                   <td className="text-end">{formatCurrency(detalle.precioUnitario)}</td>
                   <td className="text-end">{formatCurrency(detalle.subtotal)}</td>
@@ -293,15 +268,15 @@ export default function CompraDetallePage() {
             </tbody>
             <tfoot className="table-light">
               <tr>
-                <td colSpan="4" className="text-end fw-bold">Subtotal:</td>
+                <td colSpan="6" className="text-end fw-bold">Subtotal:</td>
                 <td className="text-end fw-bold">{formatCurrency(compra.subtotal)}</td>
               </tr>
               <tr>
-                <td colSpan="4" className="text-end fw-bold">Impuesto:</td>
+                <td colSpan="6" className="text-end fw-bold">Impuesto:</td>
                 <td className="text-end fw-bold">{formatCurrency(compra.impuesto)}</td>
               </tr>
               <tr>
-                <td colSpan="4" className="text-end fw-bold">Total:</td>
+                <td colSpan="6" className="text-end fw-bold">Total:</td>
                 <td className="text-end fw-bold text-primary">{formatCurrency(compra.total)}</td>
               </tr>
             </tfoot>
@@ -309,44 +284,6 @@ export default function CompraDetallePage() {
         </div>
       </Card>
 
-      {/* Modal de cancelación */}
-      {showCancelModal && (
-        <div
-          className="modal fade show"
-          style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)" }}
-        >
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Cancelar Compra</h5>
-                <button type="button" className="btn-close" onClick={() => setShowCancelModal(false)}></button>
-              </div>
-              <div className="modal-body">
-                <p>¿Estás seguro de cancelar la compra <strong>{compra.folio}</strong>?</p>
-                <div className="mb-3">
-                  <label className="form-label fw-semibold">Motivo de cancelación:</label>
-                  <textarea
-                    className="form-control"
-                    rows="3"
-                    value={motivoCancelacion}
-                    onChange={(e) => setMotivoCancelacion(e.target.value)}
-                    placeholder="Ej: Error en la orden, Proveedor no pudo surtir, etc."
-                  ></textarea>
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-light" onClick={() => setShowCancelModal(false)}>
-                  Cancelar
-                </button>
-                <button type="button" className="btn btn-danger" onClick={handleCancelar}>
-                  <i className="bi bi-x-circle me-2"></i>
-                  Confirmar Cancelación
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

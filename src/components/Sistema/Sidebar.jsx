@@ -226,25 +226,30 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
           </div>
         </div>
 
-        {/* INSUMOS */}
+        {/* ALMACÉN */}
         <div>
           <button
             type="button"
-            className={`sidebar-parent ${openSubmenu === "insumos" ? "" : "collapsed"}`}
-            onClick={() => toggleSubmenu("insumos")}
-            aria-expanded={openSubmenu === "insumos"}
-            aria-controls="menuInsumos"
+            className={`sidebar-parent ${openSubmenu === "almacen" ? "" : "collapsed"}`}
+            onClick={() => toggleSubmenu("almacen")}
+            aria-expanded={openSubmenu === "almacen"}
+            aria-controls="menuAlmacen"
           >
             <div className="sidebar-parent-content">
-              <i className="bi bi-boxes me-2"></i>
-              <span>Insumos</span>
+              <i className="bi bi-archive me-2"></i>
+              <span>Almacén</span>
             </div>
             <i className="bi bi-chevron-down sidebar-chevron"></i>
           </button>
-          <div className={`collapse sidebar-submenu ${openSubmenu === "insumos" ? "show" : ""}`} id="menuInsumos">
+          <div className={`collapse sidebar-submenu ${openSubmenu === "almacen" ? "show" : ""}`} id="menuAlmacen">
             <NavLink to="/insumos" className="sidebar-link sidebar-link--sub" onClick={handleNavigation}>
               <i className="bi bi-boxes me-2"></i>
               Insumos
+            </NavLink>
+
+            <NavLink to="/almacen/entradas" className="sidebar-link sidebar-link--sub" onClick={handleNavigation}>
+              <i className="bi bi-box-arrow-in-down me-2"></i>
+              Entradas
             </NavLink>
 
             <NavLink to="/insumos/tipos" className="sidebar-link sidebar-link--sub" onClick={handleNavigation}>
