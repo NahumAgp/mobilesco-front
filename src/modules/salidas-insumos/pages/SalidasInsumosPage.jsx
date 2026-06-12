@@ -86,6 +86,7 @@ export default function SalidasInsumosPage() {
               <thead className="table-light">
                 <tr>
                   <th>Orden</th>
+                  <th>Responsable</th>
                   <th>Usuario</th>
                   <th>Fecha</th>
                   <th className="text-end">Total</th>
@@ -111,6 +112,7 @@ export default function SalidasInsumosPage() {
                         <div className="fw-semibold">{salida.ordenProduccion}</div>
                         {salida.observaciones && <small className="text-muted">{salida.observaciones}</small>}
                       </td>
+                      <td>{salida.responsable || "--"}</td>
                       <td>{salida.usuario || "--"}</td>
                       <td>{formatoFecha(salida.fechaSalida)}</td>
                       <td className="text-end">
@@ -122,7 +124,7 @@ export default function SalidasInsumosPage() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="4" className="text-center text-muted py-4">
+                    <td colSpan="5" className="text-center text-muted py-4">
                       Aún no hay salidas registradas.
                     </td>
                   </tr>
@@ -154,6 +156,12 @@ export default function SalidasInsumosPage() {
                 <div className="row g-3 mb-3">
                   <div className="col-md-4">
                     <div className="border rounded p-3 h-100">
+                      <div className="text-muted small">Responsable</div>
+                      <div className="fw-semibold">{salidaSeleccionada.responsable || "--"}</div>
+                    </div>
+                  </div>
+                  <div className="col-md-4">
+                    <div className="border rounded p-3 h-100">
                       <div className="text-muted small">Usuario</div>
                       <div className="fw-semibold">{salidaSeleccionada.usuario || "--"}</div>
                     </div>
@@ -164,7 +172,7 @@ export default function SalidasInsumosPage() {
                       <div className="fw-semibold">{Number(salidaSeleccionada.cantidadTotal || 0).toFixed(2)}</div>
                     </div>
                   </div>
-                  <div className="col-md-4">
+                  <div className="col-md-12 mt-2">
                     <div className="border rounded p-3 h-100">
                       <div className="text-muted small">Fecha de registro</div>
                       <div className="fw-semibold">{formatoFecha(salidaSeleccionada.fechaRegistro)}</div>

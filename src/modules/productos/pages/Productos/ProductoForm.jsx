@@ -28,6 +28,12 @@ const toPreviewUrl = (url) => {
   return url.startsWith("/") ? `${API_BASE_URL}${url}` : `${API_BASE_URL}/${url}`;
 };
 
+const parseOptionalNumber = (value) => {
+  if (value === "" || value === null || value === undefined) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
 const getArchivoNombre = (url) => {
   if (!url) return "Imagen";
   const partes = url.split("/");
@@ -173,6 +179,11 @@ export default function ProductoForm({
     sku: "",
     nombre: "",
     descripcion: "",
+    descripcionCorta: "",
+    pesoVolumetrico: "",
+    ancho: "",
+    alto: "",
+    fondo: "",
     modeloId: "",
     nivelId: "",
     materialId: "",
@@ -260,6 +271,11 @@ export default function ProductoForm({
           sku: producto.sku || "",
           nombre: producto.nombre || "",
           descripcion: producto.descripcion || "",
+          descripcionCorta: producto.descripcionCorta || producto.descripcion_corta || "",
+          pesoVolumetrico: producto.pesoVolumetrico ?? producto.peso_volumetrico ?? "",
+          ancho: producto.ancho ?? "",
+          alto: producto.alto ?? "",
+          fondo: producto.fondo ?? "",
           modeloId: producto.id_modelo || producto.modeloId || "",
           nivelId: producto.id_nivel || producto.nivelId || "",
           materialId: producto.id_material || producto.materialId || "",
@@ -277,6 +293,11 @@ export default function ProductoForm({
             sku: data.sku || "",
             nombre: data.nombre || "",
             descripcion: data.descripcion || "",
+            descripcionCorta: data.descripcionCorta || data.descripcion_corta || "",
+            pesoVolumetrico: data.pesoVolumetrico ?? data.peso_volumetrico ?? "",
+            ancho: data.ancho ?? "",
+            alto: data.alto ?? "",
+            fondo: data.fondo ?? "",
             modeloId: data.id_modelo || data.modeloId || data.id_producto_base || data.productoBaseId || "",
             nivelId: data.id_nivel || data.nivelId || "",
             materialId: data.id_material || data.materialId || "",
@@ -404,6 +425,11 @@ export default function ProductoForm({
       sku: formData.sku.trim(),
       nombre: formData.nombre.trim(),
       descripcion: formData.descripcion?.trim() || null,
+      descripcionCorta: formData.descripcionCorta?.trim() || null,
+      pesoVolumetrico: parseOptionalNumber(formData.pesoVolumetrico),
+      ancho: parseOptionalNumber(formData.ancho),
+      alto: parseOptionalNumber(formData.alto),
+      fondo: parseOptionalNumber(formData.fondo),
       id_modelo: Number(formData.modeloId),
       id_nivel: Number(formData.nivelId),
       id_material: Number(formData.materialId),
@@ -478,6 +504,69 @@ export default function ProductoForm({
               <div className="col-12">
                 <label className="form-label fw-semibold">Descripcion</label>
                 <textarea name="descripcion" className={inputClass("descripcion")} rows="3" value={formData.descripcion} onChange={handleChange} placeholder="Silla en Formaica color cafe ..." />
+              </div>
+              <div className="col-12">
+                <label className="form-label fw-semibold">Descripcion corta</label>
+                <textarea
+                  name="descripcionCorta"
+                  className={inputClass("descripcionCorta")}
+                  rows="2"
+                  value={formData.descripcionCorta}
+                  onChange={handleChange}
+                  placeholder="Resumen corto del producto para tarjetas y listados"
+                />
+              </div>
+              <div className="col-md-3">
+                <label className="form-label fw-semibold">Peso volumetrico</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  name="pesoVolumetrico"
+                  className={inputClass("pesoVolumetrico")}
+                  value={formData.pesoVolumetrico}
+                  onChange={handleChange}
+                  placeholder="0.00"
+                />
+              </div>
+              <div className="col-md-3">
+                <label className="form-label fw-semibold">Ancho</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  name="ancho"
+                  className={inputClass("ancho")}
+                  value={formData.ancho}
+                  onChange={handleChange}
+                  placeholder="0.00"
+                />
+              </div>
+              <div className="col-md-3">
+                <label className="form-label fw-semibold">Alto</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  name="alto"
+                  className={inputClass("alto")}
+                  value={formData.alto}
+                  onChange={handleChange}
+                  placeholder="0.00"
+                />
+              </div>
+              <div className="col-md-3">
+                <label className="form-label fw-semibold">Fondo</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  name="fondo"
+                  className={inputClass("fondo")}
+                  value={formData.fondo}
+                  onChange={handleChange}
+                  placeholder="0.00"
+                />
               </div>
               <div className="col-12">
                 <div className="producto-form-status-box">

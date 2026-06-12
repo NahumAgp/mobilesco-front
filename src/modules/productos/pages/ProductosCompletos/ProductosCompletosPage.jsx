@@ -71,6 +71,12 @@ const getLista = (respuesta) => {
   return buscarLista(respuesta) || [];
 };
 
+const toOptionalNumber = (value) => {
+  if (value === "" || value === null || value === undefined) return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
+
 const getNombrePorCatalogo = (item, catalogo, clavesId = [], clavesNombre = []) => {
   for (const clave of clavesNombre) {
     const valorDirecto = item?.[clave];
@@ -452,6 +458,11 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
           clientRef: String(variante.id),
           nombre: `${modelo?.nombre || "Modelo"} ${variante?.categoriaNombre || ""} ${variante?.materialNombre || ""} ${variante?.colorNombre || ""}`.trim().replace(/\s+/g, " "),
           descripcion: `Producto ${variante?.categoriaNombre || "sin categoria"} - ${variante?.materialNombre || "sin material"} - ${variante?.colorNombre || "sin color"}`,
+          descripcionCorta: variante.descripcionCorta?.trim() || null,
+          pesoVolumetrico: toOptionalNumber(variante.pesoVolumetrico),
+          ancho: toOptionalNumber(variante.ancho),
+          alto: toOptionalNumber(variante.alto),
+          fondo: toOptionalNumber(variante.fondo),
           activo: true,
           modeloId: modelo?._pending ? undefined : Number(modelo.id),
           modeloRef: modelo?._pending ? modelo.ref : undefined,

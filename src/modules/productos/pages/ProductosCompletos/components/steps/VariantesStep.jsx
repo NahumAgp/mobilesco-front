@@ -383,7 +383,12 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
             colorNombre: color.nombre || "",
             colorCodigo: color.codigo || "",
             colorHex: color.hex || "",
-            sku
+            sku,
+            descripcionCorta: existente?.descripcionCorta || "",
+            pesoVolumetrico: existente?.pesoVolumetrico ?? "",
+            ancho: existente?.ancho ?? "",
+            alto: existente?.alto ?? "",
+            fondo: existente?.fondo ?? ""
           });
           skus.add(sku);
         });
@@ -420,6 +425,20 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
 
     onUpdate("variantes", variantes.filter((_, i) => i !== index));
     setMensaje("");
+  };
+
+  const actualizarVariante = (index, campo, valor) => {
+    onUpdate(
+      "variantes",
+      variantes.map((variante, i) =>
+        i === index
+          ? {
+              ...variante,
+              [campo]: valor
+            }
+          : variante
+      )
+    );
   };
 
   const limpiarVariantes = () => {
@@ -775,6 +794,11 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
                     <th>Categoria</th>
                     <th>Color</th>
                     <th>SKU</th>
+                    <th>Descripcion corta</th>
+                    <th>Peso volumetrico</th>
+                    <th>Ancho</th>
+                    <th>Alto</th>
+                    <th>Fondo</th>
                     <th className="text-end">Acciones</th>
                   </tr>
                 </thead>
@@ -797,6 +821,59 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
                         </td>
                         <td>
                           <code>{variante.sku || "-"}</code>
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            className="form-control form-control-sm"
+                            value={variante.descripcionCorta || ""}
+                            onChange={(event) => actualizarVariante(indexReal, "descripcionCorta", event.target.value)}
+                            placeholder="Descripcion breve"
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            className="form-control form-control-sm"
+                            min="0"
+                            step="0.01"
+                            value={variante.pesoVolumetrico ?? ""}
+                            onChange={(event) => actualizarVariante(indexReal, "pesoVolumetrico", event.target.value)}
+                            placeholder="0.00"
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            className="form-control form-control-sm"
+                            min="0"
+                            step="0.01"
+                            value={variante.ancho ?? ""}
+                            onChange={(event) => actualizarVariante(indexReal, "ancho", event.target.value)}
+                            placeholder="0.00"
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            className="form-control form-control-sm"
+                            min="0"
+                            step="0.01"
+                            value={variante.alto ?? ""}
+                            onChange={(event) => actualizarVariante(indexReal, "alto", event.target.value)}
+                            placeholder="0.00"
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            className="form-control form-control-sm"
+                            min="0"
+                            step="0.01"
+                            value={variante.fondo ?? ""}
+                            onChange={(event) => actualizarVariante(indexReal, "fondo", event.target.value)}
+                            placeholder="0.00"
+                          />
                         </td>
                         <td className="text-end">
                           <button

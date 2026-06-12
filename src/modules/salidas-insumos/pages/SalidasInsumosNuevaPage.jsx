@@ -24,7 +24,8 @@ export default function SalidasInsumosNuevaPage() {
   const [formData, setFormData] = useState({
     ordenProduccion: "",
     fechaSalida: obtenerFechaHoraLocal(),
-    observaciones: ""
+    observaciones: "",
+    responsable: ""
   });
   const [cargando, setCargando] = useState(false);
 
@@ -198,7 +199,8 @@ export default function SalidasInsumosNuevaPage() {
     setFormData({
       ordenProduccion: "",
       fechaSalida: obtenerFechaHoraLocal(),
-      observaciones: ""
+      observaciones: "",
+      responsable: ""
     });
     setDetalles([]);
     setBusquedaInsumo("");
@@ -211,6 +213,7 @@ export default function SalidasInsumosNuevaPage() {
 
     const nuevosErrores = {};
     if (!formData.ordenProduccion.trim()) nuevosErrores.ordenProduccion = "La orden de producción es obligatoria";
+    if (!formData.responsable.trim()) nuevosErrores.responsable = "La persona responsable es obligatoria";
     if (detalles.length === 0) nuevosErrores.detalles = "Agrega al menos un insumo";
 
     if (Object.keys(nuevosErrores).length > 0) {
@@ -228,6 +231,7 @@ export default function SalidasInsumosNuevaPage() {
         ordenProduccion: formData.ordenProduccion.trim(),
         fechaSalida: formData.fechaSalida || null,
         observaciones: formData.observaciones.trim() || null,
+        responsable: formData.responsable.trim(),
         detalles: detalles.map((item) => ({
           insumoId: item.insumoId,
           cantidad: Number(item.cantidad),
@@ -297,6 +301,18 @@ export default function SalidasInsumosNuevaPage() {
                   value={formData.fechaSalida}
                   onChange={handleFormChange}
                 />
+              </div>
+              <div className="col-md-12">
+                <label className="form-label fw-semibold">Persona responsable / receptora *</label>
+                <input
+                  type="text"
+                  name="responsable"
+                  className={`form-control ${errores.responsable ? "is-invalid" : ""}`}
+                  value={formData.responsable}
+                  onChange={handleFormChange}
+                  placeholder="Nombre de la persona que recibe el insumo"
+                />
+                <div className="invalid-feedback">{errores.responsable}</div>
               </div>
               <div className="col-md-12">
                 <label className="form-label fw-semibold">Observaciones</label>

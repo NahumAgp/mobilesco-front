@@ -61,6 +61,22 @@ export default function ProductoDetallePage() {
     }).format(value || 0);
   };
 
+  const formatNumber = (value) => {
+    if (value === null || value === undefined || value === "") return "-";
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric.toFixed(2) : "-";
+  };
+
+  const formatMedidas = () => {
+    const partes = [
+      producto.ancho != null ? `Ancho ${formatNumber(producto.ancho)}` : null,
+      producto.alto != null ? `Alto ${formatNumber(producto.alto)}` : null,
+      producto.fondo != null ? `Fondo ${formatNumber(producto.fondo)}` : null
+    ].filter(Boolean);
+
+    return partes.length ? partes.join(" x ") : (producto.dimensiones || "-");
+  };
+
   if (loading) {
     return (
       <div className="container mt-4">
@@ -156,9 +172,11 @@ export default function ProductoDetallePage() {
               <tbody>
                 <tr><th style={{width: '30%'}}>SKU:</th><td><span className="badge bg-secondary">{producto.sku}</span></td></tr>
                 <tr><th>Nombre:</th><td>{producto.nombre}</td></tr>
+                <tr><th>Descripcion corta:</th><td>{producto.descripcionCorta || producto.descripcion_corta || '-'}</td></tr>
                 <tr><th>Descripción:</th><td>{producto.descripcion || '-'}</td></tr>
                 <tr><th>Características:</th><td>{producto.caracteristicas || '-'}</td></tr>
-                <tr><th>Dimensiones:</th><td>{producto.dimensiones || '-'}</td></tr>
+                <tr><th>Dimensiones:</th><td>{formatMedidas()}</td></tr>
+                <tr><th>Peso volumetrico:</th><td>{producto.pesoVolumetrico != null ? `${formatNumber(producto.pesoVolumetrico)} kg` : '-'}</td></tr>
                 <tr><th>Peso:</th><td>{producto.pesoKg ? `${producto.pesoKg} kg` : '-'}</td></tr>
               </tbody>
             </table>
