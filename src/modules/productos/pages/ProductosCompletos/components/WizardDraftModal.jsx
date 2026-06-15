@@ -4,6 +4,7 @@ import SearchableSelect from "../../../../../components/ui/SearchableSelect.jsx"
 import { obtenerFamiliasActivas } from "../../../../familias/services/familias.js";
 import { obtenerLineasActivas } from "../../../../lineas-producto/services/lineaProducto.js";
 import { obtenerNiveles } from "../../../services/niveles.js";
+import { materialGateway } from "../../../../materiales/services/materialGateway.js";
 
 export const crearRefBorrador = (tipo) =>
   `draft-${tipo}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -53,6 +54,31 @@ const buscarDuplicado = (items, campo, valor, refExcluida) =>
 const getLista = (respuesta) => {
   if (Array.isArray(respuesta)) return respuesta;
   if (Array.isArray(respuesta?.content)) return respuesta.content;
+  return [];
+};
+
+const getMaterialesDelModelo = (modelo = {}) => {
+  const candidatos = [
+    modelo?.materiales,
+    modelo?.materialesSeleccionados,
+    modelo?.materiales_modelo,
+    modelo?.materialesModelos,
+    modelo?.materiales_asociados
+  ];
+
+  for (const candidato of candidatos) {
+    if (Array.isArray(candidato)) {
+      return candidato.map((material) => ({
+        ...material,
+        id: material?.id ?? material?.materialId ?? material?.id_material ?? material?.material_id ?? null,
+        codigo: material?.codigo ?? material?.codigo_material ?? "",
+        nombre: material?.nombre ?? material?.nombre_material ?? "",
+        descripcion: material?.descripcion ?? material?.descripcion_material ?? "",
+        activo: material?.activo ?? true
+      }));
+    }
+  }
+
   return [];
 };
 
@@ -262,11 +288,17 @@ export function ModeloDraftModal({
   const [familiasExistentes, setFamiliasExistentes] = useState([]);
   const [lineasExistentes, setLineasExistentes] = useState([]);
   const [categoriasExistentes, setCategoriasExistentes] = useState([]);
+  const [materialesExistentes, setMaterialesExistentes] = useState([]);
+  const [materialesSeleccionados, setMaterialesSeleccionados] = useState([]);
+  const [materialSeleccionadoId, setMaterialSeleccionadoId] = useState("");
   const [mostrarFamilia, setMostrarFamilia] = useState(false);
   const [mostrarLinea, setMostrarLinea] = useState(false);
+  const [mostrarMaterial, setMostrarMaterial] = useState(false);
   const [lineaParaFamilia, setLineaParaFamilia] = useState("");
   const [familiaEditando, setFamiliaEditando] = useState(null);
   const [lineaEditando, setLineaEditando] = useState(null);
+  const [materialEditando, setMaterialEditando] = useState(null);
+  const [cargandoMateriales, setCargandoMateriales] = useState(false);
   const [errores, setErrores] = useState({});
 
   useEffect(() => {
@@ -278,6 +310,7 @@ export function ModeloDraftModal({
       descripcion: initialValue?.descripcion || "",
       activo: initialValue?.activo !== false,
       familiaId: initialValue?.familiaId || initialValue?.familiaRef || "",
+      materiales: getMaterialesDelModelo(initialValue),
       categorias: initialValue?.categorias?.length
         ? initialValue.categorias
         : (() => {
@@ -286,13 +319,23 @@ export function ModeloDraftModal({
           })()
     });
     setErrores({});
-    Promise.all([obtenerFamiliasActivas(), obtenerLineasActivas(), obtenerNiveles()])
-      .then(([familias, lineas, categorias]) => {
+    setMaterialesSeleccionados(getMaterialesDelModelo(initialValue));
+    setMaterialSeleccionadoId("");
+    setCargandoMateriales(true);
+    Promise.all([
+      obtenerFamiliasActivas(),
+      obtenerLineasActivas(),
+      obtenerNiveles(),
+      materialGateway.obtenerMaterialesActivos()
+    ])
+      .then(([familias, lineas, categorias, materiales]) => {
         setFamiliasExistentes(getLista(familias));
         setLineasExistentes(getLista(lineas));
         setCategoriasExistentes(getLista(categorias));
+        setMaterialesExistentes(getLista(materiales));
       })
-      .catch((error) => console.error("No se pudieron cargar familias y lineas:", error));
+      .catch((error) => console.error("No se pudieron cargar familias, lineas y materiales:", error))
+      .finally(() => setCargandoMateriales(false));
   }, [initialValue, show]);
 
   const familias = useMemo(
@@ -320,6 +363,52 @@ export function ModeloDraftModal({
     buscarDuplicado(categoriasComparablesActuales, "nombre", item.nombre, item.ref || item.id)
     || buscarDuplicado(categoriasComparablesActuales, "codigo", item.codigo, item.ref || item.id)
   );
+  const materialesDisponibles = useMemo(
+    () =>
+      materialesExistentes.filter(
+        (material) => !materialesSeleccionados.some((seleccionado) => String(seleccionado.id) === String(material.id))
+      ),
+    [materialesExistentes, materialesSeleccionados]
+  );
+
+  const agregarMaterial = (materialId, material) => {
+    const idNormalizado = Number(materialId);
+    if (!Number.isFinite(idNormalizado)) return;
+
+    setMaterialesSeleccionados((prev) => {
+      if (prev.some((item) => String(item.id) === String(idNormalizado))) {
+        return prev;
+      }
+
+      const materialCompleto = material || materialesExistentes.find((item) => String(item.id) === String(idNormalizado));
+      if (!materialCompleto) return prev;
+
+      return [...prev, { ...materialCompleto, id: materialCompleto.id ?? idNormalizado }];
+    });
+    setMaterialSeleccionadoId("");
+  };
+
+  const quitarMaterial = (materialId) => {
+    setMaterialesSeleccionados((prev) => prev.filter((material) => String(material.id) !== String(materialId)));
+  };
+
+  const guardarMaterial = (material) => {
+    onUpsertDraft("materiales", material);
+    setMaterialesExistentes((prev) => {
+      const materialNormalizado = {
+        ...material,
+        id: material?.id ?? material?.ref ?? material?.materialId ?? null
+      };
+      const sinDuplicado = prev.filter((item) => String(item.id || item.ref) !== String(materialNormalizado.id || materialNormalizado.ref));
+      return [...sinDuplicado, materialNormalizado];
+    });
+    setMaterialesSeleccionados((prev) => {
+      const siguiente = prev.filter((item) => String(item.id || item.ref) !== String(material.id || material.ref));
+      return [...siguiente, material];
+    });
+    setMaterialEditando(null);
+    setMostrarMaterial(false);
+  };
 
   useEffect(() => {
     if (!show) return;
@@ -357,6 +446,11 @@ export function ModeloDraftModal({
       familiaRef: esRefBorrador(form.familiaId) ? form.familiaId : undefined,
       familia,
       linea,
+      materiales: materialesSeleccionados.map((material) => ({
+        ...material,
+        id: material.id ?? material.materialId,
+        _pending: true
+      })),
       categorias: form.categorias.map((item) => ({
         ...item,
         id: item.ref || item.id,
@@ -457,6 +551,74 @@ export function ModeloDraftModal({
                     <textarea className="form-control" rows="3" value={form.descripcion || ""} onChange={(e) => setForm((prev) => ({ ...prev, descripcion: e.target.value }))} />
                   </div>
                   <div className="col-12">
+                    <div className="d-flex justify-content-between align-items-center mb-2">
+                      <div>
+                        <div className="fw-semibold">Materiales asociados</div>
+                        <small className="text-muted">Se siguen tomando del catálogo global, pero aquí defines cuáles usa el modelo.</small>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn btn-outline-primary btn-sm"
+                        onClick={() => {
+                          setMaterialEditando(null);
+                          setMostrarMaterial(true);
+                        }}
+                      >
+                        <i className="bi bi-plus-lg me-1"></i>
+                        Nuevo material
+                      </button>
+                    </div>
+
+                    <SearchableSelect
+                      label=""
+                      value={materialSeleccionadoId}
+                      options={materialesDisponibles}
+                      onChange={agregarMaterial}
+                      placeholder={cargandoMateriales ? "Cargando materiales..." : "Buscar y agregar material..."}
+                      searchPlaceholder="Busca por código, nombre o descripción..."
+                      loading={cargandoMateriales}
+                      emptyText="No hay materiales disponibles"
+                      getOptionValue={(item) => item.id || item.materialId}
+                      getOptionLabel={(item) => `${item.codigo ? `[${item.codigo}] ` : ""}${item.nombre || "-"}`}
+                      getOptionSearchText={(item) => [item.codigo, item.nombre, item.descripcion].filter(Boolean).join(" ").toLowerCase()}
+                      renderOptionLabel={(item) => `${item.codigo ? `[${item.codigo}] ` : ""}${item.nombre || "-"}`}
+                      helperText="Puedes asociar varios materiales al modelo sin duplicarlos."
+                    />
+
+                    {materialesSeleccionados.length > 0 ? (
+                      <div className="d-flex flex-wrap gap-2 mt-2">
+                        {materialesSeleccionados.map((material) => (
+                          <span key={material.id} className="badge rounded-pill text-bg-light border d-inline-flex align-items-center gap-2">
+                            <span>{material.codigo ? `[${material.codigo}] ` : ""}{material.nombre || "-"}</span>
+                            <button
+                              type="button"
+                              className="btn btn-sm p-0 border-0 bg-transparent text-danger"
+                              onClick={() => quitarMaterial(material.id)}
+                              title="Quitar material"
+                              aria-label={`Quitar material ${material.nombre || material.codigo || material.id}`}
+                              >
+                                <i className="bi bi-x-lg"></i>
+                              </button>
+                            <button
+                              type="button"
+                              className="btn btn-sm p-0 border-0 bg-transparent text-secondary"
+                              onClick={() => {
+                                setMaterialEditando(material);
+                                setMostrarMaterial(true);
+                              }}
+                              title="Editar material"
+                              aria-label={`Editar material ${material.nombre || material.codigo || material.id}`}
+                            >
+                              <i className="bi bi-pencil"></i>
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="form-text text-muted">No hay materiales asociados todavía.</div>
+                    )}
+                  </div>
+                  <div className="col-12">
                     <div className="d-flex justify-content-between align-items-center border-top pt-3">
                       <div>
                         <div className="fw-semibold">Categorias propias del modelo *</div>
@@ -548,6 +710,18 @@ export function ModeloDraftModal({
           setMostrarLinea(false);
           setLineaEditando(null);
         }}
+      />
+      <SimpleDraftModal
+        show={mostrarMaterial}
+        tipo="material"
+        depth={1}
+        initialValue={materialEditando}
+        existingItems={materialesExistentes}
+        onClose={() => {
+          setMostrarMaterial(false);
+          setMaterialEditando(null);
+        }}
+        onSave={(material) => guardarMaterial(material)}
       />
     </>
   );

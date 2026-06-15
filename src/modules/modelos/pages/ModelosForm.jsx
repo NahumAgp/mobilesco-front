@@ -11,6 +11,7 @@ import {
 } from "../services/modelos.js";
 import { obtenerFamilias } from "../../familias/services/familias.js";
 import { obtenerProductos } from "../../productos/services/productos.js";
+import { materialGateway } from "../../materiales/services/materialGateway.js";
 import { API_BASE_URL } from "../../../config/apiConfig.js";
 import Toast from "../../../components/ui/Toast.jsx";
 import SearchableSelect from "../../../components/ui/SearchableSelect.jsx";
@@ -137,6 +138,31 @@ const crearCategoriaVacia = () => ({
   activo: true
 });
 
+const getMaterialesDelModelo = (modelo = {}) => {
+  const candidatos = [
+    modelo?.materiales,
+    modelo?.materialesSeleccionados,
+    modelo?.materiales_modelo,
+    modelo?.materialesModelos,
+    modelo?.materiales_asociados
+  ];
+
+  for (const candidato of candidatos) {
+    if (Array.isArray(candidato)) {
+      return candidato.map((material) => ({
+        ...material,
+        id: material?.id ?? material?.materialId ?? material?.id_material ?? material?.material_id ?? null,
+        codigo: material?.codigo ?? material?.codigo_material ?? "",
+        nombre: material?.nombre ?? material?.nombre_material ?? "",
+        descripcion: material?.descripcion ?? material?.descripcion_material ?? "",
+        activo: material?.activo ?? true
+      }));
+    }
+  }
+
+  return [];
+};
+
 const getImagenActiva = (imagen) =>
   imagen?.activo ?? imagen?.active ?? imagen?.habilitada ?? true;
 
@@ -194,9 +220,13 @@ export default function ModeloForm({
   const [toastType, setToastType] = useState("success");
   const [erroresBackend, setErroresBackend] = useState({});
   const [familias, setFamilias] = useState([]);
+  const [materialesCatalogo, setMaterialesCatalogo] = useState([]);
+  const [materialesSeleccionados, setMaterialesSeleccionados] = useState([]);
+  const [materialSeleccionadoId, setMaterialSeleccionadoId] = useState("");
   const [variantesModelo, setVariantesModelo] = useState([]);
   const [imagenPrincipal, setImagenPrincipal] = useState(null);
   const [cargandoImagen, setCargandoImagen] = useState(false);
+  const [cargandoMateriales, setCargandoMateriales] = useState(false);
 
   const fileInputRef = useRef(null);
 
@@ -230,6 +260,23 @@ export default function ModeloForm({
     };
 
     cargarCatalogos();
+  }, []);
+
+  useEffect(() => {
+    const cargarMateriales = async () => {
+      try {
+        setCargandoMateriales(true);
+        const materialesResp = await materialGateway.obtenerMaterialesActivos();
+        setMaterialesCatalogo(getLista(materialesResp));
+      } catch (error) {
+        console.error("Error cargando materiales:", error);
+        setMaterialesCatalogo([]);
+      } finally {
+        setCargandoMateriales(false);
+      }
+    };
+
+    cargarMateriales();
   }, []);
 
   const cargarImagenPrincipalModelo = async (modeloFuente) => {
@@ -286,6 +333,7 @@ export default function ModeloForm({
           activo: modelo.activo ?? true,
           categorias: Array.isArray(modelo.categorias) ? modelo.categorias : []
         });
+        setMaterialesSeleccionados(getMaterialesDelModelo(modelo));
 
         await cargarImagenPrincipalModelo(modelo);
         return;
@@ -302,6 +350,7 @@ export default function ModeloForm({
             activo: data.activo ?? true,
             categorias: Array.isArray(data.categorias) ? data.categorias : []
           });
+          setMaterialesSeleccionados(getMaterialesDelModelo(data));
 
           await cargarImagenPrincipalModelo(data || modeloId);
         } catch (error) {
@@ -353,6 +402,40 @@ export default function ModeloForm({
     }));
   };
 
+  const materialesDisponibles = materialesCatalogo.filter(
+    (material) =>
+      !materialesSeleccionados.some(
+        (seleccionado) => String(seleccionado.id ?? seleccionado.materialId ?? "") === String(material.id)
+      )
+  );
+
+  const agregarMaterial = (materialId, material) => {
+    const idNormalizado = Number(materialId);
+    if (!Number.isFinite(idNormalizado)) {
+      return;
+    }
+
+    setMaterialesSeleccionados((prev) => {
+      if (prev.some((item) => String(item.id) === String(idNormalizado))) {
+        return prev;
+      }
+
+      const materialCompleto =
+        material || materialesCatalogo.find((item) => String(item.id) === String(idNormalizado));
+
+      if (!materialCompleto) {
+        return prev;
+      }
+
+      return [...prev, materialCompleto];
+    });
+    setMaterialSeleccionadoId("");
+  };
+
+  const quitarMaterial = (materialId) => {
+    setMaterialesSeleccionados((prev) => prev.filter((material) => String(material.id) !== String(materialId)));
+  };
+
   async function handleSubmit(e) {
     e.preventDefault();
 
@@ -389,7 +472,10 @@ export default function ModeloForm({
         descripcion: formData.descripcion?.trim() || "",
         familia_id: familiaIdNormalizado,
         activo: Boolean(formData.activo),
-        categorias
+        categorias,
+        materiales: materialesSeleccionados
+          .map((material) => Number(material.id))
+          .filter((id) => Number.isFinite(id))
       };
       if (esEdicion) {
         dataToSend.codigo = formData.codigo?.toString().trim() || "";
@@ -582,6 +668,65 @@ export default function ModeloForm({
                         [familia.codigo, familia.nombre, familia.descripcion].filter(Boolean).join(" ").toLowerCase()
                       }
                     />
+                  </div>
+
+                  <div className="col-md-12">
+                    <div className="d-flex justify-content-between align-items-center mb-2">
+                      <label className="form-label fw-semibold mb-0">Materiales del modelo</label>
+                      <small className="text-muted">
+                        Catálogo global, reutilizable en cualquier modelo
+                      </small>
+                    </div>
+
+                    <SearchableSelect
+                      label=""
+                      value={materialSeleccionadoId}
+                      options={materialesDisponibles}
+                      onChange={agregarMaterial}
+                      placeholder={cargandoMateriales ? "Cargando materiales..." : "Buscar y agregar material..."}
+                      searchPlaceholder="Escribe código, nombre o descripción..."
+                      loading={cargandoMateriales}
+                      emptyText="No hay materiales disponibles"
+                      getOptionValue={(material) => material.id ?? material.materialId}
+                      getOptionLabel={(material) => `${material.codigo ? `[${material.codigo}] ` : ""}${material.nombre || "-"}`}
+                      getOptionSearchText={(material) =>
+                        [material.codigo, material.nombre, material.descripcion].filter(Boolean).join(" ").toLowerCase()
+                      }
+                      renderOptionLabel={(material) =>
+                        `${material.codigo ? `[${material.codigo}] ` : ""}${material.nombre || "-"}`
+                      }
+                      helperText="Selecciona materiales para este modelo sin sacarlos del catálogo general."
+                      className="mb-2"
+                    />
+
+                    {materialesSeleccionados.length > 0 ? (
+                      <div className="d-flex flex-wrap gap-2">
+                        {materialesSeleccionados.map((material) => (
+                          <span
+                            key={material.id}
+                            className="badge rounded-pill text-bg-light border d-inline-flex align-items-center gap-2"
+                          >
+                            <span>
+                              {material.codigo ? `[${material.codigo}] ` : ""}
+                              {material.nombre || "-"}
+                            </span>
+                            <button
+                              type="button"
+                              className="btn btn-sm p-0 border-0 bg-transparent text-danger"
+                              onClick={() => quitarMaterial(material.id)}
+                              aria-label={`Quitar material ${material.nombre || material.codigo || material.id}`}
+                              title="Quitar material"
+                            >
+                              <i className="bi bi-x-lg"></i>
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="form-text text-muted">
+                        Aún no se ha asociado ningún material a este modelo.
+                      </div>
+                    )}
                   </div>
 
                   <div className="col-md-12">

@@ -48,7 +48,8 @@ export default function ModeloStep({ data, onUpdate, borradores, onUpsertDraft }
       familiaRef: undefined,
       familia: opcion?.familia || null,
       linea: opcion?.linea || null,
-      categorias: Array.isArray(opcion?.categorias) ? opcion.categorias : []
+      categorias: Array.isArray(opcion?.categorias) ? opcion.categorias : [],
+      materiales: Array.isArray(opcion?.materiales) ? opcion.materiales : []
     });
   };
 
@@ -102,6 +103,7 @@ export default function ModeloStep({ data, onUpdate, borradores, onUpsertDraft }
                 </div>
               </div>
               <span className="badge text-bg-light ms-auto">{(visible.categorias || []).length} categorias</span>
+              <span className="badge text-bg-light ms-2">{(visible.materiales || []).length} materiales</span>
               {modelo?._pending && (
                 <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => setMostrarNuevoModelo(true)}>Editar</button>
               )}
