@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
+import CifConfiguracionWarning from "../components/CifConfiguracionWarning.jsx";
 import { getUser } from "../../auth/services/authService";
 import {
   actualizarConfiguracionCif,
@@ -10,8 +11,20 @@ import {
   obtenerConfiguracionCif,
   obtenerResumenCif,
 } from "../services/cif";
+import "../../productos/pages/Productos/ProductoForm.css";
 
 const ROLES_GESTION_CIF = ["ADMIN", "SUPER_ADMIN", "SUBDIRECCION_ADMINISTRATIVA"];
+
+function isConfiguracionCifError(error) {
+  const message = `${error?.message || ""} ${error?.data?.message || ""}`.toLowerCase();
+
+  return (
+    message.includes("cif_configuracion") ||
+    message.includes("connection is read-only") ||
+    message.includes("read-only") ||
+    message.includes("insert into cif_configuracion")
+  );
+}
 
 function formatCurrency(value) {
   return new Intl.NumberFormat("es-MX", {
@@ -30,6 +43,7 @@ function formatNumber(value, digits = 2) {
 
 export default function CifPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const user = getUser();
   const puedeGestionar = user?.roles?.some((rol) => ROLES_GESTION_CIF.includes(rol));
   const [conceptos, setConceptos] = useState([]);
@@ -40,6 +54,27 @@ export default function CifPage() {
   const [loading, setLoading] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [toast, setToast] = useState({ message: "", type: "success" });
+  const configuracionCardRef = useRef(null);
+  const diasRef = useRef(null);
+  const horasRef = useRef(null);
+  const turnosRef = useRef(null);
+  const [resaltarConfiguracion, setResaltarConfiguracion] = useState(false);
+  const resaltarTimeoutRef = useRef(null);
+
+  const enfocarConfiguracion = () => {
+    configuracionCardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    diasRef.current?.focus({ preventScroll: true });
+    setResaltarConfiguracion(true);
+
+    if (resaltarTimeoutRef.current) {
+      window.clearTimeout(resaltarTimeoutRef.current);
+    }
+
+    resaltarTimeoutRef.current = window.setTimeout(() => {
+      setResaltarConfiguracion(false);
+      resaltarTimeoutRef.current = null;
+    }, 2200);
+  };
 
   const cargarDatos = async () => {
     try {
@@ -53,7 +88,14 @@ export default function CifPage() {
       setConfiguracion(configResp);
       setResumen(resumenResp);
     } catch (error) {
-      setToast({ message: error.message || "No fue posible cargar CIF.", type: "danger" });
+      if (isConfiguracionCifError(error)) {
+        setToast({
+          message: "La configuracion CIF aun no esta guardada. Completa los datos para continuar.",
+          type: "warning",
+        });
+      } else {
+        setToast({ message: error.message || "No fue posible cargar CIF.", type: "danger" });
+      }
     } finally {
       setLoading(false);
     }
@@ -61,6 +103,24 @@ export default function CifPage() {
 
   useEffect(() => {
     cargarDatos();
+  }, []);
+
+  useEffect(() => {
+    if (!location.state?.enfocarConfiguracion) return;
+
+    const timer = window.setTimeout(() => {
+      enfocarConfiguracion();
+    }, 150);
+
+    return () => window.clearTimeout(timer);
+  }, [location.state]);
+
+  useEffect(() => {
+    return () => {
+      if (resaltarTimeoutRef.current) {
+        window.clearTimeout(resaltarTimeoutRef.current);
+      }
+    };
   }, []);
 
   const conceptosFiltrados = useMemo(() => {
@@ -78,6 +138,8 @@ export default function CifPage() {
       return pasaTexto && pasaEstado;
     });
   }, [conceptos, busqueda, filtroEstado]);
+
+  const configuracionPendiente = !loading && configuracion && configuracion.id == null;
 
   const guardarConfiguracion = async () => {
     if (!puedeGestionar || !configuracion) return;
@@ -166,17 +228,31 @@ export default function CifPage() {
         </div>
       </div>
 
-      <div className="card mb-3">
+      {configuracionPendiente && (
+        <CifConfiguracionWarning
+          className="mb-3"
+          title="Aun no has guardado la configuracion CIF"
+          message="Estos valores estan usando la configuracion inicial. Revisa los dias laborables por mes, horas por dia y turnos, y guarda los cambios para activar el calculo correcto."
+          actionLabel="Enfocar configuracion"
+          onAction={puedeGestionar ? enfocarConfiguracion : undefined}
+        />
+      )}
+
+      <div
+        ref={configuracionCardRef}
+        className={`card mb-3 ${resaltarConfiguracion ? "cif-config-focus" : ""}`}
+      >
         <div className="card-header bg-white fw-semibold">Configuracion productiva</div>
         <div className="card-body">
           <div className="row g-3 align-items-end">
             <div className="col-12 col-md-3">
               <label className="form-label">Dias/mes</label>
               <input
+                ref={diasRef}
                 type="number"
                 min="0"
                 step="0.01"
-                className="form-control"
+                className={`form-control ${resaltarConfiguracion ? "cif-config-focus-input" : ""}`}
                 value={configuracion?.diasLaborablesMes ?? ""}
                 disabled={!puedeGestionar}
                 onChange={(e) => setConfiguracion((prev) => ({ ...prev, diasLaborablesMes: e.target.value }))}
@@ -185,10 +261,11 @@ export default function CifPage() {
             <div className="col-12 col-md-3">
               <label className="form-label">Horas/dia</label>
               <input
+                ref={horasRef}
                 type="number"
                 min="0"
                 step="0.01"
-                className="form-control"
+                className={`form-control ${resaltarConfiguracion ? "cif-config-focus-input" : ""}`}
                 value={configuracion?.horasPorDia ?? ""}
                 disabled={!puedeGestionar}
                 onChange={(e) => setConfiguracion((prev) => ({ ...prev, horasPorDia: e.target.value }))}
@@ -197,10 +274,11 @@ export default function CifPage() {
             <div className="col-12 col-md-3">
               <label className="form-label">Turnos</label>
               <input
+                ref={turnosRef}
                 type="number"
                 min="0"
                 step="0.01"
-                className="form-control"
+                className={`form-control ${resaltarConfiguracion ? "cif-config-focus-input" : ""}`}
                 value={configuracion?.turnos ?? ""}
                 disabled={!puedeGestionar}
                 onChange={(e) => setConfiguracion((prev) => ({ ...prev, turnos: e.target.value }))}

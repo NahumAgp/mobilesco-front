@@ -102,6 +102,17 @@ function CostSectionActions({ children }) {
   );
 }
 
+function isConfiguracionCifError(error) {
+  const message = `${error?.message || ""} ${error?.data?.message || ""}`.toLowerCase();
+
+  return (
+    message.includes("cif_configuracion") ||
+    message.includes("connection is read-only") ||
+    message.includes("read-only") ||
+    message.includes("insert into cif_configuracion")
+  );
+}
+
 export default function ProductoCostosPanel({ productoId, embedded = false, summaryOnly = false, detailsOnly = false }) {
   const navigate = useNavigate();
   const [estructura, setEstructura] = useState(null);
@@ -136,6 +147,31 @@ export default function ProductoCostosPanel({ productoId, embedded = false, summ
     <div className="text-center py-5">
       <div className="spinner-border text-primary" role="status">
         <span className="visually-hidden">Cargando estructura de costos...</span>
+      </div>
+    </div>
+  ) : !loading && ((estructura && estructura.configuracionCifId == null) || isConfiguracionCifError({ message: error })) ? (
+    <div className="producto-cif-warning">
+      <div className="d-flex align-items-start gap-3">
+        <div className="producto-cif-warning-icon">
+          <i className="bi bi-exclamation-triangle-fill" />
+        </div>
+        <div className="flex-grow-1">
+          <div className="text-uppercase small fw-bold producto-cif-warning-kicker">Falta la configuración CIF</div>
+          <h5 className="mb-2">Necesitamos completar los datos productivos para calcular el costo indirecto.</h5>
+          <p className="mb-3">
+            Ve a la pantalla de CIF y captura los valores de <strong>días laborables por mes</strong>, <strong>horas por día</strong> y <strong>turnos</strong>.
+          </p>
+          <div className="d-flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="btn producto-cif-warning-button"
+              onClick={() => navigate("/cif", { state: { enfocarConfiguracion: true } })}
+            >
+              <i className="bi bi-sliders2 me-2" />
+              Ir a configuración CIF
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   ) : error ? (
