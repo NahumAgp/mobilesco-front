@@ -229,11 +229,14 @@
 
 .insumos-main-table th:nth-child(6),
 .insumos-main-table td:nth-child(6) {
-  width: 70px;
+  width: 100px;
 }
 
 .insumos-main-table th:nth-child(7),
-.insumos-main-table td:nth-child(7),
+.insumos-main-table td:nth-child(7) {
+  width: 70px;
+}
+
 .insumos-main-table th:nth-child(8),
 .insumos-main-table td:nth-child(8) {
   width: 76px;
@@ -255,6 +258,11 @@
 
 .insumos-main-table th:nth-child(13),
 .insumos-main-table td:nth-child(13) {
+  width: 88px;
+}
+
+.insumos-main-table th:nth-child(14),
+.insumos-main-table td:nth-child(14) {
   width: 180px;
 }
 

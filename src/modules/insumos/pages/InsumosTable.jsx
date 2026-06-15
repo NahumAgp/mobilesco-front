@@ -83,6 +83,11 @@ export default function InsumosTable({
     }).format(value || 0);
   };
 
+  const formatTipoInsumo = (value) => {
+    if (!value) return "-";
+    return String(value).replace(/_/g, " ");
+  };
+
   return (
     <>
       <div className="card shadow-sm border-0 insumos-table-card">
@@ -94,6 +99,7 @@ export default function InsumosTable({
                 <th>{renderHeaderLabel("Codigo")}</th>
                 {renderHeader("nombre", "Nombre")}
                 <th>{renderHeaderLabel("Descripcion")}</th>
+                <th>{renderHeaderLabel("Tipo")}</th>
                 {renderHeader("ubicacion", "Ubicacion")}
                 <th>{renderHeaderLabel("Unidad")}</th>
                 {renderHeader("stockActual", "Stock actual")}
@@ -127,6 +133,11 @@ export default function InsumosTable({
                       </td>
                       <td className="insumos-description">
                         {insumo.descripcion || "-"}
+                      </td>
+                      <td>
+                        <span className="badge text-bg-light border insumos-unit-badge">
+                          {formatTipoInsumo(insumo.tipoInsumo)}
+                        </span>
                       </td>
                       <td>
                         {insumo.ubicacion || "-"}
@@ -197,9 +208,9 @@ export default function InsumosTable({
                     </tr>
                   );
                 })
-              ) : (
+                ) : (
                 <tr>
-                  <td colSpan="13" className="text-center text-muted py-5">
+                  <td colSpan="14" className="text-center text-muted py-5">
                     <i className="bi bi-boxes fs-1 d-block mb-3 text-secondary"></i>
                     <span className="fs-5 d-block">No hay insumos registrados</span>
                     <p className="text-secondary mt-2 mb-0">Comienza creando un nuevo insumo</p>

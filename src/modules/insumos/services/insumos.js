@@ -49,6 +49,10 @@ export function obtenerInsumoPorId(id) {
   return request(url).then((data) => transformarInsumo(data));
 }
 
+export function obtenerTiposInsumo() {
+  return request(`${API_PATHS.INSUMOS}/tipos-insumo`);
+}
+
 function transformarInsumo(item) {
   if (!item) return item;
 

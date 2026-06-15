@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { obtenerInsumoPorId, crearInsumo, actualizarInsumo, eliminarInsumo } from "../services/insumos.js";
+import { obtenerInsumoPorId, crearInsumo, actualizarInsumo, eliminarInsumo, obtenerTiposInsumo } from "../services/insumos.js";
 import { obtenerUnidadesMedida, crearUnidadMedida } from "../../unidades-medida/services/unidadMedidas.js";
 import { getUser } from "../../auth/services/authService.js";
 import Toast from "../../../components/ui/Toast.jsx";
@@ -20,6 +20,7 @@ export default function InsumoForm({
   const [toastType, setToastType] = useState("success");
   const [erroresBackend, setErroresBackend] = useState({});
   const [unidadesMedida, setUnidadesMedida] = useState([]);
+  const [tiposInsumo, setTiposInsumo] = useState([]);
   const [mostrarCrearUnidad, setMostrarCrearUnidad] = useState(false);
   const [creandoUnidad, setCreandoUnidad] = useState(false);
   const [nuevaUnidadRapida, setNuevaUnidadRapida] = useState({
@@ -42,6 +43,7 @@ export default function InsumoForm({
     codigoBarras: "",
     nombre: "",
     descripcion: "",
+    tipoInsumo: "",
     ubicacion: "",
     fila: "",
     columna: "",
@@ -70,6 +72,18 @@ export default function InsumoForm({
     cargarUnidades();
   }, []);
 
+  useEffect(() => {
+    const cargarTipos = async () => {
+      try {
+        const data = await obtenerTiposInsumo();
+        setTiposInsumo(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error("Error cargando tipos de insumo:", error);
+      }
+    };
+    cargarTipos();
+  }, []);
+
   // Cargar datos del insumo si estamos editando
   useEffect(() => {
     const cargar = async () => {
@@ -78,6 +92,7 @@ export default function InsumoForm({
           codigoBarras: insumo.codigoBarras || "",
           nombre: insumo.nombre || "",
           descripcion: insumo.descripcion || "",
+          tipoInsumo: insumo.tipoInsumo || "",
           ubicacion: insumo.ubicacion || "",
           fila: insumo.fila || "",
           columna: insumo.columna || "",
@@ -98,6 +113,7 @@ export default function InsumoForm({
             codigoBarras: data.codigoBarras || "",
             nombre: data.nombre || "",
             descripcion: data.descripcion || "",
+            tipoInsumo: data.tipoInsumo || "",
             ubicacion: data.ubicacion || "",
             fila: data.fila || "",
             columna: data.columna || "",
@@ -207,6 +223,15 @@ export default function InsumoForm({
 
       let respuesta;
       const payload = { ...formData };
+      if (!payload.tipoInsumo) {
+        setErroresBackend((prev) => ({
+          ...prev,
+          tipoInsumo: "Selecciona un tipo de insumo"
+        }));
+        setToastType("danger");
+        setToastMessage("Revisa los campos obligatorios.");
+        return;
+      }
       if (!puedeGestionarCostos) {
         delete payload.costoCotizacion;
       } else if (payload.costoCotizacion === "") {
@@ -418,7 +443,7 @@ export default function InsumoForm({
                 <i className="bi bi-box-seam"></i>
               </div>
               <div className="row g-3">
-                <div className="col-lg-6">
+                <div className="col-lg-4">
                   <label className="form-label fw-semibold">
                     Nombre del Insumo <span className="text-danger">*</span>
                   </label>
@@ -433,7 +458,7 @@ export default function InsumoForm({
                   <div className="invalid-feedback">{erroresBackend.nombre || erroresExternos.nombre}</div>
                 </div>
 
-                <div className="col-lg-6">
+                <div className="col-lg-4">
                   <label className="form-label fw-semibold">
                     Unidad de Medida <span className="text-danger">*</span>
                   </label>
@@ -531,6 +556,26 @@ export default function InsumoForm({
                       </div>
                     </div>
                   )}
+                </div>
+
+                <div className="col-lg-4">
+                  <label className="form-label fw-semibold">
+                    Tipo de Insumo <span className="text-danger">*</span>
+                  </label>
+                  <select
+                    name="tipoInsumo"
+                    className={selectClass("tipoInsumo")}
+                    value={formData.tipoInsumo}
+                    onChange={handleChange}
+                  >
+                    <option value="">Selecciona un tipo...</option>
+                    {tiposInsumo.map((tipo) => (
+                      <option key={tipo} value={tipo}>
+                        {tipo.replace(/_/g, " ")}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="invalid-feedback">{erroresBackend.tipoInsumo || erroresExternos.tipoInsumo}</div>
                 </div>
 
                 <div className="col-12">

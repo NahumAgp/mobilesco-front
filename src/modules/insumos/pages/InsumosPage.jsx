@@ -91,6 +91,7 @@ export default function InsumosPage() {
           insumo.codigoBarras,
           insumo.nombre,
           insumo.descripcion,
+          insumo.tipoInsumo,
           insumo.ubicacion,
           insumo.fila,
           insumo.columna,
