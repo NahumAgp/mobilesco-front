@@ -87,11 +87,6 @@ const getImagenesProducto = (producto) => {
 
   agregar(producto?.imagenPrincipalUrl || producto?.imagenUrl || producto?.urlImagen, "directa");
 
-  if (imagenes.length === 0) {
-    agregar(producto?.modeloUrlImagen, "modelo");
-    agregar(producto?.modelo?.urlImagen, "modelo-relacion");
-  }
-
   return imagenes;
 };
 

@@ -184,6 +184,8 @@ export default function ProductoForm({
     ancho: "",
     alto: "",
     fondo: "",
+    dimensiones: "",
+    pesoKg: "",
     modeloId: "",
     nivelId: "",
     materialId: "",
@@ -276,6 +278,8 @@ export default function ProductoForm({
           ancho: producto.ancho ?? "",
           alto: producto.alto ?? "",
           fondo: producto.fondo ?? "",
+          dimensiones: producto.dimensiones || producto.dimensiones_producto || "",
+          pesoKg: producto.pesoKg ?? producto.peso_kg ?? "",
           modeloId: producto.id_modelo || producto.modeloId || "",
           nivelId: producto.id_nivel || producto.nivelId || "",
           materialId: producto.id_material || producto.materialId || "",
@@ -298,6 +302,8 @@ export default function ProductoForm({
             ancho: data.ancho ?? "",
             alto: data.alto ?? "",
             fondo: data.fondo ?? "",
+            dimensiones: data.dimensiones || data.dimensiones_producto || "",
+            pesoKg: data.pesoKg ?? data.peso_kg ?? "",
             modeloId: data.id_modelo || data.modeloId || data.id_producto_base || data.productoBaseId || "",
             nivelId: data.id_nivel || data.nivelId || "",
             materialId: data.id_material || data.materialId || "",
@@ -430,6 +436,12 @@ export default function ProductoForm({
       ancho: parseOptionalNumber(formData.ancho),
       alto: parseOptionalNumber(formData.alto),
       fondo: parseOptionalNumber(formData.fondo),
+      dimensiones: formData.dimensiones?.trim() || null,
+      pesoKg: (() => {
+        if (formData.pesoKg === "" || formData.pesoKg === null || formData.pesoKg === undefined) return null;
+        const parsed = Number(formData.pesoKg);
+        return Number.isFinite(parsed) ? parsed : null;
+      })(),
       id_modelo: Number(formData.modeloId),
       id_nivel: Number(formData.nivelId),
       id_material: Number(formData.materialId),
@@ -504,6 +516,32 @@ export default function ProductoForm({
               <div className="col-12">
                 <label className="form-label fw-semibold">Descripcion</label>
                 <textarea name="descripcion" className={inputClass("descripcion")} rows="3" value={formData.descripcion} onChange={handleChange} placeholder="Silla en Formaica color cafe ..." />
+              </div>
+              <div className="col-md-8">
+                <label className="form-label fw-semibold">Dimensiones</label>
+                <input
+                  type="text"
+                  name="dimensiones"
+                  className={inputClass("dimensiones")}
+                  value={formData.dimensiones}
+                  onChange={handleChange}
+                  placeholder="1.20 x 0.40 x 0.65 m"
+                />
+                <small className="text-muted">Ancho x fondo x alto del producto.</small>
+              </div>
+              <div className="col-md-4">
+                <label className="form-label fw-semibold">Peso volumetrico (kg)</label>
+                <input
+                  type="number"
+                  name="pesoKg"
+                  step="0.01"
+                  min="0"
+                  className={inputClass("pesoKg")}
+                  value={formData.pesoKg}
+                  onChange={handleChange}
+                  placeholder="0.00"
+                />
+                <small className="text-muted">Valor en kilogramos.</small>
               </div>
               <div className="col-12">
                 <label className="form-label fw-semibold">Descripcion corta</label>
@@ -655,7 +693,7 @@ export default function ProductoForm({
             {esEdicion ? (
               <>
                 <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-                  <div className="text-muted">Estas imagenes se comparten con productos del mismo modelo y color.</div>
+                  <div className="text-muted">Estas imagenes pertenecen solo a este producto.</div>
                   <div className="d-flex gap-2">
                     <span className="badge producto-form-count-badge">{imagenes.length}</span>
                     <span className={`badge ${productoPrincipal ? "producto-form-success-badge" : "text-bg-secondary"}`}>
@@ -681,7 +719,7 @@ export default function ProductoForm({
                       <input id="producto-images-input" type="file" accept="image/*" multiple className="d-none" onChange={handleFileChange} />
                       <i className="bi bi-cloud-upload fs-2"></i>
                       <p className="mt-2 mb-0">Arrastra imagenes aqui o haz clic para seleccionar</p>
-                      <small>Se aplicaran a todos los productos del mismo color.</small>
+                      <small>Se aplicaran solo a este producto.</small>
                       {subiendoImagenes && <div className="mt-2 fw-semibold">Subiendo...</div>}
                     </div>
 
@@ -718,14 +756,14 @@ export default function ProductoForm({
                           );
                         })
                       ) : (
-                        <div className="col-12 text-muted">Todavia no hay imagenes para este producto base y color.</div>
+                        <div className="col-12 text-muted">Todavia no hay imagenes para este producto.</div>
                       )}
                     </div>
                   </>
                 )}
               </>
             ) : (
-              <div className="text-muted">Guarda el producto para comenzar a subir imagenes por color.</div>
+              <div className="text-muted">Guarda el producto para comenzar a subir imagenes.</div>
             )}
             <SectionFooter>
               <button type="submit" className="btn producto-form-primary">

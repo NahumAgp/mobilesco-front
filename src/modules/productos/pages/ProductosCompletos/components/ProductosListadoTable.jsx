@@ -124,16 +124,6 @@ const getImagenRepresentativa = (producto) => {
   const imagenPorColor = imagenes.find((imagen) => getImagenActiva(imagen) && imagen?.url);
   if (imagenPorColor) return imagenPorColor;
 
-  const urlModelo =
-    producto?.modeloUrlImagen ||
-    producto?.modelo?.urlImagen ||
-    producto?.productoBase?.urlImagen ||
-    producto?.imagenModeloUrl ||
-    producto?.modeloImagenUrl ||
-    "";
-
-  if (urlModelo) return { url: urlModelo, altTexto: producto?.modeloNombre || producto?.nombre || producto?.sku };
-
   const urlDirecta =
     producto?.imagenPrincipalUrl ||
     producto?.imagenUrl ||

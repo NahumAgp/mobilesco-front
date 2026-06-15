@@ -13,6 +13,31 @@ const getLista = (respuesta) => {
   return [];
 };
 
+const getMaterialesDelModelo = (modelo = {}) => {
+  const candidatos = [
+    modelo?.materiales,
+    modelo?.materialesSeleccionados,
+    modelo?.materiales_modelo,
+    modelo?.materialesModelos,
+    modelo?.materiales_asociados
+  ];
+
+  for (const candidato of candidatos) {
+    if (Array.isArray(candidato)) {
+      return candidato.map((material) => ({
+        ...material,
+        id: material?.id ?? material?.materialId ?? material?.id_material ?? material?.material_id ?? null,
+        codigo: material?.codigo ?? material?.codigo_material ?? "",
+        nombre: material?.nombre ?? material?.nombre_material ?? "",
+        descripcion: material?.descripcion ?? material?.descripcion_material ?? "",
+        activo: material?.activo ?? true
+      }));
+    }
+  }
+
+  return [];
+};
+
 const limpiarCodigo = (valor = "") => valor.toString().toUpperCase().replace(/[^A-Z0-9]/g, "");
 
 const tomarInicial = (valor, fallback = "X") => {
@@ -102,8 +127,20 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
   }, [borradores?.categorias, categorias, data?.modelo?.categorias, data?.modelo?.id, data?.modelo?.modo]);
 
   const materialesDisponibles = useMemo(
-    () => [...(borradores?.materiales || []), ...materiales],
-    [borradores?.materiales, materiales]
+    () => {
+      const materialesDelModelo = getMaterialesDelModelo(data?.modelo);
+      const base = materialesDelModelo.length > 0 ? materialesDelModelo : materiales;
+      const combinados = [...(borradores?.materiales || []), ...base];
+      const vistos = new Set();
+
+      return combinados.filter((item) => {
+        const key = String(item?.id || item?.materialId || item?.ref || "");
+        if (!key || vistos.has(key)) return false;
+        vistos.add(key);
+        return true;
+      });
+    },
+    [borradores?.materiales, data?.modelo, materiales]
   );
 
   const coloresDisponibles = useMemo(
@@ -201,6 +238,21 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
 
     setSeleccion(siguienteSeleccion);
   }, [cargandoCatalogos, variantes]);
+
+  useEffect(() => {
+    if (cargandoCatalogos || variantes.length > 0) return;
+
+    const materialesDelModelo = getMaterialesDelModelo(data?.modelo);
+    if (materialesDelModelo.length === 0) return;
+
+    const siguienteSeleccion = {};
+    materialesDelModelo.forEach((material) => {
+      const key = getMaterialKey(material.id);
+      siguienteSeleccion[key] = { categorias: {} };
+    });
+
+    setSeleccion(siguienteSeleccion);
+  }, [cargandoCatalogos, data?.modelo, variantes.length]);
 
   const categoriasPorId = useMemo(
     () => new Map(categoriasDisponibles.map((categoria) => [String(categoria.id), categoria])),
@@ -388,7 +440,9 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
             pesoVolumetrico: existente?.pesoVolumetrico ?? "",
             ancho: existente?.ancho ?? "",
             alto: existente?.alto ?? "",
-            fondo: existente?.fondo ?? ""
+            fondo: existente?.fondo ?? "",
+            dimensiones: existente?.dimensiones || "",
+            pesoKg: existente?.pesoKg ?? ""
           });
           skus.add(sku);
         });
@@ -437,9 +491,11 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
               [campo]: valor
             }
           : variante
-      )
+        )
     );
   };
+
+  const actualizarVarianteCampo = actualizarVariante;
 
   const limpiarVariantes = () => {
     if (!window.confirm("Eliminar todos los productos generados?")) return;
@@ -793,6 +849,8 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
                   <tr>
                     <th>Categoria</th>
                     <th>Color</th>
+                    <th>Dimensiones</th>
+                    <th>Peso (kg)</th>
                     <th>SKU</th>
                     <th>Descripcion corta</th>
                     <th>Peso volumetrico</th>
@@ -818,6 +876,36 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
                           />
                           {variante.colorCodigo ? `[${variante.colorCodigo}] ` : ""}
                           {variante.colorNombre || "Sin color"}
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            className="form-control form-control-sm"
+                            value={variante.dimensiones || ""}
+                            onChange={(e) => actualizarVarianteCampo(indexReal, "dimensiones", e.target.value)}
+                            placeholder="1.20 x 0.40 x 0.65 m"
+                          />
+                        </td>
+                        <td style={{ minWidth: "130px" }}>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            className="form-control form-control-sm text-end"
+                            value={variante.pesoKg ?? ""}
+                            onChange={(e) =>
+                              actualizarVarianteCampo(
+                                indexReal,
+                                "pesoKg",
+                                (() => {
+                                  if (e.target.value === "") return "";
+                                  const parsed = Number(e.target.value);
+                                  return Number.isFinite(parsed) ? parsed : "";
+                                })()
+                              )
+                            }
+                            placeholder="0.00"
+                          />
                         </td>
                         <td>
                           <code>{variante.sku || "-"}</code>

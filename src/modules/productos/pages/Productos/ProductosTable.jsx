@@ -21,7 +21,7 @@ export default function ProductosTable({
               <th>Línea</th>
               <th>Categoría</th>
               <th>Material</th>
-              <th>Peso (kg)</th>
+              <th>Peso volumetrico (kg)</th>
               <th>Estado</th>
               <th>Acciones</th>
             </tr>
@@ -46,7 +46,7 @@ export default function ProductosTable({
                   <td>{producto.lineaNombre || '-'}</td>
                   <td>{producto.categoriaNombre || '-'}</td>
                   <td>{producto.materialNombre || '-'}</td>
-                  <td className="text-end">{producto.pesoKg?.toFixed(2) || '-'}</td>
+                  <td className="text-end">{producto.pesoKg != null ? Number(producto.pesoKg).toFixed(2) : '-'}</td>
                   <td>
                     <CatalogStatusBadge active={producto.activo} />
                   </td>

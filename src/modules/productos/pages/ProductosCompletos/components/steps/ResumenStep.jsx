@@ -82,13 +82,15 @@ export default function ResumenStep({ data }) {
                   <th>Categoria</th>
                   <th>Material</th>
                   <th>Color</th>
+                  <th>Dimensiones</th>
+                  <th>Peso (kg)</th>
                   <th>SKU</th>
                 </tr>
               </thead>
               <tbody>
                 {variantes.length === 0 && (
                   <tr>
-                    <td colSpan="4" className="text-center text-muted py-3">
+                    <td colSpan="6" className="text-center text-muted py-3">
                       No hay productos agregados.
                     </td>
                   </tr>
@@ -115,6 +117,8 @@ export default function ResumenStep({ data }) {
                         </span>
                       </div>
                     </td>
+                    <td>{variante.dimensiones || "-"}</td>
+                    <td>{variante.pesoKg !== "" && variante.pesoKg != null ? `${variante.pesoKg} kg` : "-"}</td>
                     <td>
                       <code>{variante.sku || "-"}</code>
                     </td>

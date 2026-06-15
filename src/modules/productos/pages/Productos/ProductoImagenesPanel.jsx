@@ -102,7 +102,7 @@ export default function ProductoImagenesPanel({ productoId }) {
 
   return (
     <Card
-      title="Imagenes por producto base y color"
+      title="Imagenes por producto"
       icon="bi-images"
       className="mb-4"
     >
@@ -120,7 +120,7 @@ export default function ProductoImagenesPanel({ productoId }) {
           <div className="border rounded-4 p-3 mb-4 bg-light">
             <div className="row g-3 align-items-end">
               <div className="col-12 col-lg-5">
-                <label className="form-label fw-semibold">Subir imagenes compartidas</label>
+                <label className="form-label fw-semibold">Subir imagenes del producto</label>
                 <input
                   type="file"
                   className="form-control"
@@ -129,7 +129,7 @@ export default function ProductoImagenesPanel({ productoId }) {
                   onChange={handleSeleccion}
                 />
                 <small className="text-muted d-block mt-1">
-                  Se aplicaran a todos los productos del mismo modelo y color.
+                  Se aplicaran solo a este producto.
                 </small>
               </div>
               <div className="col-12 col-lg-5">
@@ -164,7 +164,7 @@ export default function ProductoImagenesPanel({ productoId }) {
           {imagenes.length === 0 ? (
             <div className="text-center py-4 text-muted">
               <i className="bi bi-image fs-1 d-block mb-2"></i>
-              Aun no hay imagenes cargadas para este producto base y color.
+              Aun no hay imagenes cargadas para este producto.
             </div>
           ) : (
             <div className="row g-3">

@@ -29,16 +29,17 @@ export default function ProductoWizard({ onComplete, onCancel }) {
     colores: []
   });
   const [productoData, setProductoData] = useState({
-    modelo: {
-      modo: "existente",
-      id: null,
-      codigo: "",
-      nombre: "",
-      descripcion: "",
-      familiaId: "",
-      activo: true,
-      categorias: []
-    },
+      modelo: {
+        modo: "existente",
+        id: null,
+        codigo: "",
+        nombre: "",
+        descripcion: "",
+        familiaId: "",
+        activo: true,
+        categorias: [],
+        materiales: []
+      },
     variantes: [],
     imagenes: {
       modelo: null,

@@ -178,6 +178,8 @@ export default function ProductoDetallePage() {
                 <tr><th>Dimensiones:</th><td>{formatMedidas()}</td></tr>
                 <tr><th>Peso volumetrico:</th><td>{producto.pesoVolumetrico != null ? `${formatNumber(producto.pesoVolumetrico)} kg` : '-'}</td></tr>
                 <tr><th>Peso:</th><td>{producto.pesoKg ? `${producto.pesoKg} kg` : '-'}</td></tr>
+                <tr><th>Dimensiones nuevas:</th><td>{producto.dimensiones || '-'}</td></tr>
+                <tr><th>Peso volumetrico nuevo:</th><td>{producto.pesoKg != null ? `${producto.pesoKg} kg` : '-'}</td></tr>
               </tbody>
             </table>
           </Card>

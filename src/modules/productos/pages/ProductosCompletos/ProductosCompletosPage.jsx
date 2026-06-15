@@ -463,6 +463,8 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
           ancho: toOptionalNumber(variante.ancho),
           alto: toOptionalNumber(variante.alto),
           fondo: toOptionalNumber(variante.fondo),
+          dimensiones: variante.dimensiones || undefined,
+          pesoKg: variante.pesoKg === "" || variante.pesoKg === undefined ? undefined : Number(variante.pesoKg),
           activo: true,
           modeloId: modelo?._pending ? undefined : Number(modelo.id),
           modeloRef: modelo?._pending ? modelo.ref : undefined,
