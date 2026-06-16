@@ -197,20 +197,6 @@ export default function InsumosTable({
                       </td>
                       <td className="insumos-actions">
                         <div className="d-flex flex-wrap gap-2 justify-content-end">
-                          {onVerKardex && (
-                            <button
-                              type="button"
-                              className="btn btn-outline-secondary btn-sm"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                onVerKardex(insumo);
-                              }}
-                              title="Ver Kardex"
-                            >
-                              <i className="bi bi-journal-text me-1"></i>
-                              Kardex
-                            </button>
-                          )}
                           {puedeGestionar && (
                             <CatalogRowActions
                               item={insumo}

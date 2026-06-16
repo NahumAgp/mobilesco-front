@@ -1,7 +1,9 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import Card from "../../../components/ui/Card.jsx";
 
 export default function KardexTable({ movimientos, loading, insumoNombre }) {
+  const navigate = useNavigate();
 
   const formatDate = (dateString) => {
     if (!dateString) return '-';
@@ -98,6 +100,48 @@ export default function KardexTable({ movimientos, loading, insumoNombre }) {
     };
   }, { saldo: 0, items: [] }).items;
 
+  const recepcionesPorCompra = movimientosConSaldo.reduce((acc, mov) => {
+    if (mov.tipo === "ENTRADA" && mov.concepto === "COMPRA" && mov.compraId) {
+      const key = `${mov.compraId}-${mov.insumoId || "insumo"}`;
+      acc[key] = [...(acc[key] || []), mov];
+    }
+
+    return acc;
+  }, {});
+  const recepcionesParciales = Object.values(recepcionesPorCompra).reduce((acc, grupo) => {
+    if (grupo.length <= 1) {
+      return acc;
+    }
+
+    const movimientosOrdenados = [...grupo].sort((a, b) => {
+      const fechaA = new Date(a.fecha || 0).getTime();
+      const fechaB = new Date(b.fecha || 0).getTime();
+
+      if (fechaA !== fechaB) {
+        return fechaA - fechaB;
+      }
+
+      return Number(a.id || 0) - Number(b.id || 0);
+    });
+    const cantidadEsperada = Number(movimientosOrdenados.find((mov) => mov.cantidadEsperadaCompra)?.cantidadEsperadaCompra || 0);
+    let cantidadAcumulada = 0;
+
+    movimientosOrdenados.forEach((mov, index) => {
+      cantidadAcumulada += Number(mov.cantidad || 0);
+      const completo = cantidadEsperada > 0
+        ? cantidadAcumulada >= cantidadEsperada - 0.0001
+        : index === movimientosOrdenados.length - 1;
+
+      acc[mov.id] = { completo };
+    });
+
+    return acc;
+  }, {});
+
+  const obtenerRecepcionParcial = (mov) => {
+    return recepcionesParciales[mov.id] || null;
+  };
+
   return (
     <Card
       title={`Kardex - ${insumoNombre}`}
@@ -107,54 +151,73 @@ export default function KardexTable({ movimientos, loading, insumoNombre }) {
         <table className="table table-hover">
           <thead className="table-light">
             <tr>
-              <th>Fecha</th>
-              <th>Tipo</th>
-              <th>Concepto</th>
-              <th>Documento</th>
-              <th>Referencia</th>
-              <th className="text-end">Cantidad</th>
-              <th className="text-end">Costo Unit.</th>
-              <th className="text-end">Costo Total</th>
-              <th className="text-end">Stock Anterior</th>
-              <th className="text-end">Stock Nuevo</th>
-              <th className="text-end">Saldo</th>
-              <th>Observaciones</th>
+              <th className="text-center">Fecha</th>
+              <th className="text-center">Tipo</th>
+              <th className="text-center">Concepto</th>
+              <th className="text-center">Documento</th>
+              <th className="text-center">Proveedor</th>
+              <th className="text-center">Cantidad</th>
+              <th className="text-center">Costo Unit.</th>
+              <th className="text-center">Costo Total</th>
+              <th className="text-center">Stock Anterior</th>
+              <th className="text-center">Stock Nuevo</th>
+              <th className="text-center">Compra</th>
             </tr>
           </thead>
           <tbody>
-            {movimientosConSaldo.map((mov) => (
-              <tr key={mov.id}>
-                <td>{formatDate(mov.fecha)}</td>
-                <td>{getTipoBadge(mov.tipo)}</td>
-                <td>{getConceptoBadge(mov.concepto)}</td>
-                <td>
-                  {mov.documento || '-'}
-                  {mov.compraId && (
-                    <small className="d-block text-muted">Compra #{mov.compraId}</small>
-                  )}
-                </td>
-                <td>
-                  {mov.referencia || '-'}
-                  {mov.produccionId && (
-                    <small className="d-block text-muted">Prod. #{mov.produccionId}</small>
-                  )}
-                </td>
-                <td className={`text-end fw-bold ${mov.tipo === 'ENTRADA' ? 'text-success' : 'text-danger'}`}>
-                  {mov.tipo === 'ENTRADA' ? '+' : '-'}{mov.cantidad.toFixed(2)}
-                </td>
-                <td className="text-end">{formatCurrency(mov.costoUnitario)}</td>
-                <td className="text-end">{formatCurrency(mov.costoTotal)}</td>
-                <td className="text-end">{mov.stockAnterior?.toFixed(2) || '0.00'}</td>
-                <td className="text-end fw-bold">{mov.stockNuevo?.toFixed(2) || '0.00'}</td>
-                <td className="text-end fw-bold text-primary">{mov.saldoAcumulado.toFixed(2)}</td>
-                <td>
-                  <small className="text-muted">{mov.observaciones || '-'}</small>
-                  {mov.usuario && (
-                    <small className="d-block text-muted">Por: {mov.usuario}</small>
-                  )}
-                </td>
-              </tr>
-            ))}
+            {movimientosConSaldo.map((mov) => {
+              const recepcionParcial = obtenerRecepcionParcial(mov);
+
+              return (
+                <tr key={mov.id}>
+                  <td className="text-center">{formatDate(mov.fecha)}</td>
+                  <td className="text-center">{getTipoBadge(mov.tipo)}</td>
+                  <td className="text-center">
+                    {getConceptoBadge(mov.concepto)}
+                    {recepcionParcial && (
+                      <span
+                        className={`badge d-block mt-1 ${
+                          recepcionParcial.completo
+                            ? "bg-success-subtle text-success border border-success-subtle"
+                            : "bg-warning-subtle text-warning border border-warning-subtle"
+                        }`}
+                      >
+                        Parcial
+                      </span>
+                    )}
+                  </td>
+                  <td className="text-center">
+                    {mov.documento || '-'}
+                    {mov.compraId && (
+                      <small className="d-block text-muted">Compra #{mov.compraId}</small>
+                    )}
+                  </td>
+                  <td className="text-center">{mov.proveedorNombre || '-'}</td>
+                  <td className={`text-center fw-bold ${mov.tipo === 'ENTRADA' ? 'text-success' : 'text-danger'}`}>
+                    {mov.tipo === 'ENTRADA' ? '+' : '-'}{mov.cantidad.toFixed(2)}
+                  </td>
+                  <td className="text-center">{formatCurrency(mov.costoUnitario)}</td>
+                  <td className="text-center">{formatCurrency(mov.costoTotal)}</td>
+                  <td className="text-center">{mov.stockAnterior?.toFixed(2) || '0.00'}</td>
+                  <td className="text-center fw-bold">{mov.stockNuevo?.toFixed(2) || '0.00'}</td>
+                  <td className="text-center">
+                    {mov.compraId ? (
+                      <button
+                        type="button"
+                        className="btn btn-outline-primary btn-sm"
+                        onClick={() => navigate(`/compras/${mov.compraId}/ver`)}
+                        title="Ver compra"
+                      >
+                        <i className="bi bi-box-arrow-up-right me-1"></i>
+                        Ver
+                      </button>
+                    ) : (
+                      <span className="text-muted">-</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

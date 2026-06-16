@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { obtenerInsumos } from "../../insumos/services/insumos.js";
+import { obtenerCompraPorId } from "../../compras/services/compras.js";
 import { obtenerHistorialInsumo, obtenerMovimientosPorPeriodo, obtenerCostoPromedio } from "../services/kardex.js";
 import KardexTable from "./KardexTable.jsx";
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
@@ -10,6 +11,8 @@ import Card from "../../../components/ui/Card.jsx";
 export default function KardexPage() {
   const location = useLocation();
   const navigate = useNavigate();
+  const insumoIdParam = new URLSearchParams(location.search).get("insumoId");
+  const esConsultaEspecifica = Boolean(insumoIdParam);
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
   
@@ -28,6 +31,55 @@ export default function KardexPage() {
     new Date().toISOString().split('T')[0]
   );
   const [usarFiltroFechas, setUsarFiltroFechas] = useState(false);
+
+  const obtenerNombreProveedorCompra = (compra) => {
+    if (!compra) return "";
+    if (compra.proveedorRazonSocial) return compra.proveedorRazonSocial;
+    if (compra.proveedorNombreCompleto) return compra.proveedorNombreCompleto;
+    return [compra.proveedorNombre, compra.proveedorApellidoPaterno, compra.proveedorApellidoMaterno]
+      .filter(Boolean)
+      .join(" ");
+  };
+
+  const completarDatosCompras = async (movimientosBase) => {
+    const compraIds = [...new Set(
+      (movimientosBase || [])
+        .map((movimiento) => movimiento.compraId)
+        .filter(Boolean)
+    )];
+
+    if (compraIds.length === 0) {
+      return movimientosBase || [];
+    }
+
+    const compras = await Promise.all(
+      compraIds.map(async (compraId) => {
+        try {
+          const compra = await obtenerCompraPorId(compraId);
+          return [String(compraId), compra];
+        } catch (error) {
+          console.error(`Error cargando datos de compra ${compraId}:`, error);
+          return [String(compraId), null];
+        }
+      })
+    );
+    const comprasPorId = Object.fromEntries(compras);
+
+    return (movimientosBase || []).map((movimiento) => ({
+      ...movimiento,
+      proveedorNombre: movimiento.proveedorNombre || obtenerNombreProveedorCompra(comprasPorId[String(movimiento.compraId)]) || "",
+      cantidadEsperadaCompra: obtenerCantidadEsperadaCompra(comprasPorId[String(movimiento.compraId)], movimiento.insumoId)
+    }));
+  };
+
+  const obtenerCantidadEsperadaCompra = (compra, insumoId) => {
+    const detalle = compra?.detalles?.find((item) => String(item.insumoId) === String(insumoId));
+    if (!detalle) return null;
+
+    const cantidad = Number(detalle.cantidad || 0);
+    const factorConversion = Number(detalle.factorConversion || 1);
+    return cantidad * factorConversion;
+  };
 
   // Cargar insumos al montar
   useEffect(() => {
@@ -64,10 +116,12 @@ export default function KardexPage() {
     }
   };
 
-  const handleConsultar = async () => {
+  const handleConsultar = useCallback(async ({ mostrarAviso = true } = {}) => {
     if (!insumoSeleccionado) {
-      setToastType("warning");
-      setToastMessage("Selecciona un insumo");
+      if (mostrarAviso) {
+        setToastType("warning");
+        setToastMessage("Selecciona un insumo");
+      }
       return;
     }
 
@@ -93,7 +147,7 @@ export default function KardexPage() {
         data = await obtenerHistorialInsumo(insumoSeleccionado);
       }
       
-      setMovimientos(data || []);
+      setMovimientos(await completarDatosCompras(data));
       
       // Obtener costo promedio
       const promedio = await obtenerCostoPromedio(insumoSeleccionado);
@@ -106,7 +160,15 @@ export default function KardexPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [fechaFin, fechaInicio, insumoSeleccionado, usarFiltroFechas]);
+
+  useEffect(() => {
+    if (!esConsultaEspecifica || !insumoSeleccionado) {
+      return;
+    }
+
+    handleConsultar({ mostrarAviso: false });
+  }, [esConsultaEspecifica, fechaFin, fechaInicio, handleConsultar, insumoSeleccionado, usarFiltroFechas]);
 
   const insumoInfo = insumos.find(i => i.id === parseInt(insumoSeleccionado));
   const abrirEdicion = () => {
@@ -126,40 +188,93 @@ export default function KardexPage() {
       <div className="row mb-4">
         <div className="col-md-12">
           <Card>
-            <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
-              <div>
-                <h5 className="mb-1">Consulta del Kardex</h5>
-                <p className="text-muted mb-0">
-                  {insumoInfo ? `Viendo ${insumoInfo.nombre}` : "Selecciona un insumo para consultar sus movimientos"}
-                </p>
-              </div>
-              <button
-                type="button"
-                className="btn btn-outline-primary"
-                onClick={abrirEdicion}
-                disabled={!insumoSeleccionado}
-              >
-                <i className="bi bi-pencil me-2"></i>
-                Editar insumo
-              </button>
-            </div>
+            {esConsultaEspecifica ? (
+              <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 bg-light rounded border p-3">
+                <div className="d-flex flex-wrap align-items-end gap-3">
+                  <div className="form-check form-switch mb-2">
+                    <input
+                      className="form-check-input"
+                      type="checkbox"
+                      checked={usarFiltroFechas}
+                      onChange={(e) => setUsarFiltroFechas(e.target.checked)}
+                      id="filtrarFechas"
+                    />
+                    <label className="form-check-label fw-semibold" htmlFor="filtrarFechas">
+                      Filtrar por fechas
+                    </label>
+                  </div>
 
-            <div className="row g-3 align-items-end">
-              <div className="col-md-3">
-                <label className="form-label fw-semibold">Insumo</label>
-                <select
-                  className="form-select"
-                  value={insumoSeleccionado}
-                  onChange={(e) => setInsumoSeleccionado(e.target.value)}
+                  {usarFiltroFechas && (
+                    <>
+                      <div>
+                        <label className="form-label fw-semibold small mb-1">Desde</label>
+                        <input
+                          type="date"
+                          className="form-control"
+                          value={fechaInicio}
+                          onChange={(e) => setFechaInicio(e.target.value)}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="form-label fw-semibold small mb-1">Hasta</label>
+                        <input
+                          type="date"
+                          className="form-control"
+                          value={fechaFin}
+                          onChange={(e) => setFechaFin(e.target.value)}
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  className="btn btn-outline-primary"
+                  onClick={abrirEdicion}
+                  disabled={!insumoSeleccionado}
                 >
-                  <option value="">Seleccionar insumo...</option>
-                  {insumos.map(ins => (
-                    <option key={ins.id} value={ins.id}>
-                      {ins.nombre} ({ins.unidadMedida?.simbolo || '?'})
-                    </option>
-                  ))}
-                </select>
+                  <i className="bi bi-pencil me-2"></i>
+                  Editar insumo
+                </button>
               </div>
+            ) : (
+              <>
+                <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+                  <div>
+                    <h5 className="mb-1">Consulta del Kardex</h5>
+                    <p className="text-muted mb-0">
+                      {insumoInfo ? `Viendo ${insumoInfo.nombre}` : "Selecciona un insumo para consultar sus movimientos"}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-outline-primary"
+                    onClick={abrirEdicion}
+                    disabled={!insumoSeleccionado}
+                  >
+                    <i className="bi bi-pencil me-2"></i>
+                    Editar insumo
+                  </button>
+                </div>
+
+                <div className="row g-3 align-items-end">
+                  <div className="col-md-3">
+                    <label className="form-label fw-semibold">Insumo</label>
+                    <select
+                      className="form-select"
+                      value={insumoSeleccionado}
+                      onChange={(e) => setInsumoSeleccionado(e.target.value)}
+                    >
+                      <option value="">Seleccionar insumo...</option>
+                      {insumos.map(ins => (
+                        <option key={ins.id} value={ins.id}>
+                          {ins.nombre} ({ins.unidadMedida?.simbolo || '?'})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
               <div className="col-md-2">
                 <div className="form-check">
@@ -200,41 +315,43 @@ export default function KardexPage() {
                 </>
               )}
 
-              <div className="col-md-2">
-                <button
-                  className="btn btn-primary w-100"
-                  onClick={handleConsultar}
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <>
-                      <span className="spinner-border spinner-border-sm me-2" />
-                      Consultando...
-                    </>
-                  ) : (
-                    <>
-                      <i className="bi bi-search me-2"></i>
-                      Consultar
-                    </>
-                  )}
-                </button>
-              </div>
+                  <div className="col-md-2">
+                    <button
+                      className="btn btn-primary w-100"
+                      onClick={handleConsultar}
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2" />
+                          Consultando...
+                        </>
+                      ) : (
+                        <>
+                          <i className="bi bi-search me-2"></i>
+                          Consultar
+                        </>
+                      )}
+                    </button>
+                  </div>
 
-              <div className="col-md-1">
-                <button
-                  className="btn btn-outline-secondary w-100"
-                  onClick={() => {
-                    setInsumoSeleccionado("");
-                    setMovimientos([]);
-                    setCostoPromedio(0);
-                    setError("");
-                  }}
-                  title="Limpiar"
-                >
-                  <i className="bi bi-eraser"></i>
-                </button>
-              </div>
-            </div>
+                  <div className="col-md-1">
+                    <button
+                      className="btn btn-outline-secondary w-100"
+                      onClick={() => {
+                        setInsumoSeleccionado("");
+                        setMovimientos([]);
+                        setCostoPromedio(0);
+                        setError("");
+                      }}
+                      title="Limpiar"
+                    >
+                      <i className="bi bi-eraser"></i>
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </Card>
         </div>
       </div>

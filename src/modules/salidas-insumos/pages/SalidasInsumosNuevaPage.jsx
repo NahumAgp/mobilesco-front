@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import Toast from "../../../components/ui/Toast.jsx";
@@ -13,6 +13,7 @@ function obtenerFechaHoraLocal() {
 
 export default function SalidasInsumosNuevaPage() {
   const navigate = useNavigate();
+  const buscadorInsumoRef = useRef(null);
 
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
@@ -43,6 +44,17 @@ export default function SalidasInsumosNuevaPage() {
     };
 
     cargarCatalogos();
+  }, []);
+
+  useEffect(() => {
+    const cerrarSugerenciasAlClickAfuera = (event) => {
+      if (buscadorInsumoRef.current && !buscadorInsumoRef.current.contains(event.target)) {
+        setSugerenciasInsumo([]);
+      }
+    };
+
+    document.addEventListener("mousedown", cerrarSugerenciasAlClickAfuera);
+    return () => document.removeEventListener("mousedown", cerrarSugerenciasAlClickAfuera);
   }, []);
 
   const totalCantidad = useMemo(
@@ -101,9 +113,10 @@ export default function SalidasInsumosNuevaPage() {
 
   const actualizarSugerencias = (valor) => {
     const termino = String(valor || "").trim().toLowerCase();
+    const ordenarPorNombre = (a, b) => String(a.nombre || "").localeCompare(String(b.nombre || ""), "es", { sensitivity: "base" });
 
     if (!termino) {
-      setSugerenciasInsumo([]);
+      setSugerenciasInsumo([...insumos].sort(ordenarPorNombre).slice(0, 5));
       return;
     }
 
@@ -121,6 +134,7 @@ export default function SalidasInsumosNuevaPage() {
 
         return texto.includes(termino);
       })
+      .sort(ordenarPorNombre)
       .slice(0, 6);
 
     setSugerenciasInsumo(coincidencias);
@@ -412,73 +426,74 @@ export default function SalidasInsumosNuevaPage() {
               </table>
             </div>
 
-            <div className="row g-2 align-items-end bg-light rounded p-3">
-              <div className="col-md-8">
-                <label className="form-label fw-semibold small">Insumo</label>
-                <div className="position-relative">
-                  <input
-                    type="search"
-                    className="form-control"
-                    value={busquedaInsumo}
-                    onChange={(e) => {
-                      setBusquedaInsumo(e.target.value);
-                      actualizarSugerencias(e.target.value);
+            <div className="bg-light rounded p-3">
+              <div className="row g-2 align-items-end">
+                <div className="col-md-8">
+                  <label className="form-label fw-semibold small">Insumo</label>
+                  <div
+                    className="position-relative"
+                    ref={buscadorInsumoRef}
+                    onBlur={(e) => {
+                      if (!e.currentTarget.contains(e.relatedTarget)) {
+                        setSugerenciasInsumo([]);
+                      }
                     }}
-                    onFocus={(e) => actualizarSugerencias(e.target.value)}
-                    onKeyDown={handleBusquedaKeyDown}
-                    placeholder="Escribe el nombre o escanea el código y presiona Enter"
-                    autoFocus
-                    autoComplete="off"
-                  />
-                  {sugerenciasInsumo.length > 0 && (
-                    <div
-                      className="list-group position-absolute w-100 shadow-sm"
-                      style={{ zIndex: 10, maxHeight: "240px", overflowY: "auto" }}
-                    >
-                      {sugerenciasInsumo.map((insumo) => (
-                        <button
-                          key={insumo.id}
-                          type="button"
-                          className="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-                          onClick={() => {
-                            setBusquedaInsumo(insumo.nombre || "");
-                            setSugerenciasInsumo([]);
-                          }}
-                        >
-                          <span className="text-start">
-                            <strong className="d-block">{insumo.nombre}</strong>
-                            <small className="text-muted">
-                              {insumo.codigoBarras || insumo.codigo || "-"}
-                              {insumo.unidadMedida?.simbolo ? ` · ${insumo.unidadMedida.simbolo}` : ""}
-                            </small>
-                          </span>
-                          <span className="badge text-bg-light border">
-                            {Number(insumo.stockActual || 0).toFixed(2)}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                  >
+                    <input
+                      type="search"
+                      className="form-control"
+                      value={busquedaInsumo}
+                      onChange={(e) => {
+                        setBusquedaInsumo(e.target.value);
+                        actualizarSugerencias(e.target.value);
+                      }}
+                      onFocus={(e) => actualizarSugerencias(e.target.value)}
+                      onClick={(e) => actualizarSugerencias(e.target.value)}
+                      onKeyDown={handleBusquedaKeyDown}
+                      placeholder="Escribe el nombre o escanea el código y presiona Enter"
+                      autoFocus
+                      autoComplete="off"
+                    />
+                    {sugerenciasInsumo.length > 0 && (
+                      <div
+                        className="list-group position-absolute w-100 shadow-sm"
+                        style={{ zIndex: 10, maxHeight: "240px", overflowY: "auto" }}
+                      >
+                        {sugerenciasInsumo.map((insumo) => (
+                          <button
+                            key={insumo.id}
+                            type="button"
+                            className="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+                            onClick={() => {
+                              setBusquedaInsumo(insumo.nombre || "");
+                              setSugerenciasInsumo([]);
+                            }}
+                          >
+                            <span className="text-start">
+                              <strong className="d-block">{insumo.nombre}</strong>
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <small className="text-muted d-block mt-1">
-                  Si el insumo ya existe en la lista, su cantidad se aumenta en 1.
-                </small>
-              </div>
-              <div className="col-md-2">
-                <label className="form-label fw-semibold small">Cantidad</label>
-                <input
-                  type="number"
-                  min="1"
-                  step="1"
-                  className="form-control"
-                  value={cantidadEntrada}
-                  onChange={(e) => setCantidadEntrada(e.target.value)}
-                />
-              </div>
-              <div className="col-md-2">
-                <button type="button" className="btn btn-success w-100" onClick={agregarDetalle}>
-                  <i className="bi bi-plus-lg me-2"></i>Agregar
-                </button>
+                <div className="col-md-2">
+                  <label className="form-label fw-semibold small">Cantidad</label>
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    className="form-control"
+                    value={cantidadEntrada}
+                    onChange={(e) => setCantidadEntrada(e.target.value)}
+                  />
+                </div>
+                <div className="col-md-2">
+                  <button type="button" className="btn btn-success w-100" onClick={agregarDetalle}>
+                    <i className="bi bi-plus-lg me-2"></i>Agregar
+                  </button>
+                </div>
               </div>
             </div>
 
