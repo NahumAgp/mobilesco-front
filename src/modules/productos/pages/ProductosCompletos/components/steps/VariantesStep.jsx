@@ -279,6 +279,16 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
     return mapa;
   }, [variantes]);
 
+  const variantesExistentesPorPar = useMemo(() => {
+    const set = new Set();
+    variantes.forEach((variante) => {
+      if (variante?._existing && variante?.categoriaId && variante?.materialId && variante?.colorId) {
+        set.add(getParKey(variante.categoriaId, variante.materialId, variante.colorId));
+      }
+    });
+    return set;
+  }, [variantes]);
+
   const totalSeleccionado = useMemo(() => {
     return Object.values(seleccion).reduce((totalMateriales, materialSeleccionado) => {
       const categoriasSeleccionadas = materialSeleccionado?.categorias || {};
@@ -291,6 +301,15 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
 
   const toggleMaterial = (materialId) => {
     const materialKey = getMaterialKey(materialId);
+    const tieneVariantesExistentes = Array.from(variantesExistentesPorPar).some((parKey) =>
+      parKey.split("::")[1] === materialKey
+    );
+
+    if (tieneVariantesExistentes && seleccion[materialKey]) {
+      setMensaje("Este material tiene variantes ya creadas y no se puede desmarcar desde el wizard.");
+      return;
+    }
+
     setSeleccion((prev) => {
       const siguiente = { ...prev };
       if (siguiente[materialKey]) {
@@ -306,12 +325,19 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
   const toggleCategoria = (materialId, categoriaId) => {
     const materialKey = getMaterialKey(materialId);
     const categoriaKey = getCategoriaKey(categoriaId);
+    const tieneVariantesExistentes = Array.from(variantesExistentesPorPar).some((parKey) => {
+      const [categoriaExistente, materialExistente] = parKey.split("::");
+      return categoriaExistente === categoriaKey && materialExistente === materialKey;
+    });
 
     setSeleccion((prev) => {
       const materialActual = prev[materialKey] || { categorias: {} };
       const categoriasActuales = { ...materialActual.categorias };
 
       if (categoriasActuales[categoriaKey]) {
+        if (tieneVariantesExistentes) {
+          return prev;
+        }
         delete categoriasActuales[categoriaKey];
       } else {
         categoriasActuales[categoriaKey] = [];
@@ -322,13 +348,19 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
         [materialKey]: { categorias: categoriasActuales }
       };
     });
-    setMensaje("");
+    setMensaje(tieneVariantesExistentes ? "Esta categoria tiene variantes ya creadas y no se puede desmarcar desde el wizard." : "");
   };
 
   const toggleColor = (materialId, categoriaId, colorId) => {
     const materialKey = getMaterialKey(materialId);
     const categoriaKey = getCategoriaKey(categoriaId);
     const colorKey = getColorKey(colorId);
+    const parKey = getParKey(categoriaId, materialId, colorId);
+
+    if (variantesExistentesPorPar.has(parKey)) {
+      setMensaje("Esta combinacion ya existe y no se puede volver a crear.");
+      return;
+    }
 
     setSeleccion((prev) => {
       const materialActual = prev[materialKey] || { categorias: {} };
@@ -377,12 +409,15 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
 
     setSeleccion((prev) => {
       const materialActual = prev[materialKey] || { categorias: {} };
+      const coloresExistentes = (materialActual.categorias?.[categoriaKey] || []).filter((colorKey) =>
+        variantesExistentesPorPar.has(getParKey(categoriaId, materialId, colorKey))
+      );
       return {
         ...prev,
         [materialKey]: {
           categorias: {
             ...materialActual.categorias,
-            [categoriaKey]: []
+            [categoriaKey]: coloresExistentes
           }
         }
       };
@@ -425,6 +460,8 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
 
           nuevas.push({
             id: existente?.id || `${Date.now()}-${nuevas.length}`,
+            productoId: existente?.productoId,
+            _existing: Boolean(existente?._existing),
             categoriaId: categoria.id,
             categoriaNombre: categoria.nombre || "",
             categoriaCodigo: categoria.codigo || "",
@@ -437,11 +474,9 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
             colorHex: color.hex || "",
             sku,
             descripcionCorta: existente?.descripcionCorta || "",
-            pesoVolumetrico: existente?.pesoVolumetrico ?? "",
             ancho: existente?.ancho ?? "",
             alto: existente?.alto ?? "",
             fondo: existente?.fondo ?? "",
-            dimensiones: existente?.dimensiones || "",
             pesoKg: existente?.pesoKg ?? ""
           });
           skus.add(sku);
@@ -455,6 +490,11 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
 
   const eliminarVariante = (index) => {
     const variante = variantes[index];
+    if (variante?._existing) {
+      setMensaje("Esta variante ya existe. No se quitara del modelo desde este wizard.");
+      return;
+    }
+
     if (variante?.materialId && variante?.categoriaId && variante?.colorId) {
       const materialKey = getMaterialKey(variante.materialId);
       const categoriaKey = getCategoriaKey(variante.categoriaId);
@@ -498,10 +538,11 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
   const actualizarVarianteCampo = actualizarVariante;
 
   const limpiarVariantes = () => {
-    if (!window.confirm("Eliminar todos los productos generados?")) return;
+    if (!window.confirm("Eliminar todos los productos nuevos generados?")) return;
+    const variantesExistentes = variantes.filter((variante) => variante?._existing);
     setSeleccion({});
-    onUpdate("variantes", []);
-    setMensaje("Productos limpiados.");
+    onUpdate("variantes", variantesExistentes);
+    setMensaje(variantesExistentes.length ? "Productos nuevos limpiados. Se conservan las variantes existentes." : "Productos limpiados.");
   };
 
   const guardarBorradorRapido = (tipo, borrador) => {
@@ -659,6 +700,9 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
         {materialesDisponibles.map((material) => {
           const materialKey = getMaterialKey(material.id);
           const materialActivo = Boolean(seleccion[materialKey]);
+          const materialTieneExistentes = Array.from(variantesExistentesPorPar).some((parKey) =>
+            parKey.split("::")[1] === materialKey
+          );
           const categoriasSeleccionadas = seleccion[materialKey]?.categorias || {};
           const totalMaterial = Object.values(categoriasSeleccionadas).reduce(
             (total, colorIds) => total + (Array.isArray(colorIds) ? colorIds.length : 0),
@@ -682,6 +726,7 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
                       type="checkbox"
                       checked={materialActivo}
                       onChange={() => toggleMaterial(material.id)}
+                      disabled={materialTieneExistentes}
                       id={`material-check-${material.id}`}
                     />
                   </span>
@@ -717,6 +762,10 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
                       {categoriasDisponibles.map((categoria) => {
                         const categoriaKey = getCategoriaKey(categoria.id);
                         const categoriaActiva = Object.prototype.hasOwnProperty.call(categoriasSeleccionadas, categoriaKey);
+                        const categoriaTieneExistentes = Array.from(variantesExistentesPorPar).some((parKey) => {
+                          const [categoriaExistente, materialExistente] = parKey.split("::");
+                          return categoriaExistente === categoriaKey && materialExistente === materialKey;
+                        });
                         const coloresCategoria = categoriasSeleccionadas[categoriaKey] || [];
 
                         return (
@@ -730,6 +779,7 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
                                       type="checkbox"
                                       checked={categoriaActiva}
                                       onChange={() => toggleCategoria(material.id, categoria.id)}
+                                      disabled={categoriaTieneExistentes}
                                       id={`categoria-${material.id}-${categoria.id}`}
                                     />
                                     <label className="form-check-label fw-semibold" htmlFor={`categoria-${material.id}-${categoria.id}`}>
@@ -776,12 +826,15 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
                                 <div className="d-flex flex-wrap gap-2">
                                   {coloresDisponibles.map((color) => {
                                     const selected = coloresCategoria.includes(getColorKey(color.id));
+                                    const existeVariante = variantesExistentesPorPar.has(getParKey(categoria.id, material.id, color.id));
                                     return (
                                       <div key={color.id} className="d-inline-flex">
                                         <button
                                           type="button"
                                           className={`btn btn-sm ${selected ? "btn-success" : "btn-outline-success"} ${color._pending ? "rounded-end-0" : ""}`}
                                           onClick={() => toggleColor(material.id, categoria.id, color.id)}
+                                          disabled={existeVariante}
+                                          title={existeVariante ? "Variante ya creada" : undefined}
                                         >
                                           <span
                                             className="d-inline-block rounded-circle border me-1"
@@ -789,6 +842,7 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
                                           />
                                           {color.codigo ? `[${color.codigo}] ` : ""}
                                           {color.nombre}
+                                          {existeVariante ? " (Creado)" : ""}
                                           {color._pending ? " (Pendiente)" : ""}
                                         </button>
                                         {color._pending && (
@@ -843,20 +897,18 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
                 {grupo.nombre}
               </strong>
             </div>
-            <div className="table-responsive">
-              <table className="table table-sm table-hover align-middle mb-0">
+            <div className="table-responsive producto-variantes-editable-wrap">
+              <table className="table table-sm table-hover align-middle mb-0 producto-variantes-editable-table">
                 <thead className="table-light">
                   <tr>
                     <th>Categoria</th>
                     <th>Color</th>
-                    <th>Dimensiones</th>
                     <th>Peso (kg)</th>
-                    <th>SKU</th>
                     <th>Descripcion corta</th>
-                    <th>Peso volumetrico</th>
                     <th>Ancho</th>
                     <th>Alto</th>
                     <th>Fondo</th>
+                    <th>SKU</th>
                     <th className="text-end">Acciones</th>
                   </tr>
                 </thead>
@@ -877,15 +929,6 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
                           {variante.colorCodigo ? `[${variante.colorCodigo}] ` : ""}
                           {variante.colorNombre || "Sin color"}
                         </td>
-                        <td>
-                          <input
-                            type="text"
-                            className="form-control form-control-sm"
-                            value={variante.dimensiones || ""}
-                            onChange={(e) => actualizarVarianteCampo(indexReal, "dimensiones", e.target.value)}
-                            placeholder="1.20 x 0.40 x 0.65 m"
-                          />
-                        </td>
                         <td style={{ minWidth: "130px" }}>
                           <input
                             type="number"
@@ -893,6 +936,7 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
                             step="0.01"
                             className="form-control form-control-sm text-end"
                             value={variante.pesoKg ?? ""}
+                            disabled={variante._existing}
                             onChange={(e) =>
                               actualizarVarianteCampo(
                                 indexReal,
@@ -908,13 +952,11 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
                           />
                         </td>
                         <td>
-                          <code>{variante.sku || "-"}</code>
-                        </td>
-                        <td>
                           <input
                             type="text"
                             className="form-control form-control-sm"
                             value={variante.descripcionCorta || ""}
+                            disabled={variante._existing}
                             onChange={(event) => actualizarVariante(indexReal, "descripcionCorta", event.target.value)}
                             placeholder="Descripcion breve"
                           />
@@ -925,18 +967,8 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
                             className="form-control form-control-sm"
                             min="0"
                             step="0.01"
-                            value={variante.pesoVolumetrico ?? ""}
-                            onChange={(event) => actualizarVariante(indexReal, "pesoVolumetrico", event.target.value)}
-                            placeholder="0.00"
-                          />
-                        </td>
-                        <td>
-                          <input
-                            type="number"
-                            className="form-control form-control-sm"
-                            min="0"
-                            step="0.01"
                             value={variante.ancho ?? ""}
+                            disabled={variante._existing}
                             onChange={(event) => actualizarVariante(indexReal, "ancho", event.target.value)}
                             placeholder="0.00"
                           />
@@ -948,6 +980,7 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
                             min="0"
                             step="0.01"
                             value={variante.alto ?? ""}
+                            disabled={variante._existing}
                             onChange={(event) => actualizarVariante(indexReal, "alto", event.target.value)}
                             placeholder="0.00"
                           />
@@ -959,15 +992,22 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
                             min="0"
                             step="0.01"
                             value={variante.fondo ?? ""}
+                            disabled={variante._existing}
                             onChange={(event) => actualizarVariante(indexReal, "fondo", event.target.value)}
                             placeholder="0.00"
                           />
+                        </td>
+                        <td>
+                          <code>{variante.sku || "-"}</code>
+                          {variante._existing && <span className="badge text-bg-secondary ms-2">Creado</span>}
                         </td>
                         <td className="text-end">
                           <button
                             type="button"
                             className="btn btn-sm btn-outline-danger"
                             onClick={() => eliminarVariante(indexReal)}
+                            disabled={variante._existing}
+                            title={variante._existing ? "Variante ya creada" : "Eliminar variante"}
                           >
                             <i className="bi bi-trash"></i>
                           </button>

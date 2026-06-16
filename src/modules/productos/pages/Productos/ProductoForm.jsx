@@ -67,6 +67,48 @@ function SectionFooter({ children }) {
   return <div className="producto-form-section-footer">{children}</div>;
 }
 
+const limpiarDecimal = (valor) => {
+  const normalizado = String(valor || "").replace(",", ".");
+  if (normalizado === "") return "";
+  if (!/^\d*\.?\d{0,2}$/.test(normalizado)) return null;
+  return normalizado;
+};
+
+function DecimalInput({ name, className, value, onValueChange }) {
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      name={name}
+      className={className}
+      value={value ?? ""}
+      onChange={(event) => {
+        const siguiente = limpiarDecimal(event.target.value);
+        if (siguiente !== null) onValueChange(name, siguiente);
+      }}
+      onKeyDown={(event) => {
+        const teclasPermitidas = [
+          "Backspace",
+          "Delete",
+          "Tab",
+          "Escape",
+          "Enter",
+          "ArrowLeft",
+          "ArrowRight",
+          "Home",
+          "End"
+        ];
+        if (teclasPermitidas.includes(event.key) || event.ctrlKey || event.metaKey) return;
+        if (!/^\d$/.test(event.key) && event.key !== "." && event.key !== ",") {
+          event.preventDefault();
+        }
+      }}
+      placeholder="0.00"
+      autoComplete="off"
+    />
+  );
+}
+
 function ProductoImageCarousel({ imagenes, imagenPrincipal, nombre }) {
   const imagenesCarrusel = useMemo(() => {
     const principalId = imagenPrincipal?.id;
@@ -339,6 +381,21 @@ export default function ProductoForm({
     }
   };
 
+  const handleDecimalChange = (name, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+
+    if (erroresBackend[name]) {
+      setErroresBackend((prev) => {
+        const copia = { ...prev };
+        delete copia[name];
+        return copia;
+      });
+    }
+  };
+
   const validarImagenes = (files) => {
     const validas = files.filter((file) => file.type.startsWith("image/"));
     setErrorImagenes(validas.length !== files.length ? "Se omitieron archivos que no son imagen." : "");
@@ -517,32 +574,6 @@ export default function ProductoForm({
                 <label className="form-label fw-semibold">Descripcion</label>
                 <textarea name="descripcion" className={inputClass("descripcion")} rows="3" value={formData.descripcion} onChange={handleChange} placeholder="Silla en Formaica color cafe ..." />
               </div>
-              <div className="col-md-8">
-                <label className="form-label fw-semibold">Dimensiones</label>
-                <input
-                  type="text"
-                  name="dimensiones"
-                  className={inputClass("dimensiones")}
-                  value={formData.dimensiones}
-                  onChange={handleChange}
-                  placeholder="1.20 x 0.40 x 0.65 m"
-                />
-                <small className="text-muted">Ancho x fondo x alto del producto.</small>
-              </div>
-              <div className="col-md-4">
-                <label className="form-label fw-semibold">Peso volumetrico (kg)</label>
-                <input
-                  type="number"
-                  name="pesoKg"
-                  step="0.01"
-                  min="0"
-                  className={inputClass("pesoKg")}
-                  value={formData.pesoKg}
-                  onChange={handleChange}
-                  placeholder="0.00"
-                />
-                <small className="text-muted">Valor en kilogramos.</small>
-              </div>
               <div className="col-12">
                 <label className="form-label fw-semibold">Descripcion corta</label>
                 <textarea
@@ -554,56 +585,49 @@ export default function ProductoForm({
                   placeholder="Resumen corto del producto para tarjetas y listados"
                 />
               </div>
-              <div className="col-md-3">
+              <div className="col-md-4 col-lg">
+                <label className="form-label fw-semibold">Peso (kg)</label>
+                <DecimalInput
+                  name="pesoKg"
+                  className={inputClass("pesoKg")}
+                  value={formData.pesoKg}
+                  onValueChange={handleDecimalChange}
+                />
+              </div>
+              <div className="col-md-4 col-lg">
                 <label className="form-label fw-semibold">Peso volumetrico</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
+                <DecimalInput
                   name="pesoVolumetrico"
                   className={inputClass("pesoVolumetrico")}
                   value={formData.pesoVolumetrico}
-                  onChange={handleChange}
-                  placeholder="0.00"
+                  onValueChange={handleDecimalChange}
                 />
               </div>
-              <div className="col-md-3">
+              <div className="col-md-4 col-lg">
                 <label className="form-label fw-semibold">Ancho</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
+                <DecimalInput
                   name="ancho"
                   className={inputClass("ancho")}
                   value={formData.ancho}
-                  onChange={handleChange}
-                  placeholder="0.00"
+                  onValueChange={handleDecimalChange}
                 />
               </div>
-              <div className="col-md-3">
+              <div className="col-md-4 col-lg">
                 <label className="form-label fw-semibold">Alto</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
+                <DecimalInput
                   name="alto"
                   className={inputClass("alto")}
                   value={formData.alto}
-                  onChange={handleChange}
-                  placeholder="0.00"
+                  onValueChange={handleDecimalChange}
                 />
               </div>
-              <div className="col-md-3">
+              <div className="col-md-4 col-lg">
                 <label className="form-label fw-semibold">Fondo</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
+                <DecimalInput
                   name="fondo"
                   className={inputClass("fondo")}
                   value={formData.fondo}
-                  onChange={handleChange}
-                  placeholder="0.00"
+                  onValueChange={handleDecimalChange}
                 />
               </div>
               <div className="col-12">

@@ -82,7 +82,9 @@ export default function ResumenStep({ data }) {
                   <th>Categoria</th>
                   <th>Material</th>
                   <th>Color</th>
-                  <th>Dimensiones</th>
+                  <th>Ancho</th>
+                  <th>Alto</th>
+                  <th>Fondo</th>
                   <th>Peso (kg)</th>
                   <th>SKU</th>
                 </tr>
@@ -90,7 +92,7 @@ export default function ResumenStep({ data }) {
               <tbody>
                 {variantes.length === 0 && (
                   <tr>
-                    <td colSpan="6" className="text-center text-muted py-3">
+                    <td colSpan="8" className="text-center text-muted py-3">
                       No hay productos agregados.
                     </td>
                   </tr>
@@ -117,7 +119,9 @@ export default function ResumenStep({ data }) {
                         </span>
                       </div>
                     </td>
-                    <td>{variante.dimensiones || "-"}</td>
+                    <td>{variante.ancho !== "" && variante.ancho != null ? variante.ancho : "-"}</td>
+                    <td>{variante.alto !== "" && variante.alto != null ? variante.alto : "-"}</td>
+                    <td>{variante.fondo !== "" && variante.fondo != null ? variante.fondo : "-"}</td>
                     <td>{variante.pesoKg !== "" && variante.pesoKg != null ? `${variante.pesoKg} kg` : "-"}</td>
                     <td>
                       <code>{variante.sku || "-"}</code>

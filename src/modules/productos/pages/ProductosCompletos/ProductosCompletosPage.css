@@ -18,6 +18,59 @@
   flex-direction: column;
 }
 
+.producto-wizard-shell.container {
+  max-width: min(100%, 1440px);
+}
+
+.producto-variantes-editable-wrap {
+  overflow-x: auto;
+}
+
+.producto-variantes-editable-table {
+  min-width: 1020px;
+}
+
+.producto-variantes-editable-table th,
+.producto-variantes-editable-table td {
+  white-space: nowrap;
+}
+
+.producto-variantes-editable-table th:nth-child(1),
+.producto-variantes-editable-table td:nth-child(1) {
+  min-width: 110px;
+}
+
+.producto-variantes-editable-table th:nth-child(2),
+.producto-variantes-editable-table td:nth-child(2) {
+  min-width: 90px;
+}
+
+.producto-variantes-editable-table th:nth-child(3),
+.producto-variantes-editable-table td:nth-child(3),
+.producto-variantes-editable-table th:nth-child(5),
+.producto-variantes-editable-table td:nth-child(5),
+.producto-variantes-editable-table th:nth-child(6),
+.producto-variantes-editable-table td:nth-child(6),
+.producto-variantes-editable-table th:nth-child(7),
+.producto-variantes-editable-table td:nth-child(7) {
+  min-width: 120px;
+}
+
+.producto-variantes-editable-table th:nth-child(4),
+.producto-variantes-editable-table td:nth-child(4) {
+  min-width: 170px;
+}
+
+.producto-variantes-editable-table th:nth-child(8),
+.producto-variantes-editable-table td:nth-child(8) {
+  min-width: 130px;
+}
+
+.producto-variantes-editable-table th:nth-child(9),
+.producto-variantes-editable-table td:nth-child(9) {
+  width: 72px;
+}
+
 .productos-header-actions {
   margin-right: 28px;
 }

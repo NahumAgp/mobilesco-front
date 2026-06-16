@@ -394,15 +394,20 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
   const handleSaveComplete = async (nuevoProducto) => {
     try {
       const variantes = Array.isArray(nuevoProducto?.variantes) ? nuevoProducto.variantes : [];
+      const variantesNuevas = variantes.filter((variante) => !variante?._existing);
       const borradores = nuevoProducto?.borradores || {};
       const modelo = nuevoProducto?.modelo || {};
       const esRef = (valor) => String(valor || "").startsWith("draft-");
-      const refsCategoria = new Set(variantes.map((item) => item?.categoriaId).filter(esRef).map(String));
-      const refsMaterial = new Set(variantes.map((item) => item?.materialId).filter(esRef).map(String));
-      const refsColor = new Set(variantes.map((item) => item?.colorId).filter(esRef).map(String));
+      const refsCategoria = new Set(variantesNuevas.map((item) => item?.categoriaId).filter(esRef).map(String));
+      const refsMaterial = new Set(variantesNuevas.map((item) => item?.materialId).filter(esRef).map(String));
+      const refsColor = new Set(variantesNuevas.map((item) => item?.colorId).filter(esRef).map(String));
       const familiaBorrador = (borradores?.familias || []).find((item) => String(item.ref) === String(modelo?.familiaRef));
       const refsLinea = new Set(familiaBorrador?.lineaRef ? [String(familiaBorrador.lineaRef)] : []);
       const refsFamilia = new Set(modelo?.familiaRef ? [String(modelo.familiaRef)] : []);
+
+      if (variantesNuevas.length === 0) {
+        throw new Error("Las combinaciones marcadas ya existen. Agrega al menos una variante nueva para guardar.");
+      }
 
       const payload = {
         lineas: (borradores?.lineas || [])
@@ -455,16 +460,14 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
         colores: (borradores?.colores || [])
           .filter((item) => refsColor.has(String(item.ref)))
           .map((item) => ({ ref: item.ref, codigo: item.codigo, nombre: item.nombre, descripcion: item.descripcion, hex: item.hex })),
-        variantes: variantes.map((variante) => ({
+        variantes: variantesNuevas.map((variante) => ({
           clientRef: String(variante.id),
           nombre: `${modelo?.nombre || "Modelo"} ${variante?.categoriaNombre || ""} ${variante?.materialNombre || ""} ${variante?.colorNombre || ""}`.trim().replace(/\s+/g, " "),
           descripcion: `Producto ${variante?.categoriaNombre || "sin categoria"} - ${variante?.materialNombre || "sin material"} - ${variante?.colorNombre || "sin color"}`,
           descripcionCorta: variante.descripcionCorta?.trim() || null,
-          pesoVolumetrico: toOptionalNumber(variante.pesoVolumetrico),
           ancho: toOptionalNumber(variante.ancho),
           alto: toOptionalNumber(variante.alto),
           fondo: toOptionalNumber(variante.fondo),
-          dimensiones: variante.dimensiones || undefined,
           pesoKg: variante.pesoKg === "" || variante.pesoKg === undefined ? undefined : Number(variante.pesoKg),
           activo: true,
           modeloId: modelo?._pending ? undefined : Number(modelo.id),

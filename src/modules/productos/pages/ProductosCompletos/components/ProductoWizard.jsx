@@ -13,9 +13,26 @@ const PASOS = [
 
 const MENSAJES_VALIDACION = {
   1: "Selecciona un modelo para continuar. Puedes crear uno nuevo desde la ventana flotante.",
-  2: "Agrega al menos un producto con categoria, material, color y SKU generado.",
+  2: "Agrega al menos un producto nuevo con categoria, material, color y SKU generado.",
   3: "Puedes continuar sin im\u00e1genes o agregar al menos una imagen."
 };
+
+const getNombreLinea = (modelo) =>
+  modelo?.linea?.nombre
+  || modelo?.lineaNombre
+  || modelo?.familia?.linea?.nombre
+  || modelo?.familia?.lineaNombre
+  || "";
+
+const getNombreFamilia = (modelo) =>
+  modelo?.familia?.nombre
+  || modelo?.familiaNombre
+  || "";
+
+const getRutaModelo = (modelo) =>
+  [getNombreLinea(modelo), getNombreFamilia(modelo), modelo?.nombre || "Sin nombre"]
+    .filter(Boolean)
+    .join(" / ");
 
 export default function ProductoWizard({ onComplete, onCancel }) {
   const [pasoActual, setPasoActual] = useState(1);
@@ -105,7 +122,10 @@ export default function ProductoWizard({ onComplete, onCancel }) {
         return false;
       }
 
-      return productoData.variantes.every((variante) =>
+      const variantesNuevas = productoData.variantes.filter((variante) => !variante?._existing);
+      if (variantesNuevas.length === 0) return false;
+
+      return variantesNuevas.every((variante) =>
         Boolean(variante?.categoriaId) && Boolean(variante?.materialId) && Boolean(variante?.colorId) && Boolean(variante?.sku?.trim())
       );
     }
@@ -204,9 +224,7 @@ export default function ProductoWizard({ onComplete, onCancel }) {
       {modeloActivo && (
         <div className="alert alert-light border d-flex flex-wrap align-items-center gap-2 mb-4">
           <span className="badge text-bg-primary">Modelo actual</span>
-          <strong className="text-truncate">{modeloActivo.nombre || "Sin nombre"}</strong>
-          {modeloActivo.codigo && <span className="text-muted">[{modeloActivo.codigo}]</span>}
-          {modeloActivo.familia?.nombre && <span className="text-muted">- {modeloActivo.familia.nombre}</span>}
+          <strong className="text-truncate">{getRutaModelo(modeloActivo)}</strong>
         </div>
       )}
 

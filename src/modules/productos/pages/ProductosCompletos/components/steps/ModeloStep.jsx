@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { obtenerModelosActivos } from "../../../../../modelos/services/modelos.js";
+import request from "../../../../../../services/api.js";
+import { API_PATHS } from "../../../../../../config/apiPaths.js";
 import SearchableSelect from "../../../../../../components/ui/SearchableSelect.jsx";
 import { ModeloDraftModal } from "../WizardDraftModal.jsx";
 
@@ -10,9 +12,35 @@ const getLista = (respuesta) => {
   return [];
 };
 
+const obtenerProductosPorModelo = (modeloId) =>
+  request(`${API_PATHS.PRODUCTOS}/por-modelo/${modeloId}`);
+
+const normalizarVarianteExistente = (producto) => ({
+  id: `existing-${producto?.id}`,
+  productoId: producto?.id,
+  _existing: true,
+  categoriaId: producto?.nivelId || producto?.id_nivel || producto?.categoriaId || "",
+  categoriaNombre: producto?.nivelNombre || producto?.nombre_nivel || producto?.categoriaNombre || "",
+  categoriaCodigo: producto?.nivelCodigo || producto?.codigo_nivel || producto?.categoriaCodigo || "",
+  materialId: producto?.materialId || producto?.id_material || "",
+  materialNombre: producto?.materialNombre || producto?.nombre_material || "",
+  materialCodigo: producto?.materialCodigo || producto?.codigo_material || "",
+  colorId: producto?.colorId || producto?.id_color || "",
+  colorNombre: producto?.colorNombre || producto?.nombre_color || "",
+  colorCodigo: producto?.colorCodigo || producto?.codigo_color || "",
+  colorHex: producto?.colorHex || producto?.hexColor || producto?.hex_color || "",
+  sku: producto?.sku || "",
+  descripcionCorta: producto?.descripcionCorta || "",
+  ancho: producto?.ancho ?? "",
+  alto: producto?.alto ?? "",
+  fondo: producto?.fondo ?? "",
+  pesoKg: producto?.pesoKg ?? ""
+});
+
 export default function ModeloStep({ data, onUpdate, borradores, onUpsertDraft }) {
   const [modelos, setModelos] = useState([]);
   const [cargando, setCargando] = useState(true);
+  const [cargandoVariantes, setCargandoVariantes] = useState(false);
   const [mostrarNuevoModelo, setMostrarNuevoModelo] = useState(false);
 
   const modelo = data?.modelo || {};
@@ -34,7 +62,7 @@ export default function ModeloStep({ data, onUpdate, borradores, onUpsertDraft }
     onUpdate("imagenes", { variantes: {} });
   };
 
-  const seleccionarModelo = (modeloId, opcion) => {
+  const seleccionarModelo = async (modeloId, opcion) => {
     limpiarVariantesDelModelo();
     onUpdate("modelo", {
       modo: "existente",
@@ -51,6 +79,23 @@ export default function ModeloStep({ data, onUpdate, borradores, onUpsertDraft }
       categorias: Array.isArray(opcion?.categorias) ? opcion.categorias : [],
       materiales: Array.isArray(opcion?.materiales) ? opcion.materiales : []
     });
+
+    if (!modeloId) return;
+
+    try {
+      setCargandoVariantes(true);
+      const productosModelo = getLista(await obtenerProductosPorModelo(modeloId));
+      onUpdate(
+        "variantes",
+        productosModelo
+          .map(normalizarVarianteExistente)
+          .filter((variante) => variante.categoriaId && variante.materialId && variante.colorId)
+      );
+    } catch (error) {
+      console.error("No se pudieron cargar las variantes existentes del modelo:", error);
+    } finally {
+      setCargandoVariantes(false);
+    }
   };
 
   if (cargando) {
@@ -89,6 +134,9 @@ export default function ModeloStep({ data, onUpdate, borradores, onUpsertDraft }
             getOptionLabel={(item) => `${item.codigo ? `[${item.codigo}] ` : ""}${item.nombre}`}
             getOptionSearchText={(item) => [item.codigo, item.nombre, item.descripcion].filter(Boolean).join(" ").toLowerCase()}
           />
+          {cargandoVariantes && (
+            <div className="form-text">Cargando variantes ya creadas del modelo...</div>
+          )}
 
           {visible ? (
             <div className="producto-modelo-seleccionado mt-4">
