@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   obtenerModeloPorId,
@@ -12,6 +12,7 @@ import {
 import { obtenerFamilias } from "../../familias/services/familias.js";
 import { obtenerProductos } from "../../productos/services/productos.js";
 import { materialGateway } from "../../materiales/services/materialGateway.js";
+import { obtenerCategoriasGlobalesActivas } from "../services/categoriasGlobales.js";
 import { API_BASE_URL } from "../../../config/apiConfig.js";
 import Toast from "../../../components/ui/Toast.jsx";
 import SearchableSelect from "../../../components/ui/SearchableSelect.jsx";
@@ -130,14 +131,6 @@ const toPreviewUrl = (url) => {
   return `${API_BASE_URL}/${url}`;
 };
 
-const crearCategoriaVacia = () => ({
-  tempId: `categoria-${Date.now()}-${Math.random()}`,
-  codigo: "",
-  nombre: "",
-  descripcion: "",
-  activo: true
-});
-
 const getMaterialesDelModelo = (modelo = {}) => {
   const candidatos = [
     modelo?.materiales,
@@ -156,6 +149,31 @@ const getMaterialesDelModelo = (modelo = {}) => {
         nombre: material?.nombre ?? material?.nombre_material ?? "",
         descripcion: material?.descripcion ?? material?.descripcion_material ?? "",
         activo: material?.activo ?? true
+      }));
+    }
+  }
+
+  return [];
+};
+
+const getCategoriasDelModelo = (modelo = {}) => {
+  const candidatos = [
+    modelo?.categorias,
+    modelo?.categoriasSeleccionadas,
+    modelo?.niveles,
+    modelo?.nivelesSeleccionados
+  ];
+
+  for (const candidato of candidatos) {
+    if (Array.isArray(candidato)) {
+      return candidato.map((categoria) => ({
+        ...categoria,
+        id: categoria?.id ?? categoria?.nivelId ?? categoria?.nivel_id ?? null,
+        categoriaId: categoria?.categoriaId ?? categoria?.categoria_id ?? categoria?.categoria?.id ?? null,
+        codigo: categoria?.codigo ?? "",
+        nombre: categoria?.nombre ?? categoria?.categoriaNombre ?? categoria?.categoria?.nombre ?? "",
+        descripcion: categoria?.descripcion ?? categoria?.categoria?.descripcion ?? "",
+        activo: categoria?.activo ?? true
       }));
     }
   }
@@ -223,10 +241,14 @@ export default function ModeloForm({
   const [materialesCatalogo, setMaterialesCatalogo] = useState([]);
   const [materialesSeleccionados, setMaterialesSeleccionados] = useState([]);
   const [materialSeleccionadoId, setMaterialSeleccionadoId] = useState("");
+  const [categoriasCatalogo, setCategoriasCatalogo] = useState([]);
+  const [categoriasSeleccionadas, setCategoriasSeleccionadas] = useState([]);
+  const [categoriaSeleccionadaId, setCategoriaSeleccionadaId] = useState("");
   const [variantesModelo, setVariantesModelo] = useState([]);
   const [imagenPrincipal, setImagenPrincipal] = useState(null);
   const [cargandoImagen, setCargandoImagen] = useState(false);
   const [cargandoMateriales, setCargandoMateriales] = useState(false);
+  const [cargandoCategorias, setCargandoCategorias] = useState(false);
 
   const fileInputRef = useRef(null);
 
@@ -240,8 +262,7 @@ export default function ModeloForm({
     nombre: "",
     descripcion: "",
     familiaId: "",
-    activo: true,
-    categorias: esEdicion ? [] : [crearCategoriaVacia()]
+    activo: true
   });
   const { codigoGenerado, generandoCodigo } = useGeneratedCatalogCode(
     formData.nombre,
@@ -277,6 +298,23 @@ export default function ModeloForm({
     };
 
     cargarMateriales();
+  }, []);
+
+  useEffect(() => {
+    const cargarCategorias = async () => {
+      try {
+        setCargandoCategorias(true);
+        const categoriasResp = await obtenerCategoriasGlobalesActivas();
+        setCategoriasCatalogo(getLista(categoriasResp));
+      } catch (error) {
+        console.error("Error cargando categorias globales:", error);
+        setCategoriasCatalogo([]);
+      } finally {
+        setCargandoCategorias(false);
+      }
+    };
+
+    cargarCategorias();
   }, []);
 
   const cargarImagenPrincipalModelo = async (modeloFuente) => {
@@ -330,10 +368,10 @@ export default function ModeloForm({
           nombre: modelo.nombre || "",
           descripcion: modelo.descripcion || "",
           familiaId: modelo.familiaId || modelo.familia_id || modelo.familia?.id || "",
-          activo: modelo.activo ?? true,
-          categorias: Array.isArray(modelo.categorias) ? modelo.categorias : []
+          activo: modelo.activo ?? true
         });
         setMaterialesSeleccionados(getMaterialesDelModelo(modelo));
+        setCategoriasSeleccionadas(getCategoriasDelModelo(modelo));
 
         await cargarImagenPrincipalModelo(modelo);
         return;
@@ -347,10 +385,10 @@ export default function ModeloForm({
             nombre: data.nombre || "",
             descripcion: data.descripcion || "",
             familiaId: data.familiaId || data.familia_id || data.familia?.id || "",
-            activo: data.activo ?? true,
-            categorias: Array.isArray(data.categorias) ? data.categorias : []
+            activo: data.activo ?? true
           });
           setMaterialesSeleccionados(getMaterialesDelModelo(data));
+          setCategoriasSeleccionadas(getCategoriasDelModelo(data));
 
           await cargarImagenPrincipalModelo(data || modeloId);
         } catch (error) {
@@ -378,29 +416,6 @@ export default function ModeloForm({
       });
     }
   }
-
-  const handleCategoriaChange = (index, field, value) => {
-    setFormData((prev) => ({
-      ...prev,
-      categorias: prev.categorias.map((categoria, categoriaIndex) =>
-        categoriaIndex === index ? { ...categoria, [field]: value } : categoria
-      )
-    }));
-  };
-
-  const agregarCategoria = () => {
-    setFormData((prev) => ({
-      ...prev,
-      categorias: [...prev.categorias, crearCategoriaVacia()]
-    }));
-  };
-
-  const quitarCategoria = (index) => {
-    setFormData((prev) => ({
-      ...prev,
-      categorias: prev.categorias.filter((_, categoriaIndex) => categoriaIndex !== index)
-    }));
-  };
 
   const materialesDisponibles = materialesCatalogo.filter(
     (material) =>
@@ -436,6 +451,55 @@ export default function ModeloForm({
     setMaterialesSeleccionados((prev) => prev.filter((material) => String(material.id) !== String(materialId)));
   };
 
+  const categoriasDisponibles = useMemo(
+    () =>
+      categoriasCatalogo.filter(
+        (categoria) =>
+          !categoriasSeleccionadas.some(
+            (seleccionada) => String(seleccionada.categoriaId ?? seleccionada.id ?? "") === String(categoria.id)
+          )
+      ),
+    [categoriasCatalogo, categoriasSeleccionadas]
+  );
+
+  const agregarCategoria = (categoriaId, categoria) => {
+    const idNormalizado = Number(categoriaId);
+    if (!Number.isFinite(idNormalizado)) return;
+
+    setCategoriasSeleccionadas((prev) => {
+      if (prev.some((item) => String(item.categoriaId ?? item.id) === String(idNormalizado))) {
+        return prev;
+      }
+
+      const categoriaCompleta =
+        categoria || categoriasCatalogo.find((item) => String(item.id) === String(idNormalizado));
+
+      if (!categoriaCompleta) {
+        return prev;
+      }
+
+      return [
+        ...prev,
+        {
+          categoriaId: categoriaCompleta.id,
+          id: null,
+          codigo: "",
+          nombre: categoriaCompleta.nombre || "",
+          descripcion: categoriaCompleta.descripcion || "",
+          activo: categoriaCompleta.activo ?? true
+        }
+      ];
+    });
+
+    setCategoriaSeleccionadaId("");
+  };
+
+  const quitarCategoria = (categoriaId) => {
+    setCategoriasSeleccionadas((prev) =>
+      prev.filter((categoria) => String(categoria.categoriaId ?? categoria.id) !== String(categoriaId))
+    );
+  };
+
   async function handleSubmit(e) {
     e.preventDefault();
 
@@ -452,17 +516,19 @@ export default function ModeloForm({
         return;
       }
 
-      const categorias = formData.categorias.map((categoria) => ({
+      const categorias = categoriasSeleccionadas.map((categoria, index) => ({
         id: categoria.id || null,
+        categoria_id: categoria.categoriaId || categoria.id || null,
         codigo: categoria.codigo?.trim().toUpperCase() || null,
         nombre: categoria.nombre?.trim() || "",
         descripcion: categoria.descripcion?.trim() || "",
-        activo: categoria.activo !== false
+        activo: categoria.activo !== false,
+        orden: index + 1
       }));
-      if (!categorias.length || categorias.some((categoria) => !categoria.nombre)) {
+      if (!categorias.length || categorias.some((categoria) => !categoria.categoria_id)) {
         setErroresBackend((prev) => ({
           ...prev,
-          categorias: "El modelo debe tener al menos una categoria y todas deben tener nombre"
+          categorias: "El modelo debe tener al menos una categoria seleccionada"
         }));
         return;
       }
@@ -472,7 +538,7 @@ export default function ModeloForm({
         descripcion: formData.descripcion?.trim() || "",
         familia_id: familiaIdNormalizado,
         activo: Boolean(formData.activo),
-        categorias,
+        categorias: categorias.map(({ orden, ...categoria }) => categoria),
         materiales: materialesSeleccionados
           .map((material) => Number(material.id))
           .filter((id) => Number.isFinite(id))
@@ -746,78 +812,68 @@ export default function ModeloForm({
                   <div className="col-md-12">
                     <div className="d-flex justify-content-between align-items-center border-top pt-3 mt-2 mb-3">
                       <div>
-                        <div className="fw-semibold">Categorias propias del modelo</div>
-                        <small className="text-muted">Cada producto de este modelo solo podra usar estas categorias.</small>
+                        <div className="fw-semibold">Categorias del catalogo global</div>
+                        <small className="text-muted">
+                          Selecciona categorias globales y el sistema les asignara un codigo interno por modelo: 01, 02, 03...
+                        </small>
                       </div>
-                      <button type="button" className="btn btn-outline-primary btn-sm" onClick={agregarCategoria}>
-                        <i className="bi bi-plus-lg me-1"></i>
-                        Agregar categoria
-                      </button>
                     </div>
 
                     {erroresBackend.categorias && (
                       <div className="alert alert-warning py-2">{erroresBackend.categorias}</div>
                     )}
 
-                    <div className="d-flex flex-column gap-2">
-                      {formData.categorias.map((categoria, index) => (
-                        <div className="border rounded p-3 bg-light" key={categoria.id || categoria.tempId || index}>
-                          <div className="row g-2 align-items-end">
-                            <div className="col-md-2">
-                              <label className="form-label small fw-semibold">Codigo</label>
-                              <input
-                                className="form-control bg-white text-secondary"
-                                value={categoria.codigo || ""}
-                                onChange={(event) => handleCategoriaChange(index, "codigo", event.target.value.toUpperCase())}
-                                maxLength="3"
-                                placeholder="Auto"
-                                readOnly={!categoria.id}
-                              />
-                            </div>
-                            <div className="col-md-4">
-                              <label className="form-label small fw-semibold">Nombre *</label>
-                              <input
-                                className="form-control"
-                                value={categoria.nombre || ""}
-                                onChange={(event) => handleCategoriaChange(index, "nombre", event.target.value)}
-                                placeholder="Ej: Primaria"
-                              />
-                            </div>
-                            <div className="col-md-4">
-                              <label className="form-label small fw-semibold">Descripcion</label>
-                              <input
-                                className="form-control"
-                                value={categoria.descripcion || ""}
-                                onChange={(event) => handleCategoriaChange(index, "descripcion", event.target.value)}
-                                placeholder="Descripcion opcional"
-                              />
-                            </div>
-                            <div className="col-md-1">
-                              <div className="form-check form-switch pb-2">
-                                <input
-                                  className="form-check-input"
-                                  type="checkbox"
-                                  checked={categoria.activo !== false}
-                                  onChange={(event) => handleCategoriaChange(index, "activo", event.target.checked)}
-                                  title="Categoria activa"
-                                />
-                              </div>
-                            </div>
-                            <div className="col-md-1 text-end">
-                              <button
-                                type="button"
-                                className="btn btn-outline-danger"
-                                onClick={() => quitarCategoria(index)}
-                                disabled={formData.categorias.length <= 1}
-                                title="Eliminar categoria"
-                              >
-                                <i className="bi bi-trash"></i>
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                    <label className="form-label fw-semibold mb-2">
+                      Buscar categoría global
+                    </label>
+                    <SearchableSelect
+                      label=""
+                      value={categoriaSeleccionadaId}
+                      options={categoriasDisponibles}
+                      onChange={agregarCategoria}
+                      placeholder={cargandoCategorias ? "Cargando categorías..." : "Buscar y agregar categoría global..."}
+                      searchPlaceholder="Escribe código, nombre o descripción..."
+                      emptyText="No hay categorías globales disponibles"
+                      getOptionValue={(categoria) => categoria.id}
+                      getOptionLabel={(categoria) => `${categoria.codigo ? `[${categoria.codigo}] ` : ""}${categoria.nombre || "-"}`}
+                      getOptionSearchText={(categoria) =>
+                        [categoria.codigo, categoria.nombre, categoria.descripcion].filter(Boolean).join(" ").toLowerCase()
+                      }
+                      renderOptionLabel={(categoria) =>
+                        `${categoria.codigo ? `[${categoria.codigo}] ` : ""}${categoria.nombre || "-"}`
+                      }
+                      helperText="Selecciona una categoría del catálogo global y se enlazará al modelo."
+                      className="mb-3"
+                    />
+
+                    {categoriasSeleccionadas.length > 0 ? (
+                      <div className="d-flex flex-wrap gap-2">
+                        {categoriasSeleccionadas.map((categoria, index) => (
+                          <span
+                            key={categoria.id || categoria.categoriaId || index}
+                            className="badge rounded-pill text-bg-light border d-inline-flex align-items-center gap-2"
+                          >
+                            <span className="fw-semibold">
+                              {categoria.codigo ? `[${categoria.codigo}] ` : `[${String(index + 1).padStart(2, "0")}] `}
+                              {categoria.nombre || "-"}
+                            </span>
+                            <button
+                              type="button"
+                              className="btn btn-sm p-0 border-0 bg-transparent text-danger"
+                              onClick={() => quitarCategoria(categoria.categoriaId ?? categoria.id)}
+                              aria-label={`Quitar categoria ${categoria.nombre || categoria.id || categoria.categoriaId}`}
+                              title="Quitar categoria"
+                            >
+                              <i className="bi bi-x-lg"></i>
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="form-text text-muted">
+                        Aun no se ha asociado ninguna categoria al modelo.
+                      </div>
+                    )}
                   </div>
 
                   <div className="col-md-12">

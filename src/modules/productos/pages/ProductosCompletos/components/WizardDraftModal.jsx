@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import SearchableSelect from "../../../../../components/ui/SearchableSelect.jsx";
 import { obtenerFamiliasActivas } from "../../../../familias/services/familias.js";
 import { obtenerLineasActivas } from "../../../../lineas-producto/services/lineaProducto.js";
-import { obtenerNiveles } from "../../../services/niveles.js";
+import { obtenerCategoriasGlobalesActivas } from "../../../../modelos/services/categoriasGlobales.js";
 import { materialGateway } from "../../../../materiales/services/materialGateway.js";
 
 export const crearRefBorrador = (tipo) =>
@@ -43,6 +43,12 @@ export const crearCodigoDisponible = (valor, items = [], refExcluida = "") => {
   }
   return "";
 };
+
+const aplicarCodigosCategoriaModelo = (categorias = []) =>
+  categorias.map((categoria, index) => ({
+    ...categoria,
+    codigo: String(index + 1).padStart(2, "0")
+  }));
 
 const buscarDuplicado = (items, campo, valor, refExcluida) =>
   items.find(
@@ -291,13 +297,17 @@ export function ModeloDraftModal({
   const [materialesExistentes, setMaterialesExistentes] = useState([]);
   const [materialesSeleccionados, setMaterialesSeleccionados] = useState([]);
   const [materialSeleccionadoId, setMaterialSeleccionadoId] = useState("");
+  const [categoriaSeleccionadaId, setCategoriaSeleccionadaId] = useState("");
+  const [categoriaArrastradaIndex, setCategoriaArrastradaIndex] = useState(null);
   const [mostrarFamilia, setMostrarFamilia] = useState(false);
   const [mostrarLinea, setMostrarLinea] = useState(false);
   const [mostrarMaterial, setMostrarMaterial] = useState(false);
+  const [mostrarCategoria, setMostrarCategoria] = useState(false);
   const [lineaParaFamilia, setLineaParaFamilia] = useState("");
   const [familiaEditando, setFamiliaEditando] = useState(null);
   const [lineaEditando, setLineaEditando] = useState(null);
   const [materialEditando, setMaterialEditando] = useState(null);
+  const [categoriaEditando, setCategoriaEditando] = useState(null);
   const [cargandoMateriales, setCargandoMateriales] = useState(false);
   const [errores, setErrores] = useState({});
 
@@ -312,20 +322,19 @@ export function ModeloDraftModal({
       familiaId: initialValue?.familiaId || initialValue?.familiaRef || "",
       materiales: getMaterialesDelModelo(initialValue),
       categorias: initialValue?.categorias?.length
-        ? initialValue.categorias
-        : (() => {
-            const ref = crearRefBorrador("categoria");
-            return [{ id: ref, ref, nombre: "", descripcion: "", activo: true, _pending: true }];
-          })()
+        ? aplicarCodigosCategoriaModelo(initialValue.categorias)
+        : []
     });
     setErrores({});
     setMaterialesSeleccionados(getMaterialesDelModelo(initialValue));
     setMaterialSeleccionadoId("");
+    setCategoriaSeleccionadaId("");
+    setCategoriaArrastradaIndex(null);
     setCargandoMateriales(true);
     Promise.all([
       obtenerFamiliasActivas(),
       obtenerLineasActivas(),
-      obtenerNiveles(),
+      obtenerCategoriasGlobalesActivas(),
       materialGateway.obtenerMaterialesActivos()
     ])
       .then(([familias, lineas, categorias, materiales]) => {
@@ -334,7 +343,7 @@ export function ModeloDraftModal({
         setCategoriasExistentes(getLista(categorias));
         setMaterialesExistentes(getLista(materiales));
       })
-      .catch((error) => console.error("No se pudieron cargar familias, lineas y materiales:", error))
+      .catch((error) => console.error("No se pudieron cargar familias, lineas, categorias y materiales:", error))
       .finally(() => setCargandoMateriales(false));
   }, [initialValue, show]);
 
@@ -360,8 +369,13 @@ export function ModeloDraftModal({
   const modeloConflictoCodigo = buscarDuplicado(modelos, "codigo", form.codigo, form.ref);
   const categoriasComparablesActuales = [...categoriasExistentes, ...(form.categorias || [])];
   const categoriaRepetidaActual = (form.categorias || []).find((item) =>
-    buscarDuplicado(categoriasComparablesActuales, "nombre", item.nombre, item.ref || item.id)
-    || buscarDuplicado(categoriasComparablesActuales, "codigo", item.codigo, item.ref || item.id)
+    (item.categoriaId && (form.categorias || []).some(
+      (otra) => String(otra.ref || otra.id) !== String(item.ref || item.id)
+        && String(otra.categoriaId) === String(item.categoriaId)
+    ))
+    || (!item.categoriaId && (
+      buscarDuplicado(categoriasComparablesActuales, "nombre", item.nombre, item.ref || item.id)
+    ))
   );
   const materialesDisponibles = useMemo(
     () =>
@@ -369,6 +383,15 @@ export function ModeloDraftModal({
         (material) => !materialesSeleccionados.some((seleccionado) => String(seleccionado.id) === String(material.id))
       ),
     [materialesExistentes, materialesSeleccionados]
+  );
+  const categoriasDisponibles = useMemo(
+    () =>
+      categoriasExistentes.filter(
+        (categoria) => !form.categorias?.some(
+          (seleccionada) => String(seleccionada.categoriaId || seleccionada.id) === String(categoria.id)
+        )
+      ),
+    [categoriasExistentes, form.categorias]
   );
 
   const agregarMaterial = (materialId, material) => {
@@ -392,6 +415,59 @@ export function ModeloDraftModal({
     setMaterialesSeleccionados((prev) => prev.filter((material) => String(material.id) !== String(materialId)));
   };
 
+  const agregarCategoria = (categoriaId, categoria) => {
+    const idNormalizado = Number(categoriaId);
+    if (!Number.isFinite(idNormalizado)) return;
+
+    const categoriaCompleta = categoria || categoriasExistentes.find((item) => String(item.id) === String(idNormalizado));
+    if (!categoriaCompleta) return;
+
+    setForm((prev) => {
+      if (prev.categorias?.some((item) => String(item.categoriaId || item.id) === String(idNormalizado))) {
+        return prev;
+      }
+
+      const ref = crearRefBorrador("categoria");
+      const categoriaModelo = {
+        id: ref,
+        ref,
+        categoriaId: idNormalizado,
+        codigo: "",
+        nombre: categoriaCompleta.nombre || "",
+        descripcion: categoriaCompleta.descripcion || "",
+        activo: categoriaCompleta.activo !== false
+      };
+
+      const categoriasActuales = prev.categorias || [];
+      const categoriasSinFilaVacia = categoriasActuales.filter(
+        (item) => item.categoriaId || item.nombre?.trim() || item.descripcion?.trim()
+      );
+
+      return { ...prev, categorias: aplicarCodigosCategoriaModelo([...categoriasSinFilaVacia, categoriaModelo]) };
+    });
+    setCategoriaSeleccionadaId("");
+  };
+
+  const quitarCategoria = (categoriaId) => {
+    setForm((prev) => ({
+      ...prev,
+      categorias: aplicarCodigosCategoriaModelo(
+        prev.categorias.filter((categoria) => String(categoria.id || categoria.ref) !== String(categoriaId))
+      )
+    }));
+  };
+
+  const moverCategoria = (origenIndex, destinoIndex) => {
+    if (origenIndex === null || destinoIndex === null || origenIndex === destinoIndex) return;
+    setForm((prev) => {
+      const categorias = [...(prev.categorias || [])];
+      if (!categorias[origenIndex] || !categorias[destinoIndex]) return prev;
+      const [movida] = categorias.splice(origenIndex, 1);
+      categorias.splice(destinoIndex, 0, movida);
+      return { ...prev, categorias: aplicarCodigosCategoriaModelo(categorias) };
+    });
+  };
+
   const guardarMaterial = (material) => {
     onUpsertDraft("materiales", material);
     setMaterialesExistentes((prev) => {
@@ -408,6 +484,25 @@ export function ModeloDraftModal({
     });
     setMaterialEditando(null);
     setMostrarMaterial(false);
+  };
+
+  const guardarCategoria = (categoria) => {
+    onUpsertDraft("categorias", categoria);
+    setCategoriasExistentes((prev) => {
+      const categoriaNormalizada = {
+        ...categoria,
+        id: categoria?.id ?? categoria?.ref ?? null
+      };
+      const sinDuplicado = prev.filter((item) => String(item.id || item.ref) !== String(categoriaNormalizada.id || categoriaNormalizada.ref));
+      return [...sinDuplicado, categoriaNormalizada];
+    });
+    setForm((prev) => {
+      const siguiente = (prev.categorias || []).filter((item) => String(item.id || item.ref) !== String(categoria.id || categoria.ref));
+      return { ...prev, categorias: aplicarCodigosCategoriaModelo([...siguiente, categoria]) };
+    });
+    setCategoriaEditando(null);
+    setMostrarCategoria(false);
+    setCategoriaSeleccionadaId("");
   };
 
   useEffect(() => {
@@ -460,24 +555,6 @@ export function ModeloDraftModal({
       })),
       _pending: true
     });
-  };
-
-  const cambiarCategoria = (index, campo, valor) => {
-    setForm((prev) => ({
-      ...prev,
-      categorias: prev.categorias.map((item, itemIndex) => {
-        if (itemIndex !== index) return item;
-        const actualizado = { ...item, [campo]: valor };
-        if (campo === "nombre") {
-          actualizado.codigo = crearCodigoDisponible(
-            valor,
-            [...categoriasExistentes, ...prev.categorias],
-            item.ref || item.id
-          );
-        }
-        return actualizado;
-      })
-    }));
   };
 
   return (
@@ -622,24 +699,100 @@ export function ModeloDraftModal({
                     <div className="d-flex justify-content-between align-items-center border-top pt-3">
                       <div>
                         <div className="fw-semibold">Categorias propias del modelo *</div>
-                        <small className="text-muted">Se guardaran junto con el producto.</small>
+                        <small className="text-muted">Se toman del catalogo global, pero aqui defines cuales usa el modelo.</small>
                       </div>
-                      <button type="button" className="btn btn-outline-primary btn-sm" onClick={() => {
-                        const ref = crearRefBorrador("categoria");
-                        setForm((prev) => ({ ...prev, categorias: [...prev.categorias, { id: ref, ref, nombre: "", descripcion: "", activo: true, _pending: true }] }));
-                      }}>+ Categoria</button>
+                      <button
+                        type="button"
+                        className="btn btn-outline-primary btn-sm"
+                        onClick={() => {
+                          setCategoriaEditando(null);
+                          setMostrarCategoria(true);
+                        }}
+                      >
+                        <i className="bi bi-plus-lg me-1"></i>
+                        Categoria
+                      </button>
                     </div>
+
+                    <div className="mt-3">
+                      <SearchableSelect
+                        label=""
+                        value={categoriaSeleccionadaId}
+                        options={categoriasDisponibles}
+                        onChange={agregarCategoria}
+                        placeholder="Buscar y agregar categoria..."
+                        searchPlaceholder="Busca por codigo, nombre o descripcion..."
+                        emptyText="No hay categorias disponibles"
+                        getOptionValue={(item) => item.id}
+                        getOptionLabel={(item) => `${item.codigo ? `[${item.codigo}] ` : ""}${item.nombre || "-"}`}
+                        getOptionSearchText={(item) => [item.codigo, item.nombre, item.descripcion].filter(Boolean).join(" ").toLowerCase()}
+                        renderOptionLabel={(item) => `${item.codigo ? `[${item.codigo}] ` : ""}${item.nombre || "-"}`}
+                        helperText="Puedes asociar varias categorias al modelo sin duplicarlas."
+                      />
+                    </div>
+
                     {errores.categorias && <div className="text-danger small mt-2">{errores.categorias}</div>}
-                    <div className="d-flex flex-column gap-2 mt-3">
-                      {(form.categorias || []).map((categoria, index) => (
-                        <div className="row g-2" key={categoria.ref || categoria.id}>
-                          <div className="col-md-4"><input className="form-control" value={categoria.nombre || ""} onChange={(e) => cambiarCategoria(index, "nombre", e.target.value)} placeholder="Nombre de categoria" /></div>
-                          <div className="col-md-2"><input className="form-control fw-semibold" value={categoria.codigo || ""} readOnly placeholder="Codigo" /></div>
-                          <div className="col-md-5"><input className="form-control" value={categoria.descripcion || ""} onChange={(e) => cambiarCategoria(index, "descripcion", e.target.value)} placeholder="Descripcion opcional" /></div>
-                          <div className="col-md-1"><button type="button" className="btn btn-outline-danger w-100" disabled={form.categorias.length <= 1} onClick={() => setForm((prev) => ({ ...prev, categorias: prev.categorias.filter((_, itemIndex) => itemIndex !== index) }))}><i className="bi bi-trash"></i></button></div>
-                        </div>
-                      ))}
-                    </div>
+                    {(form.categorias || []).length > 0 ? (
+                      <div className="list-group mt-2">
+                        {(form.categorias || []).map((categoria, index) => (
+                          <div
+                            key={categoria.ref || categoria.id}
+                            className={`list-group-item d-flex align-items-center gap-2 ${categoriaArrastradaIndex === index ? "opacity-50" : ""}`}
+                            draggable
+                            onDragStart={(event) => {
+                              setCategoriaArrastradaIndex(index);
+                              event.dataTransfer.effectAllowed = "move";
+                              event.dataTransfer.setData("text/plain", String(index));
+                            }}
+                            onDragOver={(event) => {
+                              event.preventDefault();
+                              event.dataTransfer.dropEffect = "move";
+                            }}
+                            onDrop={(event) => {
+                              event.preventDefault();
+                              const origen = Number(event.dataTransfer.getData("text/plain"));
+                              moverCategoria(Number.isFinite(origen) ? origen : categoriaArrastradaIndex, index);
+                              setCategoriaArrastradaIndex(null);
+                            }}
+                            onDragEnd={() => setCategoriaArrastradaIndex(null)}
+                          >
+                            <span className="text-muted" title="Arrastrar para ordenar" aria-label="Arrastrar para ordenar">
+                              <i className="bi bi-grip-vertical"></i>
+                            </span>
+                            <span className="badge text-bg-primary">{categoria.codigo || String(index + 1).padStart(2, "0")}</span>
+                            <div className="flex-grow-1">
+                              <div className="fw-semibold">{categoria.nombre || "-"}</div>
+                              {categoria.descripcion && <small className="text-muted">{categoria.descripcion}</small>}
+                            </div>
+                            <button
+                              type="button"
+                              className="btn btn-sm p-0 border-0 bg-transparent text-danger"
+                              onClick={() => quitarCategoria(categoria.id || categoria.ref)}
+                              title="Quitar categoria"
+                              aria-label={`Quitar categoria ${categoria.nombre || categoria.codigo || categoria.id}`}
+                            >
+                              <i className="bi bi-x-lg"></i>
+                            </button>
+                            {categoria._pending && (
+                              <button
+                                type="button"
+                                className="btn btn-sm p-0 border-0 bg-transparent text-secondary"
+                                onClick={() => {
+                                  setCategoriaEditando(categoria);
+                                  setMostrarCategoria(true);
+                                }}
+                                title="Editar categoria"
+                                aria-label={`Editar categoria ${categoria.nombre || categoria.codigo || categoria.id}`}
+                              >
+                                <i className="bi bi-pencil"></i>
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="form-text text-muted">No hay categorias asociadas todavia.</div>
+                    )}
                   </div>
                   {(modeloConflictoNombre || modeloConflictoCodigo || categoriaRepetidaActual) && (
                     <div className="col-12">
@@ -722,6 +875,18 @@ export function ModeloDraftModal({
           setMaterialEditando(null);
         }}
         onSave={(material) => guardarMaterial(material)}
+      />
+      <SimpleDraftModal
+        show={mostrarCategoria}
+        tipo="categoria"
+        depth={1}
+        initialValue={categoriaEditando}
+        existingItems={categoriasExistentes}
+        onClose={() => {
+          setMostrarCategoria(false);
+          setCategoriaEditando(null);
+        }}
+        onSave={(categoria) => guardarCategoria(categoria)}
       />
     </>
   );

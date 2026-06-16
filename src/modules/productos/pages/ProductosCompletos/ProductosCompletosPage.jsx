@@ -429,6 +429,7 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
               familiaRef: modelo.familiaRef || undefined,
               categorias: (modelo.categorias || []).map((item) => ({
                 ref: item.ref || item.id,
+                categoriaId: item.categoriaId || undefined,
                 codigo: item.codigo,
                 nombre: item.nombre,
                 descripcion: item.descripcion,

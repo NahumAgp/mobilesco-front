@@ -47,6 +47,13 @@ export default function ProductoWizard({ onComplete, onCancel }) {
     }
   });
 
+  const modeloActivo =
+    productoData.modelo?._pending
+      ? productoData.modelo
+      : productoData.modelo?.id
+        ? productoData.modelo
+        : null;
+
   const actualizarDatos = (seccion, datos) => {
     setProductoData((prev) => {
       if (Array.isArray(datos)) {
@@ -193,6 +200,15 @@ export default function ProductoWizard({ onComplete, onCancel }) {
           ></div>
         </div>
       </div>
+
+      {modeloActivo && (
+        <div className="alert alert-light border d-flex flex-wrap align-items-center gap-2 mb-4">
+          <span className="badge text-bg-primary">Modelo actual</span>
+          <strong className="text-truncate">{modeloActivo.nombre || "Sin nombre"}</strong>
+          {modeloActivo.codigo && <span className="text-muted">[{modeloActivo.codigo}]</span>}
+          {modeloActivo.familia?.nombre && <span className="text-muted">- {modeloActivo.familia.nombre}</span>}
+        </div>
+      )}
 
       <div className="card shadow-sm">
         <div className="card-body p-4">
