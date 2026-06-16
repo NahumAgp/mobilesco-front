@@ -38,6 +38,16 @@ export default function ProveedorFormPage() {
         </button>
       </div>
 
+      {esEdicion && proveedor?.fechaUltimoContacto && (
+        <div className="alert alert-light border d-flex align-items-center gap-2 mb-4">
+          <i className="bi bi-clock-history text-primary"></i>
+          <span>
+            Último contacto registrado:{" "}
+            <strong>{String(proveedor.fechaUltimoContacto).split("T")[0]}</strong>
+          </span>
+        </div>
+      )}
+
       {/* FORMULARIO DEL PROVEEDOR */}
       <div className="card mb-4">
         <div className="card-body">
