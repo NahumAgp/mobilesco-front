@@ -6,10 +6,15 @@ import ComprasTable from "./ComprasTable.jsx";
 
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
+import { getUser } from "../../auth/services/authService.js";
 
 export default function ComprasPage() {
 
   const navigate = useNavigate();
+  const user = getUser();
+  const puedeEliminarCompra = user?.roles?.some((rol) =>
+    ["ADMIN", "SUPER_ADMIN", "DIRECTOR_GENERAL", "SUBDIRECCION_ADMINISTRATIVA", "JEFE_ALMACEN"].includes(rol)
+  );
 
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
@@ -175,6 +180,7 @@ export default function ComprasPage() {
         data={comprasFiltradas}
         onVer={abrirVer}
         onEliminar={manejarEliminar}
+        puedeEliminar={puedeEliminarCompra}
       />
     </>
   );

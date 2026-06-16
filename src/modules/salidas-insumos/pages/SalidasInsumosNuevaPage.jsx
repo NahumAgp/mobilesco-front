@@ -20,6 +20,7 @@ export default function SalidasInsumosNuevaPage() {
   const [insumos, setInsumos] = useState([]);
   const [detalles, setDetalles] = useState([]);
   const [busquedaInsumo, setBusquedaInsumo] = useState("");
+  const [sugerenciasInsumo, setSugerenciasInsumo] = useState([]);
   const [cantidadEntrada, setCantidadEntrada] = useState(1);
   const [formData, setFormData] = useState({
     ordenProduccion: "",
@@ -98,6 +99,33 @@ export default function SalidasInsumosNuevaPage() {
     }) || null;
   };
 
+  const actualizarSugerencias = (valor) => {
+    const termino = String(valor || "").trim().toLowerCase();
+
+    if (!termino) {
+      setSugerenciasInsumo([]);
+      return;
+    }
+
+    const coincidencias = insumos
+      .filter((insumo) => {
+        const texto = [
+          insumo.codigoBarras,
+          insumo.codigo,
+          insumo.nombre,
+          insumo.descripcion
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+
+        return texto.includes(termino);
+      })
+      .slice(0, 6);
+
+    setSugerenciasInsumo(coincidencias);
+  };
+
   const agregarDetalle = () => {
     const insumo = buscarInsumoPorEntrada(busquedaInsumo);
     const cantidad = Number(cantidadEntrada || 0);
@@ -153,6 +181,7 @@ export default function SalidasInsumosNuevaPage() {
     }
 
     setBusquedaInsumo("");
+    setSugerenciasInsumo([]);
     setCantidadEntrada(1);
   };
 
@@ -204,6 +233,7 @@ export default function SalidasInsumosNuevaPage() {
     });
     setDetalles([]);
     setBusquedaInsumo("");
+    setSugerenciasInsumo([]);
     setCantidadEntrada(1);
     setErrores({});
   };
@@ -385,15 +415,51 @@ export default function SalidasInsumosNuevaPage() {
             <div className="row g-2 align-items-end bg-light rounded p-3">
               <div className="col-md-8">
                 <label className="form-label fw-semibold small">Insumo</label>
-                <input
-                  type="search"
-                  className="form-control"
-                  value={busquedaInsumo}
-                  onChange={(e) => setBusquedaInsumo(e.target.value)}
-                  onKeyDown={handleBusquedaKeyDown}
-                  placeholder="Escribe el nombre o escanea el código y presiona Enter"
-                  autoFocus
-                />
+                <div className="position-relative">
+                  <input
+                    type="search"
+                    className="form-control"
+                    value={busquedaInsumo}
+                    onChange={(e) => {
+                      setBusquedaInsumo(e.target.value);
+                      actualizarSugerencias(e.target.value);
+                    }}
+                    onFocus={(e) => actualizarSugerencias(e.target.value)}
+                    onKeyDown={handleBusquedaKeyDown}
+                    placeholder="Escribe el nombre o escanea el código y presiona Enter"
+                    autoFocus
+                    autoComplete="off"
+                  />
+                  {sugerenciasInsumo.length > 0 && (
+                    <div
+                      className="list-group position-absolute w-100 shadow-sm"
+                      style={{ zIndex: 10, maxHeight: "240px", overflowY: "auto" }}
+                    >
+                      {sugerenciasInsumo.map((insumo) => (
+                        <button
+                          key={insumo.id}
+                          type="button"
+                          className="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+                          onClick={() => {
+                            setBusquedaInsumo(insumo.nombre || "");
+                            setSugerenciasInsumo([]);
+                          }}
+                        >
+                          <span className="text-start">
+                            <strong className="d-block">{insumo.nombre}</strong>
+                            <small className="text-muted">
+                              {insumo.codigoBarras || insumo.codigo || "-"}
+                              {insumo.unidadMedida?.simbolo ? ` · ${insumo.unidadMedida.simbolo}` : ""}
+                            </small>
+                          </span>
+                          <span className="badge text-bg-light border">
+                            {Number(insumo.stockActual || 0).toFixed(2)}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <small className="text-muted d-block mt-1">
                   Si el insumo ya existe en la lista, su cantidad se aumenta en 1.
                 </small>

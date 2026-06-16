@@ -29,6 +29,11 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
     toggleSidebar();
   };
 
+  const getTooltipProps = (label) => ({
+    title: label,
+    "aria-label": label
+  });
+
   const nombre = user?.nombre || "";
   const apellido = user?.apellidoPaterno || "";
 
@@ -146,26 +151,26 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
       {/* MENÚ */}
       <nav className="sidebar-menu-list">
 
-        <NavLink to="/tablero" className="sidebar-link" onClick={handleNavigation}>
+        <NavLink to="/tablero" className="sidebar-link" onClick={handleNavigation} {...getTooltipProps("Tablero")}>
           <i className="bi bi-speedometer2 me-2"></i>
           Tablero
         </NavLink>
 
         {puedeGestionarUsuarios && (
-          <NavLink to="/usuarios/accesos" className="sidebar-link" onClick={handleNavigation}>
+          <NavLink to="/usuarios/accesos" className="sidebar-link" onClick={handleNavigation} {...getTooltipProps("Usuarios y accesos")}>
             <i className="bi bi-shield-check me-2"></i>
             Usuarios y accesos
           </NavLink>
         )}
 
         {/* EMPLEADOS */}
-        <NavLink to="/empleados" className="sidebar-link" onClick={handleNavigation}>
+        <NavLink to="/empleados" className="sidebar-link" onClick={handleNavigation} {...getTooltipProps("Empleados")}>
           <i className="bi bi-people me-2"></i>
           Empleados
         </NavLink>
 
         {/* PROVEEDORES */}
-        <NavLink to="/proveedores" className="sidebar-link" onClick={handleNavigation}>
+        <NavLink to="/proveedores" className="sidebar-link" onClick={handleNavigation} {...getTooltipProps("Proveedores")}>
           <i className="bi bi-truck me-2"></i>
           Proveedores
         </NavLink>
@@ -178,6 +183,7 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
             onClick={() => toggleSubmenu("productos")}
             aria-expanded={openSubmenu === "productos"}
             aria-controls="menuProductos"
+            {...getTooltipProps("Productos")}
           >
             <div className="sidebar-parent-content">
               <i className="bi bi-box-seam me-2"></i>
@@ -188,37 +194,37 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
 
           <div className={`collapse sidebar-submenu ${openSubmenu === "productos" ? "show" : ""}`} id="menuProductos">
 
-            <NavLink to="/lineas-producto" className="sidebar-link sidebar-link--sub" onClick={handleNavigation}>
+            <NavLink to="/lineas-producto" className="sidebar-link sidebar-link--sub" onClick={handleNavigation} {...getTooltipProps("Líneas")}>
               <i className="bi bi-collection me-2"></i>
               Lineas
             </NavLink>
 
-            <NavLink to="/familias" className="sidebar-link sidebar-link--sub" onClick={handleNavigation}>
+            <NavLink to="/familias" className="sidebar-link sidebar-link--sub" onClick={handleNavigation} {...getTooltipProps("Familias")}>
               <i className="bi bi-diagram-3 me-2"></i>
               Familias
             </NavLink>
 
-            <NavLink to="/modelos" className="sidebar-link sidebar-link--sub" onClick={handleNavigation}>
+            <NavLink to="/modelos" className="sidebar-link sidebar-link--sub" onClick={handleNavigation} {...getTooltipProps("Modelos")}>
               <i className="bi bi-boxes me-2"></i>
               Modelos
             </NavLink>
 
-            <NavLink to="/materiales" className="sidebar-link sidebar-link--sub" onClick={handleNavigation}>
+            <NavLink to="/materiales" className="sidebar-link sidebar-link--sub" onClick={handleNavigation} {...getTooltipProps("Materiales")}>
               <i className="bi bi-layers me-2"></i>
               Materiales
             </NavLink>
 
-            <NavLink to="/colores" className="sidebar-link sidebar-link--sub" onClick={handleNavigation}>
+            <NavLink to="/colores" className="sidebar-link sidebar-link--sub" onClick={handleNavigation} {...getTooltipProps("Colores")}>
               <i className="bi bi-palette me-2"></i>
               Colores
             </NavLink>
 
-            <NavLink to="/productos" className="sidebar-link" onClick={handleNavigation}>
+            <NavLink to="/productos" className="sidebar-link" onClick={handleNavigation} {...getTooltipProps("Productos")}>
               <i className="bi bi-box-seam me-2"></i>
               Productos
             </NavLink>
 
-            <NavLink to="/productos/catalogo" className="sidebar-link sidebar-link--sub" onClick={handleNavigation}>
+            <NavLink to="/productos/catalogo" className="sidebar-link sidebar-link--sub" onClick={handleNavigation} {...getTooltipProps("Catálogo visual")}>
               <i className="bi bi-images me-2"></i>
               Catalogo visual
             </NavLink>
@@ -234,6 +240,7 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
             onClick={() => toggleSubmenu("almacen")}
             aria-expanded={openSubmenu === "almacen"}
             aria-controls="menuAlmacen"
+            {...getTooltipProps("Almacén")}
           >
             <div className="sidebar-parent-content">
               <i className="bi bi-archive me-2"></i>
@@ -242,27 +249,27 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
             <i className="bi bi-chevron-down sidebar-chevron"></i>
           </button>
           <div className={`collapse sidebar-submenu ${openSubmenu === "almacen" ? "show" : ""}`} id="menuAlmacen">
-            <NavLink to="/insumos" className="sidebar-link sidebar-link--sub" onClick={handleNavigation}>
+            <NavLink to="/insumos" className="sidebar-link sidebar-link--sub" onClick={handleNavigation} {...getTooltipProps("Insumos")}>
               <i className="bi bi-boxes me-2"></i>
               Insumos
             </NavLink>
 
-            <NavLink to="/almacen/entradas" className="sidebar-link sidebar-link--sub" onClick={handleNavigation}>
+            <NavLink to="/almacen/entradas" className="sidebar-link sidebar-link--sub" onClick={handleNavigation} {...getTooltipProps("Entradas")}>
               <i className="bi bi-box-arrow-in-down me-2"></i>
               Entradas
             </NavLink>
 
-            <NavLink to="/insumos/tipos" className="sidebar-link sidebar-link--sub" onClick={handleNavigation}>
+            <NavLink to="/insumos/tipos" className="sidebar-link sidebar-link--sub" onClick={handleNavigation} {...getTooltipProps("Tipos de insumo")}>
               <i className="bi bi-tags me-2"></i>
               Tipos de insumo
             </NavLink>
 
-            <NavLink to="/salidas-insumos" className="sidebar-link sidebar-link--sub" onClick={handleNavigation}>
+            <NavLink to="/salidas-insumos" className="sidebar-link sidebar-link--sub" onClick={handleNavigation} {...getTooltipProps("Salidas")}>
               <i className="bi bi-box-arrow-right me-2"></i>
               Salidas
             </NavLink>
 
-            <NavLink to="/unidades-medida" className="sidebar-link sidebar-link--sub" onClick={handleNavigation}>
+            <NavLink to="/unidades-medida" className="sidebar-link sidebar-link--sub" onClick={handleNavigation} {...getTooltipProps("Unidades de medida")}>
               <i className="bi bi-aspect-ratio me-2"></i>
               Unidad Medida
             </NavLink>
@@ -270,36 +277,36 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
         </div>
 
         {/* Centros de Trabajo */}
-        <NavLink to="/centros-trabajo" className="sidebar-link" onClick={handleNavigation}>
+        <NavLink to="/centros-trabajo" className="sidebar-link" onClick={handleNavigation} {...getTooltipProps("Centros de trabajo")}>
           <i className="bi bi-building me-2"></i>
           Centros de Trabajo
         </NavLink>
 
         {/* OPERACIONES */}
-        <NavLink to="/operaciones" className="sidebar-link" onClick={handleNavigation}>
+        <NavLink to="/operaciones" className="sidebar-link" onClick={handleNavigation} {...getTooltipProps("Operaciones")}>
           <i className="bi bi-gear me-2"></i>
           Operaciones
         </NavLink>
 
-        <NavLink to="/cif" className="sidebar-link" onClick={handleNavigation}>
+        <NavLink to="/cif" className="sidebar-link" onClick={handleNavigation} {...getTooltipProps("CIF")}>
           <i className="bi bi-diagram-3 me-2"></i>
           CIF
         </NavLink>
 
         {/* Compras */}
-        <NavLink to="/compras" className="sidebar-link" onClick={handleNavigation}>
+        <NavLink to="/compras" className="sidebar-link" onClick={handleNavigation} {...getTooltipProps("Compras")}>
           <i className="bi bi-cart-check me-2"></i>
           Compras
         </NavLink>
 
         {/* KARDEX */}
-        <NavLink to="/kardex" className="sidebar-link" onClick={handleNavigation}>
+        <NavLink to="/kardex" className="sidebar-link" onClick={handleNavigation} {...getTooltipProps("Kardex")}>
           <i className="bi bi-journal-text me-2"></i>
           kardex
         </NavLink>
 
         {/* Cotizaciones */}
-        <NavLink to="/cotizaciones" className="sidebar-link" onClick={handleNavigation}>
+        <NavLink to="/cotizaciones" className="sidebar-link" onClick={handleNavigation} {...getTooltipProps("Cotizaciones")}>
           <i className="bi bi-file-earmark-text me-2"></i>
           Cotizaciones
         </NavLink>

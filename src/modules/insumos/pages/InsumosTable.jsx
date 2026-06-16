@@ -36,6 +36,7 @@ function renderHeaderLabel(label) {
 export default function InsumosTable({
   data,
   onEditar,
+  onVerKardex,
   onCambiarEstado,
   puedeGestionar = false,
   sortField = "nombre",
@@ -118,7 +119,7 @@ export default function InsumosTable({
                   return (
                     <tr
                       key={insumo.id}
-                      onClick={() => onEditar(insumo)}
+                      onClick={() => onVerKardex?.(insumo)}
                       className={`insumos-table-row insumos-row-${stockStatus}`}
                       role="button"
                     >
@@ -195,15 +196,31 @@ export default function InsumosTable({
                         </div>
                       </td>
                       <td className="insumos-actions">
-                        {puedeGestionar && (
-                          <CatalogRowActions
-                            item={insumo}
-                            active={insumo.activo}
-                            onEdit={onEditar}
-                            onToggle={onCambiarEstado}
-                            className="insumos-row-actions"
-                          />
-                        )}
+                        <div className="d-flex flex-wrap gap-2 justify-content-end">
+                          {onVerKardex && (
+                            <button
+                              type="button"
+                              className="btn btn-outline-secondary btn-sm"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                onVerKardex(insumo);
+                              }}
+                              title="Ver Kardex"
+                            >
+                              <i className="bi bi-journal-text me-1"></i>
+                              Kardex
+                            </button>
+                          )}
+                          {puedeGestionar && (
+                            <CatalogRowActions
+                              item={insumo}
+                              active={insumo.activo}
+                              onEdit={onEditar}
+                              onToggle={onCambiarEstado}
+                              className="insumos-row-actions"
+                            />
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );

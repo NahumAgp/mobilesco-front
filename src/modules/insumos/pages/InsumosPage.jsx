@@ -143,6 +143,10 @@ export default function InsumosPage() {
     navigate(`/insumos/${insumo.id}`);
   };
 
+  const abrirKardex = (insumo) => {
+    navigate(`/kardex?insumoId=${insumo.id}`);
+  };
+
   const manejarCambiarEstado = async (insumo) => {
     const siguienteEstado = !insumo.activo;
     const accion = siguienteEstado ? "activar" : "desactivar";
@@ -371,6 +375,7 @@ export default function InsumosPage() {
             <InsumosTable
               data={insumosFiltrados}
               onEditar={abrirEditar}
+              onVerKardex={abrirKardex}
               onCambiarEstado={manejarCambiarEstado}
               puedeGestionar={puedeGestionarInsumos}
               sortField={sortField}

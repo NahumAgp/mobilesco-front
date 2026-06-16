@@ -4,6 +4,7 @@ export default function ComprasTable({
   data, 
   onVer, 
   onEliminar, 
+  puedeEliminar = false,
 }) {
   const [compraSeleccionada, setCompraSeleccionada] = useState(null);
   const [showDetallesModal, setShowDetallesModal] = useState(false);
@@ -120,7 +121,7 @@ export default function ComprasTable({
                           <i className="bi bi-list-ul"></i>
                         </button>
                         
-                        {compra.estado === 'PENDIENTE' && (
+                        {compra.estado === 'PENDIENTE' && puedeEliminar && (
                           <button
                             className="btn btn-outline-danger"
                             onClick={(e) => {

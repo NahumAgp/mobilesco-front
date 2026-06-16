@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import Toast from "../../../../components/ui/Toast.jsx";
 import { obtenerUnidadesMedida } from "../../../unidades-medida/services/unidadMedidas.js";
 import { crearInsumo } from "../../../insumos/services/insumos.js";
+import { actualizarCompra } from "../../../compras/services/compras.js";
 import { obtenerEntradaPorId, recepcionarDetalleCompra } from "../services/entradas.js";
 
 function formatoFecha(valor) {
@@ -15,6 +16,13 @@ function formatoFecha(valor) {
     month: "2-digit",
     year: "numeric"
   });
+}
+
+function fechaLocalISO(date = new Date()) {
+  const anio = date.getFullYear();
+  const mes = String(date.getMonth() + 1).padStart(2, "0");
+  const dia = String(date.getDate()).padStart(2, "0");
+  return `${anio}-${mes}-${dia}`;
 }
 
 export default function EntradaRecepcionPage() {
@@ -29,6 +37,7 @@ export default function EntradaRecepcionPage() {
   const [toastType, setToastType] = useState("success");
   const [entregadoPor, setEntregadoPor] = useState("");
   const [recepciones, setRecepciones] = useState([]);
+  const [ajustesAbiertos, setAjustesAbiertos] = useState({});
   const [mostrarPopupInsumo, setMostrarPopupInsumo] = useState(false);
   const [creandoInsumo, setCreandoInsumo] = useState(false);
   const [nuevoInsumo, setNuevoInsumo] = useState({
@@ -49,15 +58,22 @@ export default function EntradaRecepcionPage() {
       setCompra(compraData);
       setEntregadoPor(compraData.entregadoPor || "");
       setUnidades(Array.isArray(unidadesData?.content) ? unidadesData.content : Array.isArray(unidadesData) ? unidadesData : []);
-      setRecepciones((compraData.detalles || []).map((detalle) => ({
-        detalleId: detalle.id,
-        nombre: detalle.insumoNombre,
-        cantidadComprada: Number(detalle.cantidad || 0),
-        cantidadRecibidaAnterior: Number(detalle.cantidadRecibida || 0),
-        cantidadRecibirAhora: Number(detalle.cantidadPendiente || 0),
-        motivoNoRecepcion: detalle.motivoNoRecepcion || "",
-        cantidadPendiente: Number(detalle.cantidadPendiente || 0)
-      })));
+      setRecepciones((compraData.detalles || []).map((detalle) => {
+        const cantidadComprada = Number(detalle.cantidad || 0);
+        const cantidadRecibidaAnterior = Number(detalle.cantidadRecibida || 0);
+        const cantidadPendiente = Number(detalle.cantidadPendiente || Math.max(cantidadComprada - cantidadRecibidaAnterior, 0));
+
+        return {
+          detalleId: detalle.id,
+          nombre: detalle.insumoNombre,
+          cantidadComprada,
+          cantidadRecibidaAnterior,
+          cantidadRecibirAhora: 0,
+          motivoNoRecepcion: detalle.motivoNoRecepcion || "",
+          cantidadPendiente
+        };
+      }));
+      setAjustesAbiertos({});
     } catch (error) {
       console.error(error);
       setToastType("danger");
@@ -72,37 +88,147 @@ export default function EntradaRecepcionPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  const totalPendiente = useMemo(() => {
-    return recepciones.reduce((acc, item) => acc + Number(item.cantidadPendiente || 0), 0);
-  }, [recepciones]);
+  const totalPendiente = useMemo(
+    () => recepciones.reduce((acc, item) => acc + Number(item.cantidadPendiente || 0), 0),
+    [recepciones]
+  );
+
+  const totalSeleccionado = useMemo(
+    () => recepciones.reduce((acc, item) => acc + Number(item.cantidadRecibirAhora || 0), 0),
+    [recepciones]
+  );
+
+  const totalCompletos = useMemo(
+    () => recepciones.filter((item) => Number(item.cantidadPendiente || 0) <= 0).length,
+    [recepciones]
+  );
+
+  const totalPendientes = useMemo(
+    () => recepciones.filter((item) => Number(item.cantidadPendiente || 0) > 0).length,
+    [recepciones]
+  );
+
+  const hayPendientes = totalPendiente > 0;
+  const entradaCerrada = compra?.estado === "RECIBIDA";
 
   const manejarCambioRecepcion = (detalleId, campo, valor) => {
+    setRecepciones((prev) => prev.map((item) => {
+      if (item.detalleId !== detalleId) return item;
+
+      if (campo === "cantidadRecibirAhora") {
+        const valorNumerico = Math.max(Number(valor || 0), 0);
+        const maximo = Number(item.cantidadPendiente || 0);
+        return { ...item, cantidadRecibirAhora: Math.min(valorNumerico, maximo) };
+      }
+
+      return { ...item, [campo]: valor };
+    }));
+  };
+
+  const marcarRecepcionCompleta = (detalleId, cantidadPendiente) => {
     setRecepciones((prev) => prev.map((item) => (
       item.detalleId === detalleId
-        ? { ...item, [campo]: campo === "cantidadRecibirAhora" ? Number(valor || 0) : valor }
+        ? { ...item, cantidadRecibirAhora: Number(cantidadPendiente || 0), motivoNoRecepcion: "" }
+        : item
+    )));
+    setAjustesAbiertos((prev) => ({ ...prev, [detalleId]: false }));
+  };
+
+  const alternarMarcado = (item, checked) => {
+    if (Number(item.cantidadPendiente || 0) <= 0) {
+      return;
+    }
+
+    if (checked) {
+      marcarRecepcionCompleta(item.detalleId, item.cantidadPendiente);
+      return;
+    }
+
+    setRecepciones((prev) => prev.map((actual) => (
+      actual.detalleId === item.detalleId
+        ? { ...actual, cantidadRecibirAhora: 0 }
+        : actual
+    )));
+    setAjustesAbiertos((prev) => ({ ...prev, [item.detalleId]: false }));
+  };
+
+  const abrirAjuste = (detalleId, cantidadPendiente) => {
+    setAjustesAbiertos((prev) => ({ ...prev, [detalleId]: !prev[detalleId] }));
+    setRecepciones((prev) => prev.map((item) => (
+      item.detalleId === detalleId
+        ? {
+            ...item,
+            cantidadRecibirAhora: item.cantidadRecibirAhora > 0 ? item.cantidadRecibirAhora : Math.max(Number(cantidadPendiente || item.cantidadPendiente || 0), 0)
+          }
         : item
     )));
   };
 
-  const recibirTodo = (detalleId) => {
-    setRecepciones((prev) => prev.map((item) => (
-      item.detalleId === detalleId
-        ? { ...item, cantidadRecibirAhora: item.cantidadPendiente, motivoNoRecepcion: "" }
-        : item
-    )));
+  const cerrarEntrada = async () => {
+    if (entradaCerrada) {
+      setToastType("success");
+      setToastMessage("La entrada ya esta recibida");
+      return;
+    }
+
+    if (!entregadoPor.trim()) {
+      setToastType("danger");
+      setToastMessage("Debes indicar quien entrego la compra");
+      return;
+    }
+
+    try {
+      setGuardando(true);
+      await actualizarCompra(id, {
+        entregadoPor: entregadoPor.trim(),
+        estado: "RECIBIDA",
+        fechaRecepcion: fechaLocalISO()
+      });
+
+      setToastType("success");
+      setToastMessage("Entrada cerrada correctamente");
+      await cargarDatos();
+    } catch (error) {
+      console.error(error);
+      setToastType("danger");
+      setToastMessage(error.message || "No se pudo cerrar la entrada");
+    } finally {
+      setGuardando(false);
+    }
   };
 
   const guardarRecepcion = async () => {
     if (!entregadoPor.trim()) {
       setToastType("danger");
-      setToastMessage("Debes indicar quién entregó la compra");
+      setToastMessage("Debes indicar quien entrego la compra");
       return;
     }
 
     const itemsARecibir = recepciones.filter((item) => Number(item.cantidadRecibirAhora || 0) > 0);
     if (itemsARecibir.length === 0) {
+      if (entradaCerrada) {
+        setToastType("success");
+        setToastMessage("La entrada ya esta recibida");
+        return;
+      }
+
+      if (!hayPendientes) {
+        await cerrarEntrada();
+        return;
+      }
+
       setToastType("danger");
-      setToastMessage("Agrega al menos una cantidad a recibir");
+      setToastMessage("Marca la palomita del insumo o abre ajuste para capturar cantidades");
+      return;
+    }
+
+    const conErrorMotivo = itemsARecibir.find((item) =>
+      Number(item.cantidadRecibirAhora || 0) < Number(item.cantidadPendiente || 0)
+      && !String(item.motivoNoRecepcion || "").trim()
+    );
+    if (conErrorMotivo) {
+      setToastType("danger");
+      setToastMessage(`Agrega el motivo de ajuste para ${conErrorMotivo.nombre}`);
       return;
     }
 
@@ -117,12 +243,12 @@ export default function EntradaRecepcionPage() {
       }
 
       setToastType("success");
-      setToastMessage("Recepción registrada y stock actualizado");
+      setToastMessage("Recepcion registrada y stock actualizado");
       await cargarDatos();
     } catch (error) {
       console.error(error);
       setToastType("danger");
-      setToastMessage(error.message || "No se pudo registrar la recepción");
+      setToastMessage(error.message || "No se pudo registrar la recepcion");
     } finally {
       setGuardando(false);
     }
@@ -178,12 +304,16 @@ export default function EntradaRecepcionPage() {
 
       <div className="d-flex flex-wrap gap-3 justify-content-between align-items-center mb-4">
         <div>
-          <h2 className="fw-bold mb-1">Recepción de entrada</h2>
+          <div className="text-uppercase small fw-semibold text-primary mb-1">Almacen / Entradas</div>
+          <h2 className="fw-bold mb-1">Recepcion de entrada</h2>
           <p className="text-muted mb-0">
-            Compra {compra.folio} · {compra.proveedorRazonSocial}
+            Compra {compra.folio} - {compra.proveedorRazonSocial}
           </p>
         </div>
-        <div className="d-flex gap-2">
+        <div className="d-flex flex-wrap gap-2">
+          <button className="btn btn-outline-primary" onClick={() => navigate(`/compras/${id}`)}>
+            Editar compra
+          </button>
           <button className="btn btn-outline-secondary" onClick={() => navigate("/almacen/entradas")}>
             Volver
           </button>
@@ -195,25 +325,25 @@ export default function EntradaRecepcionPage() {
 
       <div className="row g-3 mb-4">
         <div className="col-md-4">
-          <div className="card shadow-sm h-100">
+          <div className="card shadow-sm border-0 h-100">
             <div className="card-body">
               <div className="text-muted small">Proveedor</div>
-              <div className="fw-semibold">{compra.proveedorRazonSocial}</div>
+              <div className="fw-semibold fs-5">{compra.proveedorRazonSocial}</div>
               <div className="text-muted small">{compra.proveedorRfc}</div>
             </div>
           </div>
         </div>
         <div className="col-md-4">
-          <div className="card shadow-sm h-100">
+          <div className="card shadow-sm border-0 h-100">
             <div className="card-body">
               <div className="text-muted small">Estado</div>
-              <div className="fw-semibold">{compra.estado}</div>
+              <div className="fw-semibold fs-5">{compra.estado}</div>
               <div className="text-muted small">{formatoFecha(compra.fechaCompra)}</div>
             </div>
           </div>
         </div>
         <div className="col-md-4">
-          <div className="card shadow-sm h-100">
+          <div className="card shadow-sm border-0 h-100">
             <div className="card-body">
               <div className="text-muted small">Entregado por</div>
               <input
@@ -228,67 +358,211 @@ export default function EntradaRecepcionPage() {
         </div>
       </div>
 
-      <div className="card shadow-sm border-0">
+      <div className="card shadow-sm border-0 overflow-hidden">
+        <div className="card-header bg-white py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+          <div>
+            <h5 className="mb-0 text-secondary">
+              <i className="bi bi-check2-square me-2"></i>Checklist de recepcion
+            </h5>
+            <small className="text-muted">
+              Marca la casilla de la columna Palomita si llego todo. Si no, abre ajuste para capturar la cantidad parcial y su motivo.
+            </small>
+          </div>
+          <div className="d-flex flex-wrap gap-2">
+            <span className="badge text-bg-success-subtle text-success border border-success-subtle">
+              {totalCompletos} completos
+            </span>
+            <span className="badge text-bg-warning-subtle text-warning border border-warning-subtle">
+              {totalPendientes} pendientes
+            </span>
+          </div>
+        </div>
+
+        {!hayPendientes && (
+          <div className="alert alert-success rounded-0 mb-0 border-0 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+              <div className="fw-semibold mb-1">
+                <i className="bi bi-patch-check-fill me-2"></i>
+                {entradaCerrada ? "Entrada recibida correctamente" : "Esta entrada ya no tiene cantidades pendientes"}
+              </div>
+              <div className="small">
+                {entradaCerrada
+                  ? "La compra ya quedo cerrada y el stock fue actualizado."
+                  : "Solo falta cerrar la recepcion para guardar quien entrego la compra y dejarla como recibida."}
+              </div>
+            </div>
+            {entradaCerrada ? (
+              <button className="btn btn-outline-success" onClick={() => navigate("/almacen/entradas")}>
+                <i className="bi bi-arrow-left me-2"></i>Volver a entradas
+              </button>
+            ) : (
+              <button className="btn btn-success" disabled={guardando} onClick={cerrarEntrada}>
+                <i className="bi bi-check2-circle me-2"></i>
+                {guardando ? "Cerrando..." : "Cerrar entrada"}
+              </button>
+            )}
+          </div>
+        )}
+
         <div className="table-responsive">
           <table className="table align-middle mb-0">
             <thead className="table-light">
               <tr>
-                <th>Insumo</th>
+                <th style={{ width: "14%" }} className="text-center">Palomita</th>
+                <th style={{ width: "30%" }}>Insumo</th>
                 <th className="text-end">Comprado</th>
                 <th className="text-end">Recibido antes</th>
                 <th className="text-end">Pendiente</th>
-                <th className="text-end">Recibir ahora</th>
-                <th>Motivo si falta</th>
-                <th></th>
+                <th style={{ width: "22%" }}>Estado</th>
+                <th style={{ width: "16%" }}></th>
               </tr>
             </thead>
             <tbody>
-              {recepciones.map((item) => (
-                <tr key={item.detalleId}>
-                  <td>{item.nombre}</td>
-                  <td className="text-end">{Number(item.cantidadComprada).toFixed(2)}</td>
-                  <td className="text-end">{Number(item.cantidadRecibidaAnterior).toFixed(2)}</td>
-                  <td className="text-end">{Number(item.cantidadPendiente).toFixed(2)}</td>
-                  <td className="text-end" style={{ maxWidth: "150px" }}>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      className="form-control form-control-sm text-end"
-                      value={item.cantidadRecibirAhora}
-                      onChange={(e) => manejarCambioRecepcion(item.detalleId, "cantidadRecibirAhora", e.target.value)}
-                    />
-                  </td>
-                  <td style={{ minWidth: "240px" }}>
-                    <input
-                      type="text"
-                      className="form-control form-control-sm"
-                      value={item.motivoNoRecepcion}
-                      onChange={(e) => manejarCambioRecepcion(item.detalleId, "motivoNoRecepcion", e.target.value)}
-                      placeholder="Opcional si no se recibe completo"
-                    />
-                  </td>
-                  <td className="text-end">
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-outline-primary"
-                      onClick={() => recibirTodo(item.detalleId)}
-                    >
-                      Todo
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {recepciones.map((item) => {
+                const completo = Number(item.cantidadPendiente || 0) <= 0;
+                const ajusteAbierto = Boolean(ajustesAbiertos[item.detalleId]);
+                const cantidadRecibir = Number(item.cantidadRecibirAhora || 0);
+                const esParcial = !completo
+                  && cantidadRecibir > 0
+                  && cantidadRecibir < Number(item.cantidadPendiente || 0);
+                const marcado = completo || cantidadRecibir >= Number(item.cantidadPendiente || 0);
+
+                return (
+                  <Fragment key={item.detalleId}>
+                    <tr className={completo ? "table-success-subtle" : ""}>
+                      <td className="text-center align-middle">
+                        <div className="d-inline-flex align-items-center gap-2">
+                          <div className="form-check d-inline-flex align-items-center justify-content-center m-0">
+                            <input
+                              className="form-check-input"
+                              type="checkbox"
+                              checked={marcado}
+                              disabled={completo}
+                              onChange={(e) => alternarMarcado(item, e.target.checked)}
+                              aria-label={`Marcar ${item.nombre} como recibido completo`}
+                              style={{ width: "1.2rem", height: "1.2rem", cursor: completo ? "default" : "pointer" }}
+                            />
+                          </div>
+                          {completo && (
+                            <span className="badge text-bg-success">
+                              <i className="bi bi-check-lg me-1"></i>Listo
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td>
+                        <div>
+                          <div className="fw-semibold">{item.nombre}</div>
+                          <div className="small text-muted">
+                            {completo
+                              ? "Ya quedó recibido. Si se necesita registrar otra recepción, usa una nueva compra."
+                              : "Marca la palomita si llegó todo. Si no, abre ajuste para capturar la recepción parcial."}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="text-end">{Number(item.cantidadComprada).toFixed(2)}</td>
+                      <td className="text-end">{Number(item.cantidadRecibidaAnterior).toFixed(2)}</td>
+                      <td className="text-end">
+                        <span className={`badge ${completo ? "text-bg-success" : "text-bg-warning"}`}>
+                          {Number(item.cantidadPendiente).toFixed(2)}
+                        </span>
+                      </td>
+                      <td>
+                        {completo ? (
+                          <span className="badge text-bg-success">
+                            <i className="bi bi-patch-check me-1"></i>Recibido completo
+                          </span>
+                        ) : (
+                          <div className="d-flex flex-column gap-2">
+                            <button
+                              type="button"
+                              className={`btn btn-sm ${marcado ? "btn-success" : "btn-outline-success"}`}
+                              onClick={() => alternarMarcado(item, !marcado)}
+                            >
+                              <i className="bi bi-check2-circle me-1"></i>
+                              {marcado ? "Palomita marcada" : "Marcar palomita"}
+                            </button>
+                            <button
+                              type="button"
+                              className={`btn btn-sm ${ajusteAbierto ? "btn-warning" : "btn-outline-warning"}`}
+                              onClick={() => abrirAjuste(item.detalleId, item.cantidadPendiente)}
+                            >
+                              <i className="bi bi-sliders me-1"></i>Ajuste
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                      <td className="text-end">
+                        {!completo && (
+                          <span className={`badge ${esParcial ? "text-bg-warning" : "text-bg-light border"}`}>
+                            {esParcial ? "Parcial" : "Pendiente"}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+
+                    {ajusteAbierto && !completo && (
+                      <tr>
+                        <td colSpan="6" className="bg-light">
+                          <div className="row g-3 align-items-end py-3">
+                            <div className="col-md-3">
+                              <label className="form-label fw-semibold small">Recibir ahora</label>
+                              <input
+                                type="number"
+                                min="0"
+                                max={Number(item.cantidadPendiente || 0)}
+                                step="0.01"
+                                className="form-control"
+                                value={item.cantidadRecibirAhora}
+                                onChange={(e) => manejarCambioRecepcion(item.detalleId, "cantidadRecibirAhora", e.target.value)}
+                              />
+                              <small className="text-muted">
+                                Maximo: {Number(item.cantidadPendiente || 0).toFixed(2)}
+                              </small>
+                            </div>
+                            <div className="col-md-7">
+                              <label className="form-label fw-semibold small">Motivo del ajuste</label>
+                              <input
+                                type="text"
+                                className="form-control"
+                                value={item.motivoNoRecepcion}
+                                onChange={(e) => manejarCambioRecepcion(item.detalleId, "motivoNoRecepcion", e.target.value)}
+                                placeholder="Explica por que no se recibio toda la mercancia"
+                              />
+                            </div>
+                            <div className="col-md-2 text-end">
+                              <button
+                                type="button"
+                                className="btn btn-outline-secondary w-100"
+                                onClick={() => setAjustesAbiertos((prev) => ({ ...prev, [item.detalleId]: false }))}
+                              >
+                                Cerrar
+                              </button>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>
 
         <div className="card-body border-top d-flex flex-wrap justify-content-between align-items-center gap-2">
           <div className="text-muted">
-            Pendiente total: <strong>{totalPendiente.toFixed(2)}</strong>
+            Pendiente total: <strong>{totalPendiente.toFixed(2)}</strong> | Seleccionado ahora: <strong>{totalSeleccionado.toFixed(2)}</strong>
           </div>
-          <button className="btn btn-primary" disabled={guardando} onClick={guardarRecepcion}>
-            {guardando ? "Registrando..." : "Recibir"}
+          <button
+            className={`btn px-4 ${entradaCerrada ? "btn-outline-secondary" : "btn-primary"}`}
+            disabled={guardando}
+            onClick={entradaCerrada ? () => navigate("/almacen/entradas") : guardarRecepcion}
+          >
+            <i className="bi bi-check2-circle me-2"></i>
+            <span>
+              {guardando ? "Registrando..." : entradaCerrada ? "Volver a entradas" : (hayPendientes ? "Confirmar recepcion" : "Cerrar entrada")}
+            </span>
           </button>
         </div>
       </div>
@@ -305,29 +579,55 @@ export default function EntradaRecepcionPage() {
                 <div className="modal-body">
                   <div className="mb-3">
                     <label className="form-label">Nombre *</label>
-                    <input className="form-control" value={nuevoInsumo.nombre} onChange={(e) => setNuevoInsumo((prev) => ({ ...prev, nombre: e.target.value }))} />
+                    <input
+                      className="form-control"
+                      value={nuevoInsumo.nombre}
+                      onChange={(e) => setNuevoInsumo((prev) => ({ ...prev, nombre: e.target.value }))}
+                    />
                   </div>
                   <div className="mb-3">
                     <label className="form-label">Unidad de medida *</label>
-                    <select className="form-select" value={nuevoInsumo.unidadMedidaId} onChange={(e) => setNuevoInsumo((prev) => ({ ...prev, unidadMedidaId: e.target.value }))}>
+                    <select
+                      className="form-select"
+                      value={nuevoInsumo.unidadMedidaId}
+                      onChange={(e) => setNuevoInsumo((prev) => ({ ...prev, unidadMedidaId: e.target.value }))}
+                    >
                       <option value="">Selecciona...</option>
                       {unidades.map((unidad) => (
-                        <option key={unidad.id} value={unidad.id}>{unidad.nombre} ({unidad.simbolo})</option>
+                        <option key={unidad.id} value={unidad.id}>
+                          {unidad.nombre} ({unidad.simbolo})
+                        </option>
                       ))}
                     </select>
                   </div>
                   <div className="mb-3">
-                    <label className="form-label">Stock mínimo</label>
-                    <input type="number" min="0" step="0.01" className="form-control" value={nuevoInsumo.stockMinimo} onChange={(e) => setNuevoInsumo((prev) => ({ ...prev, stockMinimo: e.target.value }))} />
+                    <label className="form-label">Stock minimo</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className="form-control"
+                      value={nuevoInsumo.stockMinimo}
+                      onChange={(e) => setNuevoInsumo((prev) => ({ ...prev, stockMinimo: e.target.value }))}
+                    />
                   </div>
                   <div className="mb-3">
-                    <label className="form-label">Descripción</label>
-                    <textarea className="form-control" rows="3" value={nuevoInsumo.descripcion} onChange={(e) => setNuevoInsumo((prev) => ({ ...prev, descripcion: e.target.value }))} />
+                    <label className="form-label">Descripcion</label>
+                    <textarea
+                      className="form-control"
+                      rows="3"
+                      value={nuevoInsumo.descripcion}
+                      onChange={(e) => setNuevoInsumo((prev) => ({ ...prev, descripcion: e.target.value }))}
+                    />
                   </div>
                 </div>
                 <div className="modal-footer">
-                  <button type="button" className="btn btn-light" onClick={() => setMostrarPopupInsumo(false)}>Cancelar</button>
-                  <button type="submit" className="btn btn-primary" disabled={creandoInsumo}>{creandoInsumo ? "Creando..." : "Crear insumo"}</button>
+                  <button type="button" className="btn btn-light" onClick={() => setMostrarPopupInsumo(false)}>
+                    Cancelar
+                  </button>
+                  <button type="submit" className="btn btn-primary" disabled={creandoInsumo}>
+                    {creandoInsumo ? "Creando..." : "Crear insumo"}
+                  </button>
                 </div>
               </form>
             </div>

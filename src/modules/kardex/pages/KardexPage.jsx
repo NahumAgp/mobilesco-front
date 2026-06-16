@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { obtenerInsumos } from "../../insumos/services/insumos.js";
 import { obtenerHistorialInsumo, obtenerMovimientosPorPeriodo, obtenerCostoPromedio } from "../services/kardex.js";
 import KardexTable from "./KardexTable.jsx";
@@ -7,6 +8,8 @@ import Toast from "../../../components/ui/Toast.jsx";
 import Card from "../../../components/ui/Card.jsx";
 
 export default function KardexPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
   
@@ -31,10 +34,29 @@ export default function KardexPage() {
     cargarInsumos();
   }, []);
 
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const insumoIdParam = params.get("insumoId");
+
+    if (insumoIdParam) {
+      setInsumoSeleccionado(insumoIdParam);
+    }
+  }, [location.search]);
+
   const cargarInsumos = async () => {
     try {
       const data = await obtenerInsumos();
-      setInsumos(data.content || data || []);
+      const lista = data.content || data || [];
+      setInsumos(lista);
+
+      const params = new URLSearchParams(location.search);
+      const insumoIdParam = params.get("insumoId");
+      if (insumoIdParam) {
+        const existe = lista.some((insumo) => String(insumo.id) === String(insumoIdParam));
+        if (existe) {
+          setInsumoSeleccionado(insumoIdParam);
+        }
+      }
     } catch (error) {
       console.error("Error cargando insumos:", error);
       setToastType("danger");
@@ -87,6 +109,10 @@ export default function KardexPage() {
   };
 
   const insumoInfo = insumos.find(i => i.id === parseInt(insumoSeleccionado));
+  const abrirEdicion = () => {
+    if (!insumoSeleccionado) return;
+    navigate(`/insumos/${insumoSeleccionado}`);
+  };
 
   return (
     <>
@@ -100,6 +126,24 @@ export default function KardexPage() {
       <div className="row mb-4">
         <div className="col-md-12">
           <Card>
+            <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+              <div>
+                <h5 className="mb-1">Consulta del Kardex</h5>
+                <p className="text-muted mb-0">
+                  {insumoInfo ? `Viendo ${insumoInfo.nombre}` : "Selecciona un insumo para consultar sus movimientos"}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="btn btn-outline-primary"
+                onClick={abrirEdicion}
+                disabled={!insumoSeleccionado}
+              >
+                <i className="bi bi-pencil me-2"></i>
+                Editar insumo
+              </button>
+            </div>
+
             <div className="row g-3 align-items-end">
               <div className="col-md-3">
                 <label className="form-label fw-semibold">Insumo</label>
