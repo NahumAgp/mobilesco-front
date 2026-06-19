@@ -223,15 +223,7 @@ export default function InsumoForm({
 
       let respuesta;
       const payload = { ...formData };
-      if (!payload.tipoInsumo) {
-        setErroresBackend((prev) => ({
-          ...prev,
-          tipoInsumo: "Selecciona un tipo de insumo"
-        }));
-        setToastType("danger");
-        setToastMessage("Revisa los campos obligatorios.");
-        return;
-      }
+      payload.tipoInsumo = payload.tipoInsumo || null;
       if (!puedeGestionarCostos) {
         delete payload.costoCotizacion;
       } else if (payload.costoCotizacion === "") {
@@ -560,7 +552,7 @@ export default function InsumoForm({
 
                 <div className="col-lg-4">
                   <label className="form-label fw-semibold">
-                    Tipo de Insumo <span className="text-danger">*</span>
+                    Tipo de Insumo <span className="text-muted">(Opcional)</span>
                   </label>
                   <select
                     name="tipoInsumo"
@@ -575,7 +567,7 @@ export default function InsumoForm({
                       </option>
                     ))}
                   </select>
-                  <div className="invalid-feedback">{erroresBackend.tipoInsumo || erroresExternos.tipoInsumo}</div>
+                  <div className="form-text">Si no aplica, puedes dejarlo vacío.</div>
                 </div>
 
                 <div className="col-12">

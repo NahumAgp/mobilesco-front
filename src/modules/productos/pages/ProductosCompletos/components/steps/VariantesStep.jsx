@@ -40,24 +40,17 @@ const getMaterialesDelModelo = (modelo = {}) => {
 
 const limpiarCodigo = (valor = "") => valor.toString().toUpperCase().replace(/[^A-Z0-9]/g, "");
 
-const tomarInicial = (valor, fallback = "X") => {
-  const limpio = limpiarCodigo(valor);
-  return limpio[0] || fallback;
+const construirCodigoCatalogo = (item, fallback = "X") => {
+  const base = limpiarCodigo(item?.codigo || "");
+  return base || fallback;
 };
 
 const construirCodigoCategoria = (categoria) => {
-  const base = limpiarCodigo(categoria?.codigo || "");
-  if (/^\d+$/.test(base)) return base.slice(-2).padStart(2, "0");
-  if (base) return base.slice(0, 2).padEnd(2, "X");
-
   const porId = String(categoria?.id || "").replace(/\D/g, "");
-  return porId ? porId.slice(-2).padStart(2, "0") : "00";
+  return construirCodigoCatalogo(categoria, porId ? porId.slice(-2).padStart(2, "0") : "00");
 };
 
 const construirCodigoColor = (color) => {
-  const base = limpiarCodigo(color?.codigo || "");
-  if (base) return base.slice(0, 2).padEnd(2, "X");
-
   const iniciales = (color?.nombre || "")
     .trim()
     .split(/\s+/)
@@ -65,13 +58,10 @@ const construirCodigoColor = (color) => {
     .filter(Boolean)
     .join("");
 
-  return (iniciales || "SC").slice(0, 2).padEnd(2, "X");
+  return construirCodigoCatalogo(color, (iniciales || "SC").slice(0, 2).padEnd(2, "X"));
 };
 
 const construirCodigoMaterial = (material) => {
-  const base = limpiarCodigo(material?.codigo || "");
-  if (base) return base.slice(0, 3).padEnd(3, "X");
-
   const iniciales = (material?.nombre || "")
     .trim()
     .split(/\s+/)
@@ -79,18 +69,47 @@ const construirCodigoMaterial = (material) => {
     .filter(Boolean)
     .join("");
 
-  return (iniciales || "MAT").slice(0, 3).padEnd(3, "X");
+  return construirCodigoCatalogo(material, (iniciales || "MAT").slice(0, 3).padEnd(3, "X"));
 };
 
 const construirSku = ({ linea, familia, modelo, categoria, material, color }) => {
-  const codigoLinea = tomarInicial(linea?.codigo || linea?.nombre, "X");
-  const codigoFamilia = tomarInicial(familia?.codigo || familia?.nombre, "X");
-  const codigoModelo = tomarInicial(modelo?.codigo || modelo?.nombre, "X");
+  const codigoLinea = construirCodigoCatalogo(linea, "X");
+  const codigoFamilia = construirCodigoCatalogo(familia, "X");
+  const codigoModelo = construirCodigoCatalogo(modelo, "X");
 
   return `${codigoLinea}${codigoFamilia}${codigoModelo}-${construirCodigoCategoria(categoria)}-${construirCodigoMaterial(material)}-${construirCodigoColor(color)}`;
 };
 
 const getParKey = (categoriaId, materialId, colorId) => `${categoriaId}::${materialId}::${colorId}`;
+const getVarianteDraftId = (categoriaId, materialId, colorId) => `draft-variante::${getParKey(categoriaId, materialId, colorId)}`;
+
+const getImagenesPorVariante = (imagenes) => {
+  if (Array.isArray(imagenes)) return {};
+  if (imagenes && typeof imagenes === "object" && imagenes.variantes) {
+    return imagenes.variantes;
+  }
+  return {};
+};
+
+const getImagenModelo = (imagenes) => {
+  if (Array.isArray(imagenes)) {
+    return imagenes.find((img) => img?.principal) || imagenes[0] || null;
+  }
+  if (imagenes && typeof imagenes === "object") {
+    return imagenes.modelo || null;
+  }
+  return null;
+};
+
+const primeraImagenDisponible = (mapaVariantes) => {
+  const entradas = Object.values(mapaVariantes || {});
+  for (const lista of entradas) {
+    if (Array.isArray(lista) && lista.length > 0) {
+      return lista[0];
+    }
+  }
+  return null;
+};
 
 const getCategoriaKey = (categoriaId) => String(categoriaId);
 const getMaterialKey = (materialId) => String(materialId);
@@ -427,7 +446,7 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
 
   const generarVariantes = () => {
     const nuevas = [];
-    const skus = new Set();
+    const paresGenerados = new Set();
     let omitidas = 0;
 
     Object.entries(seleccion).forEach(([materialKey, materialSeleccionado]) => {
@@ -444,6 +463,9 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
 
           const parKey = getParKey(categoria.id, material.id, color.id);
           const existente = variantesPorPar.get(parKey);
+          const idVariante = existente?._existing
+            ? existente.id
+            : getVarianteDraftId(categoria.id, material.id, color.id);
           const sku = construirSku({
             linea: lineaActual,
             familia: familiaActual,
@@ -453,13 +475,13 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
             color
           }).toUpperCase();
 
-          if (skus.has(sku)) {
+          if (paresGenerados.has(parKey)) {
             omitidas += 1;
             return;
           }
 
           nuevas.push({
-            id: existente?.id || `${Date.now()}-${nuevas.length}`,
+            id: idVariante,
             productoId: existente?.productoId,
             _existing: Boolean(existente?._existing),
             categoriaId: categoria.id,
@@ -479,13 +501,73 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
             fondo: existente?.fondo ?? "",
             pesoKg: existente?.pesoKg ?? ""
           });
-          skus.add(sku);
+          paresGenerados.add(parKey);
         });
       });
     });
 
     onUpdate("variantes", nuevas);
-    setMensaje(`${nuevas.length} productos listos${omitidas ? `, ${omitidas} duplicados omitidos` : ""}.`);
+    const imagenesActuales = getImagenesPorVariante(data.imagenes);
+    const siguienteImagenes = {};
+    const idsRemapeados = new Map();
+
+    nuevas.forEach((variante) => {
+      const parKey = getParKey(variante.categoriaId, variante.materialId, variante.colorId);
+      const varianteAnterior = variantesPorPar.get(parKey);
+      const idActual = String(variante.id);
+      const idAnterior = String(varianteAnterior?.id || "");
+      idsRemapeados.set(idActual, idActual);
+      if (idAnterior) idsRemapeados.set(idAnterior, idActual);
+
+      const lista =
+        (Array.isArray(imagenesActuales[idActual]) && imagenesActuales[idActual])
+        || (idAnterior && Array.isArray(imagenesActuales[idAnterior]) ? imagenesActuales[idAnterior] : []);
+
+      if (lista.length > 0) {
+        siguienteImagenes[idActual] = lista.map((imagen) => ({
+          ...imagen,
+          varianteId: variante.id,
+          materialId: variante.materialId,
+          materialNombre: variante.materialNombre,
+          colorId: variante.colorId,
+          colorNombre: variante.colorNombre
+        }));
+      }
+    });
+
+    const imagenModeloActual = getImagenModelo(data.imagenes);
+    let siguienteImagenModelo = imagenModeloActual;
+    if (imagenModeloActual?.origen === "variante") {
+      const siguienteVarianteId = idsRemapeados.get(String(imagenModeloActual.varianteId));
+      const imagenSigueDisponible = siguienteVarianteId
+        && Array.isArray(siguienteImagenes[siguienteVarianteId])
+        && siguienteImagenes[siguienteVarianteId].some((imagen) => String(imagen.id) === String(imagenModeloActual.imagenId));
+
+      if (imagenSigueDisponible) {
+        siguienteImagenModelo = {
+          ...imagenModeloActual,
+          varianteId: siguienteVarianteId
+        };
+      } else {
+        const reemplazo = primeraImagenDisponible(siguienteImagenes);
+        siguienteImagenModelo = reemplazo
+          ? {
+              id: `m-${reemplazo.id}`,
+              nombre: reemplazo.nombre,
+              url: reemplazo.url,
+              origen: "variante",
+              varianteId: reemplazo.varianteId,
+              imagenId: reemplazo.id
+            }
+          : null;
+      }
+    }
+
+    onUpdate("imagenes", {
+      modelo: siguienteImagenModelo,
+      variantes: siguienteImagenes
+    });
+    setMensaje(`${nuevas.length} productos listos${omitidas ? `, ${omitidas} combinaciones repetidas omitidas` : ""}.`);
   };
 
   const eliminarVariante = (index) => {

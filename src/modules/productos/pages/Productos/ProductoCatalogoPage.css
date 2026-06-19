@@ -529,22 +529,24 @@
 }
 
 .producto-catalogo-colors {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(86px, 1fr));
+  gap: 8px;
 }
 
 .producto-catalogo-colors button {
   display: grid;
-  grid-template-columns: 42px;
+  grid-template-rows: 46px minmax(32px, auto);
   justify-items: center;
-  gap: 5px;
-  min-width: 58px;
-  max-width: 96px;
+  align-items: start;
+  gap: 6px;
+  min-width: 0;
+  min-height: 92px;
   padding: 6px;
   border: 1px solid #d8e0e5;
   background: #ffffff;
   color: #22303a;
+  text-align: center;
 }
 
 .producto-catalogo-colors button.is-active {
@@ -554,8 +556,8 @@
 
 .producto-catalogo-colors img,
 .producto-catalogo-colors span {
-  width: 42px;
-  height: 42px;
+  width: 46px;
+  height: 46px;
   border: 1px solid rgba(15, 23, 42, 0.12);
   object-fit: cover;
 }
@@ -566,11 +568,12 @@
 
 .producto-catalogo-colors small {
   width: 100%;
-  overflow: hidden;
+  align-self: center;
   font-size: 0.74rem;
   font-weight: 700;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.16;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .producto-catalogo-actions {

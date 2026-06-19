@@ -125,7 +125,7 @@ export default function ProductoBOMPage() {
           <i className="bi bi-list-check me-2"></i>
           Lista de Materiales: {producto?.nombre}
         </h3>
-        <button className="btn btn-outline-secondary" onClick={() => navigate(`/productos/${id}/ver`)}>
+        <button className="btn btn-outline-secondary" onClick={() => navigate(`/productos/${id}`)}>
           <i className="bi bi-arrow-left me-2"></i>
           Volver al producto
         </button>

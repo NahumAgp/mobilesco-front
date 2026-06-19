@@ -17,6 +17,13 @@ const normalizarComparacion = (valor = "") =>
 const normalizarCodigoBase = (valor = "") =>
   normalizarComparacion(valor).replace(/[^A-Z0-9]/g, "");
 
+const normalizarPalabrasColor = (valor = "") =>
+  normalizarComparacion(valor)
+    .replace(/[^A-Z]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
 export const crearCodigoDisponible = (valor, items = [], refExcluida = "") => {
   const base = normalizarCodigoBase(valor);
   if (!base) return "";
@@ -41,6 +48,52 @@ export const crearCodigoDisponible = (valor, items = [], refExcluida = "") => {
       if (!usados.has(codigo)) return codigo;
     }
   }
+  return "";
+};
+
+const crearCodigoColorDisponible = (valor, items = [], refExcluida = "") => {
+  const palabras = normalizarPalabrasColor(valor);
+  if (!palabras.length) return "";
+
+  const usados = new Set(
+    items
+      .filter((item) => String(item.ref || item.id) !== String(refExcluida))
+      .map((item) => normalizarComparacion(item.codigo))
+      .filter(Boolean)
+  );
+
+  const completar = (palabra, largo) =>
+    Array.from({ length: largo }, (_, index) => palabra[index % palabra.length]).join("");
+
+  const candidatos = [];
+  const base = completar(palabras[0], 2);
+
+  if (palabras.length === 1) {
+    let actual = base;
+    candidatos.push(actual);
+    for (const letra of palabras[0].slice(2)) {
+      actual += letra;
+      candidatos.push(actual);
+    }
+  } else {
+    let actual = `${base}${palabras.slice(1).map((palabra) => palabra[0]).join("")}`;
+    candidatos.push(actual);
+    for (const letra of palabras.slice(1).map((palabra) => palabra.slice(1)).join("")) {
+      actual += letra;
+      candidatos.push(actual);
+    }
+  }
+
+  const natural = candidatos.find((codigo) => codigo.length <= 10 && !usados.has(codigo));
+  if (natural) return natural;
+
+  const semilla = [...candidatos].reverse().find((codigo) => codigo.length <= 10) || base;
+  const caracteres = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  for (const caracter of caracteres) {
+    const codigo = `${semilla.slice(0, 9)}${caracter}`;
+    if (!usados.has(codigo)) return codigo;
+  }
+
   return "";
 };
 
@@ -128,10 +181,11 @@ export function SimpleDraftModal({
 
   useEffect(() => {
     if (!show) return;
-    const fuenteCodigo = tipo === "color" ? form.hex : form.nombre;
-    const codigo = crearCodigoDisponible(fuenteCodigo, existingItems, form.ref);
+    const codigo = tipo === "color"
+      ? crearCodigoColorDisponible(form.nombre, existingItems, form.ref)
+      : crearCodigoDisponible(form.nombre, existingItems, form.ref);
     setForm((prev) => prev.codigo === codigo ? prev : { ...prev, codigo });
-  }, [existingItems, form.hex, form.nombre, form.ref, show, tipo]);
+  }, [existingItems, form.nombre, form.ref, show, tipo]);
 
   useEffect(() => {
     if (show && tipo === "familia" && forcedLineaId) {

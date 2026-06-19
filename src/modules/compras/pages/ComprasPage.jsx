@@ -13,7 +13,7 @@ export default function ComprasPage() {
   const navigate = useNavigate();
   const user = getUser();
   const puedeEliminarCompra = user?.roles?.some((rol) =>
-    ["ADMIN", "SUPER_ADMIN", "DIRECTOR_GENERAL", "SUBDIRECCION_ADMINISTRATIVA", "JEFE_ALMACEN"].includes(rol)
+    ["ADMIN", "SUPER_ADMIN", "DIRECTOR_GENERAL"].includes(rol)
   );
 
   const [toastMessage, setToastMessage] = useState("");
@@ -44,9 +44,9 @@ export default function ComprasPage() {
       await eliminarCompra(id);
       setToastType("success");
       setToastMessage("Compra eliminada correctamente");
-    } catch {
+    } catch (error) {
       setToastType("danger");
-      setToastMessage("Error al eliminar compra");
+      setToastMessage(error.message || "Error al eliminar compra");
     }
   };
 

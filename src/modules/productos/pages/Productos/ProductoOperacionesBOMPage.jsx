@@ -218,7 +218,7 @@ export default function ProductoOperacionesBOMPage() {
           <i className="bi bi-gear me-2"></i>
           Operaciones: {producto?.nombre}
         </h3>
-        <button className="btn btn-outline-secondary" onClick={() => navigate(`/productos/${id}/ver`)}>
+        <button className="btn btn-outline-secondary" onClick={() => navigate(`/productos/${id}`)}>
           <i className="bi bi-arrow-left me-2"></i>
           Volver
         </button>

@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import Toast from "../../../../components/ui/Toast.jsx";
@@ -25,6 +25,12 @@ function fechaLocalISO(date = new Date()) {
   return `${anio}-${mes}-${dia}`;
 }
 
+const RECEPCION_ACTION_BUTTON_STYLE = {
+  width: "2rem",
+  height: "2rem",
+  minWidth: "2rem"
+};
+
 export default function EntradaRecepcionPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -37,7 +43,7 @@ export default function EntradaRecepcionPage() {
   const [toastType, setToastType] = useState("success");
   const [entregadoPor, setEntregadoPor] = useState("");
   const [recepciones, setRecepciones] = useState([]);
-  const [ajustesAbiertos, setAjustesAbiertos] = useState({});
+  const [ajusteActivoId, setAjusteActivoId] = useState(null);
   const [mostrarPopupInsumo, setMostrarPopupInsumo] = useState(false);
   const [creandoInsumo, setCreandoInsumo] = useState(false);
   const [nuevoInsumo, setNuevoInsumo] = useState({
@@ -70,10 +76,11 @@ export default function EntradaRecepcionPage() {
           cantidadRecibidaAnterior,
           cantidadRecibirAhora: 0,
           motivoNoRecepcion: detalle.motivoNoRecepcion || "",
-          cantidadPendiente
+          cantidadPendiente,
+          estadoRecepcion: cantidadPendiente <= 0 ? "palomita" : ""
         };
       }));
-      setAjustesAbiertos({});
+      setAjusteActivoId(null);
     } catch (error) {
       console.error(error);
       setToastType("danger");
@@ -116,53 +123,76 @@ export default function EntradaRecepcionPage() {
       if (item.detalleId !== detalleId) return item;
 
       if (campo === "cantidadRecibirAhora") {
+        if (valor === "") {
+          return { ...item, cantidadRecibirAhora: "", estadoRecepcion: "ajuste" };
+        }
+
         const valorNumerico = Math.max(Number(valor || 0), 0);
         const maximo = Number(item.cantidadPendiente || 0);
-        return { ...item, cantidadRecibirAhora: Math.min(valorNumerico, maximo) };
+        return { ...item, cantidadRecibirAhora: Math.min(valorNumerico, maximo), estadoRecepcion: "ajuste" };
       }
 
-      return { ...item, [campo]: valor };
+      return { ...item, [campo]: valor, estadoRecepcion: campo === "motivoNoRecepcion" ? "ajuste" : item.estadoRecepcion };
     }));
   };
 
-  const marcarRecepcionCompleta = (detalleId, cantidadPendiente) => {
-    setRecepciones((prev) => prev.map((item) => (
-      item.detalleId === detalleId
-        ? { ...item, cantidadRecibirAhora: Number(cantidadPendiente || 0), motivoNoRecepcion: "" }
-        : item
-    )));
-    setAjustesAbiertos((prev) => ({ ...prev, [detalleId]: false }));
-  };
-
-  const alternarMarcado = (item, checked) => {
-    if (Number(item.cantidadPendiente || 0) <= 0) {
+  const seleccionarPalomita = (seleccionado) => {
+    if (Number(seleccionado.cantidadPendiente || 0) <= 0) {
       return;
     }
 
-    if (checked) {
-      marcarRecepcionCompleta(item.detalleId, item.cantidadPendiente);
+    setRecepciones((prev) => prev.map((item) => (
+      item.detalleId === seleccionado.detalleId
+        ? {
+            ...item,
+            cantidadRecibirAhora: Number(item.cantidadPendiente || 0),
+            motivoNoRecepcion: "",
+            estadoRecepcion: "palomita"
+          }
+        : item
+    )));
+    setAjusteActivoId((actual) => (actual === seleccionado.detalleId ? null : actual));
+  };
+
+  const abrirAjuste = (item) => {
+    if (Number(item.cantidadPendiente || 0) <= 0) {
       return;
     }
 
     setRecepciones((prev) => prev.map((actual) => (
       actual.detalleId === item.detalleId
-        ? { ...actual, cantidadRecibirAhora: 0 }
+        ? {
+            ...actual,
+            cantidadRecibirAhora: Number(actual.cantidadRecibirAhora || 0) > 0
+              && Number(actual.cantidadRecibirAhora || 0) < Number(actual.cantidadPendiente || 0)
+                ? actual.cantidadRecibirAhora
+                : "",
+            estadoRecepcion: "ajuste"
+          }
         : actual
     )));
-    setAjustesAbiertos((prev) => ({ ...prev, [item.detalleId]: false }));
+    setAjusteActivoId(item.detalleId);
   };
 
-  const abrirAjuste = (detalleId, cantidadPendiente) => {
-    setAjustesAbiertos((prev) => ({ ...prev, [detalleId]: !prev[detalleId] }));
+  const marcarNoLlego = (seleccionado) => {
+    if (Number(seleccionado.cantidadPendiente || 0) <= 0) {
+      return;
+    }
+
     setRecepciones((prev) => prev.map((item) => (
-      item.detalleId === detalleId
+      item.detalleId === seleccionado.detalleId
         ? {
             ...item,
-            cantidadRecibirAhora: item.cantidadRecibirAhora > 0 ? item.cantidadRecibirAhora : Math.max(Number(cantidadPendiente || item.cantidadPendiente || 0), 0)
+            cantidadRecibirAhora: 0,
+            motivoNoRecepcion: "",
+            estadoRecepcion: "tache"
           }
         : item
     )));
+    setAjusteActivoId((actual) => (actual === seleccionado.detalleId ? null : actual));
   };
+
+  const cerrarAjuste = () => setAjusteActivoId(null);
 
   const cerrarEntrada = async () => {
     if (entradaCerrada) {
@@ -204,7 +234,32 @@ export default function EntradaRecepcionPage() {
       return;
     }
 
-    const itemsARecibir = recepciones.filter((item) => Number(item.cantidadRecibirAhora || 0) > 0);
+    const ajustesInvalidos = recepciones.find((item) => {
+      if (item.estadoRecepcion !== "ajuste") return false;
+      const cantidadRecibir = Number(item.cantidadRecibirAhora || 0);
+      const cantidadPendiente = Number(item.cantidadPendiente || 0);
+      return cantidadRecibir <= 0 || cantidadRecibir >= cantidadPendiente;
+    });
+    if (ajustesInvalidos) {
+      setToastType("danger");
+      setToastMessage(`Captura una cantidad parcial para ${ajustesInvalidos.nombre}`);
+      return;
+    }
+
+    const conErrorMotivo = recepciones.find((item) =>
+      item.estadoRecepcion === "ajuste"
+      && !String(item.motivoNoRecepcion || "").trim()
+    );
+    if (conErrorMotivo) {
+      setToastType("danger");
+      setToastMessage(`Agrega el motivo de ajuste para ${conErrorMotivo.nombre}`);
+      return;
+    }
+
+    const itemsARecibir = recepciones.filter((item) =>
+      ["palomita", "ajuste"].includes(item.estadoRecepcion)
+      && Number(item.cantidadRecibirAhora || 0) > 0
+    );
     if (itemsARecibir.length === 0) {
       if (entradaCerrada) {
         setToastType("success");
@@ -217,18 +272,11 @@ export default function EntradaRecepcionPage() {
         return;
       }
 
-      setToastType("danger");
-      setToastMessage("Marca la palomita del insumo o abre ajuste para capturar cantidades");
-      return;
-    }
-
-    const conErrorMotivo = itemsARecibir.find((item) =>
-      Number(item.cantidadRecibirAhora || 0) < Number(item.cantidadPendiente || 0)
-      && !String(item.motivoNoRecepcion || "").trim()
-    );
-    if (conErrorMotivo) {
-      setToastType("danger");
-      setToastMessage(`Agrega el motivo de ajuste para ${conErrorMotivo.nombre}`);
+      const hayTaches = recepciones.some((item) => item.estadoRecepcion === "tache");
+      setToastType(hayTaches ? "warning" : "danger");
+      setToastMessage(hayTaches
+        ? "El tache no registra stock. Para guardar una recepcion, marca Palomita o captura un Ajuste."
+        : "Selecciona Palomita, Ajuste o Tache para cada insumo pendiente");
       return;
     }
 
@@ -298,6 +346,8 @@ export default function EntradaRecepcionPage() {
     );
   }
 
+  const ajusteModalItem = recepciones.find((item) => item.detalleId === ajusteActivoId);
+
   return (
     <div className="container py-4">
       <Toast message={toastMessage} type={toastType} onClose={() => setToastMessage("")} />
@@ -365,7 +415,7 @@ export default function EntradaRecepcionPage() {
               <i className="bi bi-check2-square me-2"></i>Checklist de recepcion
             </h5>
             <small className="text-muted">
-              Marca la casilla de la columna Palomita si llego todo. Si no, abre ajuste para capturar la cantidad parcial y su motivo.
+              Elige Palomita si llego todo, Ajuste para cantidad parcial o Tache si no llego el insumo.
             </small>
           </div>
           <div className="d-flex flex-wrap gap-2">
@@ -408,55 +458,48 @@ export default function EntradaRecepcionPage() {
           <table className="table align-middle mb-0">
             <thead className="table-light">
               <tr>
-                <th style={{ width: "14%" }} className="text-center">Palomita</th>
-                <th style={{ width: "30%" }}>Insumo</th>
+                <th style={{ width: "32%" }}>Insumo</th>
                 <th className="text-end">Comprado</th>
                 <th className="text-end">Recibido antes</th>
                 <th className="text-end">Pendiente</th>
-                <th style={{ width: "22%" }}>Estado</th>
-                <th style={{ width: "16%" }}></th>
+                <th style={{ width: "12%" }} className="text-center">Recepcion</th>
+                <th style={{ width: "14%" }} className="text-end">Estado</th>
               </tr>
             </thead>
             <tbody>
               {recepciones.map((item) => {
                 const completo = Number(item.cantidadPendiente || 0) <= 0;
-                const ajusteAbierto = Boolean(ajustesAbiertos[item.detalleId]);
+                const estadoSeleccionado = completo ? "palomita" : item.estadoRecepcion || "";
                 const cantidadRecibir = Number(item.cantidadRecibirAhora || 0);
-                const esParcial = !completo
+                const esPalomita = estadoSeleccionado === "palomita";
+                const esAjuste = estadoSeleccionado === "ajuste";
+                const esTache = estadoSeleccionado === "tache";
+                const esParcial = esAjuste
                   && cantidadRecibir > 0
                   && cantidadRecibir < Number(item.cantidadPendiente || 0);
-                const marcado = completo || cantidadRecibir >= Number(item.cantidadPendiente || 0);
+                const filaClase = completo
+                  ? "table-success-subtle"
+                  : esTache
+                    ? "table-danger-subtle"
+                    : esAjuste
+                      ? "table-warning-subtle"
+                      : "";
 
                 return (
-                  <Fragment key={item.detalleId}>
-                    <tr className={completo ? "table-success-subtle" : ""}>
-                      <td className="text-center align-middle">
-                        <div className="d-inline-flex align-items-center gap-2">
-                          <div className="form-check d-inline-flex align-items-center justify-content-center m-0">
-                            <input
-                              className="form-check-input"
-                              type="checkbox"
-                              checked={marcado}
-                              disabled={completo}
-                              onChange={(e) => alternarMarcado(item, e.target.checked)}
-                              aria-label={`Marcar ${item.nombre} como recibido completo`}
-                              style={{ width: "1.2rem", height: "1.2rem", cursor: completo ? "default" : "pointer" }}
-                            />
-                          </div>
-                          {completo && (
-                            <span className="badge text-bg-success">
-                              <i className="bi bi-check-lg me-1"></i>Listo
-                            </span>
-                          )}
-                        </div>
-                      </td>
+                  <tr key={item.detalleId} className={filaClase}>
                       <td>
                         <div>
                           <div className="fw-semibold">{item.nombre}</div>
                           <div className="small text-muted">
                             {completo
-                              ? "Ya quedó recibido. Si se necesita registrar otra recepción, usa una nueva compra."
-                              : "Marca la palomita si llegó todo. Si no, abre ajuste para capturar la recepción parcial."}
+                              ? "Ya quedo recibido."
+                              : esPalomita
+                                ? "Se recibira completo."
+                                : esAjuste && cantidadRecibir > 0
+                                  ? `Recibir ahora: ${cantidadRecibir.toFixed(2)}`
+                                  : esTache
+                                    ? "Marcado como no recibido."
+                                    : "Sin seleccion."}
                           </div>
                         </div>
                       </td>
@@ -467,83 +510,64 @@ export default function EntradaRecepcionPage() {
                           {Number(item.cantidadPendiente).toFixed(2)}
                         </span>
                       </td>
-                      <td>
-                        {completo ? (
-                          <span className="badge text-bg-success">
-                            <i className="bi bi-patch-check me-1"></i>Recibido completo
-                          </span>
-                        ) : (
-                          <div className="d-flex flex-column gap-2">
-                            <button
-                              type="button"
-                              className={`btn btn-sm ${marcado ? "btn-success" : "btn-outline-success"}`}
-                              onClick={() => alternarMarcado(item, !marcado)}
-                            >
-                              <i className="bi bi-check2-circle me-1"></i>
-                              {marcado ? "Palomita marcada" : "Marcar palomita"}
-                            </button>
-                            <button
-                              type="button"
-                              className={`btn btn-sm ${ajusteAbierto ? "btn-warning" : "btn-outline-warning"}`}
-                              onClick={() => abrirAjuste(item.detalleId, item.cantidadPendiente)}
-                            >
-                              <i className="bi bi-sliders me-1"></i>Ajuste
-                            </button>
-                          </div>
-                        )}
+                      <td className="text-center">
+                        <div className="d-inline-flex flex-wrap justify-content-center gap-2">
+                          <button
+                            type="button"
+                            className={`btn btn-sm p-0 d-inline-flex align-items-center justify-content-center rounded-2 shadow-sm ${esPalomita ? "btn-success" : "btn-outline-success"}`}
+                            style={RECEPCION_ACTION_BUTTON_STYLE}
+                            disabled={completo}
+                            onClick={() => seleccionarPalomita(item)}
+                            aria-pressed={esPalomita}
+                            aria-label={`Marcar ${item.nombre} como recibido completo`}
+                            title="Recibido completo"
+                          >
+                            <i className="bi bi-check2-circle"></i>
+                          </button>
+                          <button
+                            type="button"
+                            className={`btn btn-sm p-0 d-inline-flex align-items-center justify-content-center rounded-2 shadow-sm ${esAjuste ? "btn-warning" : "btn-outline-warning"}`}
+                            style={RECEPCION_ACTION_BUTTON_STYLE}
+                            disabled={completo}
+                            onClick={() => abrirAjuste(item)}
+                            aria-pressed={esAjuste}
+                            aria-label={`Capturar ajuste para ${item.nombre}`}
+                            title="Ajuste parcial"
+                          >
+                            <i className="bi bi-sliders"></i>
+                          </button>
+                          <button
+                            type="button"
+                            className={`btn btn-sm p-0 d-inline-flex align-items-center justify-content-center rounded-2 shadow-sm ${esTache ? "btn-danger" : "btn-outline-danger"}`}
+                            style={RECEPCION_ACTION_BUTTON_STYLE}
+                            disabled={completo}
+                            onClick={() => marcarNoLlego(item)}
+                            aria-pressed={esTache}
+                            aria-label={`Marcar ${item.nombre} como no recibido`}
+                            title="No llego"
+                          >
+                            <i className="bi bi-x-circle"></i>
+                          </button>
+                        </div>
                       </td>
                       <td className="text-end">
-                        {!completo && (
-                          <span className={`badge ${esParcial ? "text-bg-warning" : "text-bg-light border"}`}>
-                            {esParcial ? "Parcial" : "Pendiente"}
+                        {completo || esPalomita ? (
+                          <span className="badge text-bg-success">
+                            <i className="bi bi-check-lg me-1"></i>{completo ? "Recibido" : "Completo"}
                           </span>
+                        ) : esAjuste ? (
+                          <span className="badge text-bg-warning">
+                            <i className="bi bi-sliders me-1"></i>{esParcial ? "Parcial" : "Ajuste"}
+                          </span>
+                        ) : esTache ? (
+                          <span className="badge text-bg-danger">
+                            <i className="bi bi-x-lg me-1"></i>No llego
+                          </span>
+                        ) : (
+                          <span className="badge text-bg-light border">Pendiente</span>
                         )}
                       </td>
                     </tr>
-
-                    {ajusteAbierto && !completo && (
-                      <tr>
-                        <td colSpan="6" className="bg-light">
-                          <div className="row g-3 align-items-end py-3">
-                            <div className="col-md-3">
-                              <label className="form-label fw-semibold small">Recibir ahora</label>
-                              <input
-                                type="number"
-                                min="0"
-                                max={Number(item.cantidadPendiente || 0)}
-                                step="0.01"
-                                className="form-control"
-                                value={item.cantidadRecibirAhora}
-                                onChange={(e) => manejarCambioRecepcion(item.detalleId, "cantidadRecibirAhora", e.target.value)}
-                              />
-                              <small className="text-muted">
-                                Maximo: {Number(item.cantidadPendiente || 0).toFixed(2)}
-                              </small>
-                            </div>
-                            <div className="col-md-7">
-                              <label className="form-label fw-semibold small">Motivo del ajuste</label>
-                              <input
-                                type="text"
-                                className="form-control"
-                                value={item.motivoNoRecepcion}
-                                onChange={(e) => manejarCambioRecepcion(item.detalleId, "motivoNoRecepcion", e.target.value)}
-                                placeholder="Explica por que no se recibio toda la mercancia"
-                              />
-                            </div>
-                            <div className="col-md-2 text-end">
-                              <button
-                                type="button"
-                                className="btn btn-outline-secondary w-100"
-                                onClick={() => setAjustesAbiertos((prev) => ({ ...prev, [item.detalleId]: false }))}
-                              >
-                                Cerrar
-                              </button>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
                 );
               })}
             </tbody>
@@ -566,6 +590,69 @@ export default function EntradaRecepcionPage() {
           </button>
         </div>
       </div>
+
+      {ajusteModalItem && (
+        <div
+          className="modal fade show d-block"
+          tabIndex="-1"
+          role="dialog"
+          aria-modal="true"
+          style={{ backgroundColor: "rgba(15, 23, 42, 0.45)" }}
+        >
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content border-0 shadow-lg">
+              <div className="modal-header">
+                <h5 className="modal-title">
+                  <i className="bi bi-sliders me-2"></i>Ajuste de recepcion
+                </h5>
+                <button type="button" className="btn-close" onClick={cerrarAjuste}></button>
+              </div>
+              <div className="modal-body">
+                <div className="mb-3">
+                  <div className="text-muted small">Insumo</div>
+                  <div className="fw-semibold">{ajusteModalItem.nombre}</div>
+                </div>
+                <div className="row g-3">
+                  <div className="col-md-4">
+                    <label className="form-label fw-semibold small">Recibir ahora</label>
+                    <input
+                      type="number"
+                      min="0.01"
+                      max={Number(ajusteModalItem.cantidadPendiente || 0)}
+                      step="0.01"
+                      className="form-control"
+                      value={ajusteModalItem.cantidadRecibirAhora}
+                      onChange={(e) => manejarCambioRecepcion(ajusteModalItem.detalleId, "cantidadRecibirAhora", e.target.value)}
+                      placeholder="0.00"
+                    />
+                    <small className="text-muted">
+                      Pendiente: {Number(ajusteModalItem.cantidadPendiente || 0).toFixed(2)}
+                    </small>
+                  </div>
+                  <div className="col-md-8">
+                    <label className="form-label fw-semibold small">Motivo del ajuste</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={ajusteModalItem.motivoNoRecepcion}
+                      onChange={(e) => manejarCambioRecepcion(ajusteModalItem.detalleId, "motivoNoRecepcion", e.target.value)}
+                      placeholder="Ej. faltante, defectos, cantidad parcial"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-outline-secondary" onClick={cerrarAjuste}>
+                  Cancelar
+                </button>
+                <button type="button" className="btn btn-warning" onClick={cerrarAjuste}>
+                  <i className="bi bi-check2 me-1"></i>Listo
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {mostrarPopupInsumo && (
         <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-modal="true">

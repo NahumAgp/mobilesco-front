@@ -646,13 +646,12 @@ export default function ProductoCatalogoPage() {
               </div>
 
               <div className="producto-catalogo-actions">
-                <button className="btn productos-brand-primary" onClick={() => navigate(`/productos/${productoSeleccionado.id}/ver`)}>
-                  <i className="bi bi-card-checklist me-2"></i>
-                  Ver estructura
-                </button>
-                <button className="btn productos-brand-outline" onClick={() => navigate(`/productos/${productoSeleccionado.id}`)}>
+                <button
+                  className="btn productos-brand-primary"
+                  onClick={() => navigate(`/productos/${getProductoId(productoSeleccionado)}`)}
+                >
                   <i className="bi bi-pencil me-2"></i>
-                  Editar
+                  Editar producto
                 </button>
               </div>
             </section>

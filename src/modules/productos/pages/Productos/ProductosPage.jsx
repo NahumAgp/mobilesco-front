@@ -35,7 +35,7 @@ export default function ProductosPage() {
   };
 
   const abrirVer = (producto) => {
-    navigate(`/productos/${producto.id}/ver`);
+    navigate(`/productos/${producto.id}`);
   };
 
   const manejarDesactivar = async (id) => {

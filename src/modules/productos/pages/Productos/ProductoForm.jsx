@@ -40,6 +40,37 @@ const getArchivoNombre = (url) => {
   return decodeURIComponent(partes[partes.length - 1] || "Imagen");
 };
 
+const esImagenPrincipal = (imagen) => Boolean(imagen?.esPrincipal || imagen?.principal);
+
+const ordenarImagenesPorCarrusel = (lista = []) =>
+  lista
+    .map((imagen, index) => ({ imagen, index }))
+    .sort((a, b) => {
+      const ordenA = Number.isFinite(Number(a.imagen?.orden)) ? Number(a.imagen.orden) : Number.MAX_SAFE_INTEGER;
+      const ordenB = Number.isFinite(Number(b.imagen?.orden)) ? Number(b.imagen.orden) : Number.MAX_SAFE_INTEGER;
+      if (ordenA !== ordenB) return ordenA - ordenB;
+      if (esImagenPrincipal(a.imagen) !== esImagenPrincipal(b.imagen)) {
+        return esImagenPrincipal(a.imagen) ? -1 : 1;
+      }
+      return a.index - b.index;
+    })
+    .map(({ imagen }) => imagen);
+
+const moverImagen = (lista, origenIndex, destinoIndex) => {
+  const siguiente = [...lista];
+  const [movida] = siguiente.splice(origenIndex, 1);
+  siguiente.splice(destinoIndex, 0, movida);
+  return siguiente;
+};
+
+const normalizarOrdenImagenes = (lista = []) =>
+  lista.map((imagen, index) => ({
+    ...imagen,
+    orden: index,
+    esPrincipal: index === 0,
+    principal: index === 0
+  }));
+
 function ProductoAccordionSection({ id, title, icon, children, defaultOpen = false }) {
   return (
     <div className="accordion-item">
@@ -111,12 +142,8 @@ function DecimalInput({ name, className, value, onValueChange }) {
 
 function ProductoImageCarousel({ imagenes, imagenPrincipal, nombre }) {
   const imagenesCarrusel = useMemo(() => {
-    const principalId = imagenPrincipal?.id;
-    return [...imagenes].sort((a, b) => {
-      if (a.id === principalId) return -1;
-      if (b.id === principalId) return 1;
-      return 0;
-    });
+    const ordenadas = ordenarImagenesPorCarrusel(imagenes);
+    return ordenadas.length ? ordenadas : imagenPrincipal ? [imagenPrincipal] : [];
   }, [imagenes, imagenPrincipal]);
   const [imagenActivaIndex, setImagenActivaIndex] = useState(0);
   const imagenActivaIndexSeguro = Math.min(
@@ -164,7 +191,7 @@ function ProductoImageCarousel({ imagenes, imagenPrincipal, nombre }) {
       </div>
 
       <div className="producto-form-carousel-meta">
-        <span>{imagenesCarrusel.length ? `${imagenActivaIndex + 1} / ${imagenesCarrusel.length}` : "0 / 0"}</span>
+        <span>{imagenesCarrusel.length ? `${imagenActivaIndexSeguro + 1} / ${imagenesCarrusel.length}` : "0 / 0"}</span>
         {imagenActiva && <span className="text-truncate">{imagenActiva.altTexto || imagenActiva.nombre || getArchivoNombre(imagenActiva.url)}</span>}
       </div>
 
@@ -174,7 +201,7 @@ function ProductoImageCarousel({ imagenes, imagenPrincipal, nombre }) {
             <button
               key={imagen.id || imagen.url || index}
               type="button"
-              className={index === imagenActivaIndex ? "is-active" : ""}
+              className={index === imagenActivaIndexSeguro ? "is-active" : ""}
               onClick={() => setImagenActivaIndex(index)}
               aria-label={`Ver imagen ${index + 1}`}
             />
@@ -207,7 +234,10 @@ export default function ProductoForm({
   const [loading, setLoading] = useState(false);
   const [cargandoImagenes, setCargandoImagenes] = useState(false);
   const [subiendoImagenes, setSubiendoImagenes] = useState(false);
+  const [reordenandoImagenes, setReordenandoImagenes] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [imagenArrastradaId, setImagenArrastradaId] = useState("");
+  const [imagenDestinoId, setImagenDestinoId] = useState("");
 
   const [modelos, setModelos] = useState([]);
   const [niveles, setNiveles] = useState([]);
@@ -295,7 +325,7 @@ export default function ProductoForm({
         null ||
         (await obtenerImagenPrincipalPorProducto(productoActualId).catch(() => null));
 
-      setImagenes(lista);
+      setImagenes(ordenarImagenesPorCarrusel(lista));
       setImagenPrincipal(principal);
       setErrorImagenes("");
     } catch (error) {
@@ -414,6 +444,7 @@ export default function ProductoForm({
           archivo: files[index],
           productoId: Number(idProducto),
           esPrincipal: !tienePrincipal && index === 0,
+          orden: imagenes.length + index,
           altTexto: formData.nombre || formData.sku || "Imagen del producto",
         });
       }
@@ -446,20 +477,102 @@ export default function ProductoForm({
     await subirImagenes(validarImagenes(Array.from(e.dataTransfer.files || [])));
   };
 
-  const marcarPrincipal = async (imagenId) => {
-    if (!idProducto || !imagenId) return;
-    const imagenActual = imagenes.find((img) => Number(img.id) === Number(imagenId));
-    if (!imagenActual) return;
+  const persistirOrdenImagenes = async (listaOrdenada) => {
+    if (!idProducto) return;
+
+    const normalizadas = normalizarOrdenImagenes(listaOrdenada);
+    setImagenes(normalizadas);
+    setImagenPrincipal(normalizadas[0] || null);
+    setErrorImagenes("");
+
+    if (normalizadas.length === 0) return;
 
     try {
-      await actualizarImagen(imagenActual.id, {
-        esPrincipal: true,
-        altTexto: imagenActual.altTexto || imagenActual.nombre || "Imagen principal",
-      });
+      setReordenandoImagenes(true);
+      const [primera, ...resto] = normalizadas;
+
+      if (primera?.id) {
+        await actualizarImagen(primera.id, {
+          orden: 0,
+          esPrincipal: true,
+        });
+      }
+
+      await Promise.all(
+        resto
+          .filter((imagen) => imagen?.id)
+          .map((imagen, index) => actualizarImagen(imagen.id, { orden: index + 1 }))
+      );
+
       await recargarImagenes(idProducto);
     } catch (error) {
-      console.error("Error estableciendo principal:", error);
-      setErrorImagenes(error.message || "No se pudo cambiar la imagen principal.");
+      console.error("Error reordenando imagenes:", error);
+      setErrorImagenes(error.message || "No se pudo guardar el orden de las imagenes.");
+      await recargarImagenes(idProducto);
+    } finally {
+      setReordenandoImagenes(false);
+    }
+  };
+
+  const reordenarImagenesPorIds = async (origenId, destinoId) => {
+    if (!origenId || !destinoId || String(origenId) === String(destinoId)) return;
+
+    const imagenesOrdenActual = ordenarImagenesPorCarrusel(imagenes);
+    const origenIndex = imagenesOrdenActual.findIndex((imagen) => String(imagen.id) === String(origenId));
+    const destinoIndex = imagenesOrdenActual.findIndex((imagen) => String(imagen.id) === String(destinoId));
+
+    if (origenIndex < 0 || destinoIndex < 0) return;
+
+    await persistirOrdenImagenes(moverImagen(imagenesOrdenActual, origenIndex, destinoIndex));
+  };
+
+  const marcarPrincipal = async (imagenId) => {
+    if (!idProducto || !imagenId) return;
+
+    const imagenesOrdenActual = ordenarImagenesPorCarrusel(imagenes);
+    const origenIndex = imagenesOrdenActual.findIndex((imagen) => String(imagen.id) === String(imagenId));
+    if (origenIndex < 0) return;
+
+    const siguienteOrden = origenIndex === 0
+      ? imagenesOrdenActual
+      : moverImagen(imagenesOrdenActual, origenIndex, 0);
+
+    await persistirOrdenImagenes(siguienteOrden);
+  };
+
+  const handleImagenDragStart = (event, imagenId) => {
+    setImagenArrastradaId(String(imagenId));
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", String(imagenId));
+  };
+
+  const handleImagenDragOver = (event, imagenId) => {
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = "move";
+    setImagenDestinoId(String(imagenId));
+  };
+
+  const handleImagenDrop = async (event, destinoId) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const origenId = event.dataTransfer.getData("text/plain") || imagenArrastradaId;
+    setImagenArrastradaId("");
+    setImagenDestinoId("");
+    await reordenarImagenesPorIds(origenId, destinoId);
+  };
+
+  const handleImagenDragEnd = () => {
+    setImagenArrastradaId("");
+    setImagenDestinoId("");
+  };
+
+  const handleImagenDragLeave = (event, imagenId) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (String(imagenDestinoId) === String(imagenId)) {
+      setImagenDestinoId("");
     }
   };
 
@@ -533,9 +646,11 @@ export default function ProductoForm({
   const inputClass = (field) => `form-control ${(erroresBackend[field] || erroresExternos[field]) ? "is-invalid" : "border-soft"}`;
   const selectClass = (field) => `form-select ${(erroresBackend[field] || erroresExternos[field]) ? "is-invalid" : "border-soft"}`;
 
+  const imagenesOrdenadas = useMemo(() => ordenarImagenesPorCarrusel(imagenes), [imagenes]);
+
   const productoPrincipal = useMemo(
-    () => imagenPrincipal || imagenes.find((img) => Boolean(img?.esPrincipal || img?.principal)) || null,
-    [imagenPrincipal, imagenes]
+    () => imagenesOrdenadas[0] || imagenPrincipal || null,
+    [imagenPrincipal, imagenesOrdenadas]
   );
 
   if (loading) {
@@ -720,6 +835,9 @@ export default function ProductoForm({
                   <div className="text-muted">Estas imagenes pertenecen solo a este producto.</div>
                   <div className="d-flex gap-2">
                     <span className="badge producto-form-count-badge">{imagenes.length}</span>
+                    {reordenandoImagenes && (
+                      <span className="badge producto-form-count-badge">Guardando orden...</span>
+                    )}
                     <span className={`badge ${productoPrincipal ? "producto-form-success-badge" : "text-bg-secondary"}`}>
                       {productoPrincipal ? "Con principal" : "Sin principal"}
                     </span>
@@ -748,25 +866,41 @@ export default function ProductoForm({
                     </div>
 
                     <div className="row g-3">
-                      {imagenes.length > 0 ? (
-                        imagenes.map((imagen) => {
-                          const esPrincipalImagen = Boolean(imagen?.esPrincipal || imagen?.principal);
+                      {imagenesOrdenadas.length > 0 ? (
+                        imagenesOrdenadas.map((imagen, index) => {
+                          const esPrincipalImagen = index === 0;
                           const imagenUrl = toPreviewUrl(imagen?.url);
+                          const imagenKey = String(imagen.id);
+                          const estaArrastrando = imagenArrastradaId === imagenKey;
+                          const esDestino = imagenDestinoId === imagenKey && imagenArrastradaId !== imagenKey;
+
                           return (
                             <div className="col-6 col-md-4 col-xl-3" key={imagen.id}>
-                              <div className="card h-100 producto-form-image-card">
+                              <div
+                                className={`card h-100 producto-form-image-card producto-form-image-card-draggable ${estaArrastrando ? "is-dragging" : ""} ${esDestino ? "is-drop-target" : ""}`}
+                                draggable={!reordenandoImagenes}
+                                onDragStart={(event) => handleImagenDragStart(event, imagen.id)}
+                                onDragOver={(event) => handleImagenDragOver(event, imagen.id)}
+                                onDragLeave={(event) => handleImagenDragLeave(event, imagen.id)}
+                                onDrop={(event) => handleImagenDrop(event, imagen.id)}
+                                onDragEnd={handleImagenDragEnd}
+                                title="Arrastra para ordenar"
+                              >
                                 <img src={imagenUrl} alt={imagen?.altTexto || imagen?.nombre || formData.nombre || "Producto"} className="card-img-top producto-form-thumb-image" />
                                 <div className="card-body p-2 d-flex flex-column gap-2">
                                   <div className="d-flex justify-content-between align-items-center">
-                                    {esPrincipalImagen ? (
-                                      <span className="badge producto-form-success-badge">
-                                        <i className="bi bi-star-fill me-1"></i>Principal
-                                      </span>
-                                    ) : (
-                                      <button type="button" className="btn btn-sm producto-form-outline" onClick={() => marcarPrincipal(imagen.id)}>
-                                        Principal
-                                      </button>
-                                    )}
+                                    <div className="d-flex flex-wrap align-items-center gap-1">
+                                      <span className="badge producto-form-order-badge">{index + 1}</span>
+                                      {esPrincipalImagen ? (
+                                        <span className="badge producto-form-success-badge">
+                                          <i className="bi bi-star-fill me-1"></i>Principal
+                                        </span>
+                                      ) : (
+                                        <button type="button" className="btn btn-sm producto-form-outline" onClick={() => marcarPrincipal(imagen.id)}>
+                                          Principal
+                                        </button>
+                                      )}
+                                    </div>
                                     <button type="button" className="btn btn-sm producto-form-danger" onClick={() => borrarImagen(imagen.id)}>
                                       <i className="bi bi-trash"></i>
                                     </button>

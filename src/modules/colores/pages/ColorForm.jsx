@@ -23,7 +23,7 @@ export default function ColorForm({ colorId, color, onSave, onCancel, errores: e
     hex: "#FF107A"
   });
   const { codigoGenerado, generandoCodigo } = useGeneratedCatalogCode(
-    formData.hex,
+    formData.nombre,
     !esEdicion,
     colorGateway.obtenerCodigoSugerido
   );
@@ -194,7 +194,7 @@ export default function ColorForm({ colorId, color, onSave, onCancel, errores: e
                   value={esEdicion ? formData.codigo : codigoGenerado}
                   onChange={handleChange}
                   readOnly={!esEdicion}
-                  maxLength="3"
+                  maxLength="10"
                   placeholder={generandoCodigo ? "Generando..." : "Automatico"}
                 />
                 <div className="invalid-feedback">{erroresBackend.codigo || erroresExternos.codigo}</div>
