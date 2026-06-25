@@ -3,13 +3,15 @@ import { useNavigate } from "react-router-dom";
 import {
   obtenerProveedorPorId,
   crearProveedor,
-  actualizarProveedor
+  actualizarProveedor,
+  eliminarProveedor
 } from "../services/proveedores.js";
 import {
   crearTipoInsumo,
   obtenerPreviewTipoInsumo,
   obtenerTiposInsumo
 } from "../../insumos/services/tiposInsumo.js";
+import { getUser } from "../../auth/services/authService";
 import Toast from "../../../components/ui/Toast.jsx";
 
 const emptyForm = {
@@ -37,8 +39,15 @@ const emptyTipoPreview = {
   disponible: false,
   mensaje: "Escribe un nombre para generar un codigo de 1 a 3 letras"
 };
+const ROLES_ELIMINAR_PROVEEDOR = ["ADMIN", "DIRECTOR_GENERAL", "SUBDIRECCION_ADMINISTRATIVA"];
 
-export default function ProveedorForm({ proveedorId, proveedor: proveedorProp, errores: erroresExternos = {} }) {
+export default function ProveedorForm({
+  proveedorId,
+  proveedor: proveedorProp,
+  onSave,
+  onCancel,
+  errores: erroresExternos = {}
+}) {
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
   const [erroresBackend, setErroresBackend] = useState({});
@@ -49,9 +58,13 @@ export default function ProveedorForm({ proveedorId, proveedor: proveedorProp, e
   const [previewTipoLoading, setPreviewTipoLoading] = useState(false);
   const [guardandoTipo, setGuardandoTipo] = useState(false);
   const [errorTipoRapido, setErrorTipoRapido] = useState("");
+  const [eliminandoProveedor, setEliminandoProveedor] = useState(false);
 
   const navigate = useNavigate();
+  const currentUser = getUser();
   const esEdicion = Boolean(proveedorId || proveedorProp?.id);
+  const puedeEliminarProveedor =
+    esEdicion && currentUser?.roles?.some((rol) => ROLES_ELIMINAR_PROVEEDOR.includes(rol));
 
   const [formData, setFormData] = useState(emptyForm);
 
@@ -189,15 +202,21 @@ export default function ProveedorForm({ proveedorId, proveedor: proveedorProp, e
     try {
       setErroresBackend({});
 
+      let respuesta;
       if (esEdicion) {
-        await actualizarProveedor(proveedorId || proveedorProp?.id, payload);
+        respuesta = await actualizarProveedor(proveedorId || proveedorProp?.id, payload);
         setToastMessage("Proveedor actualizado con exito");
       } else {
-        await crearProveedor(payload);
+        respuesta = await crearProveedor(payload);
         setToastMessage("Proveedor registrado con exito");
       }
 
       setToastType("success");
+      if (onSave) {
+        onSave(respuesta);
+        return;
+      }
+
       setTimeout(() => navigate("/proveedores"), 1500);
     } catch (error) {
       console.log("ERROR COMPLETO:", error);
@@ -215,6 +234,43 @@ export default function ProveedorForm({ proveedorId, proveedor: proveedorProp, e
 
   const renderFieldError = (field) =>
     campoTieneError(field) ? <div className="invalid-feedback d-block">{textoError(field)}</div> : null;
+
+  const handleCancel = () => {
+    if (onCancel) {
+      onCancel();
+      return;
+    }
+    navigate("/proveedores");
+  };
+
+  const handleDelete = async () => {
+    if (!puedeEliminarProveedor || eliminandoProveedor) return;
+
+    const confirmado = window.confirm(
+      "Eliminar este proveedor? Solo se permitira si no tiene compras asociadas."
+    );
+
+    if (!confirmado) return;
+
+    try {
+      setEliminandoProveedor(true);
+      await eliminarProveedor(proveedorId || proveedorProp?.id);
+      setToastType("success");
+      setToastMessage("Proveedor eliminado correctamente");
+
+      if (onCancel) {
+        onCancel();
+        return;
+      }
+
+      setTimeout(() => navigate("/proveedores"), 900);
+    } catch (error) {
+      setToastType("danger");
+      setToastMessage(error.message || "No se pudo eliminar el proveedor");
+    } finally {
+      setEliminandoProveedor(false);
+    }
+  };
 
   const tiposDisponibles = useMemo(
     () => tiposInsumo.filter((tipo) => tipo?.activo || tipo?.codigo === formData.tipoInsumo),
@@ -447,15 +503,29 @@ export default function ProveedorForm({ proveedorId, proveedor: proveedorProp, e
         </div>
 
         <div className="d-flex justify-content-between align-items-center bg-white p-3 rounded shadow-sm">
-          <div className="form-check form-switch">
-            <input className="form-check-input" type="checkbox" name="activo" checked={formData.activo} onChange={handleChange} id="switchActivo" />
-            <label className="form-check-label fw-semibold" htmlFor="switchActivo">
-              Proveedor habilitado
-            </label>
+          <div className="d-flex align-items-center gap-3 flex-wrap">
+            <div className="form-check form-switch m-0">
+              <input className="form-check-input" type="checkbox" name="activo" checked={formData.activo} onChange={handleChange} id="switchActivo" />
+              <label className="form-check-label fw-semibold" htmlFor="switchActivo">
+                Proveedor habilitado
+              </label>
+            </div>
+
+            {esEdicion && puedeEliminarProveedor ? (
+              <button
+                type="button"
+                className="btn btn-outline-danger px-4"
+                onClick={handleDelete}
+                disabled={eliminandoProveedor}
+              >
+                <i className="bi bi-trash me-1"></i>
+                {eliminandoProveedor ? "Eliminando..." : "Eliminar proveedor"}
+              </button>
+            ) : null}
           </div>
 
           <div className="gap-2 d-flex">
-            <button type="button" className="btn btn-light px-4" onClick={() => navigate("/proveedores")}>
+            <button type="button" className="btn btn-light px-4" onClick={handleCancel}>
               Cancelar
             </button>
             <button type="submit" className="btn btn-primary px-5 fw-bold">
