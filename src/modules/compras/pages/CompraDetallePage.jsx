@@ -57,6 +57,12 @@ export default function CompraDetallePage() {
     return colores[estado] || 'secondary';
   };
 
+  const totalDetalles = compra.detalles?.length || 0;
+  const totalPendiente = compra.detalles?.reduce(
+    (sum, detalle) => sum + Number(detalle.cantidadPendiente || 0),
+    0
+  ) || 0;
+
   if (loading) {
     return (
       <div className="container mt-4">
@@ -85,11 +91,18 @@ export default function CompraDetallePage() {
     <div className="container mt-4">
       <Toast message={toastMessage} type={toastType} onClose={() => setToastMessage("")} />
       
-      <div className="d-flex align-items-center justify-content-between mb-3">
-        <h3>
-          <i className="bi bi-receipt me-2"></i>
-          Detalle de Compra: {compra.folio}
-        </h3>
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+        <div>
+          <div className="text-muted small">Compra registrada</div>
+          <h3 className="mb-1">
+            <i className="bi bi-receipt me-2"></i>
+            Detalle de Compra: {compra.folio}
+          </h3>
+          <div className="d-flex flex-wrap gap-2 align-items-center">
+            <span className={`badge bg-${getEstadoBadge(compra.estado)}`}>{compra.estado}</span>
+            <span className="text-muted small">{totalDetalles} renglones · {formatCurrency(compra.total)}</span>
+          </div>
+        </div>
         <div>
           <button
             className="btn btn-primary me-2"
@@ -148,7 +161,16 @@ export default function CompraDetallePage() {
           <Card>
             <div className="text-center">
               <h6 className="text-muted mb-2">Fecha Recepción</h6>
-              <h5>{formatDate(compra.fechaRecepcion) || 'Pendiente'}</h5>
+              <h5>{compra.fechaRecepcion ? formatDate(compra.fechaRecepcion) : 'Pendiente'}</h5>
+            </div>
+          </Card>
+        </div>
+        <div className="col-md-3">
+          <Card>
+            <div className="text-center">
+              <h6 className="text-muted mb-2">Renglones</h6>
+              <h4 className="text-dark">{totalDetalles}</h4>
+              <small className="text-muted">{totalPendiente.toFixed(2)} pendientes</small>
             </div>
           </Card>
         </div>
@@ -171,6 +193,12 @@ export default function CompraDetallePage() {
                 <tr>
                   <th style={{ width: '40%' }}>Folio:</th>
                   <td>{compra.folio}</td>
+                </tr>
+                <tr>
+                  <th>Estado:</th>
+                  <td>
+                    <span className={`badge bg-${getEstadoBadge(compra.estado)}`}>{compra.estado}</span>
+                  </td>
                 </tr>
                 <tr>
                   <th>Tipo Documento:</th>

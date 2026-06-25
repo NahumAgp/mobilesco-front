@@ -1,15 +1,13 @@
 import "./Sidebar.css";
 import { NavLink, useNavigate } from "react-router-dom";
-import { logout, getUser } from "../../modules/auth/services/authService";
+import { logout, getUser, hasPermission } from "../../modules/auth/services/authService";
 import { useState, useRef, useEffect } from "react";
 import { API_BASE_URL } from "../../config/apiConfig";
 
 export default function Sidebar({ isOpen, toggleSidebar }) {
-
   const navigate = useNavigate();
   const [user, setUser] = useState(getUser());
   const [failedFoto, setFailedFoto] = useState(null);
-
   const [openMenu, setOpenMenu] = useState(false);
   const [openSubmenu, setOpenSubmenu] = useState(null);
   const menuRef = useRef(null);
@@ -21,12 +19,7 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
 
   const toggleSubmenu = (submenu) => {
     setOpenMenu(false);
-    setOpenSubmenu((current) => current === submenu ? null : submenu);
-  };
-
-  const handleSidebarToggle = () => {
-    handleNavigation();
-    toggleSidebar();
+    setOpenSubmenu((current) => (current === submenu ? null : submenu));
   };
 
   const getTooltipProps = (label) => ({
@@ -34,35 +27,37 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
     "aria-label": label
   });
 
+  const can = (permission) => hasPermission(user, permission);
   const nombre = user?.nombre || "";
   const apellido = user?.apellidoPaterno || "";
+  const roles = user?.roles || [];
 
   const rolMap = {
     ADMIN: "Dev / Admin",
+    SUPER_ADMIN: "Super Admin",
     DIRECTOR_GENERAL: "Director General",
-    SUBDIRECCION_ADMINISTRATIVA: "Subdirección Administrativa",
+    SUBDIRECCION_ADMINISTRATIVA: "Subdireccion Administrativa",
     ASISTENTE_GERENCIAL: "Asistente Gerencial",
-    SUPERVISOR_PRODUCCION: "Supervisor de Producción",
-    JEFE_HERRERIA: "Jefe de Herrería",
-    JEFE_CARPINTERIA: "Jefe de Carpintería",
+    SUPERVISOR_PRODUCCION: "Supervisor de Produccion",
+    JEFE_HERRERIA: "Jefe de Herreria",
+    JEFE_CARPINTERIA: "Jefe de Carpinteria",
     JEFE_ARMADO: "Jefe de Armado",
-    JEFE_ALMACEN: "Jefe de Almacén",
-    JEFE_LOGISTICA: "Jefe de Logística",
-    TECNICO: "Técnico",
+    JEFE_ALMACEN: "Jefe de Almacen",
+    JEFE_LOGISTICA: "Jefe de Logistica",
+    TECNICO: "Tecnico",
     AYUDANTE_GENERAL: "Ayudante General",
     EMPLOYEE: "Empleado"
   };
 
-  const rol = rolMap[user?.roles?.[0]] || user?.roles?.[0] || "";
-  const puedeGestionarUsuarios = user?.roles?.some(
-    (r) => r === "ADMIN" || r === "DIRECTOR_GENERAL" || r === "SUBDIRECCION_ADMINISTRATIVA"
-  );
+  const rol = rolMap[roles[0]] || roles[0] || "";
+  const puedeGestionarUsuarios =
+    roles.some((r) => ["ADMIN", "SUPER_ADMIN", "DIRECTOR_GENERAL", "SUBDIRECCION_ADMINISTRATIVA"].includes(r)) ||
+    can("VIEW_USERS");
 
-  const foto = user?.fotoUrl
-    ? `${API_BASE_URL}${user.fotoUrl}`
-    : null;
+  const foto = user?.fotoUrl ? `${API_BASE_URL}${user.fotoUrl}` : null;
   const iniciales = `${nombre.trim().charAt(0)}${apellido.trim().charAt(0)}`.toUpperCase() || "U";
   const mostrarFoto = foto && failedFoto !== foto;
+  const showProductos = can("VIEW_PRODUCTS") || can("VIEW_PRODUCT_CATALOG");
 
   const handleLogout = async () => {
     try {
@@ -94,12 +89,21 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const LinkItem = ({ to, label, icon, sub = false }) => (
+    <NavLink
+      to={to}
+      className={`sidebar-link${sub ? " sidebar-link--sub" : ""}`}
+      onClick={handleNavigation}
+      {...getTooltipProps(label)}
+    >
+      <i className={`bi ${icon} me-2`}></i>
+      {label}
+    </NavLink>
+  );
+
   return (
     <aside className={`app-sidebar ${isOpen ? "" : "app-sidebar--compact"}`}>
-
-      {/* PERFIL */}
       <div ref={menuRef} className="sidebar-profile">
-
         <div
           onClick={() => {
             setOpenSubmenu(null);
@@ -109,11 +113,7 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
         >
           <div className="sidebar-profile-avatar">
             {mostrarFoto ? (
-              <img
-                src={foto}
-                alt="perfil"
-                onError={() => setFailedFoto(foto)}
-              />
+              <img src={foto} alt="perfil" onError={() => setFailedFoto(foto)} />
             ) : (
               <span>{iniciales}</span>
             )}
@@ -125,7 +125,6 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
           </div>
         </div>
 
-        {/* DROPDOWN */}
         {openMenu && (
           <div className="sidebar-user-menu">
             <button
@@ -138,185 +137,91 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
               Perfil
             </button>
 
-            <button
-              onClick={handleLogout}
-            >
+            <button onClick={handleLogout}>
               <i className="bi bi-box-arrow-right me-2"></i>
-              Cerrar sesión
+              Cerrar sesion
             </button>
           </div>
         )}
       </div>
 
-      {/* MENÚ */}
       <nav className="sidebar-menu-list">
+        <LinkItem to="/tablero" label="Tablero" icon="bi-speedometer2" />
 
-        <NavLink to="/tablero" className="sidebar-link" onClick={handleNavigation} {...getTooltipProps("Tablero")}>
-          <i className="bi bi-speedometer2 me-2"></i>
-          Tablero
-        </NavLink>
+        {puedeGestionarUsuarios && <LinkItem to="/usuarios/accesos" label="Usuarios y accesos" icon="bi-shield-check" />}
+        {can("VIEW_EMPLOYEES") && <LinkItem to="/empleados" label="Empleados" icon="bi-people" />}
+        {can("VIEW_SUPPLIERS") && <LinkItem to="/proveedores" label="Proveedores" icon="bi-truck" />}
 
-        {puedeGestionarUsuarios && (
-          <NavLink to="/usuarios/accesos" className="sidebar-link" onClick={handleNavigation} {...getTooltipProps("Usuarios y accesos")}>
-            <i className="bi bi-shield-check me-2"></i>
-            Usuarios y accesos
-          </NavLink>
+        {showProductos && (
+          <div>
+            <button
+              type="button"
+              className={`sidebar-parent ${openSubmenu === "productos" ? "" : "collapsed"}`}
+              onClick={() => toggleSubmenu("productos")}
+              aria-expanded={openSubmenu === "productos"}
+              aria-controls="menuProductos"
+              {...getTooltipProps("Productos")}
+            >
+              <div className="sidebar-parent-content">
+                <i className="bi bi-box-seam me-2"></i>
+                <span>Productos</span>
+              </div>
+              <i className="bi bi-chevron-down sidebar-chevron"></i>
+            </button>
+
+            <div className={`collapse sidebar-submenu ${openSubmenu === "productos" ? "show" : ""}`} id="menuProductos">
+              {can("VIEW_PRODUCTS") && <LinkItem to="/lineas-producto" label="Lineas" icon="bi-collection" sub />}
+              {can("VIEW_PRODUCTS") && <LinkItem to="/familias" label="Familias" icon="bi-diagram-3" sub />}
+              {can("VIEW_PRODUCTS") && <LinkItem to="/modelos" label="Modelos" icon="bi-boxes" sub />}
+              {can("VIEW_PRODUCTS") && <LinkItem to="/materiales" label="Materiales" icon="bi-layers" sub />}
+              {can("VIEW_PRODUCTS") && <LinkItem to="/colores" label="Colores" icon="bi-palette" sub />}
+              {can("VIEW_PRODUCTS") && <LinkItem to="/productos" label="Productos" icon="bi-box-seam" />}
+              {can("VIEW_PRODUCT_CATALOG") && <LinkItem to="/productos/catalogo" label="Catalogo visual" icon="bi-images" sub />}
+            </div>
+          </div>
         )}
 
-        {/* EMPLEADOS */}
-        <NavLink to="/empleados" className="sidebar-link" onClick={handleNavigation} {...getTooltipProps("Empleados")}>
-          <i className="bi bi-people me-2"></i>
-          Empleados
-        </NavLink>
-
-        {/* PROVEEDORES */}
-        <NavLink to="/proveedores" className="sidebar-link" onClick={handleNavigation} {...getTooltipProps("Proveedores")}>
-          <i className="bi bi-truck me-2"></i>
-          Proveedores
-        </NavLink>
-
-        {/* PRODUCTOS */}
-        <div>
-          <button
-            type="button"
-            className={`sidebar-parent ${openSubmenu === "productos" ? "" : "collapsed"}`}
-            onClick={() => toggleSubmenu("productos")}
-            aria-expanded={openSubmenu === "productos"}
-            aria-controls="menuProductos"
-            {...getTooltipProps("Productos")}
-          >
-            <div className="sidebar-parent-content">
-              <i className="bi bi-box-seam me-2"></i>
-              <span>Productos</span>
+        {can("VIEW_INVENTORY") && (
+          <div>
+            <button
+              type="button"
+              className={`sidebar-parent ${openSubmenu === "almacen" ? "" : "collapsed"}`}
+              onClick={() => toggleSubmenu("almacen")}
+              aria-expanded={openSubmenu === "almacen"}
+              aria-controls="menuAlmacen"
+              {...getTooltipProps("Almacen")}
+            >
+              <div className="sidebar-parent-content">
+                <i className="bi bi-archive me-2"></i>
+                <span>Almacen</span>
+              </div>
+              <i className="bi bi-chevron-down sidebar-chevron"></i>
+            </button>
+            <div className={`collapse sidebar-submenu ${openSubmenu === "almacen" ? "show" : ""}`} id="menuAlmacen">
+              <LinkItem to="/insumos" label="Insumos" icon="bi-boxes" sub />
+              <LinkItem to="/almacen/entradas" label="Entradas" icon="bi-box-arrow-in-down" sub />
+              <LinkItem to="/insumos/tipos" label="Tipos de insumo" icon="bi-tags" sub />
+              <LinkItem to="/salidas-insumos" label="Salidas" icon="bi-box-arrow-right" sub />
+              <LinkItem to="/unidades-medida" label="Unidad Medida" icon="bi-aspect-ratio" sub />
             </div>
-            <i className="bi bi-chevron-down sidebar-chevron"></i>
-          </button>
-
-          <div className={`collapse sidebar-submenu ${openSubmenu === "productos" ? "show" : ""}`} id="menuProductos">
-
-            <NavLink to="/lineas-producto" className="sidebar-link sidebar-link--sub" onClick={handleNavigation} {...getTooltipProps("Líneas")}>
-              <i className="bi bi-collection me-2"></i>
-              Lineas
-            </NavLink>
-
-            <NavLink to="/familias" className="sidebar-link sidebar-link--sub" onClick={handleNavigation} {...getTooltipProps("Familias")}>
-              <i className="bi bi-diagram-3 me-2"></i>
-              Familias
-            </NavLink>
-
-            <NavLink to="/modelos" className="sidebar-link sidebar-link--sub" onClick={handleNavigation} {...getTooltipProps("Modelos")}>
-              <i className="bi bi-boxes me-2"></i>
-              Modelos
-            </NavLink>
-
-            <NavLink to="/materiales" className="sidebar-link sidebar-link--sub" onClick={handleNavigation} {...getTooltipProps("Materiales")}>
-              <i className="bi bi-layers me-2"></i>
-              Materiales
-            </NavLink>
-
-            <NavLink to="/colores" className="sidebar-link sidebar-link--sub" onClick={handleNavigation} {...getTooltipProps("Colores")}>
-              <i className="bi bi-palette me-2"></i>
-              Colores
-            </NavLink>
-
-            <NavLink to="/productos" className="sidebar-link" onClick={handleNavigation} {...getTooltipProps("Productos")}>
-              <i className="bi bi-box-seam me-2"></i>
-              Productos
-            </NavLink>
-
-            <NavLink to="/productos/catalogo" className="sidebar-link sidebar-link--sub" onClick={handleNavigation} {...getTooltipProps("Catálogo visual")}>
-              <i className="bi bi-images me-2"></i>
-              Catalogo visual
-            </NavLink>
-
           </div>
-        </div>
+        )}
 
-        {/* ALMACÉN */}
-        <div>
-          <button
-            type="button"
-            className={`sidebar-parent ${openSubmenu === "almacen" ? "" : "collapsed"}`}
-            onClick={() => toggleSubmenu("almacen")}
-            aria-expanded={openSubmenu === "almacen"}
-            aria-controls="menuAlmacen"
-            {...getTooltipProps("Almacén")}
-          >
-            <div className="sidebar-parent-content">
-              <i className="bi bi-archive me-2"></i>
-              <span>Almacén</span>
-            </div>
-            <i className="bi bi-chevron-down sidebar-chevron"></i>
-          </button>
-          <div className={`collapse sidebar-submenu ${openSubmenu === "almacen" ? "show" : ""}`} id="menuAlmacen">
-            <NavLink to="/insumos" className="sidebar-link sidebar-link--sub" onClick={handleNavigation} {...getTooltipProps("Insumos")}>
-              <i className="bi bi-boxes me-2"></i>
-              Insumos
-            </NavLink>
-
-            <NavLink to="/almacen/entradas" className="sidebar-link sidebar-link--sub" onClick={handleNavigation} {...getTooltipProps("Entradas")}>
-              <i className="bi bi-box-arrow-in-down me-2"></i>
-              Entradas
-            </NavLink>
-
-            <NavLink to="/insumos/tipos" className="sidebar-link sidebar-link--sub" onClick={handleNavigation} {...getTooltipProps("Tipos de insumo")}>
-              <i className="bi bi-tags me-2"></i>
-              Tipos de insumo
-            </NavLink>
-
-            <NavLink to="/salidas-insumos" className="sidebar-link sidebar-link--sub" onClick={handleNavigation} {...getTooltipProps("Salidas")}>
-              <i className="bi bi-box-arrow-right me-2"></i>
-              Salidas
-            </NavLink>
-
-            <NavLink to="/unidades-medida" className="sidebar-link sidebar-link--sub" onClick={handleNavigation} {...getTooltipProps("Unidades de medida")}>
-              <i className="bi bi-aspect-ratio me-2"></i>
-              Unidad Medida
-            </NavLink>
-          </div>
-        </div>
-
-        {/* Centros de Trabajo */}
-        <NavLink to="/centros-trabajo" className="sidebar-link" onClick={handleNavigation} {...getTooltipProps("Centros de trabajo")}>
-          <i className="bi bi-building me-2"></i>
-          Centros de Trabajo
-        </NavLink>
-
-        {/* OPERACIONES */}
-        <NavLink to="/operaciones" className="sidebar-link" onClick={handleNavigation} {...getTooltipProps("Operaciones")}>
-          <i className="bi bi-gear me-2"></i>
-          Operaciones
-        </NavLink>
-
-        <NavLink to="/cif" className="sidebar-link" onClick={handleNavigation} {...getTooltipProps("CIF")}>
-          <i className="bi bi-diagram-3 me-2"></i>
-          CIF
-        </NavLink>
-
-        {/* Compras */}
-        <NavLink to="/compras" className="sidebar-link" onClick={handleNavigation} {...getTooltipProps("Compras")}>
-          <i className="bi bi-cart-check me-2"></i>
-          Compras
-        </NavLink>
-
-        {/* KARDEX */}
-        <NavLink to="/kardex" className="sidebar-link" onClick={handleNavigation} {...getTooltipProps("Kardex")}>
-          <i className="bi bi-journal-text me-2"></i>
-          kardex
-        </NavLink>
-
-        {/* Cotizaciones */}
-        <NavLink to="/cotizaciones" className="sidebar-link" onClick={handleNavigation} {...getTooltipProps("Cotizaciones")}>
-          <i className="bi bi-file-earmark-text me-2"></i>
-          Cotizaciones
-        </NavLink>
-
+        {can("VIEW_WORK_CENTERS") && <LinkItem to="/centros-trabajo" label="Centros de Trabajo" icon="bi-building" />}
+        {can("VIEW_OPERATIONS") && <LinkItem to="/operaciones" label="Operaciones" icon="bi-gear" />}
+        {can("VIEW_CIF") && <LinkItem to="/cif" label="CIF" icon="bi-diagram-3" />}
+        {can("VIEW_PURCHASES") && <LinkItem to="/compras" label="Compras" icon="bi-cart-check" />}
+        {can("VIEW_KARDEX") && <LinkItem to="/kardex" label="Kardex" icon="bi-journal-text" />}
+        {can("VIEW_QUOTES") && <LinkItem to="/cotizaciones" label="Cotizaciones" icon="bi-file-earmark-text" />}
       </nav>
 
       <button
         type="button"
         className="sidebar-collapse-button"
-        onClick={handleSidebarToggle}
+        onClick={() => {
+          handleNavigation();
+          toggleSidebar();
+        }}
         aria-label={isOpen ? "Colapsar menu" : "Expandir menu"}
         title={isOpen ? "Colapsar menu" : "Expandir menu"}
       >

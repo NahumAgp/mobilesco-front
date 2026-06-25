@@ -9,7 +9,7 @@ import {
   subirFotoEmpleado,
   eliminarFotoEmpleado
 } from "../services/empleados";
-import { getCurrentUser, getUser } from "../../auth/services/authService";
+import { createInvitation, getAvailableRoles, getCurrentUser, getUser } from "../../auth/services/authService";
 import { API_BASE_URL } from "../../../config/apiConfig";
 
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
@@ -17,6 +17,7 @@ import Toast from "../../../components/ui/Toast.jsx";
 import "./EmpleadoPage.css";
 
 const ROLES_GESTION_EMPLEADOS = ["ADMIN", "DIRECTOR_GENERAL", "SUBDIRECCION_ADMINISTRATIVA"];
+const ROLES_BLOQUEADOS_INVITACION = ["ADMIN", "SUPER_ADMIN"];
 
 function construirFotoSrc(fotoUrl) {
   if (!fotoUrl) return "";
@@ -40,7 +41,6 @@ export default function EmpleadoFormPage() {
   const puedeGestionarEmpleados = currentUser?.roles?.some((rol) => ROLES_GESTION_EMPLEADOS.includes(rol));
   const puedeEliminarEmpleado = isEditing && puedeGestionarEmpleados && !esMiPerfil;
 
-  const [mostrarCuenta, setMostrarCuenta] = useState(false);
   const [fotoUrl, setFotoUrl] = useState("");
 
   const [formData, setFormData] = useState({
@@ -50,8 +50,7 @@ export default function EmpleadoFormPage() {
     telefono: "",
     fechaNacimiento: "",
     activo: true,
-    email: "",
-    password: ""
+    email: ""
   });
 
   const [loading, setLoading] = useState(false);
@@ -64,6 +63,17 @@ export default function EmpleadoFormPage() {
 
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
+  const [mostrandoAcceso, setMostrandoAcceso] = useState(false);
+  const [rolesAcceso, setRolesAcceso] = useState([]);
+  const [cargandoRolesAcceso, setCargandoRolesAcceso] = useState(false);
+  const [generandoInvitacion, setGenerandoInvitacion] = useState(false);
+  const [tokenInvitacion, setTokenInvitacion] = useState("");
+  const [acceso, setAcceso] = useState({
+    email: "",
+    rol: "",
+    passwordTemporal: "",
+    puesto: "EMPLEADO"
+  });
 
   const cargarEmpleado = useCallback(async () => {
 
@@ -82,11 +92,12 @@ export default function EmpleadoFormPage() {
         telefono: data.telefono || "",
         fechaNacimiento: data.fechaNacimiento || "",
         activo: data.activo ?? true,
-        email: data.correo || "",
-        password: ""
+        email: data.correo || ""
       });
-
-      setMostrarCuenta(data.tieneCuenta === true);
+      setAcceso((prev) => ({
+        ...prev,
+        email: data.correo || prev.email || ""
+      }));
       setFotoUrl(data.fotoUrl || "");
 
     } catch (error) {
@@ -140,20 +151,6 @@ export default function EmpleadoFormPage() {
       newErrors.apellidoPaterno = "El apellido paterno es requerido";
     }
 
-    const email = formData.email?.trim();
-    const pass = formData.password?.trim();
-    const debeValidarCuenta = !isEditing && mostrarCuenta;
-
-    if (debeValidarCuenta) {
-      if (!email) {
-        newErrors.email = "Debes ingresar correo";
-      }
-
-      if (!pass) {
-        newErrors.password = "Debes ingresar contraseña";
-      }
-    }
-
     return newErrors;
 
   };
@@ -178,11 +175,8 @@ export default function EmpleadoFormPage() {
       activo: formData.activo
     };
 
-    if (formData.email && formData.password) {
-
+    if (formData.email?.trim()) {
       datos.email = formData.email.trim();
-      datos.password = formData.password.trim();
-
     }
 
     try {
@@ -327,6 +321,96 @@ export default function EmpleadoFormPage() {
     }
   };
 
+  const abrirAcceso = async () => {
+    if (!isEditing || !puedeGestionarEmpleados) return;
+
+    setMostrandoAcceso(true);
+    setTokenInvitacion("");
+    setAcceso((prev) => ({
+      ...prev,
+      email: formData.email?.trim() || prev.email || ""
+    }));
+
+    if (rolesAcceso.length > 0) {
+      return;
+    }
+
+    try {
+      setCargandoRolesAcceso(true);
+      const roles = await getAvailableRoles();
+      const disponibles = (Array.isArray(roles) ? roles : []).filter(
+        (rol) => !ROLES_BLOQUEADOS_INVITACION.includes(rol)
+      );
+      setRolesAcceso(disponibles);
+      if (disponibles.length > 0) {
+        setAcceso((prev) => ({
+          ...prev,
+          rol: prev.rol || disponibles[0]
+        }));
+      }
+    } catch (error) {
+      setToastType("danger");
+      setToastMessage(error.message || "No se pudieron cargar los roles.");
+    } finally {
+      setCargandoRolesAcceso(false);
+    }
+  };
+
+  const handleAccesoChange = (event) => {
+    const { name, value } = event.target;
+    setAcceso((prev) => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const generarInvitacionAcceso = async () => {
+    const email = acceso.email?.trim();
+    const rol = acceso.rol?.trim();
+    const passwordTemporal = acceso.passwordTemporal?.trim();
+
+    if (!email || !rol || !passwordTemporal) {
+      setToastType("danger");
+      setToastMessage("Correo, rol y contraseña son obligatorios para generar acceso.");
+      return;
+    }
+
+    const payload = {
+      email,
+      nombre: formData.nombre?.trim() || "NOMBRE",
+      apellidoPaterno: formData.apellidoPaterno?.trim() || "APELLIDO",
+      apellidoMaterno: formData.apellidoMaterno?.trim() || "SIN_DATO",
+      telefono: formData.telefono?.trim() || "0000000000",
+      puesto: acceso.puesto?.trim() || "EMPLEADO",
+      rol,
+      empleadoId: Number(id)
+    };
+
+    try {
+      setGenerandoInvitacion(true);
+      const response = await createInvitation(payload);
+      setTokenInvitacion(response?.token || "");
+      setToastType("success");
+      setToastMessage("Token de invitacion generado.");
+    } catch (error) {
+      setToastType("danger");
+      setToastMessage(error.message || "No se pudo generar la invitacion.");
+    } finally {
+      setGenerandoInvitacion(false);
+    }
+  };
+
+  const copiarTexto = async (texto) => {
+    try {
+      await navigator.clipboard.writeText(texto);
+      setToastType("success");
+      setToastMessage("Copiado al portapapeles.");
+    } catch {
+      setToastType("danger");
+      setToastMessage("No se pudo copiar.");
+    }
+  };
+
   if (loading) {
 
     return (
@@ -423,6 +507,120 @@ export default function EmpleadoFormPage() {
               </div>
             )}
 
+            {isEditing && puedeGestionarEmpleados && (
+              <div className="border rounded-3 p-3 mb-4 bg-light-subtle">
+                <div className="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                  <div>
+                    <div className="fw-semibold">Acceso de usuario</div>
+                    <div className="text-muted small">
+                      Genera una invitacion para este empleado sin salir de su edicion.
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className={`btn ${mostrandoAcceso ? "btn-outline-secondary" : "btn-outline-primary"}`}
+                    onClick={() => (mostrandoAcceso ? setMostrandoAcceso(false) : abrirAcceso())}
+                    disabled={cargandoRolesAcceso || generandoInvitacion}
+                  >
+                    <i className="bi bi-key me-1"></i>
+                    {mostrandoAcceso ? "Ocultar acceso" : "Dar acceso"}
+                  </button>
+                </div>
+
+                {mostrandoAcceso && (
+                  <div className="row g-3 mt-2">
+                    <div className="col-md-4">
+                      <label className="form-label">Correo</label>
+                      <input
+                        type="email"
+                        className="form-control"
+                        name="email"
+                        value={acceso.email}
+                        onChange={handleAccesoChange}
+                        placeholder="correo@empresa.com"
+                      />
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label">Rol</label>
+                      <select
+                        className="form-select"
+                        name="rol"
+                        value={acceso.rol}
+                        onChange={handleAccesoChange}
+                        disabled={cargandoRolesAcceso}
+                      >
+                        {rolesAcceso.length === 0 && <option value="">Sin roles disponibles</option>}
+                        {rolesAcceso.map((rol) => (
+                          <option key={rol} value={rol}>
+                            {rol}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label">Contrasena temporal</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        name="passwordTemporal"
+                        value={acceso.passwordTemporal}
+                        onChange={handleAccesoChange}
+                        placeholder="Se comparte junto con el token"
+                      />
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label">Puesto</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        name="puesto"
+                        value={acceso.puesto}
+                        onChange={handleAccesoChange}
+                      />
+                    </div>
+                    <div className="col-12 d-flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={generarInvitacionAcceso}
+                        disabled={generandoInvitacion || cargandoRolesAcceso}
+                      >
+                        <i className="bi bi-envelope-paper me-1"></i>
+                        {generandoInvitacion ? "Generando..." : "Generar token de invitacion"}
+                      </button>
+                    </div>
+                    {tokenInvitacion && (
+                      <div className="col-12">
+                        <div className="alert alert-success mb-0">
+                          <div className="fw-semibold mb-1">Token generado</div>
+                          <div className="small mb-2">
+                            Comparte este token y la contrasena temporal con el empleado para que complete su registro.
+                          </div>
+                          <div className="d-flex flex-wrap gap-2">
+                            <code className="px-2 py-1 bg-white border rounded">{tokenInvitacion}</code>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-success"
+                              onClick={() => copiarTexto(tokenInvitacion)}
+                            >
+                              Copiar token
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-secondary"
+                              onClick={() => copiarTexto(acceso.passwordTemporal)}
+                            >
+                              Copiar contrasena
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             <form onSubmit={handleSubmit}>
 
               <div className="row g-3">
@@ -516,44 +714,17 @@ export default function EmpleadoFormPage() {
 
               </div>
 
-              {!mostrarCuenta && puedeGestionarEmpleados && (
-                <div className="col-12">
-                  <button
-                    type="button"
-                    className="btn btn-outline-primary"
-                    onClick={() => setMostrarCuenta(true)}
-                  >
-                    Crear cuenta
-                  </button>
-                </div>
-              )}
-
-              {mostrarCuenta && (
-                <>
-                  <div className="col-md-6">
-                    <label>Correo</label>
-                    <input
-                      type="email"
-                      className="form-control"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                    />
-                  </div>
-
-                  <div className="col-md-6">
-                    <label>Contraseña</label>
-                    <input
-                      type="password"
-                      className="form-control"
-                      name="password"
-                      value={formData.password}
-                      onChange={handleChange}
-                      placeholder="Dejar vacío para no cambiar"
-                    />
-                  </div>
-                </>
-              )}
+              <div className="col-md-6">
+                <label>Correo (opcional)</label>
+                <input
+                  type="email"
+                  className="form-control"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  placeholder="correo@empresa.com"
+                />
+              </div>
 
               <div className="d-flex justify-content-between gap-2 mt-3 empleado-form-actions">
                 {puedeEliminarEmpleado ? (

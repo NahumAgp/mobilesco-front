@@ -122,7 +122,7 @@ export default function EmpleadoPage() {
           <div className="d-flex flex-wrap gap-2">
             <button
               className="btn empleados-brand-primary"
-              onClick={() => navigate("/usuarios/accesos")}
+              onClick={() => navigate("/empleados/nuevo")}
             >
               <i className="bi bi-person-plus me-1"></i>
               Nuevo Empleado
@@ -204,7 +204,7 @@ export default function EmpleadoPage() {
                 <i className="bi bi-funnel fs-1 d-block mb-3 text-secondary"></i>
                 <span className="fs-5 d-block">No hay coincidencias</span>
                 <p className="text-secondary mt-2 mb-0">
-                  Ajusta los filtros para ver empleados en esta pÃ¡gina
+                  Ajusta los filtros para ver empleados en esta página
                 </p>
               </div>
             </div>

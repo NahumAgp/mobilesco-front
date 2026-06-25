@@ -45,6 +45,9 @@ export default function InsumosPage() {
   const [sortField, setSortField] = useState("nombre");
   const [sortDirection, setSortDirection] = useState("asc");
   const [exportandoExcel, setExportandoExcel] = useState(false);
+  const terminoBusqueda = busqueda.toLowerCase().trim().replace(/\s+/g, " ");
+  const hayFiltrosActivos =
+    Boolean(terminoBusqueda) || filtroEstatus !== "TODOS" || soloActivos || filtroStockBajo;
 
   const {
     insumos,
@@ -52,15 +55,12 @@ export default function InsumosPage() {
     loadingLista,
     error,
     actualizarEstadoInsumo
-  } = useInsumos({ page, size: PAGE_SIZE, sortBy: sortField, direction: sortDirection });
-
-  const totalElements = pageInfo.totalElements ?? 0;
-  const totalPages = pageInfo.totalPages ?? 0;
-  const paginaActual = totalPages > 0 ? Math.min(page, totalPages - 1) : 0;
-  const paginasVisibles = construirRangoPaginas(totalPages, paginaActual);
-  const desde = totalElements > 0 ? page * PAGE_SIZE + 1 : 0;
-  const hasta = totalElements > 0 ? page * PAGE_SIZE + insumos.length : 0;
-  const terminoBusqueda = busqueda.toLowerCase().trim().replace(/\s+/g, " ");
+  } = useInsumos({
+    page: hayFiltrosActivos ? undefined : page,
+    size: PAGE_SIZE,
+    sortBy: sortField,
+    direction: sortDirection
+  });
 
   const insumosFiltrados = useMemo(() => {
     const compararValor = (a, b) => {
@@ -125,11 +125,20 @@ export default function InsumosPage() {
     });
   }, [filtroEstatus, filtroStockBajo, insumos, soloActivos, sortDirection, sortField, terminoBusqueda]);
 
-  const hayFiltrosActivos =
-    Boolean(terminoBusqueda) || filtroEstatus !== "TODOS" || soloActivos || filtroStockBajo;
+  const totalElements = hayFiltrosActivos ? insumosFiltrados.length : (pageInfo.totalElements ?? 0);
+  const totalPages = hayFiltrosActivos
+    ? Math.max(1, Math.ceil(insumosFiltrados.length / PAGE_SIZE))
+    : (pageInfo.totalPages ?? 0);
+  const paginaActual = totalPages > 0 ? Math.min(page, totalPages - 1) : 0;
+  const paginasVisibles = construirRangoPaginas(totalPages, paginaActual);
+  const desde = totalElements > 0 ? paginaActual * PAGE_SIZE + 1 : 0;
+  const insumosMostrados = hayFiltrosActivos
+    ? insumosFiltrados.slice(paginaActual * PAGE_SIZE, paginaActual * PAGE_SIZE + PAGE_SIZE)
+    : insumosFiltrados;
+  const hasta = totalElements > 0 ? paginaActual * PAGE_SIZE + insumosMostrados.length : 0;
   const mostrarVacio = !loadingLista && !error && totalElements === 0;
   const mostrarSinCoincidencias =
-    !loadingLista && !error && totalElements > 0 && insumosFiltrados.length === 0;
+    !loadingLista && !error && totalElements > 0 && insumosMostrados.length === 0;
 
   useEffect(() => {
     if (!loadingLista && totalPages > 0 && page >= totalPages) {
@@ -367,13 +376,13 @@ export default function InsumosPage() {
                 <i className="bi bi-funnel fs-1 d-block mb-3 text-secondary"></i>
                 <span className="fs-5 d-block">No hay coincidencias</span>
                 <p className="text-secondary mt-2 mb-0">
-                  Ajusta los filtros para ver insumos en esta pagina
+                  Ajusta los filtros para ver insumos que coincidan
                 </p>
               </div>
             </div>
           ) : (
             <InsumosTable
-              data={insumosFiltrados}
+              data={insumosMostrados}
               onEditar={abrirEditar}
               onVerKardex={abrirKardex}
               onCambiarEstado={manejarCambiarEstado}
@@ -388,7 +397,7 @@ export default function InsumosPage() {
             <div className="insumos-pagination-panel">
               <div className="insumos-pagination-summary">
                 {hayFiltrosActivos
-                  ? `Mostrando ${insumosFiltrados.length} coincidencias en esta pagina`
+                  ? `Mostrando ${desde} a ${hasta} de ${totalElements} coincidencias`
                   : `Mostrando ${desde} a ${hasta} de ${totalElements} insumos`}
               </div>
 

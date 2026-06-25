@@ -42,6 +42,65 @@ export function getAvailableRoles() {
   return request(API_PATHS.AUTH_ROLES);
 }
 
+export function getPermissions() {
+  return request(API_PATHS.AUTH_PERMISOS);
+}
+
+export function getRolesConfig() {
+  return request(API_PATHS.AUTH_ROLES_CONFIG);
+}
+
+export function createRole(payload) {
+  return request(API_PATHS.AUTH_ROLES_CONFIG, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function updateRole(id, payload) {
+  return request(`${API_PATHS.AUTH_ROLES_CONFIG}/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function getAccessUsers() {
+  return request(API_PATHS.AUTH_USUARIOS);
+}
+
+export function createAccessUser(payload) {
+  return request(API_PATHS.AUTH_USUARIOS, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function updateAccessUser(id, payload) {
+  return request(`${API_PATHS.AUTH_USUARIOS}/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function deactivateAccessUser(id) {
+  return request(`${API_PATHS.AUTH_USUARIOS}/${id}/desactivar`, {
+    method: "POST"
+  });
+}
+
+export function hasPermission(user, permission) {
+  if (!permission) {
+    return true;
+  }
+
+  const roles = user?.roles || [];
+  if (roles.some((role) => role === "ADMIN" || role === "SUPER_ADMIN")) {
+    return true;
+  }
+
+  return (user?.permisos || []).includes(permission);
+}
+
 // ============================
 // INVITACIONES
 // ============================

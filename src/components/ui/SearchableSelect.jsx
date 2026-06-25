@@ -19,6 +19,7 @@ export default function SearchableSelect({
   value,
   options = [],
   onChange,
+  onSearchChange,
   placeholder = "Seleccionar...",
   searchPlaceholder = "Escribe para filtrar...",
   disabled = false,
@@ -73,10 +74,12 @@ export default function SearchableSelect({
             onFocus={() => {
               setQuery(selectedOption ? getOptionLabel(selectedOption) : "");
               setOpen(true);
+              onSearchChange?.(selectedOption ? getOptionLabel(selectedOption) : "");
             }}
             onChange={(e) => {
               setQuery(e.target.value);
               setOpen(true);
+              onSearchChange?.(e.target.value);
             }}
             onBlur={() => {
               window.setTimeout(() => setOpen(false), 120);

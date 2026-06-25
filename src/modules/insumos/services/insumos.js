@@ -111,8 +111,18 @@ export function obtenerInsumosActivos() {
   });
 }
 
-export function buscarInsumos(nombre) {
-  return request(`${API_PATHS.INSUMOS}/buscar?nombre=${encodeURIComponent(nombre)}`).then((response) => {
+export function buscarInsumos(busqueda, { soloActivos = true } = {}) {
+  const params = new URLSearchParams();
+
+  if (busqueda !== undefined && busqueda !== null && String(busqueda).trim() !== "") {
+    params.set("busqueda", String(busqueda).trim());
+  }
+
+  params.set("soloActivos", String(Boolean(soloActivos)));
+
+  const endpoint = `${API_PATHS.INSUMOS}/buscar${params.toString() ? `?${params.toString()}` : ""}`;
+
+  return request(endpoint).then((response) => {
     if (Array.isArray(response)) {
       return response.map((item) => transformarInsumo(item));
     }

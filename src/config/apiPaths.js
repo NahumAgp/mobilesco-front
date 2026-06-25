@@ -9,6 +9,9 @@ export const API_PATHS = {
   AUTH_LOGOUT: `${API_VERSION}/auth/logout`,
   AUTH_REGISTER: `${API_VERSION}/auth/register`,
   AUTH_ROLES: `${API_VERSION}/auth/roles`,
+  AUTH_PERMISOS: `${API_VERSION}/auth/permisos`,
+  AUTH_ROLES_CONFIG: `${API_VERSION}/auth/roles-config`,
+  AUTH_USUARIOS: `${API_VERSION}/auth/usuarios`,
   AUTH_INVITACIONES: `${API_VERSION}/auth/invitaciones`,
   AUTH_PENDIENTES: `${API_VERSION}/auth/usuarios-pendientes`,
 

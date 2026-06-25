@@ -1,5 +1,5 @@
 import { Navigate } from "react-router-dom";
-import { getUser, isAuthenticated } from "../../modules/auth/services/authService";
+import { getUser, hasPermission, isAuthenticated } from "../../modules/auth/services/authService";
 
 function hasAllowedRole(user, allowedRoles = []) {
   if (!allowedRoles.length) {
@@ -10,14 +10,20 @@ function hasAllowedRole(user, allowedRoles = []) {
   return userRoles.some((role) => allowedRoles.includes(role));
 }
 
-export default function RoleRoute({ children, allowedRoles = [] }) {
+export default function RoleRoute({ children, allowedRoles = [], permission }) {
   if (!isAuthenticated()) {
     return <Navigate to="/login" replace />;
   }
 
   const user = getUser();
 
-  if (!hasAllowedRole(user, allowedRoles)) {
+  const roleAllowed = hasAllowedRole(user, allowedRoles);
+  const permissionAllowed = hasPermission(user, permission);
+  const canEnter = permission && allowedRoles.length
+    ? roleAllowed || permissionAllowed
+    : roleAllowed && permissionAllowed;
+
+  if (!canEnter) {
     return <Navigate to="/tablero" replace />;
   }
 

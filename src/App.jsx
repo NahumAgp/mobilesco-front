@@ -72,6 +72,11 @@ function ProductoDetalleRedirect() {
 }
 
 export default function App() {
+  const withPermission = (element, permission) => (
+    <RoleRoute permission={permission}>
+      {element}
+    </RoleRoute>
+  );
 
   return (
 
@@ -96,78 +101,84 @@ export default function App() {
         <Route path="/tablero" element={<Tablero />} />
 
 
-        <Route path="/unidadMedida" element={<UnidadMedida />} />
+        <Route path="/unidadMedida" element={withPermission(<UnidadMedida />, "VIEW_INVENTORY")} />
         <Route path="/almacen" element={<Navigate to="/insumos" replace />} />
 
-        <Route path="/nuevaCotizacion" element={<NuevaCotizacion />} />
+        <Route path="/nuevaCotizacion" element={withPermission(<NuevaCotizacion />, "VIEW_QUOTES")} />
 
-        <Route path="/cotizaciones" element={<Cotizacion />} />
+        <Route path="/cotizaciones" element={withPermission(<Cotizacion />, "VIEW_QUOTES")} />
 
         {/* EMPLEADOS */}
-        <Route path="/empleados/nuevo" element={<EmpleadoFormPage />} />
-        <Route path="/empleados/:id" element={<EmpleadoFormPage />} />
-        <Route path="/empleados" element={<EmpleadosPage />} />
+        <Route path="/empleados/nuevo" element={withPermission(<EmpleadoFormPage />, "VIEW_EMPLOYEES")} />
+        <Route path="/empleados/:id" element={withPermission(<EmpleadoFormPage />, "VIEW_EMPLOYEES")} />
+        <Route path="/empleados" element={withPermission(<EmpleadosPage />, "VIEW_EMPLOYEES")} />
 
         <Route path="/perfil" element={<PerfilPage />} />
 
         <Route
           path="/usuarios/accesos"
           element={
-            <RoleRoute allowedRoles={["ADMIN", "DIRECTOR_GENERAL", "SUBDIRECCION_ADMINISTRATIVA"]}>
+            <RoleRoute
+              allowedRoles={["ADMIN", "DIRECTOR_GENERAL", "SUBDIRECCION_ADMINISTRATIVA"]}
+              permission="VIEW_USERS"
+            >
               <UsuariosAccesoPage />
             </RoleRoute>
           }
         />
 
         {/* PROVEEDORES */}
-        <Route path="/proveedores" element={<ProveedoresPage />} />
-        <Route path="/proveedores/nuevo" element={<ProveedorFormPage />} />
-        <Route path="/proveedores/:id" element={<ProveedorFormPage />} />
+        <Route path="/proveedores" element={withPermission(<ProveedoresPage />, "VIEW_SUPPLIERS")} />
+        <Route path="/proveedores/nuevo" element={withPermission(<ProveedorFormPage />, "VIEW_SUPPLIERS")} />
+        <Route path="/proveedores/:id" element={withPermission(<ProveedorFormPage />, "VIEW_SUPPLIERS")} />
 
         {/* UNIDADES DE MEDIDA */}
-        <Route path="/unidades-medida" element={<UnidadesMedidaPage />} />
-        <Route path="/unidades-medida/nuevo" element={<UnidadMedidaFormPage />} />
-        <Route path="/unidades-medida/:id" element={<UnidadMedidaFormPage />} />
+        <Route path="/unidades-medida" element={withPermission(<UnidadesMedidaPage />, "VIEW_INVENTORY")} />
+        <Route path="/unidades-medida/nuevo" element={withPermission(<UnidadMedidaFormPage />, "VIEW_INVENTORY")} />
+        <Route path="/unidades-medida/:id" element={withPermission(<UnidadMedidaFormPage />, "VIEW_INVENTORY")} />
 
         {/* FAMILIAS */}
-         <Route path="/familias" element={<FamiliasPage />} />
-         <Route path="/familias/nuevo" element={<FamiliaFormPage />} />
-         <Route path="/familias/:id" element={<FamiliaFormPage />} />
+         <Route path="/familias" element={withPermission(<FamiliasPage />, "VIEW_PRODUCTS")} />
+         <Route path="/familias/nuevo" element={withPermission(<FamiliaFormPage />, "VIEW_PRODUCTS")} />
+         <Route path="/familias/:id" element={withPermission(<FamiliaFormPage />, "VIEW_PRODUCTS")} />
 
         {/* LINEA - PRODUCTO */}
-        <Route path="/lineas-producto" element={<LineaProductoPage />} />
-        <Route path="/lineas-producto/nuevo" element={<LineaProductoFormPage />} />
-        <Route path="/lineas-producto/:id" element={<LineaProductoFormPage />} />
+        <Route path="/lineas-producto" element={withPermission(<LineaProductoPage />, "VIEW_PRODUCTS")} />
+        <Route path="/lineas-producto/nuevo" element={withPermission(<LineaProductoFormPage />, "VIEW_PRODUCTS")} />
+        <Route path="/lineas-producto/:id" element={withPermission(<LineaProductoFormPage />, "VIEW_PRODUCTS")} />
 
         <Route path="/categorias/*" element={<Navigate to="/modelos" replace />} />
 
         {/* MATERIALES */}
-        <Route path="/materiales" element={<MaterialesPage />} />
-        <Route path="/materiales/nuevo" element={<MaterialFormPage />} />
-        <Route path="/materiales/:id" element={<MaterialFormPage />} />
+        <Route path="/materiales" element={withPermission(<MaterialesPage />, "VIEW_PRODUCTS")} />
+        <Route path="/materiales/nuevo" element={withPermission(<MaterialFormPage />, "VIEW_PRODUCTS")} />
+        <Route path="/materiales/:id" element={withPermission(<MaterialFormPage />, "VIEW_PRODUCTS")} />
 
         {/* MODELOS */}
-        <Route path="/modelos" element={<ModelosPage />} />
-        <Route path="/modelos/nuevo" element={<ModelosFormPage />} />
-        <Route path="/modelos/:id" element={<ModelosFormPage />} />
+        <Route path="/modelos" element={withPermission(<ModelosPage />, "VIEW_PRODUCTS")} />
+        <Route path="/modelos/nuevo" element={withPermission(<ModelosFormPage />, "VIEW_PRODUCTS")} />
+        <Route path="/modelos/:id" element={withPermission(<ModelosFormPage />, "VIEW_PRODUCTS")} />
 
         {/* COLORES */}
-        <Route path="/colores" element={<ColorPage />} />
-        <Route path="/colores/nuevo" element={<ColorFormPage />} />
-        <Route path="/colores/:id" element={<ColorFormPage />} />
+        <Route path="/colores" element={withPermission(<ColorPage />, "VIEW_PRODUCTS")} />
+        <Route path="/colores/nuevo" element={withPermission(<ColorFormPage />, "VIEW_PRODUCTS")} />
+        <Route path="/colores/:id" element={withPermission(<ColorFormPage />, "VIEW_PRODUCTS")} />
 
         {/* Inusmos */}
-        <Route path="/insumos" element={<InsumosPage />} />
-        <Route path="/insumos/tipos" element={<TiposInsumoPage />} />
-        <Route path="/insumos/costos" element={<InsumosCostosPage />} />
-        <Route path="/insumos/nuevo" element={<InsumosFormPage />} />
-        <Route path="/insumos/:id" element={<InsumosFormPage />} />
-        <Route path="/salidas-insumos" element={<SalidasInsumosPage />} />
-        <Route path="/salidas-insumos/nueva" element={<SalidasInsumosNuevaPage />} />
+        <Route path="/insumos" element={withPermission(<InsumosPage />, "VIEW_INVENTORY")} />
+        <Route path="/insumos/tipos" element={withPermission(<TiposInsumoPage />, "VIEW_INVENTORY")} />
+        <Route path="/insumos/costos" element={withPermission(<InsumosCostosPage />, "ACTION_INSUMOS_COSTS")} />
+        <Route path="/insumos/nuevo" element={withPermission(<InsumosFormPage />, "VIEW_INVENTORY")} />
+        <Route path="/insumos/:id" element={withPermission(<InsumosFormPage />, "VIEW_INVENTORY")} />
+        <Route path="/salidas-insumos" element={withPermission(<SalidasInsumosPage />, "VIEW_INVENTORY")} />
+        <Route path="/salidas-insumos/nueva" element={withPermission(<SalidasInsumosNuevaPage />, "VIEW_INVENTORY")} />
         <Route
           path="/almacen/entradas"
           element={
-            <RoleRoute allowedRoles={["ADMIN", "SUPER_ADMIN", "DIRECTOR_GENERAL", "SUBDIRECCION_ADMINISTRATIVA", "JEFE_ALMACEN"]}>
+            <RoleRoute
+              allowedRoles={["ADMIN", "SUPER_ADMIN", "DIRECTOR_GENERAL", "SUBDIRECCION_ADMINISTRATIVA", "JEFE_ALMACEN"]}
+              permission="VIEW_INVENTORY"
+            >
               <EntradasPage />
             </RoleRoute>
           }
@@ -175,44 +186,47 @@ export default function App() {
         <Route
           path="/almacen/entradas/:id"
           element={
-            <RoleRoute allowedRoles={["ADMIN", "SUPER_ADMIN", "DIRECTOR_GENERAL", "SUBDIRECCION_ADMINISTRATIVA", "JEFE_ALMACEN"]}>
+            <RoleRoute
+              allowedRoles={["ADMIN", "SUPER_ADMIN", "DIRECTOR_GENERAL", "SUBDIRECCION_ADMINISTRATIVA", "JEFE_ALMACEN"]}
+              permission="VIEW_INVENTORY"
+            >
               <EntradaRecepcionPage />
             </RoleRoute>
           }
         />
 
          {/* Centros de Trabajo */}
-        <Route path="/centros-trabajo" element={<CentrosTrabajoPage />} />
-        <Route path="/centros-trabajo/nuevo" element={<CentrosTrabajoFormPage />} />
-        <Route path="/centros-trabajo/:id" element={<CentrosTrabajoFormPage />} />
+        <Route path="/centros-trabajo" element={withPermission(<CentrosTrabajoPage />, "VIEW_WORK_CENTERS")} />
+        <Route path="/centros-trabajo/nuevo" element={withPermission(<CentrosTrabajoFormPage />, "VIEW_WORK_CENTERS")} />
+        <Route path="/centros-trabajo/:id" element={withPermission(<CentrosTrabajoFormPage />, "VIEW_WORK_CENTERS")} />
 
         {/* Operaciones */}
-        <Route path="/operaciones" element={<OperacionesPage />} />
-        <Route path="/operaciones/nuevo" element={<OperacionesFormPage />} />
-        <Route path="/operaciones/:id" element={<OperacionesFormPage />} />
-        <Route path="/cif" element={<CifPage />} />
-        <Route path="/cif/nuevo" element={<CifFormPage />} />
-        <Route path="/cif/:id" element={<CifFormPage />} />
+        <Route path="/operaciones" element={withPermission(<OperacionesPage />, "VIEW_OPERATIONS")} />
+        <Route path="/operaciones/nuevo" element={withPermission(<OperacionesFormPage />, "VIEW_OPERATIONS")} />
+        <Route path="/operaciones/:id" element={withPermission(<OperacionesFormPage />, "VIEW_OPERATIONS")} />
+        <Route path="/cif" element={withPermission(<CifPage />, "VIEW_CIF")} />
+        <Route path="/cif/nuevo" element={withPermission(<CifFormPage />, "VIEW_CIF")} />
+        <Route path="/cif/:id" element={withPermission(<CifFormPage />, "VIEW_CIF")} />
 
          {/* Compras */}
-        <Route path="/compras" element={<ComprasPage />} />
-        <Route path="/compras/nueva" element={<ComprasFormPage />} />
-        <Route path="/compras/:id" element={<ComprasFormPage />} />
-        <Route path="/compras/:id/ver" element={<CompraDetallePage />} />
+        <Route path="/compras" element={withPermission(<ComprasPage />, "VIEW_PURCHASES")} />
+        <Route path="/compras/nueva" element={withPermission(<ComprasFormPage />, "VIEW_PURCHASES")} />
+        <Route path="/compras/:id" element={withPermission(<ComprasFormPage />, "VIEW_PURCHASES")} />
+        <Route path="/compras/:id/ver" element={withPermission(<CompraDetallePage />, "VIEW_PURCHASES")} />
 
          {/*Kardex */}
-        <Route path="/kardex" element={<KardexPage />} />
-        <Route path="/kardex/insumo/:insumoId" element={<KardexPage />} />
+        <Route path="/kardex" element={withPermission(<KardexPage />, "VIEW_KARDEX")} />
+        <Route path="/kardex/insumo/:insumoId" element={withPermission(<KardexPage />, "VIEW_KARDEX")} />
         
         {/* Productos */}
-        <Route path="/productos" element={<ProductosCompletosPage />} />
-        <Route path="/productos/catalogo" element={<ProductoCatalogoPage />} />
-        <Route path="/productos/catalogo/:id" element={<ProductoCatalogoPage />} />
-        <Route path="/productos/nuevo" element={<ProductosCompletosPage iniciarCreacion />} />
-        <Route path="/productos/:id" element={<ProductoFormPage />} />
-        <Route path="/productos/:id/ver" element={<ProductoDetalleRedirect />} />
-        <Route path="/productos/:id/bom/insumos" element={<ProductoInsumosBOMPage />} />
-        <Route path="/productos/:id/bom/operaciones" element={<ProductoOperacionesBOMPage />} />
+        <Route path="/productos" element={withPermission(<ProductosCompletosPage />, "VIEW_PRODUCTS")} />
+        <Route path="/productos/catalogo" element={withPermission(<ProductoCatalogoPage />, "VIEW_PRODUCT_CATALOG")} />
+        <Route path="/productos/catalogo/:id" element={withPermission(<ProductoCatalogoPage />, "VIEW_PRODUCT_CATALOG")} />
+        <Route path="/productos/nuevo" element={withPermission(<ProductosCompletosPage iniciarCreacion />, "VIEW_PRODUCTS")} />
+        <Route path="/productos/:id" element={withPermission(<ProductoFormPage />, "VIEW_PRODUCTS")} />
+        <Route path="/productos/:id/ver" element={withPermission(<ProductoDetalleRedirect />, "VIEW_PRODUCTS")} />
+        <Route path="/productos/:id/bom/insumos" element={withPermission(<ProductoInsumosBOMPage />, "VIEW_PRODUCTS")} />
+        <Route path="/productos/:id/bom/operaciones" element={withPermission(<ProductoOperacionesBOMPage />, "VIEW_PRODUCTS")} />
 
         <Route path="/productos-completos" element={<Navigate to="/productos" replace />} />
         <Route path="/prueba/productos" element={<Navigate to="/productos" replace />} />

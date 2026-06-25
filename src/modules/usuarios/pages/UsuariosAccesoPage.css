@@ -1,0 +1,71 @@
+.usuarios-access-shell {
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.usuarios-access-tabs {
+  display: flex;
+  gap: 0;
+  padding: 0.75rem 0.75rem 0 0.75rem;
+  border-bottom: 1px solid #dbe3ea;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.usuarios-access-tab {
+  flex: 1 1 0;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: 10px 10px 0 0;
+  margin: 0;
+  padding: 0.9rem 1rem;
+  font-weight: 600;
+  color: #5b6571;
+  background: transparent;
+  transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.usuarios-access-tab i {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.usuarios-access-tab:hover {
+  color: #0f5132;
+  background: rgba(25, 135, 84, 0.08);
+}
+
+.usuarios-access-tab.active {
+  color: #0f5132;
+  background: #ffffff;
+  border-color: #dbe3ea;
+  border-bottom-color: #ffffff;
+  box-shadow: 0 -1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.usuarios-access-shell .card-body {
+  background: #ffffff;
+}
+
+@media (max-width: 768px) {
+  .usuarios-access-tabs {
+    flex-direction: column;
+    padding-bottom: 0.75rem;
+    border-bottom: 0;
+  }
+
+  .usuarios-access-tab {
+    justify-content: flex-start;
+    border-radius: 8px;
+    border-bottom: 1px solid transparent;
+    background: #f8fafc;
+  }
+
+  .usuarios-access-tab.active {
+    border-bottom-color: #dbe3ea;
+  }
+}
