@@ -86,16 +86,11 @@ export default function Tablero() {
       <div className="row g-3 mb-4">
         {stats.map((s, i) => (
           <div className="col-md-3" key={i}>
-            <div className="card h-100 shadow-sm">
+            <div className="card h-100">
               <div className="card-body">
                 <div className="d-flex justify-content-between align-items-center">
                   <span className="text-muted">{s.titulo}</span>
-                  <span
-                    className={`text-${s.color} fw-bold`}
-                    style={{ fontSize: 12 }}
-                  >
-                    ●
-                  </span>
+                  <span className={`ms-status-dot ms-status-dot--${s.color}`}></span>
                 </div>
 
                 <h3 className="fw-bold mt-2 mb-1">{s.valor}</h3>
@@ -111,7 +106,7 @@ export default function Tablero() {
 
         {/* Cotizaciones recientes */}
         <div className="col-md-8">
-          <div className="card shadow-sm h-100">
+          <div className="card h-100">
             <div className="card-body">
               <h5 className="fw-bold mb-1">Cotizaciones Recientes</h5>
               <p className="text-muted mb-3">
@@ -128,21 +123,21 @@ export default function Tablero() {
                       className="rounded-circle bg-light d-flex align-items-center justify-content-center"
                       style={{ width: 42, height: 42 }}
                     >
-                      <strong>{c.id}</strong>
+                      <span>{c.id}</span>
                     </div>
 
                     <div>
-                      <div className="fw-semibold">{c.cliente}</div>
+                      <div>{c.cliente}</div>
                       <small className="text-muted">{c.detalle}</small>
                     </div>
                   </div>
 
                   <div className="text-end">
-                    <div className="fw-semibold">{c.monto}</div>
+                    <div>{c.monto}</div>
                     <small className="text-muted">{c.tiempo}</small>
                   </div>
 
-                  <span className={`badge bg-${c.badge}`}>
+                  <span className={`badge ms-badge-dot bg-${c.badge}`}>
                     {c.estado}
                   </span>
                 </div>
@@ -159,7 +154,7 @@ export default function Tablero() {
 
         {/* Alertas */}
         <div className="col-md-4">
-          <div className="card shadow-sm h-100">
+          <div className="card h-100">
             <div className="card-body">
               <h5 className="fw-bold mb-1">Alertas de Sistema</h5>
               <p className="text-muted mb-3">Acciones requeridas.</p>

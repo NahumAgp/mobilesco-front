@@ -2,14 +2,14 @@
 .modelos-empty-card,
 .modelos-table-card,
 .modelos-pagination-panel {
-  --modelos-brand-ink: #30404a;
-  --modelos-brand-ink-strong: #22303a;
-  --modelos-brand-green: #57d37e;
-  --modelos-brand-green-strong: #2ec35d;
-  --modelos-brand-green-soft: rgba(87, 211, 126, 0.12);
-  --modelos-brand-sage-soft: rgba(48, 64, 74, 0.08);
-  --modelos-brand-danger: #d77b31;
-  --modelos-brand-danger-soft: rgba(215, 123, 49, 0.12);
+  --modelos-brand-ink: #21443B;
+  --modelos-brand-ink-strong: #1C3D35;
+  --modelos-brand-green: #548674;
+  --modelos-brand-green-strong: #285349;
+  --modelos-brand-green-soft: rgba(84, 134, 116, 0.12);
+  --modelos-brand-sage-soft: rgba(40, 83, 73, 0.08);
+  --modelos-brand-danger: #D95B3F;
+  --modelos-brand-danger-soft: rgba(217, 91, 63, 0.12);
 }
 
 .modelos-page-shell {
@@ -18,17 +18,17 @@
 }
 
 .modelos-filters-card.card {
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow: none;
+  border: 1px solid var(--ms-line-soft);
+  box-shadow: var(--ms-sh-md);
 }
 
 .modelos-table-card.card {
   padding: 0;
   overflow: hidden;
-  border-radius: 0;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow: none;
-  background: #ffffff;
+  border-radius: var(--ms-r-lg);
+  border: 1px solid var(--ms-line-soft);
+  box-shadow: var(--ms-sh-md);
+  background: var(--ms-surface);
 }
 
 .modelos-table-scroll {
@@ -41,7 +41,7 @@
   position: sticky;
   top: 0;
   z-index: 2;
-  background: linear-gradient(180deg, #f7faf9 0%, #f4f8fb 100%);
+  background: var(--ms-surface);
   border-bottom: 1px solid var(--modelos-brand-sage-soft);
   color: var(--modelos-brand-ink);
 }
@@ -66,7 +66,7 @@
 }
 
 .modelos-table-row:hover {
-  background: linear-gradient(90deg, var(--modelos-brand-green-soft), rgba(48, 64, 74, 0.04));
+  background: var(--ms-surface-2);
 }
 
 .modelos-code-badge {
@@ -86,10 +86,10 @@
   flex-wrap: wrap;
   margin-top: 14px;
   padding: 14px 18px;
-  border-radius: 0;
-  background: #ffffff;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow: none;
+  border-radius: var(--ms-r-lg);
+  background: var(--ms-surface);
+  border: 1px solid var(--ms-line-soft);
+  box-shadow: var(--ms-sh-md);
 }
 
 .modelos-pagination-summary {
@@ -119,7 +119,7 @@
 }
 
 .modelos-pagination-panel .page-link:focus {
-  box-shadow: 0 0 0 0.2rem rgba(87, 211, 126, 0.2);
+  box-shadow: 0 0 0 0.2rem rgba(84, 134, 116, 0.2);
 }
 
 .modelos-brand-primary {
@@ -128,14 +128,11 @@
   justify-content: center;
   min-width: 180px;
   padding-inline: 1.35rem;
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid #57d37e;
-  color: var(--modelos-brand-ink);
-  box-shadow:
-    0 0 0 1px rgba(87, 211, 126, 0.4),
-    0 0 14px rgba(87, 211, 126, 0.35),
-    0 10px 18px rgba(48, 64, 74, 0.12);
-  text-shadow: 0 0 1px rgba(87, 211, 126, 0.25);
+  border-radius: var(--ms-r-btn) !important;
+  background: var(--ms-brand-700) !important;
+  border: 1px solid var(--ms-brand-700) !important;
+  color: #ffffff !important;
+  box-shadow: var(--ms-sh-sm);
 }
 
 .modelos-header-actions {
@@ -144,59 +141,46 @@
 
 .modelos-brand-primary:hover,
 .modelos-brand-primary:focus {
-  background: linear-gradient(135deg, rgba(87, 211, 126, 0.18), rgba(87, 211, 126, 0.06));
-  border-color: var(--modelos-brand-green-strong);
-  color: var(--modelos-brand-ink-strong);
-  box-shadow:
-    0 0 0 1px rgba(46, 195, 93, 0.55),
-    0 0 18px rgba(46, 195, 93, 0.45),
-    0 12px 22px rgba(48, 64, 74, 0.16);
+  background: var(--ms-brand-900) !important;
+  border-color: var(--ms-brand-900) !important;
+  color: #ffffff !important;
+  box-shadow: var(--ms-sh-md);
   transform: translateY(-1px);
 }
 
 .modelos-brand-outline {
-  color: #1f6a55 !important;
-  border-color: rgba(67, 192, 128, 0.95) !important;
-  background: #ffffff !important;
-  box-shadow:
-    0 0 0 1px rgba(67, 192, 128, 0.18),
-    0 0 12px rgba(67, 192, 128, 0.12);
+  border-radius: var(--ms-r-btn) !important;
+  color: var(--ms-brand-700) !important;
+  border-color: var(--ms-brand-300) !important;
+  background: var(--ms-surface) !important;
 }
 
 .modelos-brand-outline:hover,
 .modelos-brand-outline:focus {
-  color: #165c49 !important;
-  background: rgba(67, 192, 128, 0.12) !important;
-  border-color: #2fc46f !important;
-  box-shadow:
-    0 0 0 1px rgba(47, 79, 79, 0.18),
-    0 0 14px rgba(67, 192, 128, 0.24);
+  color: #ffffff !important;
+  background: var(--ms-brand-500) !important;
+  border-color: var(--ms-brand-500) !important;
 }
 
 .modelos-brand-danger {
-  color: var(--modelos-brand-danger) !important;
-  border-color: rgba(215, 123, 49, 0.75) !important;
-  background: #ffffff !important;
-  box-shadow:
-    0 0 0 1px rgba(215, 123, 49, 0.18),
-    0 0 12px rgba(215, 123, 49, 0.1);
+  border-radius: var(--ms-r-btn) !important;
+  color: var(--ms-terracota) !important;
+  border-color: rgba(217, 91, 63, 0.55) !important;
+  background: var(--ms-surface) !important;
 }
 
 .modelos-brand-danger:hover,
 .modelos-brand-danger:focus {
-  color: var(--modelos-brand-danger) !important;
-  background: rgba(215, 123, 49, 0.08) !important;
-  border-color: var(--modelos-brand-danger) !important;
-  box-shadow:
-    0 0 0 1px rgba(215, 123, 49, 0.42),
-    0 0 14px rgba(215, 123, 49, 0.24);
+  color: #ffffff !important;
+  background: var(--ms-terracota) !important;
+  border-color: var(--ms-terracota) !important;
 }
 
 .modelos-empty-card.card {
   padding: 0;
-  border-radius: 0;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow: none;
+  border-radius: var(--ms-r-lg);
+  border: 1px solid var(--ms-line-soft);
+  box-shadow: var(--ms-sh-md);
 }
 
 @media (max-width: 576px) {

@@ -1,0 +1,416 @@
+/* ============================================================
+   Mobilesco ERP — Design Tokens (look & feel "Wellina/Pebble")
+   Wellness/organico: fondo crema, muy redondeado, sombras suaves,
+   botones pildora. Tipografia: Aeonik (Regular 400 + Bold 700),
+   escala y uso segun el design system de Behance/Adobe.
+   Fuente de verdad de color/tipografia/radios/sombras.
+   ============================================================ */
+
+/* ---------- Aeonik (fuentes locales en /public/fonts) ---------- */
+@font-face { font-family: 'Aeonik'; src: url('/fonts/Aeonik-Regular.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Aeonik'; src: url('/fonts/Aeonik-Bold.ttf') format('truetype'); font-weight: 700; font-style: normal; font-display: swap; }
+
+:root {
+  /* ---------- Marca (esmeralda / salvia) ---------- */
+  --ms-brand-900: #1C3D35;
+  --ms-brand-700: #285349; /* PRIMARIO */
+  --ms-brand-500: #548674; /* salvia, secundario / exito */
+  --ms-brand-300: #8FB3A4;
+  --ms-brand-100: #DDE8E3;
+
+  /* ---------- Superficies / fondos ---------- */
+  --ms-bg: #F8F6F2;        /* casi blanco, calido muy sutil (FONDO app) */
+  --ms-surface: #FFFFFF;   /* tarjetas blancas */
+  --ms-surface-2: #F2F3F1; /* panel anidado / tile: gris claro neutro */
+  --ms-sidebar: #285349;
+  --ms-sidebar-deep: #21443B;
+
+  /* ---------- Tinta / texto / lineas ---------- */
+  --ms-ink-900: #161817;   /* titulos */
+  --ms-ink-700: #3A413E;   /* cuerpo */
+  --ms-ink-500: #6B716E;
+  --ms-ink-300: #9AA09D;
+  --ms-line: #E7E3DC;
+  --ms-line-soft: #EFEDE8;
+
+  /* ---------- Semantica ---------- */
+  --ms-terracota: #D95B3F; /* peligro */
+  --ms-naranja: #E98E3D;   /* advertencia */
+  --ms-amarillo: #E0D886;
+  --ms-durazno: #E1AD7D;
+  --ms-azul: #BCD7EA;      /* info */
+  --ms-salvia: #548674;    /* exito */
+
+  /* ---------- Tints para badges de estado ---------- */
+  --ms-ok-bg: #E3EFEA;  --ms-ok-tx: #2E5E4D;
+  --ms-dng-bg: #FBE6E0; --ms-dng-tx: #B23D26;
+  --ms-wrn-bg: #FBEBD8; --ms-wrn-tx: #A65E16;
+  --ms-inf-bg: #EAF3FA; --ms-inf-tx: #2F5F7A;
+  --ms-neu-bg: #EFEAE0; --ms-neu-tx: #6B716E;
+
+  /* ---------- Tipografia: Aeonik (escala/uso segun Behance) ---------- */
+  --ms-font: 'Aeonik', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --ms-font-sans: var(--ms-font);   /* cuerpo / UI / botones */
+  --ms-font-serif: var(--ms-font);  /* alias: misma familia */
+  --ms-font-mono: var(--ms-font);
+
+  /* Escala de tipos (design system Behance/Adobe) */
+  --ms-fs-hero: 4rem;           /* 64 - hero */
+  --ms-fs-headline: 2.75rem;    /* 44 - headline / display login */
+  --ms-fs-title: 1.5rem;        /* 24 - titulo de pagina (H1) */
+  --ms-fs-subhead: 1.25rem;     /* 20 - subhead (H2) */
+  --ms-fs-subhead-sm: 1.125rem; /* 18 - subhead small / CTA (H3) */
+  --ms-fs-label: 1rem;          /* 16 - label / nav / boton grande (H4) */
+  --ms-fs-paragraph: 0.9375rem; /* 15 - parrafo (cuerpo) */
+  --ms-fs-secondary: 0.875rem;  /* 14 - secundario / input / boton normal */
+  --ms-fs-small: 0.75rem;       /* 12 - small / caption */
+  --ms-fs-section-header: 0.6875rem; /* 11 - eyebrow bold MAYUS */
+  --ms-fs-caption: 0.625rem;    /* 10 - legal / minimo */
+
+  /* Aliases hacia la nomenclatura previa (no romper CSS existente) */
+  --ms-fs-display: var(--ms-fs-headline);
+  --ms-fs-h1: var(--ms-fs-title);
+  --ms-fs-h2: var(--ms-fs-subhead);
+  --ms-fs-h3: var(--ms-fs-subhead-sm);
+  --ms-fs-h4: var(--ms-fs-label);
+  --ms-fs-h5: var(--ms-fs-paragraph);
+  --ms-fs-h6: var(--ms-fs-secondary);
+  --ms-fs-body-lg: var(--ms-fs-label);
+  --ms-fs-body: var(--ms-fs-paragraph);
+  --ms-fs-body-sm: var(--ms-fs-secondary);
+  --ms-fs-eyebrow: var(--ms-fs-section-header);
+
+  --ms-lh-tight: 1.1; --ms-lh-snug: 1.25; --ms-lh-normal: 1.45;
+  --ms-tracking-tight: -0.01em; --ms-tracking-wide: 0.04em;
+
+  /* ---------- Radios (estilo referencia: rect. redondeado, no pildora) ---------- */
+  --ms-r-sm: 8px;     /* iconos / chips */
+  --ms-r-btn: 10px;   /* botones (rect. redondeado) */
+  --ms-r-md: 14px;    /* inputs / paneles anidados / tiles */
+  --ms-r-lg: 20px;    /* tarjetas */
+  --ms-r-pill: 999px; /* badges de estado */
+
+  /* ---------- Sombras ---------- */
+  --ms-sh-sm: 0 1px 2px rgba(40, 83, 73, 0.06);
+  --ms-sh-md: 0 8px 24px rgba(40, 83, 73, 0.09);
+  --ms-sh-lg: 0 18px 44px rgba(40, 83, 73, 0.13);
+
+  /* ============================================================
+     Re-tematizado de Bootstrap 5.3 — los componentes existentes
+     (btn-success, btn-primary, card, form-control, badge, etc.)
+     adoptan la paleta automaticamente.
+     ============================================================ */
+  --bs-primary: #285349;
+  --bs-primary-rgb: 40, 83, 73;
+  --bs-success: #548674;
+  --bs-success-rgb: 84, 134, 116;
+  --bs-danger: #D95B3F;
+  --bs-danger-rgb: 217, 91, 63;
+  --bs-warning: #E98E3D;
+  --bs-warning-rgb: 233, 142, 61;
+  --bs-info: #BCD7EA;
+  --bs-info-rgb: 188, 215, 234;
+  --bs-secondary: #6B716E;
+  --bs-secondary-rgb: 107, 113, 110;
+
+  --bs-body-bg: #F8F6F2;
+  --bs-body-bg-rgb: 248, 246, 242;
+  --bs-body-color: #3A413E;
+  --bs-body-color-rgb: 58, 65, 62;
+  --bs-emphasis-color: #161817;
+
+  --bs-border-color: #E7E0D4;
+  --bs-border-color-rgb: 231, 224, 212;
+
+  --bs-border-radius: 14px;
+  --bs-border-radius-sm: 8px;
+  --bs-border-radius-lg: 20px;
+  --bs-border-radius-xl: 20px;
+  --bs-border-radius-pill: 999px;
+
+  --bs-font-sans-serif: 'Aeonik', system-ui, sans-serif;
+
+  --bs-link-color: #285349;
+  --bs-link-color-rgb: 40, 83, 73;
+  --bs-link-hover-color: #1C3D35;
+  --bs-link-hover-color-rgb: 28, 61, 53;
+
+  /* Tints semanticos de Bootstrap (badge subtle, alert, etc.) */
+  --bs-success-bg-subtle: #E3EFEA;
+  --bs-success-border-subtle: #C6DDD4;
+  --bs-success-text-emphasis: #2E5E4D;
+  --bs-danger-bg-subtle: #FBE6E0;
+  --bs-danger-border-subtle: #F3C9BE;
+  --bs-danger-text-emphasis: #B23D26;
+  --bs-warning-bg-subtle: #FBEBD8;
+  --bs-warning-border-subtle: #F3D8B4;
+  --bs-warning-text-emphasis: #A65E16;
+  --bs-info-bg-subtle: #EAF3FA;
+  --bs-info-border-subtle: #CFE4F1;
+  --bs-info-text-emphasis: #2F5F7A;
+  --bs-secondary-bg-subtle: #EFEAE0;
+  --bs-secondary-border-subtle: #E0D8C8;
+  --bs-secondary-text-emphasis: #6B716E;
+
+  /* ============================================================
+     Remapeo de los tokens legacy de catalog.css / paginas de
+     modulo para que adopten la nueva paleta sin tocar cada hex.
+     ============================================================ */
+  --catalog-brand-ink: var(--ms-brand-700);
+  --catalog-brand-ink-strong: var(--ms-brand-900);
+  --catalog-brand-green: var(--ms-brand-500);
+  --catalog-brand-green-strong: var(--ms-brand-700);
+  --catalog-brand-green-soft: rgba(84, 134, 116, 0.12);
+  --catalog-brand-orange: var(--ms-terracota);
+  --catalog-brand-orange-soft: rgba(217, 91, 63, 0.10);
+  --catalog-brand-sage-soft: rgba(40, 83, 73, 0.08);
+}
+
+/* ============================================================
+   Reglas globales base
+   ============================================================ */
+body {
+  background: var(--ms-bg);
+  font-family: var(--ms-font);
+  font-size: var(--ms-fs-body);
+  line-height: var(--ms-lh-normal);
+  color: var(--ms-ink-700);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--ms-font);
+  color: var(--ms-ink-900);
+  line-height: var(--ms-lh-tight);
+  letter-spacing: var(--ms-tracking-tight);
+  margin-top: 0;
+}
+h1 { font-size: var(--ms-fs-title); font-weight: 700; }
+h2 { font-size: var(--ms-fs-subhead); font-weight: 700; }
+h3 { font-size: var(--ms-fs-subhead-sm); font-weight: 700; }
+h4 { font-size: var(--ms-fs-label); font-weight: 700; }
+h5 { font-size: var(--ms-fs-paragraph); font-weight: 700; line-height: var(--ms-lh-snug); }
+h6 { font-size: var(--ms-fs-secondary); font-weight: 700; line-height: var(--ms-lh-snug); }
+
+/* ---------- Roles de la escala de tipos (design system Behance) ---------- */
+.ms-hero {
+  font-family: var(--ms-font);
+  font-size: var(--ms-fs-hero);
+  font-weight: 700;
+  line-height: var(--ms-lh-tight);
+  letter-spacing: var(--ms-tracking-tight);
+  color: var(--ms-ink-900);
+}
+.ms-display {
+  font-family: var(--ms-font);
+  font-size: var(--ms-fs-headline);
+  font-weight: 700;
+  line-height: var(--ms-lh-tight);
+  letter-spacing: var(--ms-tracking-tight);
+  color: var(--ms-ink-900);
+}
+.ms-eyebrow, .page-eyebrow, .ms-section-header {
+  font-size: var(--ms-fs-section-header);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--ms-tracking-wide);
+  line-height: 1;
+  color: var(--ms-brand-500);
+}
+.ms-body-lg { font-size: var(--ms-fs-label); line-height: var(--ms-lh-normal); color: var(--ms-ink-700); }
+.ms-body, .ms-paragraph { font-size: var(--ms-fs-paragraph); line-height: var(--ms-lh-normal); color: var(--ms-ink-700); }
+.ms-body-sm, .ms-secondary { font-size: var(--ms-fs-secondary); line-height: var(--ms-lh-normal); color: var(--ms-ink-500); }
+.ms-caption { font-size: var(--ms-fs-small); line-height: var(--ms-lh-normal); color: var(--ms-ink-500); }
+
+/* ---------- Botones pildora ---------- */
+.btn {
+  border-radius: var(--ms-r-btn);
+  font-family: var(--ms-font-sans);
+  font-weight: 700;
+}
+
+.btn-success,
+.btn-primary {
+  color: #ffffff;
+}
+
+.btn-primary {
+  --bs-btn-color: #ffffff;
+  --bs-btn-bg: var(--ms-brand-700);
+  --bs-btn-border-color: var(--ms-brand-700);
+  --bs-btn-hover-color: #ffffff;
+  --bs-btn-hover-bg: var(--ms-brand-900);
+  --bs-btn-hover-border-color: var(--ms-brand-900);
+  --bs-btn-active-color: #ffffff;
+  --bs-btn-active-bg: var(--ms-brand-900);
+  --bs-btn-active-border-color: var(--ms-brand-900);
+  --bs-btn-disabled-color: #ffffff;
+  --bs-btn-disabled-bg: var(--ms-brand-700);
+  --bs-btn-disabled-border-color: var(--ms-brand-700);
+}
+
+.btn-success {
+  --bs-btn-color: #ffffff;
+  --bs-btn-bg: var(--ms-brand-500);
+  --bs-btn-border-color: var(--ms-brand-500);
+  --bs-btn-hover-color: #ffffff;
+  --bs-btn-hover-bg: var(--ms-brand-700);
+  --bs-btn-hover-border-color: var(--ms-brand-700);
+  --bs-btn-active-color: #ffffff;
+  --bs-btn-active-bg: var(--ms-brand-700);
+  --bs-btn-active-border-color: var(--ms-brand-700);
+  --bs-btn-disabled-color: #ffffff;
+  --bs-btn-disabled-bg: var(--ms-brand-500);
+  --bs-btn-disabled-border-color: var(--ms-brand-500);
+}
+
+.btn-danger {
+  --bs-btn-color: #ffffff;
+  --bs-btn-bg: var(--ms-terracota);
+  --bs-btn-border-color: var(--ms-terracota);
+  --bs-btn-hover-color: #ffffff;
+  --bs-btn-hover-bg: #B23D26;
+  --bs-btn-hover-border-color: #B23D26;
+  --bs-btn-active-bg: #B23D26;
+  --bs-btn-active-border-color: #B23D26;
+}
+
+.btn-outline-primary {
+  --bs-btn-color: var(--ms-brand-700);
+  --bs-btn-border-color: var(--ms-brand-700);
+  --bs-btn-hover-color: #ffffff;
+  --bs-btn-hover-bg: var(--ms-brand-700);
+  --bs-btn-hover-border-color: var(--ms-brand-700);
+  --bs-btn-active-bg: var(--ms-brand-700);
+  --bs-btn-active-border-color: var(--ms-brand-700);
+}
+
+/* ---------- Superficies redondeadas y suaves ---------- */
+.card {
+  border-radius: var(--ms-r-lg);
+  border: 1px solid var(--ms-line-soft);
+  box-shadow: var(--ms-sh-md);
+  background: var(--ms-surface);
+}
+
+.form-control,
+.form-select {
+  border-radius: var(--ms-r-md);
+  border-color: var(--ms-line);
+  background: var(--ms-surface);
+  color: var(--ms-ink-700);
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--ms-brand-500);
+  box-shadow: 0 0 0 0.2rem rgba(84, 134, 116, 0.18);
+}
+
+.modal-content,
+.dropdown-menu {
+  border-radius: var(--ms-r-lg);
+  border: 1px solid var(--ms-line-soft);
+  box-shadow: var(--ms-sh-lg);
+}
+
+.badge {
+  border-radius: var(--ms-r-pill);
+  font-weight: 700;
+}
+
+/* ============================================================
+   Componentes estilo referencia (Inspiracion Mobilesco)
+   tarjetas blancas + paneles anidados claros + acento verde
+   ============================================================ */
+
+/* Badge de estado con punto (verde=ok/activo, gris=pendiente) */
+.ms-badge-dot::before {
+  content: "";
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+/* Punto de estado solido (indicador de tono en cards de KPIs/stats) */
+.ms-status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ms-ink-300);
+  vertical-align: middle;
+}
+.ms-status-dot--primary { background: var(--ms-brand-500); }
+.ms-status-dot--success { background: var(--ms-salvia); }
+.ms-status-dot--warning { background: var(--ms-naranja); }
+.ms-status-dot--danger  { background: var(--ms-terracota); }
+.ms-status-dot--secondary { background: var(--ms-ink-300); }
+
+/* Panel anidado claro (resumen, sub-bloques dentro de una card) */
+.ms-panel {
+  background: var(--ms-surface-2);
+  border: 1px solid var(--ms-line-soft);
+  border-radius: var(--ms-r-md);
+  padding: 16px;
+}
+/* Filas etiqueta/valor del panel de resumen (segun maqueta look-and-feel) */
+.ms-panel .ms-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 7px 0;
+  font-size: var(--ms-fs-secondary);
+}
+.ms-panel .ms-row strong { color: var(--ms-ink-900); }
+.ms-panel .ms-row.total {
+  border-top: 1px solid var(--ms-line);
+  margin-top: 6px;
+  padding-top: 12px;
+  font-size: var(--ms-fs-label);
+}
+
+/* Tile / KPI con fondo tintado */
+.ms-tile {
+  border-radius: var(--ms-r-md);
+  padding: 16px;
+  background: var(--ms-surface-2);
+  border: 1px solid var(--ms-line-soft);
+}
+.ms-tile--ok      { background: var(--ms-ok-bg);  border-color: transparent; color: var(--ms-ok-tx); }
+.ms-tile--info    { background: var(--ms-inf-bg); border-color: transparent; color: var(--ms-inf-tx); }
+.ms-tile--neutral { background: var(--ms-neu-bg); border-color: transparent; color: var(--ms-neu-tx); }
+
+/* Icono en contenedor redondeado */
+.ms-icon-tile {
+  width: 40px; height: 40px;
+  border-radius: var(--ms-r-sm);
+  background: var(--ms-surface-2);
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--ms-brand-700);
+}
+
+/* Circulos de stepper / timeline */
+.ms-step-done {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--ms-brand-500); color: #fff;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.ms-step-pending {
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 1.5px solid var(--ms-line); color: var(--ms-ink-300);
+  display: inline-flex; align-items: center; justify-content: center;
+}
+
+/* Barra de progreso redondeada */
+.ms-progress {
+  height: 8px; border-radius: var(--ms-r-pill);
+  background: var(--ms-line-soft); overflow: hidden;
+}
+.ms-progress > span {
+  display: block; height: 100%;
+  background: var(--ms-brand-500); border-radius: var(--ms-r-pill);
+}

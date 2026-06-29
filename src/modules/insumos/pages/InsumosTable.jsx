@@ -1,3 +1,5 @@
+import { useCallback, useRef, useState } from "react";
+
 import CatalogRowActions from "../../../components/ui/CatalogRowActions.jsx";
 
 const COLUMNAS_ORDENABLES = {
@@ -7,9 +9,51 @@ const COLUMNAS_ORDENABLES = {
   stockActual: "Stock actual",
   stockMinimo: "Stock minimo",
   costoCotizacion: "Costo cotizacion",
-  activo: "Estado",
   fechaRegistro: "Creado"
 };
+
+// Columnas (id estable) + ancho por defecto en px. El orden debe coincidir
+// con el de las celdas del <tbody>.
+const COLUMNAS = [
+  { id: "estado", label: "Estado", defaultWidth: 52 },
+  { id: "id", label: "ID", sortField: "id", defaultWidth: 60 },
+  { id: "codigo", label: "Codigo", defaultWidth: 130 },
+  { id: "nombre", label: "Nombre", sortField: "nombre", defaultWidth: 150 },
+  { id: "descripcion", label: "Descripcion", defaultWidth: 130 },
+  { id: "tipo", label: "Tipo", defaultWidth: 110 },
+  { id: "ubicacion", label: "Ubicacion", sortField: "ubicacion", defaultWidth: 110 },
+  { id: "unidad", label: "Unidad", defaultWidth: 80 },
+  { id: "stockActual", label: "Stock actual", sortField: "stockActual", defaultWidth: 90 },
+  { id: "stockMinimo", label: "Stock minimo", sortField: "stockMinimo", defaultWidth: 90 },
+  { id: "ultimoCosto", label: "Ultimo costo", defaultWidth: 100 },
+  { id: "costoPromedio", label: "Costo promedio", defaultWidth: 100 },
+  { id: "costoCotizacion", label: "Costo cotizacion", sortField: "costoCotizacion", defaultWidth: 100 },
+  { id: "acciones", label: "Acciones", defaultWidth: 180 }
+];
+
+const STORAGE_KEY = "insumos-columnas-ancho-v2";
+const ANCHO_MINIMO = 60;
+
+function anchosPorDefecto() {
+  return COLUMNAS.reduce((acc, col) => {
+    acc[col.id] = col.defaultWidth;
+    return acc;
+  }, {});
+}
+
+function cargarAnchos() {
+  if (typeof window === "undefined") return anchosPorDefecto();
+
+  try {
+    const guardado = window.localStorage.getItem(STORAGE_KEY);
+    if (!guardado) return anchosPorDefecto();
+
+    const parseado = JSON.parse(guardado);
+    return { ...anchosPorDefecto(), ...parseado };
+  } catch {
+    return anchosPorDefecto();
+  }
+}
 
 function obtenerIconoOrden(sortField, sortDirection, field) {
   if (sortField !== field) {
@@ -43,32 +87,58 @@ export default function InsumosTable({
   sortDirection = "asc",
   onSort
 }) {
-  const renderHeader = (field, label) => {
-    const esOrdenable = Boolean(onSort) && Object.prototype.hasOwnProperty.call(COLUMNAS_ORDENABLES, field);
-    const ariaSort =
-      sortField === field
-        ? sortDirection === "asc"
-          ? "ascending"
-          : "descending"
-        : "none";
+  const [anchos, setAnchos] = useState(cargarAnchos);
+  const dragRef = useRef(null);
 
-    return (
-      <th aria-sort={ariaSort}>
-        {esOrdenable ? (
-          <button
-            type="button"
-            className="btn btn-link p-0 text-decoration-none insumos-sort-button"
-            onClick={() => onSort(field)}
-          >
-            {renderHeaderLabel(label)}
-            <i className={`${obtenerIconoOrden(sortField, sortDirection, field)} ms-2`}></i>
-          </button>
-        ) : (
-          renderHeaderLabel(label)
-        )}
-      </th>
-    );
-  };
+  const persistir = useCallback((valores) => {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(valores));
+    } catch {
+      // localStorage no disponible: ignorar
+    }
+  }, []);
+
+  const restablecerColumnas = useCallback(() => {
+    try {
+      window.localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // ignorar
+    }
+    setAnchos(anchosPorDefecto());
+  }, []);
+
+  const iniciarResize = useCallback(
+    (e, columnaId) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const xInicial = e.clientX;
+      const anchoInicial = anchos[columnaId] ?? ANCHO_MINIMO;
+
+      const onMouseMove = (moveEvent) => {
+        const delta = moveEvent.clientX - xInicial;
+        const nuevoAncho = Math.max(ANCHO_MINIMO, anchoInicial + delta);
+        setAnchos((prev) => {
+          const siguiente = { ...prev, [columnaId]: nuevoAncho };
+          dragRef.current = siguiente;
+          return siguiente;
+        });
+      };
+
+      const onMouseUp = () => {
+        window.removeEventListener("mousemove", onMouseMove);
+        window.removeEventListener("mouseup", onMouseUp);
+        if (dragRef.current) {
+          persistir(dragRef.current);
+          dragRef.current = null;
+        }
+      };
+
+      window.addEventListener("mousemove", onMouseMove);
+      window.addEventListener("mouseup", onMouseUp);
+    },
+    [anchos, persistir]
+  );
 
   const getStockStatus = (insumo) => {
     if (insumo.stockActual <= 0) return "agotado";
@@ -89,33 +159,88 @@ export default function InsumosTable({
     return String(value).replace(/_/g, " ");
   };
 
+  const getEstadoDot = (insumo, stockStatus) => {
+    if (!insumo.activo) {
+      return { modificador: "inactivo", etiqueta: "Inactivo" };
+    }
+    if (stockStatus === "agotado") {
+      return { modificador: "agotado", etiqueta: "Agotado" };
+    }
+    if (stockStatus === "bajo") {
+      return { modificador: "bajo", etiqueta: "Stock bajo" };
+    }
+    return { modificador: "activo", etiqueta: "Activo" };
+  };
+
+  const renderHeaderColumna = (columna) => {
+    const { id, label, sortField: field } = columna;
+    const esOrdenable =
+      Boolean(onSort) &&
+      Boolean(field) &&
+      Object.prototype.hasOwnProperty.call(COLUMNAS_ORDENABLES, field);
+    const ariaSort =
+      field && sortField === field
+        ? sortDirection === "asc"
+          ? "ascending"
+          : "descending"
+        : "none";
+
+    return (
+      <th key={id} aria-sort={ariaSort}>
+        {esOrdenable ? (
+          <button
+            type="button"
+            className="btn btn-link p-0 text-decoration-none insumos-sort-button"
+            onClick={() => onSort(field)}
+          >
+            {renderHeaderLabel(label)}
+            <i className={`${obtenerIconoOrden(sortField, sortDirection, field)} ms-2`}></i>
+          </button>
+        ) : (
+          renderHeaderLabel(label)
+        )}
+        <span
+          className="insumos-col-resizer"
+          role="separator"
+          aria-orientation="vertical"
+          onMouseDown={(e) => iniciarResize(e, id)}
+          onClick={(e) => e.stopPropagation()}
+        />
+      </th>
+    );
+  };
+
   return (
     <>
       <div className="card shadow-sm border-0 insumos-table-card">
+        <div className="insumos-table-toolbar">
+          <button
+            type="button"
+            className="btn btn-sm btn-link text-decoration-none insumos-reset-columnas"
+            onClick={restablecerColumnas}
+          >
+            <i className="bi bi-arrow-counterclockwise me-1"></i>
+            Restablecer columnas
+          </button>
+        </div>
         <div className="table-responsive insumos-table-scroll">
           <table className="table table-hover align-middle mb-0 insumos-main-table">
+            <colgroup>
+              {COLUMNAS.map((columna) => (
+                <col
+                  key={columna.id}
+                  style={{ width: `${anchos[columna.id] ?? columna.defaultWidth}px` }}
+                />
+              ))}
+            </colgroup>
             <thead className="table-light insumos-table-head">
-              <tr>
-                {renderHeader("id", "ID")}
-                <th>{renderHeaderLabel("Codigo")}</th>
-                {renderHeader("nombre", "Nombre")}
-                <th>{renderHeaderLabel("Descripcion")}</th>
-                <th>{renderHeaderLabel("Tipo")}</th>
-                {renderHeader("ubicacion", "Ubicacion")}
-                <th>{renderHeaderLabel("Unidad")}</th>
-                {renderHeader("stockActual", "Stock actual")}
-                {renderHeader("stockMinimo", "Stock minimo")}
-                <th className="text-end">{renderHeaderLabel("Ultimo costo")}</th>
-                <th>{renderHeaderLabel("Costo promedio")}</th>
-                {renderHeader("costoCotizacion", "Costo cotizacion")}
-                {renderHeader("activo", "Estado")}
-                <th>{renderHeaderLabel("Acciones")}</th>
-              </tr>
+              <tr>{COLUMNAS.map((columna) => renderHeaderColumna(columna))}</tr>
             </thead>
             <tbody>
               {data && data.length > 0 ? (
                 data.map((insumo) => {
                   const stockStatus = getStockStatus(insumo);
+                  const estadoDot = getEstadoDot(insumo, stockStatus);
                   return (
                     <tr
                       key={insumo.id}
@@ -123,14 +248,23 @@ export default function InsumosTable({
                       className={`insumos-table-row insumos-row-${stockStatus}`}
                       role="button"
                     >
+                      <td className="insumos-estado-cell">
+                        <span
+                          className={`insumos-estado-dot insumos-estado-dot--${estadoDot.modificador}`}
+                          title={estadoDot.etiqueta}
+                          aria-label={estadoDot.etiqueta}
+                          role="img"
+                        />
+                      </td>
                       <td className="text-muted">#{insumo.id}</td>
                       <td>
-                        <span className="badge text-bg-light border insumos-code-badge">
+                        <span className="insumos-code-badge">
+                          <i className="bi bi-upc-scan me-1"></i>
                           {insumo.codigoBarras || "-"}
                         </span>
                       </td>
                       <td>
-                        <span className="fw-semibold">{insumo.nombre}</span>
+                        <span>{insumo.nombre}</span>
                       </td>
                       <td className="insumos-description">
                         {insumo.descripcion || "-"}
@@ -149,7 +283,7 @@ export default function InsumosTable({
                           {insumo.unidadMedida?.simbolo || insumo.unidadMedida?.nombre || "-"}
                         </span>
                       </td>
-                      <td className="text-end fw-bold">
+                      <td className={`text-end insumos-stock-${stockStatus}`}>
                         {Number(insumo.stockActual || 0).toFixed(2)}
                       </td>
                       <td className="text-end">
@@ -158,42 +292,19 @@ export default function InsumosTable({
                           : "-"}
                       </td>
                       <td className="text-end">
-                        <span className="fw-bold text-secondary">
+                        <span className="text-secondary">
                           {formatCurrency(insumo.ultimoCostoCompra)}
                         </span>
                       </td>
                       <td className="text-end">
-                        <span className="fw-bold text-primary">
+                        <span className="text-primary">
                           {formatCurrency(insumo.costoPromedio)}
                         </span>
                       </td>
                       <td className="text-end">
-                        <span className={Number(insumo.costoCotizacion || 0) > 0 ? "fw-bold text-success" : "fw-bold text-danger"}>
+                        <span className={Number(insumo.costoCotizacion || 0) > 0 ? "text-success" : "text-danger"}>
                           {formatCurrency(insumo.costoCotizacion)}
                         </span>
-                      </td>
-                      <td>
-                        <div className="d-flex flex-column gap-1">
-                          <span
-                            className={
-                              insumo.activo
-                                ? "badge bg-success-subtle text-success border border-success-subtle"
-                                : "badge bg-secondary-subtle text-secondary border border-secondary-subtle"
-                            }
-                          >
-                            {insumo.activo ? "Activo" : "Inactivo"}
-                          </span>
-                          {stockStatus === "agotado" && (
-                            <span className="badge bg-danger-subtle text-danger border border-danger-subtle">
-                              Agotado
-                            </span>
-                          )}
-                          {stockStatus === "bajo" && (
-                            <span className="badge bg-warning-subtle text-warning border border-warning-subtle">
-                              Stock bajo
-                            </span>
-                          )}
-                        </div>
                       </td>
                       <td className="insumos-actions">
                         <div className="d-flex flex-wrap gap-2 justify-content-end">

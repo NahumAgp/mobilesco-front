@@ -1,10 +1,10 @@
 .producto-bom-page {
-  --bom-ink: #30404a;
-  --bom-ink-strong: #22303a;
-  --bom-green: #57d37e;
-  --bom-green-soft: rgba(87, 211, 126, 0.14);
-  --bom-orange: #d77b31;
-  --bom-sage: rgba(48, 64, 74, 0.1);
+  --bom-ink: #21443B;
+  --bom-ink-strong: #1C3D35;
+  --bom-green: #548674;
+  --bom-green-soft: rgba(84, 134, 116, 0.14);
+  --bom-orange: #D95B3F;
+  --bom-sage: rgba(40, 83, 73, 0.1);
 }
 
 .producto-bom-header {
@@ -30,13 +30,13 @@
 
 .producto-bom-header p {
   margin: 0;
-  color: #6b7280;
+  color: #6B716E;
 }
 
 .producto-bom-card.card {
   border: 1px solid var(--bom-sage) !important;
   border-radius: 0;
-  box-shadow: 0 10px 24px rgba(48, 64, 74, 0.06) !important;
+  box-shadow: 0 10px 24px rgba(40, 83, 73, 0.06) !important;
 }
 
 .producto-bom-card .card-header {
@@ -58,7 +58,7 @@
   margin-bottom: 14px;
   padding: 12px 14px;
   border: 1px solid var(--bom-sage);
-  background: linear-gradient(90deg, rgba(87, 211, 126, 0.1), rgba(215, 123, 49, 0.05));
+  background: linear-gradient(90deg, rgba(84, 134, 116, 0.1), rgba(217, 91, 63, 0.05));
   color: var(--bom-ink);
 }
 
@@ -86,7 +86,7 @@
 .producto-bom-empty-action p {
   max-width: 320px;
   margin: 0;
-  color: #6b7280;
+  color: #6B716E;
 }
 
 .producto-bom-primary {
@@ -97,25 +97,25 @@
   background: #ffffff !important;
   border: 1px solid var(--bom-green) !important;
   box-shadow:
-    0 0 0 1px rgba(87, 211, 126, 0.22),
-    0 0 12px rgba(87, 211, 126, 0.16);
+    0 0 0 1px rgba(84, 134, 116, 0.22),
+    0 0 12px rgba(84, 134, 116, 0.16);
 }
 
 .producto-bom-primary:hover,
 .producto-bom-primary:focus {
   background: var(--bom-green-soft) !important;
-  border-color: #2ec35d !important;
+  border-color: #285349 !important;
 }
 
 .producto-bom-outline {
   color: var(--bom-ink) !important;
   background: #ffffff !important;
-  border: 1px solid rgba(48, 64, 74, 0.24) !important;
+  border: 1px solid rgba(40, 83, 73, 0.24) !important;
 }
 
 .producto-bom-outline:hover,
 .producto-bom-outline:focus {
-  background: rgba(48, 64, 74, 0.06) !important;
+  background: rgba(40, 83, 73, 0.06) !important;
   border-color: var(--bom-orange) !important;
 }
 
@@ -154,7 +154,7 @@
   max-height: calc(100vh - 48px);
   overflow: auto;
   padding: 18px;
-  border: 1px solid rgba(48, 64, 74, 0.14);
+  border: 1px solid rgba(40, 83, 73, 0.14);
   background: #ffffff;
   box-shadow: 0 24px 60px rgba(34, 48, 58, 0.24);
 }
@@ -184,8 +184,8 @@
 
 .producto-bom-nested-create {
   padding: 14px;
-  border: 1px solid rgba(87, 211, 126, 0.28);
-  background: linear-gradient(90deg, rgba(87, 211, 126, 0.12), rgba(255, 255, 255, 0.92));
+  border: 1px solid rgba(84, 134, 116, 0.28);
+  background: linear-gradient(90deg, rgba(84, 134, 116, 0.12), rgba(255, 255, 255, 0.92));
 }
 
 .producto-bom-nested-title {

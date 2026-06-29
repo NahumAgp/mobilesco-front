@@ -8,11 +8,11 @@
 .empleados-brand-danger,
 .empleado-photo-panel,
 .empleados-delete-button {
-  --empleados-brand-ink: #2f4f4f;
-  --empleados-brand-ink-strong: #274241;
-  --empleados-brand-orange: #d77b31;
-  --empleados-brand-orange-soft: rgba(215, 123, 49, 0.12);
-  --empleados-brand-sage-soft: rgba(47, 79, 79, 0.08);
+  --empleados-brand-ink: #285349;
+  --empleados-brand-ink-strong: #21443B;
+  --empleados-brand-orange: #D95B3F;
+  --empleados-brand-orange-soft: rgba(217, 91, 63, 0.12);
+  --empleados-brand-sage-soft: rgba(40, 83, 73, 0.08);
 }
 
 .empleados-page-shell {
@@ -22,17 +22,17 @@
 }
 
 .empleados-filters-card.card {
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow: none;
+  border: 1px solid var(--ms-line-soft);
+  box-shadow: var(--ms-sh-md);
 }
 
 .empleados-table-card.card {
   padding: 0;
   overflow: hidden;
-  border-radius: 0;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow: none;
-  background: #ffffff;
+  border-radius: var(--ms-r-lg);
+  border: 1px solid var(--ms-line-soft);
+  box-shadow: var(--ms-sh-md);
+  background: var(--ms-surface);
 }
 
 .empleados-table-card .table-responsive {
@@ -45,7 +45,7 @@
   position: sticky;
   top: 0;
   z-index: 2;
-  background: linear-gradient(180deg, #fbf7f2 0%, #f7fbfa 100%);
+  background: var(--ms-surface);
   border-bottom: 1px solid var(--empleados-brand-sage-soft);
   color: var(--empleados-brand-ink);
 }
@@ -55,7 +55,7 @@
 }
 
 .empleados-table-row:hover {
-  background: linear-gradient(90deg, var(--empleados-brand-orange-soft), rgba(47, 79, 79, 0.04));
+  background: var(--ms-surface-2);
 }
 
 .empleados-actions {
@@ -70,10 +70,10 @@
   flex-wrap: wrap;
   margin-top: 14px;
   padding: 14px 18px;
-  border-radius: 0;
-  background: #ffffff;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow: none;
+  border-radius: var(--ms-r-lg);
+  background: var(--ms-surface);
+  border: 1px solid var(--ms-line-soft);
+  box-shadow: var(--ms-sh-md);
 }
 
 .empleados-pagination-summary {
@@ -91,19 +91,19 @@
 }
 
 .empleados-pagination-panel .page-item.active .page-link {
-  background: #57d37e;
-  border-color: #57d37e;
+  background: #548674;
+  border-color: #548674;
   color: #ffffff;
 }
 
 .empleados-pagination-panel .page-link:hover {
   color: var(--empleados-brand-ink);
-  background: rgba(87, 211, 126, 0.12);
-  border-color: #57d37e;
+  background: rgba(84, 134, 116, 0.12);
+  border-color: #548674;
 }
 
 .empleados-pagination-panel .page-link:focus {
-  box-shadow: 0 0 0 0.2rem rgba(87, 211, 126, 0.2);
+  box-shadow: 0 0 0 0.2rem rgba(84, 134, 116, 0.2);
 }
 
 .empleados-brand-primary {
@@ -112,63 +112,48 @@
   justify-content: center;
   min-width: 180px;
   padding-inline: 1.35rem;
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid #57d37e;
-  color: var(--empleados-brand-ink);
-  box-shadow:
-    0 0 0 1px rgba(87, 211, 126, 0.4),
-    0 0 14px rgba(87, 211, 126, 0.35),
-    0 10px 18px rgba(47, 79, 79, 0.12);
+  border-radius: var(--ms-r-btn) !important;
+  background: var(--ms-brand-700) !important;
+  border: 1px solid var(--ms-brand-700) !important;
+  color: #ffffff !important;
+  box-shadow: var(--ms-sh-sm);
 }
 
 .empleados-brand-primary:hover,
 .empleados-brand-primary:focus {
-  background: linear-gradient(135deg, rgba(87, 211, 126, 0.18), rgba(87, 211, 126, 0.06));
-  border-color: #2ec35d;
-  color: var(--empleados-brand-ink-strong);
-  box-shadow:
-    0 0 0 1px rgba(46, 195, 93, 0.55),
-    0 0 18px rgba(46, 195, 93, 0.45),
-    0 12px 22px rgba(47, 79, 79, 0.16);
+  background: var(--ms-brand-900) !important;
+  border-color: var(--ms-brand-900) !important;
+  color: #ffffff !important;
+  box-shadow: var(--ms-sh-md);
   transform: translateY(-1px);
 }
 
 .empleados-brand-outline {
-  color: #1f6a55 !important;
-  border-color: rgba(67, 192, 128, 0.95) !important;
-  background: #ffffff !important;
-  box-shadow:
-    0 0 0 1px rgba(67, 192, 128, 0.18),
-    0 0 12px rgba(67, 192, 128, 0.12);
+  border-radius: var(--ms-r-btn) !important;
+  color: var(--ms-brand-700) !important;
+  border-color: var(--ms-brand-300) !important;
+  background: var(--ms-surface) !important;
 }
 
 .empleados-brand-outline:hover,
 .empleados-brand-outline:focus {
-  color: #165c49 !important;
-  background: rgba(67, 192, 128, 0.12) !important;
-  border-color: #2fc46f !important;
-  box-shadow:
-    0 0 0 1px rgba(47, 79, 79, 0.18),
-    0 0 14px rgba(67, 192, 128, 0.24);
+  color: #ffffff !important;
+  background: var(--ms-brand-500) !important;
+  border-color: var(--ms-brand-500) !important;
 }
 
 .empleados-brand-danger {
-  color: var(--empleados-brand-orange) !important;
-  border-color: rgba(215, 123, 49, 0.75) !important;
-  background: #ffffff !important;
-  box-shadow:
-    0 0 0 1px rgba(215, 123, 49, 0.18),
-    0 0 12px rgba(215, 123, 49, 0.1);
+  border-radius: var(--ms-r-btn) !important;
+  color: var(--ms-terracota) !important;
+  border-color: rgba(217, 91, 63, 0.55) !important;
+  background: var(--ms-surface) !important;
 }
 
 .empleados-brand-danger:hover,
 .empleados-brand-danger:focus {
-  color: var(--empleados-brand-orange) !important;
-  background: rgba(215, 123, 49, 0.08) !important;
-  border-color: var(--empleados-brand-orange) !important;
-  box-shadow:
-    0 0 0 1px rgba(215, 123, 49, 0.42),
-    0 0 14px rgba(215, 123, 49, 0.24);
+  color: #ffffff !important;
+  background: var(--ms-terracota) !important;
+  border-color: var(--ms-terracota) !important;
 }
 
 .empleados-avatar {
@@ -176,7 +161,7 @@
   height: 42px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid #e5e7eb;
+  border: 2px solid #E7E0D4;
   background: #f8fafc;
 }
 
@@ -195,7 +180,7 @@
   align-items: center;
   gap: 18px;
   padding: 16px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
+  border: 1px solid rgba(40, 83, 73, 0.08);
   background: #f8fafc;
 }
 
@@ -206,7 +191,7 @@
   border-radius: 50%;
   overflow: hidden;
   border: 3px solid #ffffff;
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+  box-shadow: 0 8px 18px rgba(40, 83, 73, 0.12);
   background: linear-gradient(135deg, #d1fae5, #a7f3d0);
 }
 
@@ -268,9 +253,9 @@
 
 .empleados-empty-card.card {
   padding: 0;
-  border-radius: 0;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow: none;
+  border-radius: var(--ms-r-lg);
+  border: 1px solid var(--ms-line-soft);
+  box-shadow: var(--ms-sh-md);
 }
 
 @media (max-width: 768px) {

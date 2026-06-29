@@ -2,12 +2,12 @@
 .materiales-empty-card,
 .materiales-table-card,
 .materiales-pagination-panel {
-  --materiales-brand-ink: #30404a;
-  --materiales-brand-ink-strong: #22303a;
+  --materiales-brand-ink: #21443B;
+  --materiales-brand-ink-strong: #1C3D35;
   --materiales-brand-teal: #2f7f7f;
   --materiales-brand-teal-strong: #246565;
   --materiales-brand-teal-soft: rgba(47, 127, 127, 0.12);
-  --materiales-brand-sage-soft: rgba(48, 64, 74, 0.08);
+  --materiales-brand-sage-soft: rgba(40, 83, 73, 0.08);
 }
 
 .materiales-page-shell {
@@ -16,8 +16,8 @@
 }
 
 .materiales-filters-card.card {
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow: none;
+  border: 1px solid var(--ms-line-soft);
+  box-shadow: var(--ms-sh-md);
 }
 
 .materiales-filters-switch-col {
@@ -28,10 +28,10 @@
 .materiales-table-card.card {
   padding: 0;
   overflow: hidden;
-  border-radius: 0;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow: none;
-  background: #ffffff;
+  border-radius: var(--ms-r-lg);
+  border: 1px solid var(--ms-line-soft);
+  box-shadow: var(--ms-sh-md);
+  background: var(--ms-surface);
 }
 
 .materiales-table-scroll {
@@ -44,7 +44,7 @@
   position: sticky;
   top: 0;
   z-index: 2;
-  background: linear-gradient(180deg, #f7faf9 0%, #f4f8fb 100%);
+  background: var(--ms-surface);
   border-bottom: 1px solid var(--materiales-brand-sage-soft);
   color: var(--materiales-brand-ink);
 }
@@ -54,7 +54,7 @@
 }
 
 .materiales-table-row:hover {
-  background: linear-gradient(90deg, var(--materiales-brand-teal-soft), rgba(48, 64, 74, 0.04));
+  background: var(--ms-surface-2);
 }
 
 .materiales-code-badge {
@@ -81,10 +81,10 @@
   flex-wrap: wrap;
   margin-top: 14px;
   padding: 14px 18px;
-  border-radius: 0;
-  background: #ffffff;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow: none;
+  border-radius: var(--ms-r-lg);
+  background: var(--ms-surface);
+  border: 1px solid var(--ms-line-soft);
+  box-shadow: var(--ms-sh-md);
 }
 
 .materiales-pagination-summary {
@@ -102,19 +102,19 @@
 }
 
 .materiales-pagination-panel .page-item.active .page-link {
-  background: #57d37e;
-  border-color: #57d37e;
+  background: #548674;
+  border-color: #548674;
   color: #ffffff;
 }
 
 .materiales-pagination-panel .page-link:hover {
   color: var(--materiales-brand-ink);
-  background: rgba(87, 211, 126, 0.12);
-  border-color: #57d37e;
+  background: rgba(84, 134, 116, 0.12);
+  border-color: #548674;
 }
 
 .materiales-pagination-panel .page-link:focus {
-  box-shadow: 0 0 0 0.2rem rgba(87, 211, 126, 0.2);
+  box-shadow: 0 0 0 0.2rem rgba(84, 134, 116, 0.2);
 }
 
 .materiales-brand-primary {
@@ -123,14 +123,11 @@
   justify-content: center;
   min-width: 180px;
   padding-inline: 1.35rem;
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid #58c2a9;
-  color: var(--materiales-brand-ink);
-  box-shadow:
-    0 0 0 1px rgba(88, 194, 169, 0.4),
-    0 0 14px rgba(88, 194, 169, 0.35),
-    0 10px 18px rgba(48, 64, 74, 0.12);
-  text-shadow: 0 0 1px rgba(88, 194, 169, 0.25);
+  border-radius: var(--ms-r-btn) !important;
+  background: var(--ms-brand-700) !important;
+  border: 1px solid var(--ms-brand-700) !important;
+  color: #ffffff !important;
+  box-shadow: var(--ms-sh-sm);
 }
 
 .materiales-header-actions {
@@ -139,59 +136,46 @@
 
 .materiales-brand-primary:hover,
 .materiales-brand-primary:focus {
-  background: linear-gradient(135deg, rgba(88, 194, 169, 0.18), rgba(88, 194, 169, 0.06));
-  border-color: #35b594;
-  color: var(--materiales-brand-ink-strong);
-  box-shadow:
-    0 0 0 1px rgba(53, 181, 148, 0.55),
-    0 0 18px rgba(53, 181, 148, 0.45),
-    0 12px 22px rgba(48, 64, 74, 0.16);
+  background: var(--ms-brand-900) !important;
+  border-color: var(--ms-brand-900) !important;
+  color: #ffffff !important;
+  box-shadow: var(--ms-sh-md);
   transform: translateY(-1px);
 }
 
 .materiales-brand-outline {
-  color: #1f6a55 !important;
-  border-color: rgba(67, 192, 128, 0.95) !important;
-  background: #ffffff !important;
-  box-shadow:
-    0 0 0 1px rgba(67, 192, 128, 0.18),
-    0 0 12px rgba(67, 192, 128, 0.12);
+  border-radius: var(--ms-r-btn) !important;
+  color: var(--ms-brand-700) !important;
+  border-color: var(--ms-brand-300) !important;
+  background: var(--ms-surface) !important;
 }
 
 .materiales-brand-outline:hover,
 .materiales-brand-outline:focus {
-  color: #165c49 !important;
-  background: rgba(67, 192, 128, 0.12) !important;
-  border-color: #2fc46f !important;
-  box-shadow:
-    0 0 0 1px rgba(47, 127, 127, 0.18),
-    0 0 14px rgba(67, 192, 128, 0.24);
+  color: #ffffff !important;
+  background: var(--ms-brand-500) !important;
+  border-color: var(--ms-brand-500) !important;
 }
 
 .materiales-brand-danger {
-  color: var(--lineas-brand-orange, #d77b31) !important;
-  border-color: rgba(215, 123, 49, 0.75) !important;
-  background: #ffffff !important;
-  box-shadow:
-    0 0 0 1px rgba(215, 123, 49, 0.18),
-    0 0 12px rgba(215, 123, 49, 0.1);
+  border-radius: var(--ms-r-btn) !important;
+  color: var(--ms-terracota) !important;
+  border-color: rgba(217, 91, 63, 0.55) !important;
+  background: var(--ms-surface) !important;
 }
 
 .materiales-brand-danger:hover,
 .materiales-brand-danger:focus {
-  color: var(--lineas-brand-orange, #d77b31) !important;
-  background: rgba(215, 123, 49, 0.08) !important;
-  border-color: var(--lineas-brand-orange, #d77b31) !important;
-  box-shadow:
-    0 0 0 1px rgba(215, 123, 49, 0.42),
-    0 0 14px rgba(215, 123, 49, 0.24);
+  color: #ffffff !important;
+  background: var(--ms-terracota) !important;
+  border-color: var(--ms-terracota) !important;
 }
 
 .materiales-empty-card.card {
   padding: 0;
-  border-radius: 0;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow: none;
+  border-radius: var(--ms-r-lg);
+  border: 1px solid var(--ms-line-soft);
+  box-shadow: var(--ms-sh-md);
 }
 
 @media (max-width: 576px) {

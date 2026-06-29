@@ -22,6 +22,11 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
     setOpenSubmenu((current) => (current === submenu ? null : submenu));
   };
 
+  const handleSidebarToggle = () => {
+    handleNavigation();
+    toggleSidebar();
+  };
+
   const getTooltipProps = (label) => ({
     title: label,
     "aria-label": label
@@ -36,15 +41,15 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
     ADMIN: "Dev / Admin",
     SUPER_ADMIN: "Super Admin",
     DIRECTOR_GENERAL: "Director General",
-    SUBDIRECCION_ADMINISTRATIVA: "Subdireccion Administrativa",
+    SUBDIRECCION_ADMINISTRATIVA: "Subdirección Administrativa",
     ASISTENTE_GERENCIAL: "Asistente Gerencial",
-    SUPERVISOR_PRODUCCION: "Supervisor de Produccion",
-    JEFE_HERRERIA: "Jefe de Herreria",
-    JEFE_CARPINTERIA: "Jefe de Carpinteria",
+    SUPERVISOR_PRODUCCION: "Supervisor de Producción",
+    JEFE_HERRERIA: "Jefe de Herrería",
+    JEFE_CARPINTERIA: "Jefe de Carpintería",
     JEFE_ARMADO: "Jefe de Armado",
-    JEFE_ALMACEN: "Jefe de Almacen",
-    JEFE_LOGISTICA: "Jefe de Logistica",
-    TECNICO: "Tecnico",
+    JEFE_ALMACEN: "Jefe de Almacén",
+    JEFE_LOGISTICA: "Jefe de Logística",
+    TECNICO: "Técnico",
     AYUDANTE_GENERAL: "Ayudante General",
     EMPLOYEE: "Empleado"
   };
@@ -103,48 +108,14 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
 
   return (
     <aside className={`app-sidebar ${isOpen ? "" : "app-sidebar--compact"}`}>
-      <div ref={menuRef} className="sidebar-profile">
-        <div
-          onClick={() => {
-            setOpenSubmenu(null);
-            setOpenMenu((current) => !current);
-          }}
-          className="sidebar-profile-button"
-        >
-          <div className="sidebar-profile-avatar">
-            {mostrarFoto ? (
-              <img src={foto} alt="perfil" onError={() => setFailedFoto(foto)} />
-            ) : (
-              <span>{iniciales}</span>
-            )}
-          </div>
 
-          <div className="sidebar-profile-text">
-            <strong>{nombre} {apellido}</strong>
-            <div>{rol}</div>
-          </div>
-        </div>
-
-        {openMenu && (
-          <div className="sidebar-user-menu">
-            <button
-              onClick={() => {
-                handleNavigation();
-                navigate("/perfil");
-              }}
-            >
-              <i className="bi bi-person me-2"></i>
-              Perfil
-            </button>
-
-            <button onClick={handleLogout}>
-              <i className="bi bi-box-arrow-right me-2"></i>
-              Cerrar sesion
-            </button>
-          </div>
-        )}
+      {/* MARCA */}
+      <div className="sidebar-brand">
+        <div className="sidebar-brand-logo">M</div>
+        <div className="sidebar-brand-name">Mobilesco</div>
       </div>
 
+      {/* MENÚ */}
       <nav className="sidebar-menu-list">
         <LinkItem to="/tablero" label="Tablero" icon="bi-speedometer2" />
 
@@ -189,11 +160,11 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
               onClick={() => toggleSubmenu("almacen")}
               aria-expanded={openSubmenu === "almacen"}
               aria-controls="menuAlmacen"
-              {...getTooltipProps("Almacen")}
+              {...getTooltipProps("Almacén")}
             >
               <div className="sidebar-parent-content">
                 <i className="bi bi-archive me-2"></i>
-                <span>Almacen</span>
+                <span>Almacén</span>
               </div>
               <i className="bi bi-chevron-down sidebar-chevron"></i>
             </button>
@@ -218,15 +189,55 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
       <button
         type="button"
         className="sidebar-collapse-button"
-        onClick={() => {
-          handleNavigation();
-          toggleSidebar();
-        }}
+        onClick={handleSidebarToggle}
         aria-label={isOpen ? "Colapsar menu" : "Expandir menu"}
         title={isOpen ? "Colapsar menu" : "Expandir menu"}
       >
         <i className="bi bi-layout-sidebar-inset"></i>
       </button>
+
+      {/* PERFIL (al fondo) */}
+      <div ref={menuRef} className="sidebar-profile">
+        <div
+          onClick={() => {
+            setOpenSubmenu(null);
+            setOpenMenu((current) => !current);
+          }}
+          className="sidebar-profile-button"
+        >
+          <div className="sidebar-profile-avatar">
+            {mostrarFoto ? (
+              <img src={foto} alt="perfil" onError={() => setFailedFoto(foto)} />
+            ) : (
+              <span>{iniciales}</span>
+            )}
+          </div>
+
+          <div className="sidebar-profile-text">
+            <strong>{nombre} {apellido}</strong>
+            <div>{rol}</div>
+          </div>
+        </div>
+
+        {openMenu && (
+          <div className="sidebar-user-menu">
+            <button
+              onClick={() => {
+                handleNavigation();
+                navigate("/perfil");
+              }}
+            >
+              <i className="bi bi-person me-2"></i>
+              Perfil
+            </button>
+
+            <button onClick={handleLogout}>
+              <i className="bi bi-box-arrow-right me-2"></i>
+              Cerrar sesión
+            </button>
+          </div>
+        )}
+      </div>
     </aside>
   );
 }

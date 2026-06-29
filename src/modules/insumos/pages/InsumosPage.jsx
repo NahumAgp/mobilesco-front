@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useInsumos } from "../hooks/useInsumos";
@@ -38,6 +38,7 @@ export default function InsumosPage() {
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
   const [page, setPage] = useState(0);
+  const [busquedaInput, setBusquedaInput] = useState("");
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstatus, setFiltroEstatus] = useState("TODOS");
   const [soloActivos, setSoloActivos] = useState(false);
@@ -45,9 +46,26 @@ export default function InsumosPage() {
   const [sortField, setSortField] = useState("nombre");
   const [sortDirection, setSortDirection] = useState("asc");
   const [exportandoExcel, setExportandoExcel] = useState(false);
-  const terminoBusqueda = busqueda.toLowerCase().trim().replace(/\s+/g, " ");
-  const hayFiltrosActivos =
-    Boolean(terminoBusqueda) || filtroEstatus !== "TODOS" || soloActivos || filtroStockBajo;
+
+  // Debounce: actualiza el termino de busqueda real desde el input (~350ms)
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setBusqueda(busquedaInput);
+      setPage(0);
+    }, 350);
+
+    return () => window.clearTimeout(timer);
+  }, [busquedaInput]);
+
+  // Derivar el filtro de estatus para el backend
+  const activoBackend =
+    filtroEstatus === "ACTIVO" || soloActivos
+      ? true
+      : filtroEstatus === "INACTIVO"
+        ? false
+        : undefined;
+  const stockBajoBackend = filtroStockBajo ? true : undefined;
+  const terminoBusqueda = busqueda.trim();
 
   const {
     insumos,
@@ -56,89 +74,27 @@ export default function InsumosPage() {
     error,
     actualizarEstadoInsumo
   } = useInsumos({
-    page: hayFiltrosActivos ? undefined : page,
+    page,
     size: PAGE_SIZE,
     sortBy: sortField,
-    direction: sortDirection
+    direction: sortDirection,
+    busqueda: terminoBusqueda || undefined,
+    activo: activoBackend,
+    stockBajo: stockBajoBackend
   });
 
-  const insumosFiltrados = useMemo(() => {
-    const compararValor = (a, b) => {
-      const valorA = a ?? "";
-      const valorB = b ?? "";
-
-      if (typeof valorA === "number" && typeof valorB === "number") {
-        return valorA - valorB;
-      }
-
-      if (typeof valorA === "boolean" && typeof valorB === "boolean") {
-        return Number(valorA) - Number(valorB);
-      }
-
-      return String(valorA).localeCompare(String(valorB), "es", {
-        numeric: true,
-        sensitivity: "base"
-      });
-    };
-
-    const filtrados = insumos.filter((insumo) => {
-      const pasaFiltroTexto = (() => {
-        if (!terminoBusqueda) return true;
-
-        const palabras = terminoBusqueda.split(" ");
-        const infoInsumo = [
-          insumo.id,
-          insumo.codigoBarras,
-          insumo.nombre,
-          insumo.descripcion,
-          insumo.tipoInsumo,
-          insumo.ubicacion,
-          insumo.fila,
-          insumo.columna,
-          insumo.unidadMedida?.nombre,
-          insumo.unidadMedida?.simbolo,
-          insumo.activo ? "activo" : "inactivo"
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-
-        return palabras.every((palabra) => infoInsumo.includes(palabra));
-      })();
-
-      const coincideEstatus =
-        filtroEstatus === "TODOS" ||
-        (filtroEstatus === "ACTIVO" && insumo.activo) ||
-        (filtroEstatus === "INACTIVO" && !insumo.activo);
-      const coincideSoloActivos = !soloActivos || insumo.activo;
-      const coincideStockBajo =
-        !filtroStockBajo || Number(insumo.stockActual || 0) <= Number(insumo.stockMinimo || 0);
-
-      return pasaFiltroTexto && coincideEstatus && coincideSoloActivos && coincideStockBajo;
-    });
-
-    return filtrados.sort((a, b) => {
-      const valorA = a?.[sortField];
-      const valorB = b?.[sortField];
-      const resultado = compararValor(valorA, valorB);
-      return sortDirection === "asc" ? resultado : -resultado;
-    });
-  }, [filtroEstatus, filtroStockBajo, insumos, soloActivos, sortDirection, sortField, terminoBusqueda]);
-
-  const totalElements = hayFiltrosActivos ? insumosFiltrados.length : (pageInfo.totalElements ?? 0);
-  const totalPages = hayFiltrosActivos
-    ? Math.max(1, Math.ceil(insumosFiltrados.length / PAGE_SIZE))
-    : (pageInfo.totalPages ?? 0);
+  const totalElements = pageInfo.totalElements ?? 0;
+  const totalPages = pageInfo.totalPages ?? 0;
   const paginaActual = totalPages > 0 ? Math.min(page, totalPages - 1) : 0;
   const paginasVisibles = construirRangoPaginas(totalPages, paginaActual);
-  const desde = totalElements > 0 ? paginaActual * PAGE_SIZE + 1 : 0;
-  const insumosMostrados = hayFiltrosActivos
-    ? insumosFiltrados.slice(paginaActual * PAGE_SIZE, paginaActual * PAGE_SIZE + PAGE_SIZE)
-    : insumosFiltrados;
-  const hasta = totalElements > 0 ? paginaActual * PAGE_SIZE + insumosMostrados.length : 0;
-  const mostrarVacio = !loadingLista && !error && totalElements === 0;
+  const desde = totalElements > 0 ? page * PAGE_SIZE + 1 : 0;
+  const hasta = totalElements > 0 ? page * PAGE_SIZE + insumos.length : 0;
+
+  const hayFiltrosActivos =
+    Boolean(terminoBusqueda) || filtroEstatus !== "TODOS" || soloActivos || filtroStockBajo;
+  const mostrarVacio = !loadingLista && !error && totalElements === 0 && !hayFiltrosActivos;
   const mostrarSinCoincidencias =
-    !loadingLista && !error && totalElements > 0 && insumosMostrados.length === 0;
+    !loadingLista && !error && totalElements === 0 && hayFiltrosActivos;
 
   useEffect(() => {
     if (!loadingLista && totalPages > 0 && page >= totalPages) {
@@ -176,16 +132,9 @@ export default function InsumosPage() {
     try {
       setExportandoExcel(true);
 
-      const activoFiltro =
-        soloActivos || filtroEstatus === "ACTIVO"
-          ? true
-          : filtroEstatus === "INACTIVO"
-            ? false
-            : undefined;
-
       const blob = await exportarInsumosExcel({
-        activo: activoFiltro,
-        stockBajo: filtroStockBajo || undefined,
+        activo: activoBackend,
+        stockBajo: stockBajoBackend,
         busqueda: terminoBusqueda || undefined,
         sortBy: sortField,
         direction: sortDirection
@@ -228,8 +177,7 @@ export default function InsumosPage() {
   };
 
   const cambiarBusqueda = (e) => {
-    setBusqueda(e.target.value);
-    setPage(0);
+    setBusquedaInput(e.target.value);
   };
 
   const cambiarEstatus = (e) => {
@@ -307,7 +255,7 @@ export default function InsumosPage() {
                 type="text"
                 className="form-control"
                 placeholder="Buscar por nombre, unidad o ubicacion..."
-                value={busqueda}
+                value={busquedaInput}
                 onChange={cambiarBusqueda}
               />
             </div>
@@ -376,13 +324,13 @@ export default function InsumosPage() {
                 <i className="bi bi-funnel fs-1 d-block mb-3 text-secondary"></i>
                 <span className="fs-5 d-block">No hay coincidencias</span>
                 <p className="text-secondary mt-2 mb-0">
-                  Ajusta los filtros para ver insumos que coincidan
+                  Ajusta los filtros para ver insumos en esta pagina
                 </p>
               </div>
             </div>
           ) : (
             <InsumosTable
-              data={insumosMostrados}
+              data={insumos}
               onEditar={abrirEditar}
               onVerKardex={abrirKardex}
               onCambiarEstado={manejarCambiarEstado}
@@ -396,9 +344,7 @@ export default function InsumosPage() {
           {totalElements > 0 && (
             <div className="insumos-pagination-panel">
               <div className="insumos-pagination-summary">
-                {hayFiltrosActivos
-                  ? `Mostrando ${desde} a ${hasta} de ${totalElements} coincidencias`
-                  : `Mostrando ${desde} a ${hasta} de ${totalElements} insumos`}
+                {`Mostrando ${desde} a ${hasta} de ${totalElements} insumos`}
               </div>
 
               <nav aria-label="Paginacion de insumos">

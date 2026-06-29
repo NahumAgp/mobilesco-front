@@ -5,16 +5,31 @@
   margin-bottom: 18px;
 }
 
+/* Eyebrow opcional (kicker sobre el titulo) */
+.page-eyebrow {
+  display: inline-block;
+  margin: 0 0 4px;
+  font-family: var(--ms-font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ms-brand-500);
+}
+
 .page-title {
   margin: 0;
+  font-family: var(--ms-font-serif);
   font-size: 34px;
-  font-weight: 800;
-  color: #1f2937;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ms-ink-900);
 }
 
 .page-subtitle {
   margin: 6px 0 0;
-  color: #6b7280;
+  font-family: var(--ms-font-sans);
+  color: var(--ms-ink-500);
 }
 
 .header-actions {

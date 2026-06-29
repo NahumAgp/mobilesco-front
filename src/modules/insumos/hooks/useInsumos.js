@@ -30,7 +30,15 @@ function normalizarPageInfo(data, fallbackPage = 0, fallbackSize = 10) {
   };
 }
 
-export function useInsumos({ page, size = 10, sortBy = "nombre", direction = "asc" } = {}) {
+export function useInsumos({
+  page,
+  size = 10,
+  sortBy = "nombre",
+  direction = "asc",
+  busqueda,
+  activo,
+  stockBajo
+} = {}) {
   const [insumos, setInsumos] = useState([]);
   const [pageInfo, setPageInfo] = useState(PAGE_INFO_DEFAULT);
   const [loadingLista, setLoadingLista] = useState(false);
@@ -44,7 +52,7 @@ export function useInsumos({ page, size = 10, sortBy = "nombre", direction = "as
       const data =
         page === undefined || page === null
           ? await obtenerInsumos()
-          : await obtenerInsumos({ page, size, sortBy, direction });
+          : await obtenerInsumos({ page, size, sortBy, direction, busqueda, activo, stockBajo });
 
       if (data?.content) {
         setInsumos(data.content);
@@ -68,7 +76,7 @@ export function useInsumos({ page, size = 10, sortBy = "nombre", direction = "as
     } finally {
       setLoadingLista(false);
     }
-  }, [direction, page, size, sortBy]);
+  }, [direction, page, size, sortBy, busqueda, activo, stockBajo]);
 
   useEffect(() => {
     cargar();

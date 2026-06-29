@@ -51,13 +51,13 @@ html, body, #root {
 .app-layout {
   display: flex;
   min-height: 100vh;
-  background: #f5f6f8;
+  background: var(--ms-bg);
 }
 
 /* SIDEBAR */
 .sidebar {
   width: 260px;
-  background: #2f4f4f;
+  background: var(--ms-sidebar);
   color: #fff;
   display: flex;
   flex-direction: column;
@@ -72,10 +72,10 @@ html, body, #root {
 }
 
 .logo {
-  background: #1f7a6b;
+  background: var(--ms-brand-500);
   width: 36px;
   height: 36px;
-  border-radius: 8px;
+  border-radius: var(--ms-r-sm);
   display: grid;
   place-items: center;
   font-weight: bold;
@@ -84,14 +84,15 @@ html, body, #root {
 .sidebar-menu a {
   display: block;
   padding: 10px;
-  color: #dfeeee;
+  color: var(--ms-brand-100);
   text-decoration: none;
-  border-radius: 8px;
+  border-radius: var(--ms-r-sm);
 }
 
 .sidebar-menu a.active,
 .sidebar-menu a:hover {
-  background: #1f7a6b;
+  background: var(--ms-surface);
+  color: var(--ms-brand-700);
 }
 
 .sidebar-footer {
@@ -99,7 +100,7 @@ html, body, #root {
 }
 
 .logout {
-  color: #ff6b6b;
+  color: var(--ms-durazno);
 }
 
 /* CONTENT */
@@ -128,7 +129,9 @@ html, body, #root {
 /* TABLE CARD */
 .table-card {
   padding: 20px;
-  border-radius: 12px;
+  border-radius: var(--ms-r-lg);
+  background: var(--ms-surface);
+  box-shadow: var(--ms-sh-md);
 }
 
 .table-toolbar {

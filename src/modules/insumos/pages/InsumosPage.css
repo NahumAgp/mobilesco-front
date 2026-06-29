@@ -4,12 +4,12 @@
 .insumos-pagination-panel,
 .insumos-filters-card,
 .tipos-insumo-panel {
-  --insumos-brand-ink: #30404a;
-  --insumos-brand-ink-strong: #22303a;
+  --insumos-brand-ink: #21443B;
+  --insumos-brand-ink-strong: #1C3D35;
   --insumos-brand-teal: #2f7f7f;
   --insumos-brand-teal-soft: rgba(47, 127, 127, 0.12);
-  --insumos-brand-sage-soft: rgba(48, 64, 74, 0.08);
-  --insumos-brand-orange: #d77b31;
+  --insumos-brand-sage-soft: rgba(40, 83, 73, 0.08);
+  --insumos-brand-orange: #D95B3F;
 }
 
 .insumos-page-shell {
@@ -18,15 +18,14 @@
 }
 
 .insumos-filters-card.card {
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow: none;
+  border: 1px solid var(--ms-line-soft);
+  box-shadow: var(--ms-sh-md);
 }
 
 .tipos-insumo-panel.card {
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  background:
-    radial-gradient(circle at top right, rgba(88, 194, 169, 0.12), transparent 28%),
-    linear-gradient(180deg, rgba(247, 250, 249, 0.95), rgba(255, 255, 255, 1));
+  border: 1px solid var(--ms-line-soft);
+  background: var(--ms-surface);
+  box-shadow: var(--ms-sh-md);
 }
 
 .tipos-insumo-header {
@@ -43,7 +42,7 @@
   padding: 0.2rem 0.65rem;
   border-radius: 999px;
   background: rgba(88, 194, 169, 0.12);
-  color: #1f6a55;
+  color: #285349;
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -64,10 +63,9 @@
 .tipos-insumo-stat {
   min-width: 96px;
   padding: 0.8rem 1rem;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.88);
-  border: 1px solid rgba(47, 127, 127, 0.14);
-  box-shadow: 0 10px 20px rgba(48, 64, 74, 0.05);
+  border-radius: var(--ms-r-md);
+  background: var(--ms-surface-2);
+  border: 1px solid var(--ms-line-soft);
   text-align: center;
 }
 
@@ -88,10 +86,10 @@
 .tipos-insumo-form-card,
 .tipos-insumo-table-card {
   height: 100%;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow: 0 12px 24px rgba(48, 64, 74, 0.05);
+  border-radius: var(--ms-r-lg);
+  background: var(--ms-surface);
+  border: 1px solid var(--ms-line-soft);
+  box-shadow: var(--ms-sh-md);
 }
 
 .tipos-insumo-form-card {
@@ -107,9 +105,9 @@
 }
 
 .tipos-insumo-table-card thead th {
-  background: linear-gradient(180deg, #f7faf9 0%, #f4f8fb 100%);
+  background: var(--ms-surface);
   color: var(--insumos-brand-ink);
-  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  border-bottom: 1px solid rgba(40, 83, 73, 0.08);
   white-space: nowrap;
 }
 
@@ -131,10 +129,10 @@
 .insumos-table-card.card {
   padding: 0;
   overflow: hidden;
-  border-radius: 0;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow: none;
-  background: #ffffff;
+  border-radius: var(--ms-r-lg);
+  border: 1px solid var(--ms-line-soft);
+  box-shadow: var(--ms-sh-md);
+  background: var(--ms-surface);
 }
 
 .insumos-table-scroll {
@@ -142,19 +140,73 @@
   min-height: 0;
   overflow-x: auto;
   overflow-y: visible;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ms-line) transparent;
+}
+
+.insumos-table-scroll::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+}
+
+.insumos-table-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.insumos-table-scroll::-webkit-scrollbar-thumb {
+  background: var(--ms-line);
+  border-radius: 999px;
+  border: 2px solid var(--ms-surface);
+}
+
+.insumos-table-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--ms-brand-300);
 }
 
 .insumos-table-head th {
   position: sticky;
   top: 0;
   z-index: 2;
-  background: linear-gradient(180deg, #f7faf9 0%, #f4f8fb 100%);
+  background: var(--ms-surface);
   border-bottom: 1px solid var(--insumos-brand-sage-soft);
   color: var(--insumos-brand-ink);
   vertical-align: middle;
   line-height: 1.05;
   padding-block: 0.48rem;
   text-align: center;
+}
+
+.insumos-col-resizer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: 6px;
+  cursor: col-resize;
+  user-select: none;
+  touch-action: none;
+}
+
+.insumos-col-resizer:hover,
+.insumos-col-resizer:active {
+  background: var(--ms-brand-300, rgba(88, 194, 169, 0.45));
+}
+
+.insumos-table-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.4rem 0.75rem 0;
+}
+
+.insumos-reset-columnas {
+  color: var(--insumos-brand-ink);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.insumos-reset-columnas:hover,
+.insumos-reset-columnas:focus {
+  color: var(--insumos-brand-ink-strong);
 }
 
 .insumos-table-card .table {
@@ -202,77 +254,16 @@
   text-align: center !important;
 }
 
-.insumos-main-table th:nth-child(1),
-.insumos-main-table td:nth-child(1) {
-  width: 48px;
-}
+/* Los anchos de columna del catalogo de insumos los controla el <colgroup>
+   (redimensionable por el usuario), por eso aqui ya no se fijan por nth-child. */
 
-.insumos-main-table th:nth-child(2),
-.insumos-main-table td:nth-child(2) {
-  width: 130px;
-}
-
-.insumos-main-table th:nth-child(3),
-.insumos-main-table td:nth-child(3) {
-  width: 115px;
-}
-
-.insumos-main-table th:nth-child(4),
-.insumos-main-table td:nth-child(4) {
-  width: 110px;
-}
-
-.insumos-main-table th:nth-child(5),
-.insumos-main-table td:nth-child(5) {
-  width: 100px;
-}
-
-.insumos-main-table th:nth-child(6),
-.insumos-main-table td:nth-child(6) {
-  width: 100px;
-}
-
-.insumos-main-table th:nth-child(7),
-.insumos-main-table td:nth-child(7) {
-  width: 70px;
-}
-
-.insumos-main-table th:nth-child(8),
-.insumos-main-table td:nth-child(8) {
-  width: 76px;
-}
-
-.insumos-main-table th:nth-child(9),
-.insumos-main-table td:nth-child(9),
-.insumos-main-table th:nth-child(10),
-.insumos-main-table td:nth-child(10),
-.insumos-main-table th:nth-child(11),
-.insumos-main-table td:nth-child(11) {
-  width: 90px;
-}
-
-.insumos-main-table th:nth-child(12),
-.insumos-main-table td:nth-child(12) {
-  width: 88px;
-}
-
-.insumos-main-table th:nth-child(13),
-.insumos-main-table td:nth-child(13) {
-  width: 88px;
-}
-
-.insumos-main-table th:nth-child(14),
-.insumos-main-table td:nth-child(14) {
-  width: 180px;
-}
-
-.insumos-main-table td:nth-child(3),
-.insumos-main-table td:nth-child(5),
-.insumos-main-table td:nth-child(7),
+.insumos-main-table td:nth-child(4),
+.insumos-main-table td:nth-child(6),
 .insumos-main-table td:nth-child(8),
 .insumos-main-table td:nth-child(9),
 .insumos-main-table td:nth-child(10),
 .insumos-main-table td:nth-child(11),
+.insumos-main-table td:nth-child(12),
 .insumos-costos-table td:nth-child(4),
 .insumos-costos-table td:nth-child(5),
 .insumos-costos-table td:nth-child(6) {
@@ -325,19 +316,87 @@
   cursor: pointer;
 }
 
-.insumos-table-row:hover {
-  background: linear-gradient(90deg, var(--insumos-brand-teal-soft), rgba(48, 64, 74, 0.04));
+/* Filas del cuerpo: blancas puras (sin tinte arena/beige residual) */
+.insumos-main-table tbody tr,
+.insumos-main-table tbody td {
+  background: var(--ms-surface);
 }
 
-.insumos-row-bajo {
-  --bs-table-bg: rgba(255, 193, 7, 0.08);
+/* Hover de fila: gris neutro muy sutil (no arena ni teal) */
+.insumos-main-table tbody tr.insumos-table-row:hover td {
+  background: var(--ms-surface-2);
 }
 
-.insumos-row-agotado {
-  --bs-table-bg: rgba(220, 53, 69, 0.08);
+/* Fila completa para AGOTADOS: todas las celdas con fondo rojo claro */
+.insumos-main-table tbody tr.insumos-row-agotado td {
+  background: rgba(217, 91, 63, 0.12);
 }
 
-.insumos-code-badge,
+.insumos-main-table tbody tr.insumos-row-agotado:hover td {
+  background: rgba(217, 91, 63, 0.16);
+}
+
+/* Las filas "bajo" quedan blancas; el estado se indica con el puntito ambar */
+
+/* Color del numero de stock actual segun estado (sin negrita) */
+.insumos-stock-agotado {
+  color: var(--ms-terracota);
+}
+
+.insumos-stock-bajo {
+  color: var(--ms-naranja);
+}
+
+/* insumos-stock-normal hereda el color de texto base */
+
+/* Sin negritas en el contenido de la tabla (badges y botones se respetan) */
+.insumos-main-table tbody td {
+  font-weight: 400;
+}
+
+/* Columna de estado: solo un puntito redondo centrado a la izquierda del ID */
+.insumos-estado-cell {
+  text-align: center;
+}
+
+.insumos-estado-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.insumos-estado-dot--activo {
+  background: var(--ms-salvia);
+}
+
+.insumos-estado-dot--inactivo {
+  background: var(--ms-ink-300);
+}
+
+.insumos-estado-dot--bajo {
+  background: var(--ms-naranja);
+}
+
+.insumos-estado-dot--agotado {
+  background: var(--ms-terracota);
+}
+
+/* Codigo como chip limpio y legible */
+.insumos-code-badge {
+  display: inline-block;
+  background: var(--ms-surface-2);
+  color: var(--ms-ink-700);
+  border: 1px solid var(--ms-line);
+  border-radius: var(--ms-r-sm);
+  padding: 2px 8px;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .insumos-unit-badge {
   font-size: 0.8rem;
   letter-spacing: 0.02em;
@@ -384,10 +443,10 @@
   flex-wrap: wrap;
   margin-top: 14px;
   padding: 14px 18px;
-  border-radius: 0;
-  background: #ffffff;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow: none;
+  border-radius: var(--ms-r-lg);
+  background: var(--ms-surface);
+  border: 1px solid var(--ms-line-soft);
+  box-shadow: var(--ms-sh-md);
 }
 
 .insumos-pagination-summary {
@@ -401,23 +460,23 @@
 }
 
 .insumos-pagination-panel .page-link {
-  border-radius: 10px;
+  border-radius: var(--ms-r-btn);
 }
 
 .insumos-pagination-panel .page-item.active .page-link {
-  background: #57d37e;
-  border-color: #57d37e;
+  background: #548674;
+  border-color: #548674;
   color: #ffffff;
 }
 
 .insumos-pagination-panel .page-link:hover {
   color: var(--insumos-brand-ink);
-  background: rgba(87, 211, 126, 0.12);
-  border-color: #57d37e;
+  background: rgba(84, 134, 116, 0.12);
+  border-color: #548674;
 }
 
 .insumos-pagination-panel .page-link:focus {
-  box-shadow: 0 0 0 0.2rem rgba(87, 211, 126, 0.2);
+  box-shadow: 0 0 0 0.2rem rgba(84, 134, 116, 0.2);
 }
 
 .insumos-brand-primary {
@@ -426,13 +485,11 @@
   justify-content: center;
   min-width: 170px;
   padding-inline: 1.35rem;
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid #58c2a9;
-  color: var(--insumos-brand-ink);
-  box-shadow:
-    0 0 0 1px rgba(88, 194, 169, 0.4),
-    0 0 14px rgba(88, 194, 169, 0.35),
-    0 10px 18px rgba(48, 64, 74, 0.12);
+  border-radius: var(--ms-r-btn) !important;
+  background: var(--ms-brand-700) !important;
+  border: 1px solid var(--ms-brand-700) !important;
+  color: #ffffff !important;
+  box-shadow: var(--ms-sh-sm);
 }
 
 .insumos-header-actions {
@@ -441,59 +498,46 @@
 
 .insumos-brand-primary:hover,
 .insumos-brand-primary:focus {
-  background: linear-gradient(135deg, rgba(88, 194, 169, 0.18), rgba(88, 194, 169, 0.06));
-  border-color: #35b594;
-  color: var(--insumos-brand-ink-strong);
-  box-shadow:
-    0 0 0 1px rgba(53, 181, 148, 0.55),
-    0 0 18px rgba(53, 181, 148, 0.45),
-    0 12px 22px rgba(48, 64, 74, 0.16);
+  background: var(--ms-brand-900) !important;
+  border-color: var(--ms-brand-900) !important;
+  color: #ffffff !important;
+  box-shadow: var(--ms-sh-md);
   transform: translateY(-1px);
 }
 
 .insumos-brand-outline {
-  color: #1f6a55 !important;
-  border-color: rgba(67, 192, 128, 0.95) !important;
-  background: #ffffff !important;
-  box-shadow:
-    0 0 0 1px rgba(67, 192, 128, 0.18),
-    0 0 12px rgba(67, 192, 128, 0.12);
+  border-radius: var(--ms-r-btn) !important;
+  color: var(--ms-brand-700) !important;
+  border-color: var(--ms-brand-300) !important;
+  background: var(--ms-surface) !important;
 }
 
 .insumos-brand-outline:hover,
 .insumos-brand-outline:focus {
-  color: #165c49 !important;
-  background: rgba(67, 192, 128, 0.12) !important;
-  border-color: #2fc46f !important;
-  box-shadow:
-    0 0 0 1px rgba(47, 127, 127, 0.18),
-    0 0 14px rgba(67, 192, 128, 0.24);
+  color: #ffffff !important;
+  background: var(--ms-brand-500) !important;
+  border-color: var(--ms-brand-500) !important;
 }
 
 .insumos-brand-danger {
-  color: var(--insumos-brand-orange) !important;
-  border-color: rgba(215, 123, 49, 0.75) !important;
-  background: #ffffff !important;
-  box-shadow:
-    0 0 0 1px rgba(215, 123, 49, 0.18),
-    0 0 12px rgba(215, 123, 49, 0.1);
+  border-radius: var(--ms-r-btn) !important;
+  color: var(--ms-terracota) !important;
+  border-color: rgba(217, 91, 63, 0.55) !important;
+  background: var(--ms-surface) !important;
 }
 
 .insumos-brand-danger:hover,
 .insumos-brand-danger:focus {
-  color: var(--insumos-brand-orange) !important;
-  background: rgba(215, 123, 49, 0.08) !important;
-  border-color: var(--insumos-brand-orange) !important;
-  box-shadow:
-    0 0 0 1px rgba(215, 123, 49, 0.42),
-    0 0 14px rgba(215, 123, 49, 0.24);
+  color: #ffffff !important;
+  background: var(--ms-terracota) !important;
+  border-color: var(--ms-terracota) !important;
 }
 
 .insumos-empty-card.card {
   padding: 0;
-  border-radius: 0;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow: none;
+  border-radius: var(--ms-r-lg);
+  border: 1px solid var(--ms-line-soft);
+  box-shadow: var(--ms-sh-md);
 }
 
 @media (max-width: 576px) {

@@ -2,16 +2,16 @@
 .producto-form-shell,
 .producto-form-accordion,
 .producto-costos-panel {
-  --producto-brand-ink: #30404a;
-  --producto-brand-ink-strong: #22303a;
-  --producto-brand-teal: #2f4f4f;
-  --producto-brand-teal-strong: #274241;
-  --producto-brand-green: #57d37e;
-  --producto-brand-green-strong: #2ec35d;
-  --producto-brand-green-soft: rgba(87, 211, 126, 0.14);
-  --producto-brand-orange: #d77b31;
-  --producto-brand-orange-soft: rgba(215, 123, 49, 0.12);
-  --producto-brand-sage-soft: rgba(48, 64, 74, 0.09);
+  --producto-brand-ink: #21443B;
+  --producto-brand-ink-strong: #1C3D35;
+  --producto-brand-teal: #285349;
+  --producto-brand-teal-strong: #21443B;
+  --producto-brand-green: #548674;
+  --producto-brand-green-strong: #285349;
+  --producto-brand-green-soft: rgba(84, 134, 116, 0.14);
+  --producto-brand-orange: #D95B3F;
+  --producto-brand-orange-soft: rgba(217, 91, 63, 0.12);
+  --producto-brand-sage-soft: rgba(40, 83, 73, 0.09);
 }
 
 .producto-form-wrap {
@@ -19,13 +19,13 @@
 }
 
 .producto-form-accordion {
-  border: 1px solid rgba(48, 64, 74, 0.12);
+  border: 1px solid rgba(40, 83, 73, 0.12);
   background: #ffffff;
-  box-shadow: 0 10px 24px rgba(48, 64, 74, 0.06);
+  box-shadow: 0 10px 24px rgba(40, 83, 73, 0.06);
 }
 
 .producto-form-accordion .accordion-item {
-  border-color: rgba(48, 64, 74, 0.12);
+  border-color: rgba(40, 83, 73, 0.12);
 }
 
 .producto-form-accordion-button {
@@ -38,13 +38,13 @@
 
 .producto-form-accordion-button:not(.collapsed) {
   color: var(--producto-brand-ink-strong);
-  background: linear-gradient(90deg, rgba(87, 211, 126, 0.16), rgba(255, 255, 255, 0.92));
+  background: linear-gradient(90deg, rgba(84, 134, 116, 0.16), rgba(255, 255, 255, 0.92));
   box-shadow: inset 3px 0 0 var(--producto-brand-orange);
 }
 
 .producto-form-accordion-button:focus {
   border-color: var(--producto-brand-green);
-  box-shadow: 0 0 0 0.2rem rgba(87, 211, 126, 0.22);
+  box-shadow: 0 0 0 0.2rem rgba(84, 134, 116, 0.22);
 }
 
 .producto-form-accordion-button i {
@@ -53,13 +53,13 @@
 
 .producto-form-shell .form-control,
 .producto-form-shell .form-select {
-  border-color: rgba(48, 64, 74, 0.18);
+  border-color: rgba(40, 83, 73, 0.18);
 }
 
 .producto-form-shell .form-control:focus,
 .producto-form-shell .form-select:focus {
   border-color: var(--producto-brand-green);
-  box-shadow: 0 0 0 0.2rem rgba(87, 211, 126, 0.2);
+  box-shadow: 0 0 0 0.2rem rgba(84, 134, 116, 0.2);
 }
 
 .producto-form-status-box,
@@ -70,8 +70,8 @@
   gap: 16px;
   flex-wrap: wrap;
   padding: 14px 16px;
-  border: 1px solid rgba(48, 64, 74, 0.12);
-  background: linear-gradient(90deg, rgba(87, 211, 126, 0.1), rgba(215, 123, 49, 0.05));
+  border: 1px solid rgba(40, 83, 73, 0.12);
+  background: linear-gradient(90deg, rgba(84, 134, 116, 0.1), rgba(217, 91, 63, 0.05));
 }
 
 .producto-form-status-box .form-check-input {
@@ -90,7 +90,7 @@
   justify-content: flex-end;
   margin-top: 18px;
   padding-top: 16px;
-  border-top: 1px solid rgba(48, 64, 74, 0.1);
+  border-top: 1px solid rgba(40, 83, 73, 0.1);
 }
 
 .producto-form-primary,
@@ -103,8 +103,8 @@
   background: #ffffff !important;
   border: 1px solid var(--producto-brand-green) !important;
   box-shadow:
-    0 0 0 1px rgba(87, 211, 126, 0.22),
-    0 0 12px rgba(87, 211, 126, 0.16);
+    0 0 0 1px rgba(84, 134, 116, 0.22),
+    0 0 12px rgba(84, 134, 116, 0.16);
 }
 
 .producto-form-primary:hover,
@@ -117,27 +117,27 @@
   background: var(--producto-brand-green-soft) !important;
   border-color: var(--producto-brand-green-strong) !important;
   box-shadow:
-    0 0 0 1px rgba(46, 195, 93, 0.4),
-    0 0 16px rgba(46, 195, 93, 0.3);
+    0 0 0 1px rgba(40, 83, 73, 0.4),
+    0 0 16px rgba(40, 83, 73, 0.3);
 }
 
 .producto-form-outline {
   color: var(--producto-brand-teal) !important;
   background: #ffffff !important;
-  border: 1px solid rgba(48, 64, 74, 0.32) !important;
+  border: 1px solid rgba(40, 83, 73, 0.32) !important;
 }
 
 .producto-form-outline:hover,
 .producto-form-outline:focus {
   color: var(--producto-brand-teal-strong) !important;
-  background: rgba(48, 64, 74, 0.06) !important;
+  background: rgba(40, 83, 73, 0.06) !important;
   border-color: var(--producto-brand-orange) !important;
 }
 
 .producto-form-danger {
   color: var(--producto-brand-orange) !important;
   background: #ffffff !important;
-  border: 1px solid rgba(215, 123, 49, 0.65) !important;
+  border: 1px solid rgba(217, 91, 63, 0.65) !important;
 }
 
 .producto-form-danger:hover,
@@ -148,15 +148,15 @@
 
 .producto-form-light {
   color: var(--producto-brand-ink) !important;
-  background: #f7faf9 !important;
-  border: 1px solid rgba(48, 64, 74, 0.12) !important;
+  background: #FBF6EE !important;
+  border: 1px solid rgba(40, 83, 73, 0.12) !important;
 }
 
 .producto-form-count-badge,
 .producto-form-success-badge {
   color: var(--producto-brand-ink);
   background: var(--producto-brand-green-soft);
-  border: 1px solid rgba(87, 211, 126, 0.35);
+  border: 1px solid rgba(84, 134, 116, 0.35);
 }
 
 .producto-form-dropzone {
@@ -165,8 +165,8 @@
   text-align: center;
   cursor: pointer;
   color: var(--producto-brand-ink);
-  border: 2px dashed rgba(48, 64, 74, 0.24);
-  background: linear-gradient(180deg, #ffffff 0%, #f7faf9 100%);
+  border: 2px dashed rgba(40, 83, 73, 0.24);
+  background: linear-gradient(180deg, #ffffff 0%, #FBF6EE 100%);
 }
 
 .producto-form-dropzone i {
@@ -174,7 +174,7 @@
 }
 
 .producto-form-dropzone small {
-  color: #6b7280;
+  color: #6B716E;
 }
 
 .producto-form-dropzone.is-active {
@@ -183,7 +183,7 @@
 }
 
 .producto-form-image-card {
-  border: 1px solid rgba(48, 64, 74, 0.12);
+  border: 1px solid rgba(40, 83, 73, 0.12);
   box-shadow: none;
   overflow: hidden;
 }
@@ -204,13 +204,13 @@
 
 .producto-form-image-card-draggable.is-drop-target {
   border-color: var(--producto-brand-green);
-  box-shadow: 0 0 0 0.18rem rgba(87, 211, 126, 0.18);
+  box-shadow: 0 0 0 0.18rem rgba(84, 134, 116, 0.18);
 }
 
 .producto-form-order-badge {
   color: var(--producto-brand-ink);
   background: #ffffff;
-  border: 1px solid rgba(48, 64, 74, 0.16);
+  border: 1px solid rgba(40, 83, 73, 0.16);
 }
 
 .producto-form-thumb-image {
@@ -218,7 +218,7 @@
   height: 180px;
   padding: 8px;
   object-fit: contain;
-  background: linear-gradient(180deg, #f7faf9 0%, #ffffff 100%);
+  background: linear-gradient(180deg, #FBF6EE 0%, #ffffff 100%);
 }
 
 .producto-costos-panel.card {
@@ -257,9 +257,9 @@
   gap: 18px;
   align-items: start;
   padding: 18px;
-  border: 1px solid rgba(48, 64, 74, 0.12);
+  border: 1px solid rgba(40, 83, 73, 0.12);
   background: #ffffff;
-  box-shadow: 0 10px 24px rgba(48, 64, 74, 0.06);
+  box-shadow: 0 10px 24px rgba(40, 83, 73, 0.06);
 }
 
 .producto-form-workspace-main {
@@ -278,7 +278,7 @@
 }
 
 .producto-form-workspace-main > .producto-form-accordion:last-child {
-  border-bottom: 1px solid rgba(48, 64, 74, 0.12);
+  border-bottom: 1px solid rgba(40, 83, 73, 0.12);
 }
 
 .producto-form-workspace-main .accordion-item {
@@ -315,13 +315,13 @@
 
 .producto-cif-warning {
   padding: 20px;
-  border: 1px solid rgba(215, 123, 49, 0.26);
+  border: 1px solid rgba(217, 91, 63, 0.26);
   border-radius: 18px;
   background:
     linear-gradient(135deg, rgba(255, 248, 235, 0.98), rgba(255, 255, 255, 0.98)),
     #ffffff;
   box-shadow:
-    0 12px 26px rgba(48, 64, 74, 0.08),
+    0 12px 26px rgba(40, 83, 73, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.88);
   animation: cif-warning-entrance 260ms ease-out;
 }
@@ -360,9 +360,9 @@
 
 .producto-cif-warning-button {
   color: #ffffff !important;
-  background: linear-gradient(135deg, #d77b31, #f29b52) !important;
-  border: 1px solid rgba(215, 123, 49, 0.55) !important;
-  box-shadow: 0 10px 18px rgba(215, 123, 49, 0.18);
+  background: linear-gradient(135deg, #D95B3F, #f29b52) !important;
+  border: 1px solid rgba(217, 91, 63, 0.55) !important;
+  box-shadow: 0 10px 18px rgba(217, 91, 63, 0.18);
 }
 
 .producto-cif-warning-button:hover,
@@ -370,20 +370,20 @@
   color: #ffffff !important;
   background: linear-gradient(135deg, #c66d2b, #e88a3d) !important;
   border-color: rgba(198, 109, 43, 0.7) !important;
-  box-shadow: 0 12px 20px rgba(215, 123, 49, 0.24);
+  box-shadow: 0 12px 20px rgba(217, 91, 63, 0.24);
 }
 
 .cif-config-focus {
-  border-color: rgba(215, 123, 49, 0.4) !important;
+  border-color: rgba(217, 91, 63, 0.4) !important;
   box-shadow:
-    0 0 0 0.2rem rgba(215, 123, 49, 0.12),
-    0 14px 28px rgba(215, 123, 49, 0.12);
+    0 0 0 0.2rem rgba(217, 91, 63, 0.12),
+    0 14px 28px rgba(217, 91, 63, 0.12);
   animation: cif-config-pulse 1.2s ease-in-out 1;
 }
 
 .cif-config-focus-input {
-  border-color: rgba(215, 123, 49, 0.5) !important;
-  box-shadow: 0 0 0 0.2rem rgba(215, 123, 49, 0.16) !important;
+  border-color: rgba(217, 91, 63, 0.5) !important;
+  box-shadow: 0 0 0 0.2rem rgba(217, 91, 63, 0.16) !important;
 }
 
 .producto-cost-carousel {
@@ -392,7 +392,7 @@
   min-height: 226px;
   flex-direction: column;
   padding: 0;
-  border: 1px solid rgba(48, 64, 74, 0.12);
+  border: 1px solid rgba(40, 83, 73, 0.12);
   background: #ffffff;
 }
 
@@ -402,7 +402,7 @@
   align-items: center;
   gap: 12px;
   padding: 11px 13px;
-  border-bottom: 1px solid rgba(48, 64, 74, 0.1);
+  border-bottom: 1px solid rgba(40, 83, 73, 0.1);
   color: var(--producto-brand-ink);
   font-size: 0.88rem;
   font-weight: 800;
@@ -429,7 +429,7 @@
 }
 
 .producto-costos-panel .accordion {
-  border: 1px solid rgba(48, 64, 74, 0.1);
+  border: 1px solid rgba(40, 83, 73, 0.1);
   background: #ffffff;
 }
 
@@ -442,13 +442,13 @@
 
 .producto-costos-panel .accordion-button:not(.collapsed) {
   color: var(--producto-brand-ink-strong);
-  background: linear-gradient(90deg, rgba(87, 211, 126, 0.14), #ffffff);
+  background: linear-gradient(90deg, rgba(84, 134, 116, 0.14), #ffffff);
   box-shadow: inset 3px 0 0 var(--producto-brand-orange);
 }
 
 .producto-costos-panel .accordion-button:focus {
   border-color: var(--producto-brand-green);
-  box-shadow: 0 0 0 0.2rem rgba(87, 211, 126, 0.22);
+  box-shadow: 0 0 0 0.2rem rgba(84, 134, 116, 0.22);
 }
 
 .producto-form-spinner {
@@ -459,9 +459,9 @@
   position: sticky;
   top: 18px;
   padding: 16px;
-  border: 1px solid rgba(48, 64, 74, 0.12);
+  border: 1px solid rgba(40, 83, 73, 0.12);
   background:
-    linear-gradient(180deg, rgba(87, 211, 126, 0.08), rgba(255, 255, 255, 0.95)),
+    linear-gradient(180deg, rgba(84, 134, 116, 0.08), rgba(255, 255, 255, 0.95)),
     #ffffff;
   box-shadow: none;
 }
@@ -491,7 +491,7 @@
 }
 
 .producto-form-preview-header span {
-  color: #6b7280;
+  color: #6B716E;
   font-size: 0.9rem;
 }
 
@@ -502,7 +502,7 @@
   justify-content: center;
   min-height: 320px;
   overflow: hidden;
-  border: 1px solid rgba(48, 64, 74, 0.08);
+  border: 1px solid rgba(40, 83, 73, 0.08);
   background: #f8faf9;
 }
 
@@ -521,7 +521,7 @@
   justify-content: center;
   flex-direction: column;
   gap: 10px;
-  color: #6b7280;
+  color: #6B716E;
   font-weight: 700;
 }
 
@@ -539,11 +539,11 @@
   align-items: center;
   justify-content: center;
   color: var(--producto-brand-ink);
-  border: 1px solid rgba(48, 64, 74, 0.14);
+  border: 1px solid rgba(40, 83, 73, 0.14);
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.92);
   transform: translateY(-50%);
-  box-shadow: 0 8px 18px rgba(48, 64, 74, 0.12);
+  box-shadow: 0 8px 18px rgba(40, 83, 73, 0.12);
 }
 
 .producto-form-carousel-control:hover,
@@ -566,7 +566,7 @@
   justify-content: space-between;
   gap: 12px;
   margin-top: 12px;
-  color: #6b7280;
+  color: #6B716E;
   font-size: 0.9rem;
 }
 
@@ -588,7 +588,7 @@
   padding: 0;
   border: 0;
   border-radius: 50%;
-  background: rgba(48, 64, 74, 0.22);
+  background: rgba(40, 83, 73, 0.22);
 }
 
 .producto-form-carousel-dots button.is-active {
@@ -646,19 +646,19 @@
   0% {
     transform: scale(1);
     box-shadow:
-      0 0 0 0 rgba(215, 123, 49, 0.18),
-      0 14px 28px rgba(215, 123, 49, 0.12);
+      0 0 0 0 rgba(217, 91, 63, 0.18),
+      0 14px 28px rgba(217, 91, 63, 0.12);
   }
   50% {
     transform: scale(1.01);
     box-shadow:
-      0 0 0 0.25rem rgba(215, 123, 49, 0.1),
-      0 16px 30px rgba(215, 123, 49, 0.16);
+      0 0 0 0.25rem rgba(217, 91, 63, 0.1),
+      0 16px 30px rgba(217, 91, 63, 0.16);
   }
   100% {
     transform: scale(1);
     box-shadow:
-      0 0 0 0 rgba(215, 123, 49, 0.18),
-      0 14px 28px rgba(215, 123, 49, 0.12);
+      0 0 0 0 rgba(217, 91, 63, 0.18),
+      0 14px 28px rgba(217, 91, 63, 0.12);
   }
 }

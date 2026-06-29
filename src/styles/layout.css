@@ -4,19 +4,19 @@
   width: 100%;
   min-width: 0;        /* importante para tablas */
   padding: 30px;
-  background: #f5f6f8; /* el gris bonito del ERP */
+  background: var(--ms-bg); /* crema del nuevo look */
 }
 
 .app-layout {
   display: flex;
   min-height: 100vh;
-  background: #f5f6f8;
+  background: var(--ms-bg);
 }
 
 /* Sidebar */
 .sidebar {
   width: 260px;
-  background: #2f4f4f;
+  background: var(--ms-sidebar);
   color: #fff;
   display: flex;
   flex-direction: column;
@@ -33,16 +33,16 @@
 .sidebar-logo {
   width: 36px;
   height: 36px;
-  border-radius: 8px;
+  border-radius: var(--ms-r-sm);
   display: grid;
   place-items: center;
-  background: #1f7a6b;
+  background: var(--ms-brand-500);
   font-weight: 800;
 }
 /* CONTENIDO PRINCIPAL */
 .content {
   padding: 32px;
-  background-color: #f5f7f8;
+  background-color: var(--ms-bg);
   min-height: 100vh;
 }
 
@@ -56,14 +56,15 @@
 
 .page-title {
   margin: 0;
+  font-family: var(--ms-font-serif);
   font-size: 32px;
-  font-weight: 800;
-  color: #1f2937;
+  font-weight: 600;
+  color: var(--ms-ink-900);
 }
 
 .page-subtitle {
   margin-top: 6px;
-  color: #6b7280;
+  color: var(--ms-ink-500);
   font-size: 15px;
 }
 
@@ -77,19 +78,19 @@
 .sidebar-footer a {
   display: block;
   padding: 10px 12px;
-  color: #dfeeee;
+  color: var(--ms-brand-100);
   text-decoration: none;
-  border-radius: 10px;
+  border-radius: var(--ms-r-md);
   margin-bottom: 6px;
 }
 
 .sidebar-menu a:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.10);
 }
 
 .sidebar-menu a.active {
-  background: #1f7a6b;
-  color: #fff;
+  background: var(--ms-surface);
+  color: var(--ms-brand-700);
   font-weight: 600;
 }
 
@@ -100,10 +101,10 @@
 }
 
 .sidebar-footer a.logout {
-  color: #ffb3b3;
+  color: var(--ms-durazno);
 }
 
-/* Header bonito como ERP */
+/* Header bonito */
 .page-header {
   display: flex;
   justify-content: space-between;
@@ -113,22 +114,23 @@
 
 .page-title {
   margin: 0;
+  font-family: var(--ms-font-serif);
   font-size: 34px;
-  font-weight: 800;
-  color: #1f2937;
+  font-weight: 600;
+  color: var(--ms-ink-900);
 }
 
 .page-subtitle {
   margin: 6px 0 0;
-  color: #6b7280;
+  color: var(--ms-ink-500);
 }
 
 /* Card grande interior */
 .erp-card {
-  background: #fff;
-  border-radius: 14px;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+  background: var(--ms-surface);
+  border-radius: var(--ms-r-lg);
+  border: 1px solid var(--ms-line-soft);
+  box-shadow: var(--ms-sh-md);
   padding: 18px;
 }
 
@@ -147,7 +149,7 @@
 
 .search-box input {
   padding-left: 42px;
-  border-radius: 10px;
+  border-radius: var(--ms-r-md);
 }
 
 .search-icon {
@@ -160,12 +162,15 @@
 
 /* Tabla más limpia */
 .erp-table thead th {
-  color: #6b7280;
+  color: var(--ms-ink-500);
   font-weight: 700;
-  border-bottom: 1px solid #e5e7eb;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.8rem;
+  background: var(--ms-surface-2);
+  border-bottom: 1px solid var(--ms-line);
 }
 
 .erp-table tbody td {
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--ms-line-soft);
 }
-

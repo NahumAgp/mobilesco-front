@@ -1,5 +1,5 @@
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: var(--ms-font-sans, system-ui, sans-serif);
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -13,10 +13,17 @@ html, body, #root {
 body {
   margin: 0;
   min-width: 320px;
+  background: var(--ms-bg);
+  color: var(--ms-ink-700);
 }
 
 /* Si quieres mantener estilos base de links */
 a {
   font-weight: 500;
   text-decoration: inherit;
+  color: var(--ms-brand-700);
+}
+
+a:hover {
+  color: var(--ms-brand-900);
 }

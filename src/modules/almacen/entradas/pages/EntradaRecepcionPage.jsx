@@ -115,6 +115,11 @@ export default function EntradaRecepcionPage() {
     [recepciones]
   );
 
+  const porcentajeRecibido = useMemo(() => {
+    if (recepciones.length === 0) return 0;
+    return Math.round((totalCompletos / recepciones.length) * 100);
+  }, [totalCompletos, recepciones.length]);
+
   const hayPendientes = totalPendiente > 0;
   const entradaCerrada = compra?.estado === "RECIBIDA";
 
@@ -425,6 +430,16 @@ export default function EntradaRecepcionPage() {
             <span className="badge text-bg-warning-subtle text-warning border border-warning-subtle">
               {totalPendientes} pendientes
             </span>
+          </div>
+        </div>
+
+        <div className="px-3 py-3 border-bottom">
+          <div className="d-flex justify-content-between align-items-center mb-2">
+            <span className="ms-body-sm fw-semibold">Avance de recepcion</span>
+            <strong className="ms-body-sm">{porcentajeRecibido}%</strong>
+          </div>
+          <div className="ms-progress">
+            <span style={{ width: `${porcentajeRecibido}%` }}></span>
           </div>
         </div>
 

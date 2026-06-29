@@ -310,6 +310,21 @@ export default function CompraDetallePage() {
             </tfoot>
           </table>
         </div>
+
+        <div className="ms-panel mt-3">
+          <div className="ms-row">
+            <span>Subtotal</span>
+            <strong>{formatCurrency(compra.subtotal)}</strong>
+          </div>
+          <div className="ms-row">
+            <span>Impuesto</span>
+            <strong>{formatCurrency(compra.impuesto)}</strong>
+          </div>
+          <div className="ms-row total">
+            <span>Total</span>
+            <strong>{formatCurrency(compra.total)}</strong>
+          </div>
+        </div>
       </Card>
 
     </div>
