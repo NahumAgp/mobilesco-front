@@ -290,7 +290,7 @@ export default function EntradaRecepcionPage() {
       for (const item of itemsARecibir) {
         await recepcionarDetalleCompra(item.detalleId, {
           cantidadRecibida: item.cantidadRecibirAhora,
-          entregadoPor: entregadoPor.trim(),
+          entregadoPor: entregadoPor.trim() || null,
           motivoNoRecepcion: item.motivoNoRecepcion?.trim() || null
         });
       }

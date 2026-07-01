@@ -114,12 +114,34 @@ const primeraImagenDisponible = (mapaVariantes) => {
 const getCategoriaKey = (categoriaId) => String(categoriaId);
 const getMaterialKey = (materialId) => String(materialId);
 const getColorKey = (colorId) => String(colorId);
+const obtenerCampo = (item, claves = []) => {
+  for (const clave of claves) {
+    const valor = item?.[clave];
+    if (valor !== undefined && valor !== null && valor !== "") return valor;
+  }
+  return null;
+};
+
+const getCategoriaProducto = (producto) =>
+  obtenerCampo(producto, ["categoriaId", "nivelId", "id_nivel", "categoria_id", "nivel_id"]);
+const getMaterialProducto = (producto) =>
+  obtenerCampo(producto, ["materialId", "id_material", "material_id"]);
+const getColorProducto = (producto) =>
+  obtenerCampo(producto, ["colorId", "id_color", "color_id"]);
 const SECCION_BORRADOR_POR_TIPO = {
   material: "materiales",
   color: "colores"
 };
 
-export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraft }) {
+export default function VariantesStep({
+  data,
+  onUpdate,
+  borradores,
+  onUpsertDraft,
+  productosExistentes = [],
+  cargandoProductosExistentes = false,
+  errorProductosExistentes = ""
+}) {
   const [categorias, setCategorias] = useState([]);
   const [categoriasGlobales, setCategoriasGlobales] = useState([]);
   const [materiales, setMateriales] = useState([]);
@@ -305,8 +327,34 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
         set.add(getParKey(variante.categoriaId, variante.materialId, variante.colorId));
       }
     });
+    productosExistentes.forEach((producto) => {
+      const categoriaId = getCategoriaProducto(producto);
+      const materialId = getMaterialProducto(producto);
+      const colorId = getColorProducto(producto);
+      if (categoriaId && materialId && colorId) {
+        set.add(getParKey(categoriaId, materialId, colorId));
+      }
+    });
     return set;
-  }, [variantes]);
+  }, [productosExistentes, variantes]);
+
+  const productosExistentesPorPar = useMemo(() => {
+    const mapa = new Map();
+    productosExistentes.forEach((producto) => {
+      const categoriaId = getCategoriaProducto(producto);
+      const materialId = getMaterialProducto(producto);
+      const colorId = getColorProducto(producto);
+      if (categoriaId && materialId && colorId) {
+        mapa.set(getParKey(categoriaId, materialId, colorId), producto);
+      }
+    });
+    return mapa;
+  }, [productosExistentes]);
+
+  const skusExistentes = useMemo(
+    () => new Set(productosExistentes.map((producto) => producto?.sku?.toString().trim().toUpperCase()).filter(Boolean)),
+    [productosExistentes]
+  );
 
   const totalSeleccionado = useMemo(() => {
     return Object.values(seleccion).reduce((totalMateriales, materialSeleccionado) => {
@@ -448,6 +496,7 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
     const nuevas = [];
     const paresGenerados = new Set();
     let omitidas = 0;
+    let existentes = 0;
 
     Object.entries(seleccion).forEach(([materialKey, materialSeleccionado]) => {
       const material = materialesPorId.get(materialKey);
@@ -480,6 +529,11 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
             return;
           }
 
+          if (!existente && (productosExistentesPorPar.has(parKey) || skusExistentes.has(sku))) {
+            existentes += 1;
+            return;
+          }
+
           nuevas.push({
             id: idVariante,
             productoId: existente?.productoId,
@@ -495,7 +549,8 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
             colorCodigo: color.codigo || "",
             colorHex: color.hex || "",
             sku,
-            descripcionCorta: existente?.descripcionCorta || "",
+            descripcionCorta: existente?.descripcionCorta || data?.modelo?.descripcionCorta || "",
+            pesoVolumetrico: existente?.pesoVolumetrico ?? "",
             ancho: existente?.ancho ?? "",
             alto: existente?.alto ?? "",
             fondo: existente?.fondo ?? "",
@@ -567,7 +622,10 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
       modelo: siguienteImagenModelo,
       variantes: siguienteImagenes
     });
-    setMensaje(`${nuevas.length} productos listos${omitidas ? `, ${omitidas} combinaciones repetidas omitidas` : ""}.`);
+    const partes = [`${nuevas.length} productos nuevos listos`];
+    if (existentes) partes.push(`${existentes} ya existian y no se enviaran`);
+    if (omitidas) partes.push(`${omitidas} duplicados omitidos`);
+    setMensaje(`${partes.join(", ")}.`);
   };
 
   const eliminarVariante = (index) => {
@@ -742,6 +800,18 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
       <div className="alert alert-info py-2">
         Marca los materiales disponibles. Dentro de cada material elige las categorias y los colores que existen para esa categoria.
       </div>
+
+      {data?.modelo?.modo === "existente" && (
+        <div className={`alert py-2 ${errorProductosExistentes ? "alert-warning" : "alert-secondary"}`}>
+          {cargandoProductosExistentes ? (
+            "Revisando productos ya creados para este modelo..."
+          ) : errorProductosExistentes ? (
+            errorProductosExistentes
+          ) : (
+            `${productosExistentes.length} productos existentes detectados para este modelo. Las combinaciones repetidas se omiten al generar.`
+          )}
+        </div>
+      )}
 
       <div className="d-flex flex-wrap gap-2 mb-3">
         <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => abrirBorrador("material")}>
@@ -987,6 +1057,7 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
                     <th>Color</th>
                     <th>Peso (kg)</th>
                     <th>Descripcion corta</th>
+                    <th>Peso volumetrico</th>
                     <th>Ancho</th>
                     <th>Alto</th>
                     <th>Fondo</th>
@@ -1041,6 +1112,18 @@ export default function VariantesStep({ data, onUpdate, borradores, onUpsertDraf
                             disabled={variante._existing}
                             onChange={(event) => actualizarVariante(indexReal, "descripcionCorta", event.target.value)}
                             placeholder="Descripcion breve"
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            className="form-control form-control-sm"
+                            min="0"
+                            step="0.01"
+                            value={variante.pesoVolumetrico ?? ""}
+                            disabled={variante._existing}
+                            onChange={(event) => actualizarVariante(indexReal, "pesoVolumetrico", event.target.value)}
+                            placeholder="0.00"
                           />
                         </td>
                         <td>

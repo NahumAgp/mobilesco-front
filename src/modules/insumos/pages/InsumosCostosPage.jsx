@@ -68,6 +68,7 @@ export default function InsumosCostosPage() {
     size: PAGE_SIZE
   });
   const [page, setPage] = useState(0);
+  const [busqueda, setBusqueda] = useState("");
   const [sortField, setSortField] = useState("nombre");
   const [sortDirection, setSortDirection] = useState("asc");
   const [loading, setLoading] = useState(false);
@@ -86,7 +87,8 @@ export default function InsumosCostosPage() {
         page,
         size: PAGE_SIZE,
         sortBy: sortField,
-        direction: sortDirection
+        direction: sortDirection,
+        busqueda
       });
 
       setCostos(Array.isArray(response?.content) ? response.content : []);
@@ -102,7 +104,7 @@ export default function InsumosCostosPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, sortDirection, sortField]);
+  }, [busqueda, page, sortDirection, sortField]);
 
   useEffect(() => {
     cargarCostos();
@@ -178,6 +180,16 @@ export default function InsumosCostosPage() {
     setPage(0);
   };
 
+  const cambiarBusqueda = (event) => {
+    setBusqueda(event.target.value);
+    setPage(0);
+  };
+
+  const limpiarBusqueda = () => {
+    setBusqueda("");
+    setPage(0);
+  };
+
   const sortIcon = (campo) => {
     if (sortField !== campo) return "bi bi-arrow-down-up text-secondary";
     return sortDirection === "asc" ? "bi bi-sort-down-alt text-primary" : "bi bi-sort-up text-primary";
@@ -226,6 +238,41 @@ export default function InsumosCostosPage() {
       )}
 
       <div className="insumos-page-shell">
+        <div className="card insumos-filters-card mb-3">
+          <div className="card-body">
+            <div className="row g-3 align-items-end">
+              <div className="col-12 col-lg-6">
+                <label className="form-label fw-semibold" htmlFor="busquedaCostosInsumos">
+                  Buscar en costos
+                </label>
+                <div className="input-group">
+                  <span className="input-group-text">
+                    <i className="bi bi-search"></i>
+                  </span>
+                  <input
+                    id="busquedaCostosInsumos"
+                    type="search"
+                    className="form-control"
+                    placeholder="Nombre, codigo o unidad..."
+                    value={busqueda}
+                    onChange={cambiarBusqueda}
+                  />
+                  {busqueda && (
+                    <button
+                      type="button"
+                      className="btn btn-outline-secondary"
+                      onClick={limpiarBusqueda}
+                      title="Limpiar busqueda"
+                    >
+                      <i className="bi bi-x-lg"></i>
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="card shadow-sm border-0 insumos-table-card">
           <div className="table-responsive insumos-table-scroll">
             <table className="table table-hover align-middle mb-0 insumos-costos-table">

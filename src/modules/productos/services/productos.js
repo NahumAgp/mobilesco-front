@@ -22,6 +22,12 @@ export function obtenerProductoPorSku(sku) {
   return request(url);
 }
 
+export function obtenerProductosPorModelo(modeloId) {
+  const url = `${API_PATHS.PRODUCTOS}/por-modelo/${modeloId}`;
+  console.log("🌐 GET Productos por modelo - URL:", url);
+  return request(url);
+}
+
 export function crearProducto(data) {
   console.log("🌐 POST Producto - URL:", API_PATHS.PRODUCTOS, "Data:", data);
   return request(API_PATHS.PRODUCTOS, {

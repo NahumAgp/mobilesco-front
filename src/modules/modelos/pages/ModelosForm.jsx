@@ -261,6 +261,7 @@ export default function ModeloForm({
     codigo: "",
     nombre: "",
     descripcion: "",
+    descripcionCorta: "",
     familiaId: "",
     activo: true
   });
@@ -367,6 +368,7 @@ export default function ModeloForm({
           codigo: modelo.codigo || modelo.sku || "",
           nombre: modelo.nombre || "",
           descripcion: modelo.descripcion || "",
+          descripcionCorta: modelo.descripcionCorta || "",
           familiaId: modelo.familiaId || modelo.familia_id || modelo.familia?.id || "",
           activo: modelo.activo ?? true
         });
@@ -384,6 +386,7 @@ export default function ModeloForm({
             codigo: data.codigo || data.sku || "",
             nombre: data.nombre || "",
             descripcion: data.descripcion || "",
+            descripcionCorta: data.descripcionCorta || "",
             familiaId: data.familiaId || data.familia_id || data.familia?.id || "",
             activo: data.activo ?? true
           });
@@ -536,6 +539,7 @@ export default function ModeloForm({
       const dataToSend = {
         nombre: formData.nombre?.trim() || "",
         descripcion: formData.descripcion?.trim() || "",
+        descripcionCorta: formData.descripcionCorta?.trim() || "",
         familia_id: familiaIdNormalizado,
         activo: Boolean(formData.activo),
         categorias: categorias.map((categoria) => Object.fromEntries(Object.entries(categoria).filter(([key]) => key !== "orden"))),
@@ -734,6 +738,21 @@ export default function ModeloForm({
                         [familia.codigo, familia.nombre, familia.descripcion].filter(Boolean).join(" ").toLowerCase()
                       }
                     />
+                  </div>
+
+                  <div className="col-md-12">
+                    <label className="form-label fw-semibold">Descripcion corta</label>
+                    <input
+                      type="text"
+                      name="descripcionCorta"
+                      className={inputClass("descripcionCorta")}
+                      value={formData.descripcionCorta || ""}
+                      onChange={handleChange}
+                      maxLength="250"
+                      placeholder="Resumen breve que tendran todos los productos del modelo"
+                    />
+                    <div className="invalid-feedback">{erroresBackend.descripcionCorta || erroresExternos.descripcionCorta}</div>
+                    <div className="form-text text-muted">Maximo 250 caracteres</div>
                   </div>
 
                   <div className="col-md-12">

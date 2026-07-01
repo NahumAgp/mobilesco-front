@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ModeloStep from "./steps/ModeloStep";
 import VariantesStep from "./steps/VariantesStep";
 import ImagenesStep from "./steps/ImagenesStep";
 import ResumenStep from "./steps/ResumenStep";
+import { obtenerProductosPorModelo } from "../../../services/productos";
 
 const PASOS = [
   { id: 1, nombre: "Modelo", icono: "bi-box" },
@@ -38,6 +39,9 @@ export default function ProductoWizard({ onComplete, onCancel }) {
   const [pasoActual, setPasoActual] = useState(1);
   const [errorPaso, setErrorPaso] = useState("");
   const [guardando, setGuardando] = useState(false);
+  const [productosExistentesModelo, setProductosExistentesModelo] = useState([]);
+  const [cargandoProductosExistentes, setCargandoProductosExistentes] = useState(false);
+  const [errorProductosExistentes, setErrorProductosExistentes] = useState("");
   const [borradores, setBorradores] = useState({
     lineas: [],
     familias: [],
@@ -46,17 +50,18 @@ export default function ProductoWizard({ onComplete, onCancel }) {
     colores: []
   });
   const [productoData, setProductoData] = useState({
-      modelo: {
-        modo: "existente",
-        id: null,
-        codigo: "",
-        nombre: "",
-        descripcion: "",
-        familiaId: "",
-        activo: true,
-        categorias: [],
-        materiales: []
-      },
+    modelo: {
+      modo: "existente",
+      id: null,
+      codigo: "",
+      nombre: "",
+      descripcion: "",
+      descripcionCorta: "",
+      familiaId: "",
+      activo: true,
+      categorias: [],
+      materiales: []
+    },
     variantes: [],
     imagenes: {
       modelo: null,
@@ -70,6 +75,39 @@ export default function ProductoWizard({ onComplete, onCancel }) {
       : productoData.modelo?.id
         ? productoData.modelo
         : null;
+
+  useEffect(() => {
+    const modeloId = productoData?.modelo?.modo === "existente" ? productoData?.modelo?.id : null;
+
+    if (!modeloId) {
+      setProductosExistentesModelo([]);
+      setErrorProductosExistentes("");
+      setCargandoProductosExistentes(false);
+      return undefined;
+    }
+
+    let activo = true;
+    setCargandoProductosExistentes(true);
+    setErrorProductosExistentes("");
+
+    obtenerProductosPorModelo(modeloId)
+      .then((respuesta) => {
+        if (!activo) return;
+        setProductosExistentesModelo(Array.isArray(respuesta) ? respuesta : respuesta?.content || []);
+      })
+      .catch((error) => {
+        if (!activo) return;
+        setProductosExistentesModelo([]);
+        setErrorProductosExistentes(error?.message || "No se pudieron cargar los productos existentes del modelo.");
+      })
+      .finally(() => {
+        if (activo) setCargandoProductosExistentes(false);
+      });
+
+    return () => {
+      activo = false;
+    };
+  }, [productoData?.modelo?.id, productoData?.modelo?.modo]);
 
   const actualizarDatos = (seccion, datos) => {
     setProductoData((prev) => {
@@ -178,7 +216,17 @@ export default function ProductoWizard({ onComplete, onCancel }) {
       pasoContenido = <ModeloStep data={productoData} onUpdate={actualizarDatos} borradores={borradores} onUpsertDraft={upsertBorrador} />;
       break;
     case 2:
-      pasoContenido = <VariantesStep data={productoData} onUpdate={actualizarDatos} borradores={borradores} onUpsertDraft={upsertBorrador} />;
+      pasoContenido = (
+        <VariantesStep
+          data={productoData}
+          onUpdate={actualizarDatos}
+          borradores={borradores}
+          onUpsertDraft={upsertBorrador}
+          productosExistentes={productosExistentesModelo}
+          cargandoProductosExistentes={cargandoProductosExistentes}
+          errorProductosExistentes={errorProductosExistentes}
+        />
+      );
       break;
     case 3:
       pasoContenido = <ImagenesStep data={productoData} onUpdate={actualizarDatos} />;

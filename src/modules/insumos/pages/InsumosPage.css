@@ -214,7 +214,7 @@
 }
 
 .insumos-main-table {
-  min-width: 1240px;
+  min-width: 1160px;
 }
 
 .insumos-costos-table {
@@ -397,6 +397,8 @@
   white-space: nowrap;
 }
 
+.insumos-id-badge,
+.insumos-code-badge,
 .insumos-unit-badge {
   font-size: 0.8rem;
   letter-spacing: 0.02em;

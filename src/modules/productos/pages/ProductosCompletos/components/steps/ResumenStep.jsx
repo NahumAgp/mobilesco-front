@@ -60,6 +60,9 @@ export default function ResumenStep({ data }) {
               <strong>Descripcion:</strong> {data.modelo.descripcion || "Sin descripcion"}
             </div>
             <div className="col-12 mt-2">
+              <strong>Descripcion corta:</strong> {data.modelo.descripcionCorta || "Sin descripcion corta"}
+            </div>
+            <div className="col-12 mt-2">
               <strong>Estado:</strong>{" "}
               <span className={`badge ${data.modelo.activo ? "bg-success" : "bg-danger"}`}>
                 {data.modelo.activo ? "Activo" : "Inactivo"}

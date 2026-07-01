@@ -72,6 +72,7 @@ export default function ModeloStep({ data, onUpdate, borradores, onUpsertDraft }
       codigo: opcion?.codigo || "",
       nombre: opcion?.nombre || "",
       descripcion: opcion?.descripcion || "",
+      descripcionCorta: opcion?.descripcionCorta || "",
       familiaId: opcion?.familiaId || opcion?.familia?.id || "",
       familiaRef: undefined,
       familia: opcion?.familia || null,

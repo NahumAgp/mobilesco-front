@@ -172,6 +172,7 @@ export function SimpleDraftModal({
       nombre: initialValue?.nombre || "",
       codigo: initialValue?.codigo || "",
       descripcion: initialValue?.descripcion || "",
+      descripcionCorta: initialValue?.descripcionCorta || "",
       activo: initialValue?.activo !== false,
       hex: initialValue?.hex || "#808080",
       lineaId: initialValue?.lineaId || initialValue?.lineaRef || ""
@@ -591,6 +592,8 @@ export function ModeloDraftModal({
       modo: "nuevo",
       ref: form.ref,
       nombre: form.nombre.trim(),
+      descripcion: form.descripcion?.trim() || "",
+      descripcionCorta: form.descripcionCorta?.trim() || "",
       familiaId: esRefBorrador(form.familiaId) ? undefined : Number(form.familiaId),
       familiaRef: esRefBorrador(form.familiaId) ? form.familiaId : undefined,
       familia,
@@ -676,6 +679,15 @@ export function ModeloDraftModal({
                         )}
                       </div>
                     )}
+                  </div>
+                  <div className="col-12">
+                    <label className="form-label fw-semibold">Descripcion corta</label>
+                    <input
+                      className="form-control"
+                      maxLength="250"
+                      value={form.descripcionCorta || ""}
+                      onChange={(e) => setForm((prev) => ({ ...prev, descripcionCorta: e.target.value }))}
+                    />
                   </div>
                   <div className="col-12">
                     <label className="form-label fw-semibold">Descripcion</label>
