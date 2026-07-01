@@ -8,10 +8,13 @@ import PageHeader from "../../../components/Sistema/PageHeader.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
 import { getUser } from "../../auth/services/authService.js";
 
+const ROLES_GESTION_COMPRAS = ["ADMIN", "SUPER_ADMIN", "DIRECTOR_GENERAL", "SUBDIRECCION_ADMINISTRATIVA", "JEFE_ALMACEN"];
+
 export default function ComprasPage() {
 
   const navigate = useNavigate();
   const user = getUser();
+  const puedeGestionarCompra = user?.roles?.some((rol) => ROLES_GESTION_COMPRAS.includes(rol));
   const puedeEliminarCompra = user?.roles?.some((rol) =>
     ["ADMIN", "SUPER_ADMIN", "DIRECTOR_GENERAL"].includes(rol)
   );
@@ -85,13 +88,15 @@ export default function ComprasPage() {
         title="Compras"
         subtitle="Gestión de compras de insumos"
         actions={
-          <button
-            className="btn btn-success"
-            onClick={() => navigate("/compras/nueva")}
-          >
-            <i className="bi bi-plus-circle me-2"></i>
-            Nueva Compra
-          </button>
+          puedeGestionarCompra ? (
+            <button
+              className="btn btn-success"
+              onClick={() => navigate("/compras/nueva")}
+            >
+              <i className="bi bi-plus-circle me-2"></i>
+              Nueva Compra
+            </button>
+          ) : null
         }
       />
 

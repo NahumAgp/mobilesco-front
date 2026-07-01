@@ -2,7 +2,10 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import Toast from "../../../components/ui/Toast.jsx";
+import { getUser } from "../../auth/services/authService.js";
 import { obtenerSalidasInsumos } from "../services/salidasInsumos.js";
+
+const ROLES_GESTION_INVENTARIO = ["ADMIN", "SUPER_ADMIN", "DIRECTOR_GENERAL", "SUBDIRECCION_ADMINISTRATIVA", "JEFE_ALMACEN", "ALMACEN"];
 
 function formatoFecha(valor) {
   if (!valor) return "--";
@@ -19,6 +22,8 @@ function formatoFecha(valor) {
 
 export default function SalidasInsumosPage() {
   const navigate = useNavigate();
+  const user = getUser();
+  const puedeRegistrarSalida = user?.roles?.some((rol) => ROLES_GESTION_INVENTARIO.includes(rol));
 
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
@@ -71,14 +76,16 @@ export default function SalidasInsumosPage() {
             </h5>
             <small className="text-muted">Desde aquí puedes revisar quién hizo cada salida y cuándo.</small>
           </div>
-          <button
-            type="button"
-            className="btn btn-success"
-            onClick={() => navigate("/salidas-insumos/nueva")}
-          >
-            <i className="bi bi-plus-lg me-2"></i>
-            Nueva salida
-          </button>
+          {puedeRegistrarSalida && (
+            <button
+              type="button"
+              className="btn btn-success"
+              onClick={() => navigate("/salidas-insumos/nueva")}
+            >
+              <i className="bi bi-plus-lg me-2"></i>
+              Nueva salida
+            </button>
+          )}
         </div>
         <div className="card-body">
           <div className="table-responsive">

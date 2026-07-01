@@ -3,10 +3,15 @@ import { useCallback, useEffect, useState } from "react";
 import { obtenerCompraPorId } from "../services/compras.js";
 import Card from "../../../components/ui/Card.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
+import { getUser } from "../../auth/services/authService.js";
+
+const ROLES_GESTION_COMPRAS = ["ADMIN", "SUPER_ADMIN", "DIRECTOR_GENERAL", "SUBDIRECCION_ADMINISTRATIVA", "JEFE_ALMACEN"];
 
 export default function CompraDetallePage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const user = getUser();
+  const puedeGestionarCompra = user?.roles?.some((rol) => ROLES_GESTION_COMPRAS.includes(rol));
   const [compra, setCompra] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -104,14 +109,16 @@ export default function CompraDetallePage() {
           </div>
         </div>
         <div>
-          <button
-            className="btn btn-primary me-2"
-            onClick={() => navigate(`/almacen/entradas/${id}`)}
-          >
-            <i className="bi bi-box-arrow-in-down me-2"></i>
-            Ir a Entradas
-          </button>
-          {compra.estado === 'PENDIENTE' && (
+          {puedeGestionarCompra && (
+            <button
+              className="btn btn-primary me-2"
+              onClick={() => navigate(`/almacen/entradas/${id}`)}
+            >
+              <i className="bi bi-box-arrow-in-down me-2"></i>
+              Ir a Entradas
+            </button>
+          )}
+          {puedeGestionarCompra && compra.estado === 'PENDIENTE' && (
             <button 
               className="btn btn-outline-primary me-2"
               onClick={() => navigate(`/compras/${id}`)}
@@ -176,14 +183,16 @@ export default function CompraDetallePage() {
         </div>
       </div>
 
-      <div className="alert alert-info d-flex align-items-center justify-content-between">
-        <div>
-          <strong>Recepción operativa:</strong> se gestiona desde Entradas para permitir recepción parcial y actualización de stock.
+      {puedeGestionarCompra && (
+        <div className="alert alert-info d-flex align-items-center justify-content-between">
+          <div>
+            <strong>Recepción operativa:</strong> se gestiona desde Entradas para permitir recepción parcial y actualización de stock.
+          </div>
+          <button className="btn btn-sm btn-outline-primary" onClick={() => navigate(`/almacen/entradas/${id}`)}>
+            Abrir recepción
+          </button>
         </div>
-        <button className="btn btn-sm btn-outline-primary" onClick={() => navigate(`/almacen/entradas/${id}`)}>
-          Abrir recepción
-        </button>
-      </div>
+      )}
 
       <div className="row">
         <div className="col-md-6">

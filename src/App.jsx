@@ -71,9 +71,19 @@ function ProductoDetalleRedirect() {
   return <Navigate to={id ? `/productos/${id}` : "/productos"} replace />;
 }
 
+const ROLES_GESTION_COMPRAS = ["ADMIN", "SUPER_ADMIN", "DIRECTOR_GENERAL", "SUBDIRECCION_ADMINISTRATIVA", "JEFE_ALMACEN"];
+const ROLES_GESTION_INSUMOS = ["ADMIN", "SUPER_ADMIN", "DIRECTOR_GENERAL", "SUBDIRECCION_ADMINISTRATIVA", "JEFE_ALMACEN", "ALMACEN"];
+const ROLES_GESTION_SALIDAS = ["ADMIN", "SUPER_ADMIN", "DIRECTOR_GENERAL", "SUBDIRECCION_ADMINISTRATIVA", "JEFE_ALMACEN", "ALMACEN"];
+
 export default function App() {
   const withPermission = (element, permission) => (
     <RoleRoute permission={permission}>
+      {element}
+    </RoleRoute>
+  );
+
+  const withRoles = (element, allowedRoles) => (
+    <RoleRoute allowedRoles={allowedRoles}>
       {element}
     </RoleRoute>
   );
@@ -168,16 +178,15 @@ export default function App() {
         <Route path="/insumos" element={withPermission(<InsumosPage />, "VIEW_INVENTORY")} />
         <Route path="/insumos/tipos" element={withPermission(<TiposInsumoPage />, "VIEW_INVENTORY")} />
         <Route path="/insumos/costos" element={withPermission(<InsumosCostosPage />, "ACTION_INSUMOS_COSTS")} />
-        <Route path="/insumos/nuevo" element={withPermission(<InsumosFormPage />, "VIEW_INVENTORY")} />
-        <Route path="/insumos/:id" element={withPermission(<InsumosFormPage />, "VIEW_INVENTORY")} />
+        <Route path="/insumos/nuevo" element={withRoles(<InsumosFormPage />, ROLES_GESTION_INSUMOS)} />
+        <Route path="/insumos/:id" element={withRoles(<InsumosFormPage />, ROLES_GESTION_INSUMOS)} />
         <Route path="/salidas-insumos" element={withPermission(<SalidasInsumosPage />, "VIEW_INVENTORY")} />
-        <Route path="/salidas-insumos/nueva" element={withPermission(<SalidasInsumosNuevaPage />, "VIEW_INVENTORY")} />
+        <Route path="/salidas-insumos/nueva" element={withRoles(<SalidasInsumosNuevaPage />, ROLES_GESTION_SALIDAS)} />
         <Route
           path="/almacen/entradas"
           element={
             <RoleRoute
-              allowedRoles={["ADMIN", "SUPER_ADMIN", "DIRECTOR_GENERAL", "SUBDIRECCION_ADMINISTRATIVA", "JEFE_ALMACEN"]}
-              permission="VIEW_INVENTORY"
+              allowedRoles={ROLES_GESTION_COMPRAS}
             >
               <EntradasPage />
             </RoleRoute>
@@ -187,8 +196,7 @@ export default function App() {
           path="/almacen/entradas/:id"
           element={
             <RoleRoute
-              allowedRoles={["ADMIN", "SUPER_ADMIN", "DIRECTOR_GENERAL", "SUBDIRECCION_ADMINISTRATIVA", "JEFE_ALMACEN"]}
-              permission="VIEW_INVENTORY"
+              allowedRoles={ROLES_GESTION_COMPRAS}
             >
               <EntradaRecepcionPage />
             </RoleRoute>
@@ -210,8 +218,8 @@ export default function App() {
 
          {/* Compras */}
         <Route path="/compras" element={withPermission(<ComprasPage />, "VIEW_PURCHASES")} />
-        <Route path="/compras/nueva" element={withPermission(<ComprasFormPage />, "VIEW_PURCHASES")} />
-        <Route path="/compras/:id" element={withPermission(<ComprasFormPage />, "VIEW_PURCHASES")} />
+        <Route path="/compras/nueva" element={withRoles(<ComprasFormPage />, ROLES_GESTION_COMPRAS)} />
+        <Route path="/compras/:id" element={withRoles(<ComprasFormPage />, ROLES_GESTION_COMPRAS)} />
         <Route path="/compras/:id/ver" element={withPermission(<CompraDetallePage />, "VIEW_PURCHASES")} />
 
          {/*Kardex */}

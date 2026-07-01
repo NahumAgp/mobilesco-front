@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useInsumos } from "../hooks/useInsumos";
 import { exportarInsumosExcel } from "../services/insumos.js";
 import { getUser } from "../../auth/services/authService.js";
-import { puedeGestionarCatalogoInsumos } from "../utils/costosPermisos.js";
+import { puedeGestionarCatalogoInsumos, puedeGestionarCostosInsumos } from "../utils/costosPermisos.js";
 import InsumosTable from "./InsumosTable.jsx";
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
@@ -33,7 +33,9 @@ function construirRangoPaginas(totalPages, currentPage) {
 
 export default function InsumosPage() {
   const navigate = useNavigate();
-  const puedeGestionarInsumos = puedeGestionarCatalogoInsumos(getUser());
+  const user = getUser();
+  const puedeGestionarInsumos = puedeGestionarCatalogoInsumos(user);
+  const puedeGestionarCostos = puedeGestionarCostosInsumos(user);
 
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
@@ -208,13 +210,15 @@ export default function InsumosPage() {
         subtitle="Catalogo paginado de insumos y materia prima"
         actions={
           <div className="insumos-header-actions">
-            <button
-              className="btn btn-outline-primary me-2"
-              onClick={() => navigate("/insumos/costos")}
-            >
-              <i className="bi bi-cash-coin me-1"></i>
-              Costos
-            </button>
+            {puedeGestionarCostos && (
+              <button
+                className="btn btn-outline-primary me-2"
+                onClick={() => navigate("/insumos/costos")}
+              >
+                <i className="bi bi-cash-coin me-1"></i>
+                Costos
+              </button>
+            )}
             <button
               className="btn btn-outline-success me-2"
               onClick={exportarExcel}
