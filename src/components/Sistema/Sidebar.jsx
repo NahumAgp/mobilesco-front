@@ -4,6 +4,15 @@ import { logout, getUser, hasPermission } from "../../modules/auth/services/auth
 import { useState, useRef, useEffect } from "react";
 import { API_BASE_URL } from "../../config/apiConfig";
 
+function LinkItem({ to, label, icon, sub = false, onClick }) {
+  return (
+    <NavLink to={to} className={`sidebar-link${sub ? " sidebar-link--sub" : ""}`} onClick={onClick} title={label} aria-label={label}>
+      <i className={`bi ${icon} me-2`}></i>
+      {label}
+    </NavLink>
+  );
+}
+
 export default function Sidebar({ isOpen, toggleSidebar }) {
   const navigate = useNavigate();
   const [user, setUser] = useState(getUser());
@@ -94,18 +103,6 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const LinkItem = ({ to, label, icon, sub = false }) => (
-    <NavLink
-      to={to}
-      className={`sidebar-link${sub ? " sidebar-link--sub" : ""}`}
-      onClick={handleNavigation}
-      {...getTooltipProps(label)}
-    >
-      <i className={`bi ${icon} me-2`}></i>
-      {label}
-    </NavLink>
-  );
-
   return (
     <aside className={`app-sidebar ${isOpen ? "" : "app-sidebar--compact"}`}>
 
@@ -117,11 +114,11 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
 
       {/* MENÚ */}
       <nav className="sidebar-menu-list">
-        <LinkItem to="/tablero" label="Tablero" icon="bi-speedometer2" />
+        <LinkItem to="/tablero" label="Tablero" icon="bi-speedometer2" onClick={handleNavigation} />
 
-        {puedeGestionarUsuarios && <LinkItem to="/usuarios/accesos" label="Usuarios y accesos" icon="bi-shield-check" />}
-        {can("VIEW_EMPLOYEES") && <LinkItem to="/empleados" label="Empleados" icon="bi-people" />}
-        {can("VIEW_SUPPLIERS") && <LinkItem to="/proveedores" label="Proveedores" icon="bi-truck" />}
+        {puedeGestionarUsuarios && <LinkItem to="/usuarios/accesos" label="Usuarios y accesos" icon="bi-shield-check" onClick={handleNavigation} />}
+        {can("VIEW_EMPLOYEES") && <LinkItem to="/empleados" label="Empleados" icon="bi-people" onClick={handleNavigation} />}
+        {can("VIEW_SUPPLIERS") && <LinkItem to="/proveedores" label="Proveedores" icon="bi-truck" onClick={handleNavigation} />}
 
         {showProductos && (
           <div>
@@ -141,13 +138,13 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
             </button>
 
             <div className={`collapse sidebar-submenu ${openSubmenu === "productos" ? "show" : ""}`} id="menuProductos">
-              {can("VIEW_PRODUCTS") && <LinkItem to="/lineas-producto" label="Lineas" icon="bi-collection" sub />}
-              {can("VIEW_PRODUCTS") && <LinkItem to="/familias" label="Familias" icon="bi-diagram-3" sub />}
-              {can("VIEW_PRODUCTS") && <LinkItem to="/modelos" label="Modelos" icon="bi-boxes" sub />}
-              {can("VIEW_PRODUCTS") && <LinkItem to="/materiales" label="Materiales" icon="bi-layers" sub />}
-              {can("VIEW_PRODUCTS") && <LinkItem to="/colores" label="Colores" icon="bi-palette" sub />}
-              {can("VIEW_PRODUCTS") && <LinkItem to="/productos" label="Productos" icon="bi-box-seam" />}
-              {can("VIEW_PRODUCT_CATALOG") && <LinkItem to="/productos/catalogo" label="Catalogo visual" icon="bi-images" sub />}
+              {can("VIEW_PRODUCTS") && <LinkItem to="/lineas-producto" label="Lineas" icon="bi-collection" sub onClick={handleNavigation} />}
+              {can("VIEW_PRODUCTS") && <LinkItem to="/familias" label="Familias" icon="bi-diagram-3" sub onClick={handleNavigation} />}
+              {can("VIEW_PRODUCTS") && <LinkItem to="/modelos" label="Modelos" icon="bi-boxes" sub onClick={handleNavigation} />}
+              {can("VIEW_PRODUCTS") && <LinkItem to="/materiales" label="Materiales" icon="bi-layers" sub onClick={handleNavigation} />}
+              {can("VIEW_PRODUCTS") && <LinkItem to="/colores" label="Colores" icon="bi-palette" sub onClick={handleNavigation} />}
+              {can("VIEW_PRODUCTS") && <LinkItem to="/productos" label="Productos" icon="bi-box-seam" onClick={handleNavigation} />}
+              {can("VIEW_PRODUCT_CATALOG") && <LinkItem to="/productos/catalogo" label="Catalogo visual" icon="bi-images" sub onClick={handleNavigation} />}
             </div>
           </div>
         )}
@@ -169,21 +166,21 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
               <i className="bi bi-chevron-down sidebar-chevron"></i>
             </button>
             <div className={`collapse sidebar-submenu ${openSubmenu === "almacen" ? "show" : ""}`} id="menuAlmacen">
-              <LinkItem to="/insumos" label="Insumos" icon="bi-boxes" sub />
-              <LinkItem to="/almacen/entradas" label="Entradas" icon="bi-box-arrow-in-down" sub />
-              <LinkItem to="/insumos/tipos" label="Tipos de insumo" icon="bi-tags" sub />
-              <LinkItem to="/salidas-insumos" label="Salidas" icon="bi-box-arrow-right" sub />
-              <LinkItem to="/unidades-medida" label="Unidad Medida" icon="bi-aspect-ratio" sub />
+              <LinkItem to="/insumos" label="Insumos" icon="bi-boxes" sub onClick={handleNavigation} />
+              <LinkItem to="/almacen/entradas" label="Entradas" icon="bi-box-arrow-in-down" sub onClick={handleNavigation} />
+              <LinkItem to="/insumos/tipos" label="Tipos de insumo" icon="bi-tags" sub onClick={handleNavigation} />
+              <LinkItem to="/salidas-insumos" label="Salidas" icon="bi-box-arrow-right" sub onClick={handleNavigation} />
+              <LinkItem to="/unidades-medida" label="Unidad Medida" icon="bi-aspect-ratio" sub onClick={handleNavigation} />
             </div>
           </div>
         )}
 
-        {can("VIEW_WORK_CENTERS") && <LinkItem to="/centros-trabajo" label="Centros de Trabajo" icon="bi-building" />}
-        {can("VIEW_OPERATIONS") && <LinkItem to="/operaciones" label="Operaciones" icon="bi-gear" />}
-        {can("VIEW_CIF") && <LinkItem to="/cif" label="CIF" icon="bi-diagram-3" />}
-        {can("VIEW_PURCHASES") && <LinkItem to="/compras" label="Compras" icon="bi-cart-check" />}
-        {can("VIEW_KARDEX") && <LinkItem to="/kardex" label="Kardex" icon="bi-journal-text" />}
-        {can("VIEW_QUOTES") && <LinkItem to="/cotizaciones" label="Cotizaciones" icon="bi-file-earmark-text" />}
+        {can("VIEW_WORK_CENTERS") && <LinkItem to="/centros-trabajo" label="Centros de Trabajo" icon="bi-building" onClick={handleNavigation} />}
+        {can("VIEW_OPERATIONS") && <LinkItem to="/operaciones" label="Operaciones" icon="bi-gear" onClick={handleNavigation} />}
+        {can("VIEW_CIF") && <LinkItem to="/cif" label="CIF" icon="bi-diagram-3" onClick={handleNavigation} />}
+        {can("VIEW_PURCHASES") && <LinkItem to="/compras" label="Compras" icon="bi-cart-check" onClick={handleNavigation} />}
+        {can("VIEW_KARDEX") && <LinkItem to="/kardex" label="Kardex" icon="bi-journal-text" onClick={handleNavigation} />}
+        {can("VIEW_QUOTES") && <LinkItem to="/cotizaciones" label="Cotizaciones" icon="bi-file-earmark-text" onClick={handleNavigation} />}
       </nav>
 
       <button

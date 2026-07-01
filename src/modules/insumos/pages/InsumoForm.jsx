@@ -224,6 +224,9 @@ export default function InsumoForm({
       let respuesta;
       const payload = { ...formData };
       payload.tipoInsumo = payload.tipoInsumo || null;
+      if (esEdicion) {
+        delete payload.stockActual;
+      }
       if (!puedeGestionarCostos) {
         delete payload.costoCotizacion;
       } else if (payload.costoCotizacion === "") {
@@ -650,8 +653,14 @@ export default function InsumoForm({
                     name="stockActual"
                     className={inputClass("stockActual")}
                     value={formData.stockActual}
+                    readOnly={esEdicion}
                     onChange={handleChange}
                   />
+                  {esEdicion ? (
+                    <small className="text-muted d-block mt-1">
+                      El stock se ajusta desde kardex o la acción de ajuste de inventario.
+                    </small>
+                  ) : null}
                 </div>
 
                 <div className="col-md-6">

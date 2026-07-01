@@ -39,7 +39,7 @@ const emptyTipoPreview = {
   disponible: false,
   mensaje: "Escribe un nombre para generar un codigo de 1 a 3 letras"
 };
-const ROLES_ELIMINAR_PROVEEDOR = ["ADMIN", "DIRECTOR_GENERAL", "SUBDIRECCION_ADMINISTRATIVA"];
+const ROLES_ELIMINAR_PROVEEDOR = ["ADMIN", "SUPER_ADMIN", "DIRECTOR_GENERAL", "SUBDIRECCION_ADMINISTRATIVA"];
 
 export default function ProveedorForm({
   proveedorId,

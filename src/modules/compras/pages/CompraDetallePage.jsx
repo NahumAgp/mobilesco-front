@@ -11,7 +11,7 @@ export default function CompraDetallePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [toastMessage, setToastMessage] = useState("");
-  const [toastType, setToastType] = useState("success");
+  const [toastType] = useState("success");
 
   const cargarCompra = useCallback(async () => {
     try {

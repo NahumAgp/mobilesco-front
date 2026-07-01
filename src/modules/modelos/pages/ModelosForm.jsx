@@ -538,7 +538,7 @@ export default function ModeloForm({
         descripcion: formData.descripcion?.trim() || "",
         familia_id: familiaIdNormalizado,
         activo: Boolean(formData.activo),
-        categorias: categorias.map(({ orden, ...categoria }) => categoria),
+        categorias: categorias.map((categoria) => Object.fromEntries(Object.entries(categoria).filter(([key]) => key !== "orden"))),
         materiales: materialesSeleccionados
           .map((material) => Number(material.id))
           .filter((id) => Number.isFinite(id))
