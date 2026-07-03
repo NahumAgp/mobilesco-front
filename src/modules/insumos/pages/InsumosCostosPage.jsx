@@ -304,7 +304,6 @@ export default function InsumosCostosPage() {
                         </td>
                         <td>
                           <div className="fw-semibold">{item.nombre}</div>
-                          <div className="text-muted small">#{item.id}</div>
                         </td>
                         <td>
                           <span className="badge text-bg-light border insumos-unit-badge">
