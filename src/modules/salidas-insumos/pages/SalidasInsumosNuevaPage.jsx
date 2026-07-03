@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import Toast from "../../../components/ui/Toast.jsx";
-import { obtenerInsumos } from "../../insumos/services/insumos.js";
+import { obtenerInsumoPorId, obtenerInsumos } from "../../insumos/services/insumos.js";
 import { crearSalidaInsumo } from "../services/salidasInsumos.js";
 
 function obtenerFechaHoraLocal() {
@@ -23,6 +23,7 @@ export default function SalidasInsumosNuevaPage() {
   const [busquedaInsumo, setBusquedaInsumo] = useState("");
   const [sugerenciasInsumo, setSugerenciasInsumo] = useState([]);
   const [cantidadEntrada, setCantidadEntrada] = useState(1);
+  const [actualizandoStock, setActualizandoStock] = useState(false);
   const [formData, setFormData] = useState({
     ordenProduccion: "",
     fechaSalida: obtenerFechaHoraLocal(),
@@ -31,20 +32,98 @@ export default function SalidasInsumosNuevaPage() {
   });
   const [cargando, setCargando] = useState(false);
 
-  useEffect(() => {
-    const cargarCatalogos = async () => {
-      try {
-        const insumosResp = await obtenerInsumos();
-        setInsumos(Array.isArray(insumosResp?.content) ? insumosResp.content : Array.isArray(insumosResp) ? insumosResp : []);
-      } catch (error) {
-        console.error("Error cargando insumos:", error);
+  const normalizarRespuestaInsumos = (insumosResp) =>
+    Array.isArray(insumosResp?.content) ? insumosResp.content : Array.isArray(insumosResp) ? insumosResp : [];
+
+  const actualizarInsumoEnCatalogo = useCallback((insumoActualizado) => {
+    if (!insumoActualizado?.id) return;
+
+    setInsumos((prev) =>
+      prev.map((insumo) => String(insumo.id) === String(insumoActualizado.id) ? insumoActualizado : insumo)
+    );
+  }, []);
+
+  const cargarCatalogos = useCallback(async ({ silencioso = false } = {}) => {
+    try {
+      const insumosResp = await obtenerInsumos();
+      setInsumos(normalizarRespuestaInsumos(insumosResp));
+    } catch (error) {
+      console.error("Error cargando insumos:", error);
+      if (!silencioso) {
         setToastType("danger");
         setToastMessage("No se pudieron cargar los insumos");
       }
-    };
-
-    cargarCatalogos();
+    }
   }, []);
+
+  const refrescarStocksDetalles = useCallback(async ({ avisarCambios = false } = {}) => {
+    if (detalles.length === 0) {
+      return { valido: true, detallesActualizados: [] };
+    }
+
+    const insumosActualizados = await Promise.all(
+      detalles.map((item) => obtenerInsumoPorId(item.insumoId))
+    );
+
+    setInsumos((prev) => {
+      const porId = new Map(insumosActualizados.map((insumo) => [String(insumo.id), insumo]));
+      return prev.map((insumo) => porId.get(String(insumo.id)) || insumo);
+    });
+
+    let huboCambio = false;
+    let valido = true;
+    const detallesActualizados = detalles.map((item) => {
+      const insumoActual = insumosActualizados.find((insumo) => String(insumo.id) === String(item.insumoId));
+      const stockBase = Number(insumoActual?.stockActual || 0);
+      const cantidad = Number(item.cantidad || 0);
+      const stockDisponible = stockBase - cantidad;
+      const stockDesactualizado = cantidad > stockBase;
+
+      if (Number(item.stockBase || 0) !== stockBase || Boolean(item.stockDesactualizado) !== stockDesactualizado) {
+        huboCambio = true;
+      }
+
+      if (stockDesactualizado) {
+        valido = false;
+      }
+
+      return {
+        ...item,
+        insumoNombre: insumoActual?.nombre || item.insumoNombre,
+        unidad: insumoActual?.unidadMedida?.simbolo || insumoActual?.unidadMedida?.nombre || item.unidad,
+        stockBase,
+        stockActual: stockDisponible,
+        stockDesactualizado
+      };
+    });
+
+    setDetalles(detallesActualizados);
+
+    if (avisarCambios && huboCambio) {
+      setToastType(valido ? "info" : "danger");
+      setToastMessage(valido
+        ? "Stock actualizado con la informacion mas reciente"
+        : "El stock cambio en otra sesion. Revisa los renglones marcados antes de guardar");
+    }
+
+    return { valido, detallesActualizados };
+  }, [detalles]);
+
+  useEffect(() => {
+    cargarCatalogos();
+  }, [cargarCatalogos]);
+
+  useEffect(() => {
+    const intervalo = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      cargarCatalogos({ silencioso: true });
+      refrescarStocksDetalles({ avisarCambios: true }).catch((error) => {
+        console.error("Error actualizando stock de detalles:", error);
+      });
+    }, 5000);
+
+    return () => window.clearInterval(intervalo);
+  }, [cargarCatalogos, refrescarStocksDetalles]);
 
   useEffect(() => {
     const cerrarSugerenciasAlClickAfuera = (event) => {
@@ -140,7 +219,7 @@ export default function SalidasInsumosNuevaPage() {
     setSugerenciasInsumo(coincidencias);
   };
 
-  const agregarDetalle = () => {
+  const agregarDetalle = async () => {
     const insumo = buscarInsumoPorEntrada(busquedaInsumo);
     const cantidad = Number(cantidadEntrada || 0);
 
@@ -156,14 +235,29 @@ export default function SalidasInsumosNuevaPage() {
       return;
     }
 
-    const stockBase = Number(insumo.stockActual || 0);
+    let insumoActual = insumo;
+    try {
+      setActualizandoStock(true);
+      insumoActual = await obtenerInsumoPorId(insumo.id);
+      actualizarInsumoEnCatalogo(insumoActual);
+    } catch (error) {
+      console.error("Error consultando stock actual:", error);
+      setToastType("danger");
+      setToastMessage("No se pudo confirmar el stock actual del insumo");
+      setActualizandoStock(false);
+      return;
+    } finally {
+      setActualizandoStock(false);
+    }
+
+    const stockBase = Number(insumoActual.stockActual || 0);
     const existente = detalles.find((item) => String(item.insumoId) === String(insumo.id));
     const cantidadAcumulada = Number(existente?.cantidad || 0) + cantidad;
     const stockDisponible = stockBase - cantidadAcumulada;
 
     if (cantidadAcumulada > stockBase) {
       setToastType("danger");
-      setToastMessage(`Stock insuficiente para ${insumo.nombre}`);
+      setToastMessage(`Stock insuficiente para ${insumoActual.nombre}. Disponible: ${stockBase.toFixed(2)}, solicitado: ${cantidadAcumulada.toFixed(2)}`);
       return;
     }
 
@@ -174,7 +268,9 @@ export default function SalidasInsumosNuevaPage() {
             ? {
                 ...item,
                 cantidad: cantidadAcumulada,
-                stockActual: stockDisponible
+                stockBase,
+                stockActual: stockDisponible,
+                stockDesactualizado: false
               }
             : item
         )
@@ -185,11 +281,12 @@ export default function SalidasInsumosNuevaPage() {
         {
           id: Date.now(),
           insumoId: insumo.id,
-          insumoNombre: insumo.nombre,
-          unidad: insumo.unidadMedida?.simbolo || insumo.unidadMedida?.nombre || "",
+          insumoNombre: insumoActual.nombre,
+          unidad: insumoActual.unidadMedida?.simbolo || insumoActual.unidadMedida?.nombre || "",
           cantidad,
           stockBase,
-          stockActual: stockDisponible
+          stockActual: stockDisponible,
+          stockDesactualizado: false
         }
       ]);
     }
@@ -271,12 +368,23 @@ export default function SalidasInsumosNuevaPage() {
       setCargando(true);
       setErrores({});
 
+      const resultadoStock = await refrescarStocksDetalles({ avisarCambios: true });
+      if (!resultadoStock.valido) {
+        setToastType("danger");
+        setToastMessage("No se puede guardar: hay insumos sin stock suficiente. Actualiza cantidades o elimina el renglon");
+        return;
+      }
+
+      const detallesParaGuardar = resultadoStock.detallesActualizados.length > 0
+        ? resultadoStock.detallesActualizados
+        : detalles;
+
       const payload = {
         ordenProduccion: formData.ordenProduccion.trim(),
         fechaSalida: formData.fechaSalida || null,
         observaciones: formData.observaciones.trim() || null,
         responsable: formData.responsable.trim(),
-        detalles: detalles.map((item) => ({
+        detalles: detallesParaGuardar.map((item) => ({
           insumoId: item.insumoId,
           cantidad: Number(item.cantidad),
           observaciones: null
@@ -394,7 +502,7 @@ export default function SalidasInsumosNuevaPage() {
                 <tbody>
                   {detalles.length > 0 ? (
                     detalles.map((item) => (
-                      <tr key={item.id}>
+                      <tr key={item.id} className={item.stockDesactualizado ? "table-warning" : ""}>
                         <td>{item.insumoNombre}</td>
                         <td className="text-end" style={{ maxWidth: "130px" }}>
                           <input
@@ -407,7 +515,11 @@ export default function SalidasInsumosNuevaPage() {
                           />
                         </td>
                         <td>{item.unidad}</td>
-                        <td className="text-end">{Number(item.stockActual).toFixed(2)}</td>
+                        <td className={`text-end ${item.stockDesactualizado ? "text-danger fw-semibold" : ""}`}>
+                          {item.stockDesactualizado
+                            ? `Actual: ${Number(item.stockBase || 0).toFixed(2)}`
+                            : Number(item.stockActual).toFixed(2)}
+                        </td>
                         <td className="text-end">
                           <button type="button" className="btn btn-outline-danger btn-sm" onClick={() => eliminarDetalle(item.id)}>
                             <i className="bi bi-trash"></i>
@@ -490,7 +602,7 @@ export default function SalidasInsumosNuevaPage() {
                   />
                 </div>
                 <div className="col-md-2">
-                  <button type="button" className="btn btn-success w-100" onClick={agregarDetalle}>
+                  <button type="button" className="btn btn-success w-100" onClick={agregarDetalle} disabled={actualizandoStock}>
                     <i className="bi bi-plus-lg me-2"></i>Agregar
                   </button>
                 </div>
@@ -517,8 +629,8 @@ export default function SalidasInsumosNuevaPage() {
           >
             Cancelar
           </button>
-          <button type="submit" className="btn btn-primary px-5 fw-bold" disabled={cargando}>
-            {cargando ? "Guardando..." : "Guardar salida"}
+          <button type="submit" className="btn btn-primary px-5 fw-bold" disabled={cargando || actualizandoStock}>
+            {cargando ? "Guardando..." : actualizandoStock ? "Actualizando stock..." : "Guardar salida"}
           </button>
         </div>
       </form>
