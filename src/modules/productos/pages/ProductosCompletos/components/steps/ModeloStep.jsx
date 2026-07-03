@@ -5,6 +5,7 @@ import request from "../../../../../../services/api.js";
 import { API_PATHS } from "../../../../../../config/apiPaths.js";
 import SearchableSelect from "../../../../../../components/ui/SearchableSelect.jsx";
 import { ModeloDraftModal } from "../WizardDraftModal.jsx";
+import { construirUrlImagen } from "../../../../services/imagenes.js";
 
 const getLista = (respuesta) => {
   if (Array.isArray(respuesta)) return respuesta;
@@ -37,6 +38,46 @@ const normalizarVarianteExistente = (producto) => ({
   pesoKg: producto?.pesoKg ?? ""
 });
 
+const normalizarImagenesExistentes = (producto, variante) => {
+  const imagenes = [];
+  const agregar = (imagen, origen = "galeria") => {
+    if (!imagen) return;
+    const url = imagen?.url || imagen;
+    if (!url) return;
+    const key = imagen?.id ? `id-${imagen.id}` : `url-${url}`;
+    if (imagenes.some((item) => item._sourceKey === key)) return;
+
+    imagenes.push({
+      id: imagen?.id ? `persisted-${imagen.id}` : `persisted-${imagenes.length}-${variante.id}`,
+      imagenId: imagen?.id || null,
+      _sourceKey: key,
+      persisted: true,
+      readonly: true,
+      origen,
+      nombre: imagen?.altTexto || imagen?.nombre || `Imagen ${imagenes.length + 1}`,
+      url: /^blob:/i.test(url) ? url : construirUrlImagen(url),
+      varianteId: variante.id,
+      productoId: variante.productoId,
+      materialId: variante.materialId,
+      materialNombre: variante.materialNombre,
+      colorId: variante.colorId,
+      colorNombre: variante.colorNombre,
+      principal: Boolean(imagen?.esPrincipal || imagen?.principal)
+    });
+  };
+
+  agregar(producto?.imagenPrincipal, "principal");
+  if (Array.isArray(producto?.imagenes)) {
+    producto.imagenes.forEach((imagen) => agregar(imagen));
+  }
+
+  if (imagenes.length > 0 && !imagenes.some((imagen) => imagen.principal)) {
+    imagenes[0] = { ...imagenes[0], principal: true };
+  }
+
+  return imagenes.map(({ _sourceKey, ...imagen }) => imagen);
+};
+
 export default function ModeloStep({ data, onUpdate, borradores, onUpsertDraft }) {
   const [modelos, setModelos] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -59,7 +100,7 @@ export default function ModeloStep({ data, onUpdate, borradores, onUpsertDraft }
 
   const limpiarVariantesDelModelo = () => {
     onUpdate("variantes", []);
-    onUpdate("imagenes", { variantes: {} });
+    onUpdate("imagenes", { modelo: null, variantes: {} });
   };
 
   const seleccionarModelo = async (modeloId, opcion) => {
@@ -86,12 +127,26 @@ export default function ModeloStep({ data, onUpdate, borradores, onUpsertDraft }
     try {
       setCargandoVariantes(true);
       const productosModelo = getLista(await obtenerProductosPorModelo(modeloId));
+      const existentes = productosModelo
+        .map((producto) => ({
+          producto,
+          variante: normalizarVarianteExistente(producto)
+        }))
+        .filter(({ variante }) => variante.categoriaId && variante.materialId && variante.colorId);
+      const imagenesPorVariante = {};
+
+      existentes.forEach(({ producto, variante }) => {
+        const imagenes = normalizarImagenesExistentes(producto, variante);
+        if (imagenes.length > 0) {
+          imagenesPorVariante[String(variante.id)] = imagenes;
+        }
+      });
+
       onUpdate(
         "variantes",
-        productosModelo
-          .map(normalizarVarianteExistente)
-          .filter((variante) => variante.categoriaId && variante.materialId && variante.colorId)
+        existentes.map(({ variante }) => variante)
       );
+      onUpdate("imagenes", { modelo: null, variantes: imagenesPorVariante });
     } catch (error) {
       console.error("No se pudieron cargar las variantes existentes del modelo:", error);
     } finally {

@@ -157,6 +157,7 @@ export function SimpleDraftModal({
   lineas = [],
   existingItems = [],
   forcedLineaId = "",
+  lockCodigo = false,
   onClose,
   onSave,
   onCreateLinea
@@ -174,6 +175,7 @@ export function SimpleDraftModal({
       descripcion: initialValue?.descripcion || "",
       descripcionCorta: initialValue?.descripcionCorta || "",
       activo: initialValue?.activo !== false,
+      categoriaId: initialValue?.categoriaId || "",
       hex: initialValue?.hex || "#808080",
       lineaId: initialValue?.lineaId || initialValue?.lineaRef || ""
     });
@@ -181,12 +183,12 @@ export function SimpleDraftModal({
   }, [initialValue, show, tipo]);
 
   useEffect(() => {
-    if (!show) return;
+    if (!show || lockCodigo) return;
     const codigo = tipo === "color"
       ? crearCodigoColorDisponible(form.nombre, existingItems, form.ref)
       : crearCodigoDisponible(form.nombre, existingItems, form.ref);
     setForm((prev) => prev.codigo === codigo ? prev : { ...prev, codigo });
-  }, [existingItems, form.nombre, form.ref, show, tipo]);
+  }, [existingItems, form.nombre, form.ref, lockCodigo, show, tipo]);
 
   useEffect(() => {
     if (show && tipo === "familia" && forcedLineaId) {

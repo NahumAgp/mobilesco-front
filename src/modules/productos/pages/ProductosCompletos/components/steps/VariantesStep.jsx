@@ -5,7 +5,9 @@ import { obtenerColores } from "../../../../../colores/services/color.js";
 import { obtenerMaterialesActivos } from "../../../../../materiales/services/materiales.js";
 import { obtenerFamiliaPorId } from "../../../../../familias/services/familias.js";
 import { obtenerLineaProductoPorId } from "../../../../../lineas-producto/services/lineaProducto.js";
-import { SimpleDraftModal } from "../WizardDraftModal.jsx";
+import { obtenerCategoriasGlobalesActivas } from "../../../../../modelos/services/categoriasGlobales.js";
+import SearchableSelect from "../../../../../../components/ui/SearchableSelect.jsx";
+import { SimpleDraftModal, crearRefBorrador } from "../WizardDraftModal.jsx";
 
 const getLista = (respuesta) => {
   if (Array.isArray(respuesta)) return respuesta;
@@ -128,6 +130,323 @@ const getMaterialProducto = (producto) =>
   obtenerCampo(producto, ["materialId", "id_material", "material_id"]);
 const getColorProducto = (producto) =>
   obtenerCampo(producto, ["colorId", "id_color", "color_id"]);
+
+const normalizarTexto = (valor = "") =>
+  valor
+    .toString()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toUpperCase();
+
+const parseCodigoCategoria = (codigo) => {
+  const parsed = Number.parseInt(String(codigo || "").trim(), 10);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const formatoCodigoCategoria = (numero) => String(numero).padStart(2, "0");
+
+const ordenarPorCodigoCategoria = (a, b) => {
+  const codigoA = parseCodigoCategoria(a?.codigo);
+  const codigoB = parseCodigoCategoria(b?.codigo);
+  if (codigoA !== codigoB) return codigoA - codigoB;
+  return String(a?.nombre || "").localeCompare(String(b?.nombre || ""), "es", { numeric: true, sensitivity: "base" });
+};
+
+const maxCodigoCategoria = (categorias = []) =>
+  categorias.reduce((maximo, categoria) => Math.max(maximo, parseCodigoCategoria(categoria?.codigo)), 0);
+
+const existeCategoriaEnLista = (categoria, categorias = []) => {
+  const categoriaId = categoria?.categoriaId || categoria?.id;
+  const nombre = normalizarTexto(categoria?.nombre);
+
+  return categorias.some((item) => {
+    const itemCategoriaId = item?.categoriaId || item?.id;
+    if (categoriaId && itemCategoriaId && String(itemCategoriaId) === String(categoriaId)) return true;
+    return nombre && normalizarTexto(item?.nombre) === nombre;
+  });
+};
+
+function CategoriaBatchModal({
+  show,
+  categoriasBase = [],
+  categoriasActuales = [],
+  categoriasGlobales = [],
+  onClose,
+  onSave
+}) {
+  const [seleccionadas, setSeleccionadas] = useState([]);
+  const [categoriaSeleccionadaId, setCategoriaSeleccionadaId] = useState("");
+  const [manual, setManual] = useState({ nombre: "", descripcion: "" });
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!show) return;
+    setSeleccionadas([]);
+    setCategoriaSeleccionadaId("");
+    setManual({ nombre: "", descripcion: "" });
+    setError("");
+  }, [show]);
+
+  const codigoBase = useMemo(() => maxCodigoCategoria(categoriasActuales), [categoriasActuales]);
+  const categoriasFijas = useMemo(
+    () => [...categoriasBase].sort(ordenarPorCodigoCategoria),
+    [categoriasBase]
+  );
+  const categoriasDisponibles = useMemo(
+    () =>
+      categoriasGlobales
+        .filter((categoria) => !existeCategoriaEnLista(categoria, categoriasActuales))
+        .filter((categoria) => !existeCategoriaEnLista(categoria, seleccionadas))
+        .sort((a, b) => String(a?.nombre || "").localeCompare(String(b?.nombre || ""), "es", { sensitivity: "base" })),
+    [categoriasActuales, categoriasGlobales, seleccionadas]
+  );
+
+  if (!show) return null;
+
+  const agregarCategoriaGlobal = (categoriaId, categoria) => {
+    const categoriaCompleta = categoria || categoriasGlobales.find((item) => String(item.id) === String(categoriaId));
+    if (!categoriaCompleta) return;
+
+    if (existeCategoriaEnLista(categoriaCompleta, [...categoriasActuales, ...seleccionadas])) {
+      setError("Esa categoria ya esta asignada al modelo.");
+      return;
+    }
+
+    const ref = crearRefBorrador("categoria");
+    setSeleccionadas((prev) => [
+      ...prev,
+      {
+        id: ref,
+        ref,
+        categoriaId: Number(categoriaCompleta.id),
+        nombre: categoriaCompleta.nombre || "",
+        descripcion: categoriaCompleta.descripcion || "",
+        activo: categoriaCompleta.activo !== false,
+        _pending: true,
+        _source: "global"
+      }
+    ]);
+    setCategoriaSeleccionadaId("");
+    setError("");
+  };
+
+  const agregarManual = () => {
+    const nombre = manual.nombre.trim();
+    if (!nombre) {
+      setError("Escribe el nombre de la categoria.");
+      return;
+    }
+
+    const categoriaManual = {
+      nombre,
+      descripcion: manual.descripcion.trim(),
+      activo: true
+    };
+
+    if (existeCategoriaEnLista(categoriaManual, [...categoriasActuales, ...seleccionadas])) {
+      setError("Esa categoria ya existe o ya fue agregada.");
+      return;
+    }
+
+    const ref = crearRefBorrador("categoria");
+    setSeleccionadas((prev) => [
+      ...prev,
+      {
+        ...categoriaManual,
+        id: ref,
+        ref,
+        _pending: true,
+        _source: "manual"
+      }
+    ]);
+    setManual({ nombre: "", descripcion: "" });
+    setError("");
+  };
+
+  const moverSeleccionada = (index, direccion) => {
+    const destino = index + direccion;
+    if (destino < 0 || destino >= seleccionadas.length) return;
+    setSeleccionadas((prev) => {
+      const siguiente = [...prev];
+      const [movida] = siguiente.splice(index, 1);
+      siguiente.splice(destino, 0, movida);
+      return siguiente;
+    });
+  };
+
+  const quitarSeleccionada = (index) => {
+    setSeleccionadas((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
+  };
+
+  const guardar = () => {
+    if (seleccionadas.length === 0) {
+      setError("Agrega al menos una categoria.");
+      return;
+    }
+
+    onSave(
+      seleccionadas.map((categoria, index) => ({
+        ...categoria,
+        codigo: formatoCodigoCategoria(codigoBase + index + 1)
+      }))
+    );
+  };
+
+  return (
+    <div
+      className="modal fade show modelos-modal-popout wizard-draft-modal"
+      style={{ display: "block", backgroundColor: "rgba(15, 23, 42, 0.42)", zIndex: 1080 }}
+    >
+      <div className="modal-dialog modal-xl modal-dialog-centered">
+        <div className="modal-content">
+          <div className="modal-header">
+            <h5 className="modal-title">
+              <i className="bi bi-folder-plus me-2"></i>
+              Agregar categorias al modelo
+            </h5>
+            <button type="button" className="btn-close" onClick={onClose}></button>
+          </div>
+
+          <div className="modal-body">
+            <div className="alert alert-info py-2">
+              Las categorias existentes conservan su codigo. Las nuevas se ordenan despues de {formatoCodigoCategoria(codigoBase || 0)} para cuidar los SKUs.
+            </div>
+
+            {categoriasFijas.length > 0 && (
+              <div className="border rounded p-3 mb-3 bg-light">
+                <div className="fw-semibold mb-2">Categorias ya creadas, no se reordenan</div>
+                <div className="d-flex flex-wrap gap-2">
+                  {categoriasFijas.map((categoria) => (
+                    <span key={categoria.id || categoria.ref} className="badge rounded-pill text-bg-secondary">
+                      [{categoria.codigo || "--"}] {categoria.nombre || "-"}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="row g-3">
+              <div className="col-lg-6">
+                <div className="border rounded p-3 h-100">
+                  <div className="fw-semibold mb-2">Seleccionar del catalogo global</div>
+                  <SearchableSelect
+                    label=""
+                    value={categoriaSeleccionadaId}
+                    options={categoriasDisponibles}
+                    onChange={agregarCategoriaGlobal}
+                    placeholder="Buscar categoria existente..."
+                    searchPlaceholder="Busca por nombre o descripcion..."
+                    emptyText="No hay categorias disponibles"
+                    getOptionValue={(item) => item.id}
+                    getOptionLabel={(item) => `${item.nombre || "-"}${item.descripcion ? ` - ${item.descripcion}` : ""}`}
+                    getOptionSearchText={(item) => [item.nombre, item.descripcion].filter(Boolean).join(" ").toLowerCase()}
+                    renderOptionLabel={(item) => `${item.nombre || "-"}${item.descripcion ? ` - ${item.descripcion}` : ""}`}
+                    helperText="Puedes seleccionar varias, una por una, antes de guardar."
+                  />
+                </div>
+              </div>
+
+              <div className="col-lg-6">
+                <div className="border rounded p-3 h-100">
+                  <div className="fw-semibold mb-2">Crear categoria nueva</div>
+                  <div className="row g-2">
+                    <div className="col-md-5">
+                      <input
+                        className="form-control"
+                        value={manual.nombre}
+                        onChange={(event) => setManual((prev) => ({ ...prev, nombre: event.target.value }))}
+                        placeholder="Ej. Universidad"
+                      />
+                    </div>
+                    <div className="col-md-5">
+                      <input
+                        className="form-control"
+                        value={manual.descripcion}
+                        onChange={(event) => setManual((prev) => ({ ...prev, descripcion: event.target.value }))}
+                        placeholder="Descripcion opcional"
+                      />
+                    </div>
+                    <div className="col-md-2 d-grid">
+                      <button type="button" className="btn btn-outline-primary" onClick={agregarManual}>
+                        Agregar
+                      </button>
+                    </div>
+                  </div>
+                  <div className="form-text">Si no existe en el catalogo global, se creara al guardar el producto.</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-3">
+              <div className="fw-semibold mb-2">Nuevas categorias y orden</div>
+              {seleccionadas.length === 0 ? (
+                <div className="text-muted border rounded p-3">Aun no agregas categorias nuevas.</div>
+              ) : (
+                <div className="list-group">
+                  {seleccionadas.map((categoria, index) => (
+                    <div key={categoria.ref || categoria.id} className="list-group-item d-flex align-items-center gap-2">
+                      <span className="badge text-bg-primary">{formatoCodigoCategoria(codigoBase + index + 1)}</span>
+                      <div className="flex-grow-1">
+                        <div className="fw-semibold">{categoria.nombre}</div>
+                        <small className="text-muted">
+                          {categoria._source === "global" ? "Del catalogo global" : "Nueva categoria global"}
+                          {categoria.descripcion ? ` - ${categoria.descripcion}` : ""}
+                        </small>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-secondary"
+                        onClick={() => moverSeleccionada(index, -1)}
+                        disabled={index === 0}
+                        title="Subir"
+                      >
+                        <i className="bi bi-arrow-up"></i>
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-secondary"
+                        onClick={() => moverSeleccionada(index, 1)}
+                        disabled={index === seleccionadas.length - 1}
+                        title="Bajar"
+                      >
+                        <i className="bi bi-arrow-down"></i>
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-danger"
+                        onClick={() => quitarSeleccionada(index)}
+                        title="Quitar"
+                      >
+                        <i className="bi bi-x-lg"></i>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {error && (
+              <div className="alert alert-warning py-2 mt-3 mb-0">
+                <i className="bi bi-exclamation-triangle me-2"></i>
+                {error}
+              </div>
+            )}
+          </div>
+
+          <div className="modal-footer">
+            <span className="badge text-bg-warning me-auto">Pendiente hasta guardar el producto</span>
+            <button type="button" className="btn btn-light" onClick={onClose}>Cancelar</button>
+            <button type="button" className="btn btn-primary" onClick={guardar} disabled={seleccionadas.length === 0}>
+              Agregar categorias
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const SECCION_BORRADOR_POR_TIPO = {
   material: "materiales",
   color: "colores"
@@ -152,6 +471,7 @@ export default function VariantesStep({
   const [seleccion, setSeleccion] = useState({});
   const [mensaje, setMensaje] = useState("");
   const [modalBorrador, setModalBorrador] = useState("");
+  const [modalCategorias, setModalCategorias] = useState(false);
   const [borradorEditando, setBorradorEditando] = useState(null);
 
   const variantes = useMemo(
@@ -160,11 +480,13 @@ export default function VariantesStep({
   );
 
   const categoriasDisponibles = useMemo(() => {
-    if (data?.modelo?.modo === "nuevo") return data?.modelo?.categorias || [];
+    if (data?.modelo?.modo === "nuevo") {
+      return [...(data?.modelo?.categorias || [])].sort(ordenarPorCodigoCategoria);
+    }
     return [
       ...(borradores?.categorias || []).filter((item) => String(item.modeloId) === String(data?.modelo?.id)),
       ...categorias
-    ];
+    ].sort(ordenarPorCodigoCategoria);
   }, [borradores?.categorias, categorias, data?.modelo?.categorias, data?.modelo?.id, data?.modelo?.modo]);
 
   const materialesDisponibles = useMemo(
@@ -203,7 +525,7 @@ export default function VariantesStep({
           : obtenerNiveles(data?.modelo?.id).then(getLista);
         const [categoriasLista, categoriasGlobalesLista, materialesLista, coloresLista] = await Promise.all([
           categoriasPromise,
-          obtenerNiveles().then(getLista),
+          obtenerCategoriasGlobalesActivas().then(getLista),
           obtenerMaterialesActivos().then(getLista),
           obtenerColores().then(getLista)
         ]);
@@ -695,7 +1017,7 @@ export default function VariantesStep({
           ...(data?.modelo?.categorias || []).filter(
             (item) => String(item.ref || item.id) !== String(borrador.ref || borrador.id)
           )
-        ]
+        ].sort(ordenarPorCodigoCategoria)
       });
     } else if (tipo === "categoria") {
       onUpsertDraft("categorias", { ...borrador, modeloId: Number(data?.modelo?.id) });
@@ -755,6 +1077,54 @@ export default function VariantesStep({
     }
     setModalBorrador("");
     setBorradorEditando(null);
+  };
+
+  const guardarCategoriasBatch = (categoriasNuevas) => {
+    if (!Array.isArray(categoriasNuevas) || categoriasNuevas.length === 0) return;
+
+    if (data?.modelo?.modo === "nuevo") {
+      const refsNuevas = new Set(categoriasNuevas.map((categoria) => String(categoria.ref || categoria.id)));
+      onUpdate("modelo", {
+        categorias: [
+          ...(data?.modelo?.categorias || []).filter(
+            (item) => !refsNuevas.has(String(item.ref || item.id))
+          ),
+          ...categoriasNuevas
+        ].sort(ordenarPorCodigoCategoria)
+      });
+    } else {
+      categoriasNuevas.forEach((categoria) => {
+        onUpsertDraft("categorias", {
+          ...categoria,
+          modeloId: Number(data?.modelo?.id)
+        });
+      });
+    }
+
+    setSeleccion((prev) => {
+      const siguiente = {};
+      Object.entries(prev).forEach(([materialKey, materialSeleccionado]) => {
+        siguiente[materialKey] = {
+          categorias: {
+            ...(materialSeleccionado?.categorias || {})
+          }
+        };
+
+        categoriasNuevas.forEach((categoria) => {
+          const categoriaKey = String(categoria.ref || categoria.id);
+          siguiente[materialKey].categorias[categoriaKey] =
+            siguiente[materialKey].categorias[categoriaKey] || [];
+        });
+      });
+      return siguiente;
+    });
+
+    setModalCategorias(false);
+    setMensaje(
+      Object.keys(seleccion).length
+        ? "Categorias agregadas a los materiales activos. Asigna colores y genera los productos."
+        : "Categorias agregadas. Activa un material para asignar colores."
+    );
   };
 
   const abrirBorrador = (tipo, borrador = null) => {
@@ -817,7 +1187,7 @@ export default function VariantesStep({
         <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => abrirBorrador("material")}>
           + Material
         </button>
-        <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => abrirBorrador("categoria")}>
+        <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => setModalCategorias(true)}>
           + Categoria
         </button>
         <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => abrirBorrador("color")}>
@@ -1200,11 +1570,21 @@ export default function VariantesStep({
               ? coloresDisponibles
               : [...categoriasGlobales, ...categoriasDisponibles]
         }
+        lockCodigo={modalBorrador === "categoria"}
         onClose={() => {
           setModalBorrador("");
           setBorradorEditando(null);
         }}
         onSave={(borrador) => guardarBorradorRapido(modalBorrador, borrador)}
+      />
+
+      <CategoriaBatchModal
+        show={modalCategorias}
+        categoriasBase={categorias}
+        categoriasActuales={categoriasDisponibles}
+        categoriasGlobales={categoriasGlobales}
+        onClose={() => setModalCategorias(false)}
+        onSave={guardarCategoriasBatch}
       />
     </div>
   );

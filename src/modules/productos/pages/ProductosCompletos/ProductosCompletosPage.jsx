@@ -77,6 +77,21 @@ const toOptionalNumber = (value) => {
   return Number.isFinite(parsed) ? parsed : undefined;
 };
 
+const parseCategoriaCodigo = (codigo) => {
+  const parsed = Number.parseInt(String(codigo || "").trim(), 10);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const ordenarCategoriasPorCodigo = (a, b) => {
+  const codigoA = parseCategoriaCodigo(a?.codigo);
+  const codigoB = parseCategoriaCodigo(b?.codigo);
+  if (codigoA !== codigoB) return codigoA - codigoB;
+  return String(a?.nombre || "").localeCompare(String(b?.nombre || ""), "es", {
+    numeric: true,
+    sensitivity: "base"
+  });
+};
+
 const getNombrePorCatalogo = (item, catalogo, clavesId = [], clavesNombre = []) => {
   for (const clave of clavesNombre) {
     const valorDirecto = item?.[clave];
@@ -433,7 +448,7 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
               activo: modelo.activo !== false,
               familiaId: modelo.familiaId || undefined,
               familiaRef: modelo.familiaRef || undefined,
-              categorias: (modelo.categorias || []).map((item) => ({
+              categorias: [...(modelo.categorias || [])].sort(ordenarCategoriasPorCodigo).map((item) => ({
                 ref: item.ref || item.id,
                 categoriaId: item.categoriaId || undefined,
                 codigo: item.codigo,
@@ -447,8 +462,10 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
           ? []
           : (borradores?.categorias || [])
               .filter((item) => refsCategoria.has(String(item.ref)))
+              .sort(ordenarCategoriasPorCodigo)
               .map((item) => ({
                 ref: item.ref,
+                categoriaId: item.categoriaId || undefined,
                 codigo: item.codigo,
                 nombre: item.nombre,
                 descripcion: item.descripcion,
@@ -515,6 +532,7 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
 
         for (let idx = 0; idx < listaImagenes.length; idx += 1) {
           const imagen = listaImagenes[idx];
+          if (imagen?.persisted || imagen?.readonly) continue;
           try {
             await guardarImagenVariante({
               imagen,

@@ -23,8 +23,10 @@ const getImagenModelo = (imagenes) => {
 const primeraImagenDisponible = (mapaVariantes) => {
   const entradas = Object.values(mapaVariantes || {});
   for (const lista of entradas) {
-    if (Array.isArray(lista) && lista.length > 0) {
-      return lista[0];
+    if (!Array.isArray(lista)) continue;
+    const imagenEditable = lista.find((imagen) => !imagen?.persisted && !imagen?.readonly);
+    if (imagenEditable) {
+      return imagenEditable;
     }
   }
   return null;
@@ -42,9 +44,16 @@ export default function ImagenesStep({ data, onUpdate }) {
     () => (Array.isArray(data.variantes) ? data.variantes : []),
     [data.variantes]
   );
+  const variantesNuevas = useMemo(
+    () => variantes.filter((variante) => !variante?._existing),
+    [variantes]
+  );
   const varianteSeleccionada = useMemo(
-    () => variantes.find((variante) => String(variante.id) === varianteSeleccionadaKey) || variantes[0] || null,
-    [variantes, varianteSeleccionadaKey]
+    () =>
+      variantesNuevas.find((variante) => String(variante.id) === varianteSeleccionadaKey)
+      || variantesNuevas[0]
+      || null,
+    [variantesNuevas, varianteSeleccionadaKey]
   );
 
   const imagenesPorVariante = useMemo(() => getImagenesPorVariante(data.imagenes), [data.imagenes]);
@@ -243,7 +252,7 @@ export default function ImagenesStep({ data, onUpdate }) {
       </h4>
 
       <div className="alert alert-info py-2">
-        Cada combinacion de categoria, material y color tiene su propia galeria de imagenes.
+        Solo carga imagenes para variantes nuevas. Las variantes ya creadas muestran sus imagenes actuales como referencia.
       </div>
 
       <div className="card mb-4">
@@ -295,6 +304,11 @@ export default function ImagenesStep({ data, onUpdate }) {
       <div className="card mb-4">
         <div className="card-header bg-light fw-semibold">Agregar imagenes a una variante</div>
         <div className="card-body">
+          {variantesNuevas.length === 0 && (
+            <div className="alert alert-light border py-2 mb-3">
+              No hay variantes nuevas pendientes de imagenes. Si necesitas cambiar imagenes existentes, editalas desde el producto.
+            </div>
+          )}
           <div className="row g-3 align-items-end">
             <div className="col-md-8">
               <label className="form-label fw-semibold">Variante</label>
@@ -302,9 +316,10 @@ export default function ImagenesStep({ data, onUpdate }) {
                 className="form-select"
                 value={varianteSeleccionada?.id || ""}
                 onChange={(e) => setVarianteSeleccionadaKey(e.target.value)}
+                disabled={variantesNuevas.length === 0}
               >
-                {variantes.length === 0 && <option value="">Primero agrega productos...</option>}
-                {variantes.map((variante) => (
+                {variantesNuevas.length === 0 && <option value="">Sin variantes nuevas...</option>}
+                {variantesNuevas.map((variante) => (
                   <option key={variante.id} value={variante.id}>
                     {variante.sku} - {variante.materialNombre} - {variante.colorNombre} - {variante.categoriaNombre}
                   </option>
@@ -346,6 +361,7 @@ export default function ImagenesStep({ data, onUpdate }) {
       {variantes.map((variante) => {
         const imagenesVariante = getImagenesVariante(variante);
         const dragActivo = dragActiveVarianteKey === String(variante.id);
+        const varianteExistente = Boolean(variante?._existing);
 
         return (
           <div key={variante.id} className="card mb-3">
@@ -362,33 +378,45 @@ export default function ImagenesStep({ data, onUpdate }) {
                   <small className="text-muted ms-2">{variante.categoriaNombre} / {variante.materialNombre} / {variante.colorNombre}</small>
                 </div>
               </div>
-              <span className="badge bg-secondary">{imagenesVariante.length} imagenes</span>
+              <div className="d-flex align-items-center gap-2">
+                {varianteExistente && <span className="badge text-bg-secondary">Creado</span>}
+                {!varianteExistente && <span className="badge text-bg-success">Nuevo</span>}
+                <span className="badge bg-secondary">{imagenesVariante.length} imagenes</span>
+              </div>
             </div>
             <div className="card-body">
-              <div
-                className={`border-2 border-dashed rounded p-3 text-center mb-3 ${
-                  dragActivo ? "border-primary bg-primary bg-opacity-10" : "border-secondary"
-                }`}
-                style={{ borderStyle: "dashed", transition: "all 0.2s" }}
-                onDragEnter={(e) => {
-                  e.preventDefault();
-                  handleDrag(variante, true);
-                }}
-                onDragLeave={(e) => {
-                  e.preventDefault();
-                  handleDrag(variante, false);
-                }}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  handleDrag(variante, true);
-                }}
-                onDrop={(e) => handleDrop(e, variante)}
-              >
-                Arrastra imagenes aqui para {variante.sku}
-              </div>
+              {varianteExistente ? (
+                <div className="alert alert-light border py-2 mb-3">
+                  Imagenes actuales del producto. No se volveran a cargar al guardar estas nuevas combinaciones.
+                </div>
+              ) : (
+                <div
+                  className={`border-2 border-dashed rounded p-3 text-center mb-3 ${
+                    dragActivo ? "border-primary bg-primary bg-opacity-10" : "border-secondary"
+                  }`}
+                  style={{ borderStyle: "dashed", transition: "all 0.2s" }}
+                  onDragEnter={(e) => {
+                    e.preventDefault();
+                    handleDrag(variante, true);
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault();
+                    handleDrag(variante, false);
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    handleDrag(variante, true);
+                  }}
+                  onDrop={(e) => handleDrop(e, variante)}
+                >
+                  Arrastra imagenes aqui para {variante.sku}
+                </div>
+              )}
 
               {imagenesVariante.length === 0 ? (
-                <div className="text-muted">Sin imagenes para esta variante.</div>
+                <div className="text-muted">
+                  {varianteExistente ? "Esta variante existente no tiene imagenes cargadas." : "Sin imagenes para esta variante nueva."}
+                </div>
               ) : (
                 <div className="row g-3">
                   {imagenesVariante.map((imagen) => (
@@ -401,7 +429,9 @@ export default function ImagenesStep({ data, onUpdate }) {
                           style={{ height: "180px", objectFit: "cover" }}
                         />
                         <div className="card-body p-2 d-flex justify-content-between align-items-center">
-                          {imagen.principal ? (
+                          {varianteExistente || imagen.readonly ? (
+                            <span className="badge bg-secondary">{imagen.principal ? "Principal actual" : "Existente"}</span>
+                          ) : imagen.principal ? (
                             <span className="badge bg-success">Principal</span>
                           ) : (
                             <button
@@ -412,12 +442,14 @@ export default function ImagenesStep({ data, onUpdate }) {
                             </button>
                           )}
 
-                          <button
-                            className="btn btn-sm btn-outline-danger"
-                            onClick={() => eliminarImagenVariante(variante, imagen.id)}
-                          >
-                            <i className="bi bi-trash"></i>
-                          </button>
+                          {!varianteExistente && !imagen.readonly && (
+                            <button
+                              className="btn btn-sm btn-outline-danger"
+                              onClick={() => eliminarImagenVariante(variante, imagen.id)}
+                            >
+                              <i className="bi bi-trash"></i>
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>

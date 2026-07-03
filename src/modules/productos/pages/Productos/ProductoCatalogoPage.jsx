@@ -16,6 +16,7 @@ const COLOR_FALLBACKS = [
   { pattern: /oscuro|nogal|wenge/i, value: "#5f432d" },
   { pattern: /azul|blue/i, value: "#2563eb" },
   { pattern: /verde|green/i, value: "#16a34a" },
+  { pattern: /rosa|pink|magenta/i, value: "#ec4899" },
   { pattern: /rojo|red/i, value: "#dc2626" },
   { pattern: /amarillo|yellow/i, value: "#facc15" },
   { pattern: /naranja|orange/i, value: "#f97316" }
