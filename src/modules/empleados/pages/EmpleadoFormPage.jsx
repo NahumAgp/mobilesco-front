@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import {
@@ -9,6 +9,7 @@ import {
   subirFotoEmpleado,
   eliminarFotoEmpleado
 } from "../services/empleados";
+import { obtenerAreasTrabajo } from "../../areas-trabajo/services/areasTrabajo.js";
 import { createInvitation, getAvailableRoles, getCurrentUser, getUser } from "../../auth/services/authService";
 import { API_BASE_URL } from "../../../config/apiConfig";
 
@@ -50,7 +51,8 @@ export default function EmpleadoFormPage() {
     telefono: "",
     fechaNacimiento: "",
     activo: true,
-    email: ""
+    email: "",
+    areaId: ""
   });
 
   const [loading, setLoading] = useState(false);
@@ -65,13 +67,15 @@ export default function EmpleadoFormPage() {
   const [toastType, setToastType] = useState("success");
   const [mostrandoAcceso, setMostrandoAcceso] = useState(false);
   const [rolesAcceso, setRolesAcceso] = useState([]);
+  const [areasTrabajo, setAreasTrabajo] = useState([]);
+  const [cargandoAreasTrabajo, setCargandoAreasTrabajo] = useState(false);
   const [cargandoRolesAcceso, setCargandoRolesAcceso] = useState(false);
   const [generandoInvitacion, setGenerandoInvitacion] = useState(false);
   const [tokenInvitacion, setTokenInvitacion] = useState("");
+  const tokenInvitacionRef = useRef(null);
   const [acceso, setAcceso] = useState({
     email: "",
     rol: "",
-    passwordTemporal: "",
     puesto: "EMPLEADO"
   });
 
@@ -92,7 +96,8 @@ export default function EmpleadoFormPage() {
         telefono: data.telefono || "",
         fechaNacimiento: data.fechaNacimiento || "",
         activo: data.activo ?? true,
-        email: data.correo || ""
+        email: data.correo || "",
+        areaId: data.areaId ? String(data.areaId) : ""
       });
       setAcceso((prev) => ({
         ...prev,
@@ -120,6 +125,35 @@ export default function EmpleadoFormPage() {
       cargarEmpleado();
     }
   }, [cargarEmpleado, isEditing]);
+
+  useEffect(() => {
+    let activo = true;
+
+    const cargarAreasTrabajo = async () => {
+      try {
+        setCargandoAreasTrabajo(true);
+        const areas = await obtenerAreasTrabajo({ activo: true });
+        if (activo) {
+          setAreasTrabajo(Array.isArray(areas) ? areas : []);
+        }
+      } catch (error) {
+        console.error("Error al cargar areas de trabajo:", error);
+        if (activo) {
+          setAreasTrabajo([]);
+        }
+      } finally {
+        if (activo) {
+          setCargandoAreasTrabajo(false);
+        }
+      }
+    };
+
+    cargarAreasTrabajo();
+
+    return () => {
+      activo = false;
+    };
+  }, []);
 
   const handleChange = (e) => {
 
@@ -172,7 +206,8 @@ export default function EmpleadoFormPage() {
       apellidoMaterno: formData.apellidoMaterno.trim() || null,
       telefono: formData.telefono?.trim() || null,
       fechaNacimiento: formData.fechaNacimiento || null,
-      activo: formData.activo
+      activo: formData.activo,
+      areaId: formData.areaId ? Number(formData.areaId) : null
     };
 
     if (formData.email?.trim()) {
@@ -367,11 +402,10 @@ export default function EmpleadoFormPage() {
   const generarInvitacionAcceso = async () => {
     const email = acceso.email?.trim();
     const rol = acceso.rol?.trim();
-    const passwordTemporal = acceso.passwordTemporal?.trim();
 
-    if (!email || !rol || !passwordTemporal) {
+    if (!email || !rol) {
       setToastType("danger");
-      setToastMessage("Correo, rol y contraseña son obligatorios para generar acceso.");
+      setToastMessage("Correo y rol son obligatorios para generar acceso.");
       return;
     }
 
@@ -389,12 +423,22 @@ export default function EmpleadoFormPage() {
     try {
       setGenerandoInvitacion(true);
       const response = await createInvitation(payload);
-      setTokenInvitacion(response?.token || "");
+      const token = response?.token || "";
+      setTokenInvitacion(token);
       setToastType("success");
-      setToastMessage("Token de invitacion generado.");
+      setToastMessage(token ? "Token de invitacion generado." : "La invitacion se creo, pero no se recibio token.");
+      if (token) {
+        window.requestAnimationFrame(() => {
+          tokenInvitacionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        });
+      }
     } catch (error) {
       setToastType("danger");
-      setToastMessage(error.message || "No se pudo generar la invitacion.");
+      if (error?.message?.includes("ya tiene una cuenta registrada")) {
+        setToastMessage("Ese correo ya tiene una cuenta. Usa un correo sin cuenta para generar la invitacion.");
+      } else {
+        setToastMessage(error.message || "No se pudo generar la invitacion.");
+      }
     } finally {
       setGenerandoInvitacion(false);
     }
@@ -529,7 +573,7 @@ export default function EmpleadoFormPage() {
 
                 {mostrandoAcceso && (
                   <div className="row g-3 mt-2">
-                    <div className="col-md-4">
+                    <div className="col-md-6">
                       <label className="form-label">Correo</label>
                       <input
                         type="email"
@@ -539,8 +583,11 @@ export default function EmpleadoFormPage() {
                         onChange={handleAccesoChange}
                         placeholder="correo@empresa.com"
                       />
+                      <div className="form-text">
+                        Usa el correo del empleado. Si esta pendiente y sin acceso, se activara con esta invitacion.
+                      </div>
                     </div>
-                    <div className="col-md-4">
+                    <div className="col-md-6">
                       <label className="form-label">Rol</label>
                       <select
                         className="form-select"
@@ -557,18 +604,7 @@ export default function EmpleadoFormPage() {
                         ))}
                       </select>
                     </div>
-                    <div className="col-md-4">
-                      <label className="form-label">Contrasena temporal</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        name="passwordTemporal"
-                        value={acceso.passwordTemporal}
-                        onChange={handleAccesoChange}
-                        placeholder="Se comparte junto con el token"
-                      />
-                    </div>
-                    <div className="col-md-4">
+                    <div className="col-md-6">
                       <label className="form-label">Puesto</label>
                       <input
                         type="text"
@@ -590,27 +626,25 @@ export default function EmpleadoFormPage() {
                       </button>
                     </div>
                     {tokenInvitacion && (
-                      <div className="col-12">
+                      <div className="col-12" ref={tokenInvitacionRef}>
                         <div className="alert alert-success mb-0">
                           <div className="fw-semibold mb-1">Token generado</div>
                           <div className="small mb-2">
-                            Comparte este token y la contrasena temporal con el empleado para que complete su registro.
+                            Este es el token de invitacion. Copialo o compartelo con el empleado para que complete su registro.
                           </div>
-                          <div className="d-flex flex-wrap gap-2">
-                            <code className="px-2 py-1 bg-white border rounded">{tokenInvitacion}</code>
+                          <div className="d-flex flex-wrap gap-2 align-items-center">
+                            <input
+                              type="text"
+                              className="form-control form-control-sm"
+                              value={tokenInvitacion}
+                              readOnly
+                            />
                             <button
                               type="button"
                               className="btn btn-sm btn-outline-success"
                               onClick={() => copiarTexto(tokenInvitacion)}
                             >
                               Copiar token
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline-secondary"
-                              onClick={() => copiarTexto(acceso.passwordTemporal)}
-                            >
-                              Copiar contrasena
                             </button>
                           </div>
                         </div>
@@ -710,6 +744,26 @@ export default function EmpleadoFormPage() {
                       </span>
                     </div>
                   )}
+                </div>
+
+                <div className="col-md-4">
+                  <label className="form-label">Area de trabajo</label>
+                  <select
+                    className="form-select"
+                    name="areaId"
+                    value={formData.areaId}
+                    onChange={handleChange}
+                    disabled={cargandoAreasTrabajo}
+                  >
+                    <option value="">
+                      {cargandoAreasTrabajo ? "Cargando areas..." : "Sin area asignada"}
+                    </option>
+                    {areasTrabajo.map((area) => (
+                      <option key={area.id} value={area.id}>
+                        {area.nombre}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
               </div>

@@ -18,6 +18,7 @@ export const API_PATHS = {
   // Empleados
   EMPLEADOS: `${API_VERSION}/empleados`,
   EMPLEADOS_ME_FOTO: `${API_VERSION}/empleados/me/foto`,
+  AREAS_TRABAJO: `${API_VERSION}/areas-trabajo`,
   
   // Productos
   LINEAS: `${API_VERSION}/lineas`,

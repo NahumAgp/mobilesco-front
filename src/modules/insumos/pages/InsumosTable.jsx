@@ -15,23 +15,21 @@ const COLUMNAS_ORDENABLES = {
 // Columnas (id estable) + ancho por defecto en px. El orden debe coincidir
 // con el de las celdas del <tbody>.
 const COLUMNAS = [
-  { id: "estado", label: "Estado", defaultWidth: 52 },
-  { id: "id", label: "ID", sortField: "id", defaultWidth: 60 },
-  { id: "codigo", label: "Codigo", defaultWidth: 130 },
-  { id: "nombre", label: "Nombre", sortField: "nombre", defaultWidth: 150 },
-  { id: "descripcion", label: "Descripcion", defaultWidth: 130 },
-  { id: "tipo", label: "Tipo", defaultWidth: 110 },
-  { id: "ubicacion", label: "Ubicacion", sortField: "ubicacion", defaultWidth: 110 },
-  { id: "unidad", label: "Unidad", defaultWidth: 80 },
-  { id: "stockActual", label: "Stock actual", sortField: "stockActual", defaultWidth: 90 },
-  { id: "stockMinimo", label: "Stock minimo", sortField: "stockMinimo", defaultWidth: 90 },
-  { id: "ultimoCosto", label: "Ultimo costo", defaultWidth: 100 },
-  { id: "costoPromedio", label: "Costo promedio", defaultWidth: 100 },
-  { id: "costoCotizacion", label: "Costo cotizacion", sortField: "costoCotizacion", defaultWidth: 100 },
-  { id: "acciones", label: "Acciones", defaultWidth: 180 }
+  { id: "id", label: "ID", sortField: "id", defaultWidth: 54 },
+  { id: "codigo", label: "Codigo", defaultWidth: 118 },
+  { id: "nombre", label: "Nombre", sortField: "nombre", defaultWidth: 320 },
+  { id: "tipo", label: "Tipo", defaultWidth: 86 },
+  { id: "ubicacion", label: "Ubicacion", sortField: "ubicacion", defaultWidth: 76 },
+  { id: "unidad", label: "Unidad", defaultWidth: 70 },
+  { id: "stockActual", label: "Stock actual", sortField: "stockActual", defaultWidth: 82 },
+  { id: "stockMinimo", label: "Stock minimo", sortField: "stockMinimo", defaultWidth: 82 },
+  { id: "ultimoCosto", label: "Ultimo costo", defaultWidth: 86 },
+  { id: "costoPromedio", label: "Costo promedio", defaultWidth: 92 },
+  { id: "costoCotizacion", label: "Costo cotizacion", sortField: "costoCotizacion", defaultWidth: 96 },
+  { id: "acciones", label: "Acciones", defaultWidth: 150 }
 ];
 
-const STORAGE_KEY = "insumos-columnas-ancho-v2";
+const STORAGE_KEY = "insumos-columnas-ancho-v3";
 const ANCHO_MINIMO = 60;
 
 function anchosPorDefecto() {
@@ -159,19 +157,6 @@ export default function InsumosTable({
     return String(value).replace(/_/g, " ");
   };
 
-  const getEstadoDot = (insumo, stockStatus) => {
-    if (!insumo.activo) {
-      return { modificador: "inactivo", etiqueta: "Inactivo" };
-    }
-    if (stockStatus === "agotado") {
-      return { modificador: "agotado", etiqueta: "Agotado" };
-    }
-    if (stockStatus === "bajo") {
-      return { modificador: "bajo", etiqueta: "Stock bajo" };
-    }
-    return { modificador: "activo", etiqueta: "Activo" };
-  };
-
   const renderHeaderColumna = (columna) => {
     const { id, label, sortField: field } = columna;
     const esOrdenable =
@@ -240,22 +225,13 @@ export default function InsumosTable({
               {data && data.length > 0 ? (
                 data.map((insumo) => {
                   const stockStatus = getStockStatus(insumo);
-                  const estadoDot = getEstadoDot(insumo, stockStatus);
                   return (
                     <tr
                       key={insumo.id}
                       onClick={() => onVerKardex?.(insumo)}
-                      className={`insumos-table-row insumos-row-${stockStatus}`}
+                      className={`insumos-table-row insumos-row-${stockStatus} ${!insumo.activo ? "is-disabled" : ""}`}
                       role="button"
                     >
-                      <td className="insumos-estado-cell">
-                        <span
-                          className={`insumos-estado-dot insumos-estado-dot--${estadoDot.modificador}`}
-                          title={estadoDot.etiqueta}
-                          aria-label={estadoDot.etiqueta}
-                          role="img"
-                        />
-                      </td>
                       <td className="text-muted">#{insumo.id}</td>
                       <td>
                         <span className="insumos-code-badge">
@@ -265,9 +241,6 @@ export default function InsumosTable({
                       </td>
                       <td>
                         <span>{insumo.nombre}</span>
-                      </td>
-                      <td className="insumos-description">
-                        {insumo.descripcion || "-"}
                       </td>
                       <td>
                         <span className="badge text-bg-light border insumos-unit-badge">
@@ -324,7 +297,7 @@ export default function InsumosTable({
                 })
                 ) : (
                 <tr>
-                  <td colSpan="14" className="text-center text-muted py-5">
+                  <td colSpan="12" className="text-center text-muted py-5">
                     <i className="bi bi-boxes fs-1 d-block mb-3 text-secondary"></i>
                     <span className="fs-5 d-block">No hay insumos registrados</span>
                     <p className="text-secondary mt-2 mb-0">Comienza creando un nuevo insumo</p>

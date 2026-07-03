@@ -1,0 +1,46 @@
+import request from "../../../services/api";
+import { API_PATHS } from "../../../config/apiPaths";
+
+export function obtenerAreasTrabajo(params = {}) {
+  const query = new URLSearchParams();
+  if (params.activo !== undefined) {
+    query.set("activo", String(params.activo));
+  }
+
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  return request(`${API_PATHS.AREAS_TRABAJO}${suffix}`);
+}
+
+export function obtenerAreaTrabajoPorId(id) {
+  return request(`${API_PATHS.AREAS_TRABAJO}/${id}`);
+}
+
+export function obtenerCodigoSugeridoAreaTrabajo(nombre) {
+  return request(`${API_PATHS.AREAS_TRABAJO}/codigo-sugerido?nombre=${encodeURIComponent(nombre)}`);
+}
+
+export function crearAreaTrabajo(data) {
+  return request(API_PATHS.AREAS_TRABAJO, {
+    method: "POST",
+    body: JSON.stringify(data)
+  });
+}
+
+export function actualizarAreaTrabajo(id, data) {
+  return request(`${API_PATHS.AREAS_TRABAJO}/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data)
+  });
+}
+
+export function activarAreaTrabajo(id) {
+  return request(`${API_PATHS.AREAS_TRABAJO}/${id}/activar`, {
+    method: "PATCH"
+  });
+}
+
+export function desactivarAreaTrabajo(id) {
+  return request(`${API_PATHS.AREAS_TRABAJO}/${id}/desactivar`, {
+    method: "PATCH"
+  });
+}

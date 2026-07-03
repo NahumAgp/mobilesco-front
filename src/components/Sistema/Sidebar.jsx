@@ -118,6 +118,7 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
 
         {puedeGestionarUsuarios && <LinkItem to="/usuarios/accesos" label="Usuarios y accesos" icon="bi-shield-check" onClick={handleNavigation} />}
         {can("VIEW_EMPLOYEES") && <LinkItem to="/empleados" label="Empleados" icon="bi-people" onClick={handleNavigation} />}
+        {can("VIEW_EMPLOYEES") && <LinkItem to="/areas-trabajo" label="Areas de trabajo" icon="bi-diagram-3" onClick={handleNavigation} />}
         {can("VIEW_SUPPLIERS") && <LinkItem to="/proveedores" label="Proveedores" icon="bi-truck" onClick={handleNavigation} />}
 
         {showProductos && (

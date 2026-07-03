@@ -214,7 +214,7 @@
 }
 
 .insumos-main-table {
-  min-width: 1160px;
+  min-width: 1315px;
 }
 
 .insumos-costos-table {
@@ -257,13 +257,13 @@
 /* Los anchos de columna del catalogo de insumos los controla el <colgroup>
    (redimensionable por el usuario), por eso aqui ya no se fijan por nth-child. */
 
-.insumos-main-table td:nth-child(4),
-.insumos-main-table td:nth-child(6),
+.insumos-main-table td:nth-child(3),
+.insumos-main-table td:nth-child(5),
+.insumos-main-table td:nth-child(7),
 .insumos-main-table td:nth-child(8),
 .insumos-main-table td:nth-child(9),
 .insumos-main-table td:nth-child(10),
 .insumos-main-table td:nth-child(11),
-.insumos-main-table td:nth-child(12),
 .insumos-costos-table td:nth-child(4),
 .insumos-costos-table td:nth-child(5),
 .insumos-costos-table td:nth-child(6) {
@@ -336,7 +336,27 @@
   background: rgba(217, 91, 63, 0.16);
 }
 
-/* Las filas "bajo" quedan blancas; el estado se indica con el puntito ambar */
+.insumos-main-table tbody tr.insumos-table-row.is-disabled td {
+  background: #f1f3f2;
+  color: #8b9490;
+}
+
+.insumos-main-table tbody tr.insumos-table-row.is-disabled:hover td {
+  background: #e8ecea;
+}
+
+.insumos-main-table tbody tr.insumos-table-row.is-disabled .insumos-code-badge,
+.insumos-main-table tbody tr.insumos-table-row.is-disabled .insumos-unit-badge,
+.insumos-main-table tbody tr.insumos-table-row.is-disabled .badge {
+  opacity: 0.62;
+  filter: grayscale(1);
+}
+
+.insumos-main-table tbody tr.insumos-table-row.is-disabled .btn {
+  opacity: 0.78;
+}
+
+/* Las filas "bajo" quedan blancas; el stock se indica con el color del numero. */
 
 /* Color del numero de stock actual segun estado (sin negrita) */
 .insumos-stock-agotado {
@@ -352,35 +372,6 @@
 /* Sin negritas en el contenido de la tabla (badges y botones se respetan) */
 .insumos-main-table tbody td {
   font-weight: 400;
-}
-
-/* Columna de estado: solo un puntito redondo centrado a la izquierda del ID */
-.insumos-estado-cell {
-  text-align: center;
-}
-
-.insumos-estado-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  display: inline-block;
-  vertical-align: middle;
-}
-
-.insumos-estado-dot--activo {
-  background: var(--ms-salvia);
-}
-
-.insumos-estado-dot--inactivo {
-  background: var(--ms-ink-300);
-}
-
-.insumos-estado-dot--bajo {
-  background: var(--ms-naranja);
-}
-
-.insumos-estado-dot--agotado {
-  background: var(--ms-terracota);
 }
 
 /* Codigo como chip limpio y legible */
@@ -405,13 +396,6 @@
   max-width: 100%;
   overflow: visible;
   text-overflow: clip;
-  white-space: nowrap;
-}
-
-.insumos-description {
-  max-width: 24rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 

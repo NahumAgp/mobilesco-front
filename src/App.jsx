@@ -18,6 +18,7 @@ import Register from "./modules/auth/pages/Register.jsx";
 
 import EmpleadoFormPage from "./modules/empleados/pages/EmpleadoFormPage.jsx";
 import EmpleadosPage from "./modules/empleados/pages/EmpleadoPage.jsx";
+import AreasTrabajoPage from "./modules/areas-trabajo/pages/AreasTrabajoPage.jsx";
 
 import PerfilPage from "./modules/perfil/pages/PerfilPage.jsx";
 
@@ -122,6 +123,7 @@ export default function App() {
         <Route path="/empleados/nuevo" element={withPermission(<EmpleadoFormPage />, "VIEW_EMPLOYEES")} />
         <Route path="/empleados/:id" element={withPermission(<EmpleadoFormPage />, "VIEW_EMPLOYEES")} />
         <Route path="/empleados" element={withPermission(<EmpleadosPage />, "VIEW_EMPLOYEES")} />
+        <Route path="/areas-trabajo" element={withPermission(<AreasTrabajoPage />, "VIEW_EMPLOYEES")} />
 
         <Route path="/perfil" element={<PerfilPage />} />
 
