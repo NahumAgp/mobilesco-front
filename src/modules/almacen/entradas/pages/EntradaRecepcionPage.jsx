@@ -206,16 +206,10 @@ export default function EntradaRecepcionPage() {
       return;
     }
 
-    if (!entregadoPor.trim()) {
-      setToastType("danger");
-      setToastMessage("Debes indicar quien entrego la compra");
-      return;
-    }
-
     try {
       setGuardando(true);
       await actualizarCompra(id, {
-        entregadoPor: entregadoPor.trim(),
+        entregadoPor: entregadoPor.trim() || null,
         estado: "RECIBIDA",
         fechaRecepcion: fechaLocalISO()
       });
@@ -233,12 +227,6 @@ export default function EntradaRecepcionPage() {
   };
 
   const guardarRecepcion = async () => {
-    if (!entregadoPor.trim()) {
-      setToastType("danger");
-      setToastMessage("Debes indicar quien entrego la compra");
-      return;
-    }
-
     const ajustesInvalidos = recepciones.find((item) => {
       if (item.estadoRecepcion !== "ajuste") return false;
       const cantidadRecibir = Number(item.cantidadRecibirAhora || 0);
@@ -400,13 +388,13 @@ export default function EntradaRecepcionPage() {
         <div className="col-md-4">
           <div className="card shadow-sm border-0 h-100">
             <div className="card-body">
-              <div className="text-muted small">Entregado por</div>
+              <div className="text-muted small">Entregado por (opcional)</div>
               <input
                 type="text"
                 className="form-control"
                 value={entregadoPor}
                 onChange={(e) => setEntregadoPor(e.target.value)}
-                placeholder="Nombre de quien entrega"
+                placeholder="Nombre de quien entrega (opcional)"
               />
             </div>
           </div>
@@ -453,7 +441,7 @@ export default function EntradaRecepcionPage() {
               <div className="small">
                 {entradaCerrada
                   ? "La compra ya quedo cerrada y el stock fue actualizado."
-                  : "Solo falta cerrar la recepcion para guardar quien entrego la compra y dejarla como recibida."}
+                  : "Puedes cerrar la recepcion para dejar la compra como recibida."}
               </div>
             </div>
             {entradaCerrada ? (

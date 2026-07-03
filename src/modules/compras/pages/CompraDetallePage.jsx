@@ -62,8 +62,8 @@ export default function CompraDetallePage() {
     return colores[estado] || 'secondary';
   };
 
-  const totalDetalles = compra.detalles?.length || 0;
-  const totalPendiente = compra.detalles?.reduce(
+  const totalDetalles = compra?.detalles?.length || 0;
+  const totalPendiente = compra?.detalles?.reduce(
     (sum, detalle) => sum + Number(detalle.cantidadPendiente || 0),
     0
   ) || 0;

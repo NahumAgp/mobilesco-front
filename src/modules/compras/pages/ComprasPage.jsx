@@ -36,7 +36,12 @@ export default function ComprasPage() {
   const [fechaFin, setFechaFin] = useState("");
 
   const abrirVer = (compra) => {
-    navigate(`/compras/${compra.id}/ver`);
+    if (!compra?.id) return;
+    const link = document.createElement("a");
+    link.href = `/compras/${compra.id}/ver`;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.click();
   };
 
   const manejarEliminar = async (id) => {
