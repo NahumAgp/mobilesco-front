@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   obtenerModeloPorId,
@@ -12,7 +12,8 @@ import {
 import { obtenerFamilias } from "../../familias/services/familias.js";
 import { obtenerProductos } from "../../productos/services/productos.js";
 import { materialGateway } from "../../materiales/services/materialGateway.js";
-import { obtenerCategoriasGlobalesActivas } from "../services/categoriasGlobales.js";
+import MaterialModal from "../../materiales/pages/MaterialModal.jsx";
+import { crearCategoriaGlobal, obtenerCategoriasGlobalesActivas } from "../services/categoriasGlobales.js";
 import { API_BASE_URL } from "../../../config/apiConfig.js";
 import Toast from "../../../components/ui/Toast.jsx";
 import SearchableSelect from "../../../components/ui/SearchableSelect.jsx";
@@ -181,6 +182,16 @@ const getCategoriasDelModelo = (modelo = {}) => {
   return [];
 };
 
+const getFamiliaLineaNombre = (familia = {}) =>
+  familia?.lineaNombre || familia?.linea?.nombre || "";
+
+const getFamiliaLabel = (familia = {}) => {
+  const lineaNombre = getFamiliaLineaNombre(familia);
+  const nombre = familia?.nombre || "-";
+  const codigo = familia?.codigo ? `[${familia.codigo}] ` : "";
+  return `${codigo}${lineaNombre ? `${lineaNombre} / ` : ""}${nombre}`;
+};
+
 const getImagenActiva = (imagen) =>
   imagen?.activo ?? imagen?.active ?? imagen?.habilitada ?? true;
 
@@ -249,6 +260,14 @@ export default function ModeloForm({
   const [cargandoImagen, setCargandoImagen] = useState(false);
   const [cargandoMateriales, setCargandoMateriales] = useState(false);
   const [cargandoCategorias, setCargandoCategorias] = useState(false);
+  const [mostrarModalMaterial, setMostrarModalMaterial] = useState(false);
+  const [mostrarModalCategoria, setMostrarModalCategoria] = useState(false);
+  const [guardandoCategoria, setGuardandoCategoria] = useState(false);
+  const [erroresCategoriaModal, setErroresCategoriaModal] = useState({});
+  const [categoriaModalData, setCategoriaModalData] = useState({
+    nombre: "",
+    descripcion: ""
+  });
 
   const fileInputRef = useRef(null);
 
@@ -265,10 +284,14 @@ export default function ModeloForm({
     familiaId: "",
     activo: true
   });
+  const obtenerCodigoSugeridoPorFamilia = useCallback(
+    (nombre) => obtenerCodigoSugerido(nombre, formData.familiaId),
+    [formData.familiaId]
+  );
   const { codigoGenerado, generandoCodigo } = useGeneratedCatalogCode(
     formData.nombre,
-    !esEdicion,
-    obtenerCodigoSugerido
+    !esEdicion && Boolean(formData.familiaId),
+    obtenerCodigoSugeridoPorFamilia
   );
 
   useEffect(() => {
@@ -284,39 +307,45 @@ export default function ModeloForm({
     cargarCatalogos();
   }, []);
 
-  useEffect(() => {
-    const cargarMateriales = async () => {
-      try {
-        setCargandoMateriales(true);
-        const materialesResp = await materialGateway.obtenerMaterialesActivos();
-        setMaterialesCatalogo(getLista(materialesResp));
-      } catch (error) {
-        console.error("Error cargando materiales:", error);
-        setMaterialesCatalogo([]);
-      } finally {
-        setCargandoMateriales(false);
-      }
-    };
+  const cargarMateriales = useCallback(async () => {
+    try {
+      setCargandoMateriales(true);
+      const materialesResp = await materialGateway.obtenerMaterialesActivos();
+      const lista = getLista(materialesResp);
+      setMaterialesCatalogo(lista);
+      return lista;
+    } catch (error) {
+      console.error("Error cargando materiales:", error);
+      setMaterialesCatalogo([]);
+      return [];
+    } finally {
+      setCargandoMateriales(false);
+    }
+  }, []);
 
+  useEffect(() => {
     cargarMateriales();
+  }, [cargarMateriales]);
+
+  const cargarCategorias = useCallback(async () => {
+    try {
+      setCargandoCategorias(true);
+      const categoriasResp = await obtenerCategoriasGlobalesActivas();
+      const lista = getLista(categoriasResp);
+      setCategoriasCatalogo(lista);
+      return lista;
+    } catch (error) {
+      console.error("Error cargando categorias globales:", error);
+      setCategoriasCatalogo([]);
+      return [];
+    } finally {
+      setCargandoCategorias(false);
+    }
   }, []);
 
   useEffect(() => {
-    const cargarCategorias = async () => {
-      try {
-        setCargandoCategorias(true);
-        const categoriasResp = await obtenerCategoriasGlobalesActivas();
-        setCategoriasCatalogo(getLista(categoriasResp));
-      } catch (error) {
-        console.error("Error cargando categorias globales:", error);
-        setCategoriasCatalogo([]);
-      } finally {
-        setCargandoCategorias(false);
-      }
-    };
-
     cargarCategorias();
-  }, []);
+  }, [cargarCategorias]);
 
   const cargarImagenPrincipalModelo = async (modeloFuente) => {
     const idModelo = typeof modeloFuente === "object" ? getModeloId(modeloFuente) : modeloFuente;
@@ -345,7 +374,13 @@ export default function ModeloForm({
         productosLocales.length > 0
           ? productosLocales
           : idModelo
-            ? getLista(await obtenerProductos()).filter(
+            ? getLista(await obtenerProductos({
+                page: 0,
+                size: 100,
+                modeloId: idModelo,
+                sortBy: "sku",
+                direction: "asc"
+              })).filter(
                 (item) => coincideModeloId(item, idModelo) || coincideModeloIdFlexible(item, idModelo)
               )
             : [];
@@ -454,6 +489,21 @@ export default function ModeloForm({
     setMaterialesSeleccionados((prev) => prev.filter((material) => String(material.id) !== String(materialId)));
   };
 
+  const manejarMaterialCreado = async (materialCreado) => {
+    setMostrarModalMaterial(false);
+
+    const listaActualizada = await cargarMateriales();
+    const idCreado = materialCreado?.id ?? materialCreado?.materialId;
+    const materialCompleto =
+      listaActualizada.find((item) => String(item.id ?? item.materialId) === String(idCreado)) || materialCreado;
+
+    if (idCreado) {
+      agregarMaterial(idCreado, materialCompleto);
+      setToastType("success");
+      setToastMessage("Material creado y asociado al modelo.");
+    }
+  };
+
   const categoriasDisponibles = useMemo(
     () =>
       categoriasCatalogo.filter(
@@ -501,6 +551,74 @@ export default function ModeloForm({
     setCategoriasSeleccionadas((prev) =>
       prev.filter((categoria) => String(categoria.categoriaId ?? categoria.id) !== String(categoriaId))
     );
+  };
+
+  const abrirModalCategoria = () => {
+    setCategoriaModalData({ nombre: "", descripcion: "" });
+    setErroresCategoriaModal({});
+    setMostrarModalCategoria(true);
+  };
+
+  const cerrarModalCategoria = () => {
+    if (guardandoCategoria) return;
+    setMostrarModalCategoria(false);
+    setCategoriaModalData({ nombre: "", descripcion: "" });
+    setErroresCategoriaModal({});
+  };
+
+  const manejarCambioCategoriaModal = (event) => {
+    const { name, value } = event.target;
+    setCategoriaModalData((prev) => ({
+      ...prev,
+      [name]: value
+    }));
+
+    if (erroresCategoriaModal[name]) {
+      setErroresCategoriaModal((prev) => {
+        const copia = { ...prev };
+        delete copia[name];
+        return copia;
+      });
+    }
+  };
+
+  const guardarCategoriaGlobal = async (event) => {
+    event.preventDefault();
+
+    try {
+      setGuardandoCategoria(true);
+      setErroresCategoriaModal({});
+
+      const payload = {
+        nombre: categoriaModalData.nombre?.trim() || "",
+        descripcion: categoriaModalData.descripcion?.trim() || null
+      };
+
+      const categoriaCreada = await crearCategoriaGlobal(payload);
+      setMostrarModalCategoria(false);
+      setCategoriaModalData({ nombre: "", descripcion: "" });
+
+      const listaActualizada = await cargarCategorias();
+      const idCreado = categoriaCreada?.id ?? categoriaCreada?.categoriaId;
+      const categoriaCompleta =
+        listaActualizada.find((item) => String(item.id ?? item.categoriaId) === String(idCreado)) || categoriaCreada;
+
+      if (idCreado) {
+        agregarCategoria(idCreado, categoriaCompleta);
+      }
+
+      setToastType("success");
+      setToastMessage("Categoria global creada y asociada al modelo.");
+    } catch (error) {
+      if (error.errors) {
+        setErroresCategoriaModal(error.errors);
+      } else {
+        setToastType("danger");
+        setToastMessage(error.message || "No se pudo crear la categoria global.");
+      }
+    } finally {
+      setGuardandoCategoria(false);
+    }
   };
 
   async function handleSubmit(e) {
@@ -718,7 +836,7 @@ export default function ModeloForm({
                       onChange={handleChange}
                       readOnly={!esEdicion}
                       maxLength="3"
-                      placeholder={generandoCodigo ? "Generando..." : "Automatico"}
+                      placeholder={!formData.familiaId ? "Selecciona familia" : generandoCodigo ? "Generando..." : "Automatico"}
                     />
                     <div className="invalid-feedback">{erroresBackend.codigo || erroresExternos.codigo}</div>
                   </div>
@@ -733,9 +851,9 @@ export default function ModeloForm({
                       searchPlaceholder="Escribe código, nombre o descripción..."
                       error={erroresBackend.familiaId || erroresExternos.familiaId}
                       getOptionValue={(familia) => familia.id ?? familia.familiaId}
-                      getOptionLabel={(familia) => `${familia.codigo ? `[${familia.codigo}] ` : ""}${familia.nombre || "-"}`}
+                      getOptionLabel={getFamiliaLabel}
                       getOptionSearchText={(familia) =>
-                        [familia.codigo, familia.nombre, familia.descripcion].filter(Boolean).join(" ").toLowerCase()
+                        [familia.codigo, getFamiliaLineaNombre(familia), familia.nombre, familia.descripcion].filter(Boolean).join(" ").toLowerCase()
                       }
                     />
                   </div>
@@ -781,6 +899,17 @@ export default function ModeloForm({
                         `${material.codigo ? `[${material.codigo}] ` : ""}${material.nombre || "-"}`
                       }
                       helperText="Selecciona materiales para este modelo sin sacarlos del catálogo general."
+                      actionNode={
+                        <button
+                          type="button"
+                          className="btn btn-outline-primary px-3"
+                          onClick={() => setMostrarModalMaterial(true)}
+                          title="Crear material"
+                          aria-label="Crear material"
+                        >
+                          <i className="bi bi-plus-lg"></i>
+                        </button>
+                      }
                       className="mb-2"
                     />
 
@@ -862,6 +991,17 @@ export default function ModeloForm({
                         `${categoria.codigo ? `[${categoria.codigo}] ` : ""}${categoria.nombre || "-"}`
                       }
                       helperText="Selecciona una categoría del catálogo global y se enlazará al modelo."
+                      actionNode={
+                        <button
+                          type="button"
+                          className="btn btn-outline-primary px-3"
+                          onClick={abrirModalCategoria}
+                          title="Crear categoria global"
+                          aria-label="Crear categoria global"
+                        >
+                          <i className="bi bi-plus-lg"></i>
+                        </button>
+                      }
                       className="mb-3"
                     />
 
@@ -1035,6 +1175,90 @@ export default function ModeloForm({
           </div>
         </div>
       </form>
+
+      {mostrarModalMaterial && (
+        <MaterialModal
+          show={mostrarModalMaterial}
+          material={null}
+          onClose={() => setMostrarModalMaterial(false)}
+          onSave={manejarMaterialCreado}
+          errores={{}}
+        />
+      )}
+
+      {mostrarModalCategoria && (
+        <div
+          className="modal fade show"
+          style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)" }}
+          tabIndex="-1"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="modal-dialog modal-lg modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Nueva categoria global</h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={cerrarModalCategoria}
+                  disabled={guardandoCategoria}
+                  aria-label="Cerrar"
+                ></button>
+              </div>
+
+              <form onSubmit={guardarCategoriaGlobal} noValidate>
+                <div className="modal-body">
+                  <div className="row g-3">
+                    <div className="col-md-12">
+                      <label className="form-label fw-semibold">
+                        Nombre <span className="text-danger">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="nombre"
+                        className={`form-control ${erroresCategoriaModal.nombre ? "is-invalid" : "border-soft"}`}
+                        value={categoriaModalData.nombre}
+                        onChange={manejarCambioCategoriaModal}
+                        placeholder="Ej: Sillas, Mesas, Archiveros"
+                        autoFocus
+                      />
+                      <div className="invalid-feedback">{erroresCategoriaModal.nombre}</div>
+                    </div>
+
+                    <div className="col-md-12">
+                      <label className="form-label fw-semibold">Descripcion</label>
+                      <textarea
+                        name="descripcion"
+                        className={`form-control ${erroresCategoriaModal.descripcion ? "is-invalid" : "border-soft"}`}
+                        value={categoriaModalData.descripcion}
+                        onChange={manejarCambioCategoriaModal}
+                        rows="3"
+                        placeholder="Descripcion opcional para identificar la categoria global"
+                      />
+                      <div className="invalid-feedback">{erroresCategoriaModal.descripcion}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="modal-footer">
+                  <button
+                    type="button"
+                    className="btn btn-light"
+                    onClick={cerrarModalCategoria}
+                    disabled={guardandoCategoria}
+                  >
+                    Cancelar
+                  </button>
+                  <button type="submit" className="btn modelos-brand-primary" disabled={guardandoCategoria}>
+                    {guardandoCategoria ? "Guardando..." : "Guardar y usar"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

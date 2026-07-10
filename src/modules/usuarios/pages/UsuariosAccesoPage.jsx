@@ -15,6 +15,19 @@ import {
 import "./UsuariosAccesoPage.css";
 
 const PAGE_SIZE_ROLES = 6;
+const PAGE_SIZE_USERS = 10;
+const PAGE_INFO_ROLES_DEFAULT = {
+  page: 0,
+  size: PAGE_SIZE_ROLES,
+  totalElements: 0,
+  totalPages: 0
+};
+const PAGE_INFO_USERS_DEFAULT = {
+  page: 0,
+  size: PAGE_SIZE_USERS,
+  totalElements: 0,
+  totalPages: 0
+};
 
 const initialInvitation = {
   email: "",
@@ -31,10 +44,6 @@ const initialRole = {
   descripcion: "",
   permisos: []
 };
-
-function normalizeText(value = "") {
-  return String(value).toLowerCase().trim().replace(/\s+/g, " ");
-}
 
 function formatDateTime(value) {
   if (!value) {
@@ -81,6 +90,9 @@ export default function UsuariosAccesoPage() {
   const [tokenGenerado, setTokenGenerado] = useState("");
   const [busquedaRoles, setBusquedaRoles] = useState("");
   const [pageRoles, setPageRoles] = useState(0);
+  const [pageInfoRoles, setPageInfoRoles] = useState(PAGE_INFO_ROLES_DEFAULT);
+  const [pageUsuarios, setPageUsuarios] = useState(0);
+  const [pageInfoUsuarios, setPageInfoUsuarios] = useState(PAGE_INFO_USERS_DEFAULT);
   const [mostrarNuevoRol, setMostrarNuevoRol] = useState(false);
   const [rolSeleccionadoId, setRolSeleccionadoId] = useState(null);
   const [moduloExpandido, setModuloExpandido] = useState("");
@@ -93,45 +105,13 @@ export default function UsuariosAccesoPage() {
     );
   }, [permisosPorModulo]);
 
-  const rolesOrdenados = useMemo(() => {
-    return [...rolesConfig].sort((a, b) =>
-      String(a?.name || "").localeCompare(String(b?.name || ""), "es", {
-        numeric: true,
-        sensitivity: "base"
-      })
-    );
-  }, [rolesConfig]);
-
-  const terminoRoles = normalizeText(busquedaRoles);
-
-  const rolesFiltrados = useMemo(() => {
-    if (!terminoRoles) {
-      return rolesOrdenados;
-    }
-
-    const palabras = terminoRoles.split(" ");
-    return rolesOrdenados.filter((rol) => {
-      const texto = [
-        rol.name,
-        rol.descripcion,
-        rol.sistema ? "sistema" : "personalizado",
-        ...(rol.permisos || [])
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-
-      return palabras.every((palabra) => texto.includes(palabra));
-    });
-  }, [rolesOrdenados, terminoRoles]);
-
-  const totalRolesFiltrados = rolesFiltrados.length;
-  const totalPagesRoles = totalRolesFiltrados > 0 ? Math.ceil(totalRolesFiltrados / PAGE_SIZE_ROLES) : 0;
-
-  const rolesPagina = useMemo(() => {
-    const inicio = pageRoles * PAGE_SIZE_ROLES;
-    return rolesFiltrados.slice(inicio, inicio + PAGE_SIZE_ROLES);
-  }, [pageRoles, rolesFiltrados]);
+  const rolesPagina = rolesConfig;
+  const totalRolesFiltrados = pageInfoRoles.totalElements || 0;
+  const totalPagesRoles = pageInfoRoles.totalPages || 0;
+  const paginaRolesActual = totalPagesRoles > 0 ? Math.min(pageRoles, totalPagesRoles - 1) : 0;
+  const totalUsuarios = pageInfoUsuarios.totalElements || 0;
+  const totalPagesUsuarios = pageInfoUsuarios.totalPages || 0;
+  const paginaUsuariosActual = totalPagesUsuarios > 0 ? Math.min(pageUsuarios, totalPagesUsuarios - 1) : 0;
 
   const rolSeleccionado = useMemo(() => {
     if (!rolSeleccionadoId) {
@@ -146,6 +126,12 @@ export default function UsuariosAccesoPage() {
       setPageRoles(totalPagesRoles - 1);
     }
   }, [pageRoles, totalPagesRoles]);
+
+  useEffect(() => {
+    if (totalPagesUsuarios > 0 && pageUsuarios >= totalPagesUsuarios) {
+      setPageUsuarios(totalPagesUsuarios - 1);
+    }
+  }, [pageUsuarios, totalPagesUsuarios]);
 
   useEffect(() => {
     if (!modulosPermisos.length) {
@@ -165,17 +151,42 @@ export default function UsuariosAccesoPage() {
     try {
       const [rolesResponse, rolesConfigResponse, permisosResponse, usuariosResponse] = await Promise.all([
         getAvailableRoles(),
-        getRolesConfig(),
+        getRolesConfig({
+          page: pageRoles,
+          size: PAGE_SIZE_ROLES,
+          busqueda: busquedaRoles,
+          sortBy: "name",
+          direction: "asc"
+        }),
         getPermissions(),
-        getAccessUsers()
+        getAccessUsers({
+          page: pageUsuarios,
+          size: PAGE_SIZE_USERS,
+          sortBy: "correo",
+          direction: "asc"
+        })
       ]);
 
       setRoles(Array.isArray(rolesResponse) ? rolesResponse : []);
-      setRolesConfig(Array.isArray(rolesConfigResponse) ? rolesConfigResponse : []);
+      setRolesConfig(Array.isArray(rolesConfigResponse?.content) ? rolesConfigResponse.content : Array.isArray(rolesConfigResponse) ? rolesConfigResponse : []);
+      setPageInfoRoles(rolesConfigResponse?.content ? {
+        page: rolesConfigResponse.page ?? pageRoles,
+        size: rolesConfigResponse.size ?? PAGE_SIZE_ROLES,
+        totalElements: rolesConfigResponse.totalElements ?? 0,
+        totalPages: rolesConfigResponse.totalPages ?? 0
+      } : PAGE_INFO_ROLES_DEFAULT);
       setPermisos(Array.isArray(permisosResponse) ? permisosResponse : []);
-      setUsuarios(Array.isArray(usuariosResponse) ? usuariosResponse : []);
+      setUsuarios(Array.isArray(usuariosResponse?.content) ? usuariosResponse.content : Array.isArray(usuariosResponse) ? usuariosResponse : []);
+      setPageInfoUsuarios(usuariosResponse?.content ? {
+        page: usuariosResponse.page ?? pageUsuarios,
+        size: usuariosResponse.size ?? PAGE_SIZE_USERS,
+        totalElements: usuariosResponse.totalElements ?? 0,
+        totalPages: usuariosResponse.totalPages ?? 0
+      } : PAGE_INFO_USERS_DEFAULT);
     } catch (err) {
       setError(err.message || "No se pudo cargar la administracion de accesos.");
+      setPageInfoRoles(PAGE_INFO_ROLES_DEFAULT);
+      setPageInfoUsuarios(PAGE_INFO_USERS_DEFAULT);
     } finally {
       setLoading(false);
     }
@@ -183,7 +194,7 @@ export default function UsuariosAccesoPage() {
 
   useEffect(() => {
     cargarDatos();
-  }, []);
+  }, [pageRoles, busquedaRoles, pageUsuarios]);
 
   const showSuccess = (message) => {
     setSuccess(message);
@@ -352,7 +363,7 @@ export default function UsuariosAccesoPage() {
   };
 
   const resumenRoles = totalRolesFiltrados > 0
-    ? `Mostrando ${rolesFiltrados.length} roles en ${Math.max(totalPagesRoles, 1)} pagina(s)`
+    ? `Mostrando ${rolesPagina.length} de ${totalRolesFiltrados} roles`
     : "Sin roles para mostrar";
 
   return (
@@ -443,6 +454,19 @@ export default function UsuariosAccesoPage() {
                     </tbody>
                   </table>
                 </div>
+                {totalUsuarios > 0 && (
+                  <CatalogPagination
+                    currentPage={paginaUsuariosActual}
+                    totalPages={totalPagesUsuarios}
+                    totalElements={totalUsuarios}
+                    pageSize={PAGE_SIZE_USERS}
+                    currentCount={usuarios.length}
+                    itemLabel="usuarios"
+                    ariaLabel="Paginacion de usuarios"
+                    onPageChange={setPageUsuarios}
+                    className="mt-3"
+                  />
+                )}
               </div>
             </div>
           )}
@@ -680,7 +704,7 @@ export default function UsuariosAccesoPage() {
 
                   {totalRolesFiltrados > 0 && (
                     <CatalogPagination
-                      currentPage={pageRoles}
+                      currentPage={paginaRolesActual}
                       totalPages={totalPagesRoles}
                       totalElements={totalRolesFiltrados}
                       pageSize={PAGE_SIZE_ROLES}
@@ -722,7 +746,7 @@ export default function UsuariosAccesoPage() {
                           value={invitacion[name]}
                           onChange={(event) => setInvitacion((prev) => ({ ...prev, [name]: event.target.value }))}
                           placeholder={placeholder}
-                          required
+                          required={name !== "apellidoMaterno"}
                         />
                       </div>
                     ))}

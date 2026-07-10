@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useModelos } from "../hooks/useModelos.js";
 import { exportarModelosExcel } from "../services/modelos.js";
+import { familiaGateway } from "../../familias/services/familiaGateway.js";
 import ModelosTable from "./ModelosTable.jsx";
 
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
@@ -11,6 +12,18 @@ import Toast from "../../../components/ui/Toast.jsx";
 import "./ModelosPage.css";
 
 const PAGE_SIZE = 10;
+
+const getFamiliaId = (modelo = {}) =>
+  modelo.familiaId || modelo.familia?.id || modelo.familia_id || "";
+
+const getLineaNombre = (modelo = {}) =>
+  modelo.lineaNombre || modelo.linea?.nombre || modelo.familia?.lineaNombre || modelo.familia?.linea?.nombre || "";
+
+const getFamiliaNombre = (modelo = {}) =>
+  modelo.familiaNombre || modelo.familia?.nombre || "";
+
+const getFamiliaLabel = (modelo = {}) =>
+  [getLineaNombre(modelo), getFamiliaNombre(modelo)].filter(Boolean).join(" / ");
 
 export default function ModelosPage() {
   const navigate = useNavigate();
@@ -23,6 +36,15 @@ export default function ModelosPage() {
   const [filtroEstatus, setFiltroEstatus] = useState("TODOS");
   const [soloActivos, setSoloActivos] = useState(false);
   const [exportandoExcel, setExportandoExcel] = useState(false);
+  const [familiasDisponibles, setFamiliasDisponibles] = useState([]);
+  const terminoBusqueda = busqueda.toLowerCase().trim().replace(/\s+/g, " ");
+  const filtroActivo = soloActivos
+    ? true
+    : filtroEstatus === "ACTIVO"
+      ? true
+      : filtroEstatus === "INACTIVO"
+        ? false
+        : null;
 
   const {
     modelos,
@@ -30,61 +52,52 @@ export default function ModelosPage() {
     loadingLista,
     error,
     cambiarEstadoModelo
-  } = useModelos({ page, size: PAGE_SIZE });
+  } = useModelos({
+    page,
+    size: PAGE_SIZE,
+    busqueda: terminoBusqueda,
+    activo: filtroActivo,
+    familiaId: filtroFamilia
+  });
 
   const totalElements = pageInfo.totalElements ?? 0;
   const totalPages = pageInfo.totalPages ?? 0;
-  const terminoBusqueda = busqueda.toLowerCase().trim().replace(/\s+/g, " ");
-
-  const familiasDisponibles = useMemo(() => {
-    const familiasUnicas = new Set();
-
-    modelos.forEach((modelo) => {
-      const nombreFamilia = (modelo.familiaNombre || modelo.familia?.nombre || "").trim();
-      if (nombreFamilia) {
-        familiasUnicas.add(nombreFamilia);
-      }
-    });
-
-    return Array.from(familiasUnicas).sort((a, b) => a.localeCompare(b, "es"));
-  }, [modelos]);
-
-  const modelosFiltrados = useMemo(() => {
-    return modelos.filter((modelo) => {
-      const pasaFiltroTexto = (() => {
-        if (!terminoBusqueda) return true;
-
-        const palabras = terminoBusqueda.split(" ");
-        const familiaNombre = modelo.familiaNombre || modelo.familia?.nombre || "";
-
-        const infoModelo = [
-          modelo.nombre,
-          modelo.descripcion,
-          familiaNombre
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-
-        return palabras.every((palabra) => infoModelo.includes(palabra));
-      })();
-
-      const coincideEstatus =
-        filtroEstatus === "TODOS" ||
-        (filtroEstatus === "ACTIVO" && modelo.activo) ||
-        (filtroEstatus === "INACTIVO" && !modelo.activo);
-
-      const coincideSoloActivos = !soloActivos || modelo.activo;
-      const familiaModelo = (modelo.familiaNombre || modelo.familia?.nombre || "").trim();
-      const coincideFamilia = !filtroFamilia || familiaModelo === filtroFamilia;
-
-      return pasaFiltroTexto && coincideEstatus && coincideSoloActivos && coincideFamilia;
-    });
-  }, [filtroEstatus, filtroFamilia, modelos, soloActivos, terminoBusqueda]);
 
   const hayFiltrosActivos = Boolean(terminoBusqueda) || Boolean(filtroFamilia) || filtroEstatus !== "TODOS" || soloActivos;
-  const mostrarVacio = !loadingLista && !error && totalElements === 0;
-  const mostrarSinCoincidencias = !loadingLista && !error && totalElements > 0 && modelosFiltrados.length === 0;
+  const mostrarVacio = !loadingLista && !error && !hayFiltrosActivos && totalElements === 0;
+  const mostrarSinCoincidencias = !loadingLista && !error && hayFiltrosActivos && totalElements === 0;
+
+  useEffect(() => {
+    let activo = true;
+
+    const cargarFamilias = async () => {
+      try {
+        const data = await familiaGateway.obtenerFamiliasActivas();
+        const lista = Array.isArray(data) ? data : Array.isArray(data?.content) ? data.content : [];
+        const opciones = lista
+          .map((familia) => ({
+            id: familia.id ?? familia.familiaId,
+            label: getFamiliaLabel(familia) || familia.nombre || familia.codigo || `Familia ${familia.id ?? familia.familiaId}`
+          }))
+          .filter((familia) => familia.id && familia.label)
+          .sort((a, b) => a.label.localeCompare(b.label, "es"));
+
+        if (activo) {
+          setFamiliasDisponibles(opciones);
+        }
+      } catch {
+        if (activo) {
+          setFamiliasDisponibles([]);
+        }
+      }
+    };
+
+    cargarFamilias();
+
+    return () => {
+      activo = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!loadingLista && totalPages > 0 && page >= totalPages) {
@@ -120,9 +133,9 @@ export default function ModelosPage() {
       setExportandoExcel(true);
 
       const blob = await exportarModelosExcel({
-        activo: soloActivos ? true : undefined,
+        activo: filtroActivo ?? undefined,
         busqueda: terminoBusqueda || undefined,
-        familia: filtroFamilia || undefined,
+        familiaId: filtroFamilia || undefined,
         sortBy: "nombre",
         direction: "asc"
       });
@@ -230,8 +243,8 @@ export default function ModelosPage() {
               >
                 <option value="">Todas las familias</option>
                 {familiasDisponibles.map((familia) => (
-                  <option key={familia} value={familia}>
-                    {familia}
+                  <option key={familia.id} value={familia.id}>
+                    {familia.label}
                   </option>
                 ))}
               </select>
@@ -284,13 +297,13 @@ export default function ModelosPage() {
                 <i className="bi bi-funnel fs-1 d-block mb-3 text-secondary"></i>
                 <span className="fs-5 d-block">No hay coincidencias</span>
                 <p className="text-secondary mt-2 mb-0">
-                  Ajusta los filtros para ver modelos en esta pagina
+                  Ajusta los filtros para ver modelos
                 </p>
               </div>
             </div>
           ) : (
             <ModelosTable
-              data={modelosFiltrados}
+              data={modelos}
               onEditar={abrirEditar}
               onCambiarEstado={manejarCambioEstado}
             />
@@ -306,7 +319,7 @@ export default function ModelosPage() {
               itemLabel="modelos"
               summary={
                 hayFiltrosActivos
-                  ? `Mostrando ${modelosFiltrados.length} coincidencias en esta pagina`
+                  ? `Mostrando ${modelos.length} de ${totalElements} coincidencias`
                   : undefined
               }
               ariaLabel="Paginacion de modelos"

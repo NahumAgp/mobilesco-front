@@ -103,10 +103,11 @@ const aplicarCodigosCategoriaModelo = (categorias = []) =>
     codigo: String(index + 1).padStart(2, "0")
   }));
 
-const buscarDuplicado = (items, campo, valor, refExcluida) =>
+const buscarDuplicado = (items, campo, valor, refExcluida, scopePredicate = () => true) =>
   items.find(
     (item) =>
       String(item.ref || item.id) !== String(refExcluida)
+      && scopePredicate(item)
       && normalizarComparacion(item[campo]) === normalizarComparacion(valor)
   );
 
@@ -140,6 +141,21 @@ const getMaterialesDelModelo = (modelo = {}) => {
 
   return [];
 };
+
+const getLineaIdFamilia = (familia = {}) =>
+  familia?.lineaId || familia?.lineaRef || familia?.linea?.id || "";
+
+const getLineaNombreFamilia = (familia = {}) =>
+  familia?.lineaNombre || familia?.linea?.nombre || "";
+
+const getFamiliaLabel = (familia = {}) => {
+  const lineaNombre = getLineaNombreFamilia(familia);
+  const codigo = familia?.codigo ? `[${familia.codigo}] ` : "";
+  return `${familia?._pending ? "[Pendiente] " : ""}${codigo}${lineaNombre ? `${lineaNombre} / ` : ""}${familia.nombre || "-"}`;
+};
+
+const getModeloFamiliaId = (modelo = {}) =>
+  modelo?.familiaId || modelo?.familia?.id || modelo?.familia_id || "";
 
 const MODAL_CONFIG = {
   linea: { titulo: "Nueva linea", icono: "bi-diagram-3", descripcion: true },
@@ -184,11 +200,16 @@ export function SimpleDraftModal({
 
   useEffect(() => {
     if (!show || lockCodigo) return;
-    const codigo = tipo === "color"
-      ? crearCodigoColorDisponible(form.nombre, existingItems, form.ref)
-      : crearCodigoDisponible(form.nombre, existingItems, form.ref);
+    const mismosPadres = tipo === "familia"
+      ? existingItems.filter((item) => String(getLineaIdFamilia(item)) === String(form.lineaId || ""))
+      : existingItems;
+    const codigo = tipo === "familia" && !form.lineaId
+      ? ""
+      : tipo === "color"
+        ? crearCodigoColorDisponible(form.nombre, mismosPadres, form.ref)
+        : crearCodigoDisponible(form.nombre, mismosPadres, form.ref);
     setForm((prev) => prev.codigo === codigo ? prev : { ...prev, codigo });
-  }, [existingItems, form.nombre, form.ref, lockCodigo, show, tipo]);
+  }, [existingItems, form.lineaId, form.nombre, form.ref, lockCodigo, show, tipo]);
 
   useEffect(() => {
     if (show && tipo === "familia" && forcedLineaId) {
@@ -198,8 +219,9 @@ export function SimpleDraftModal({
 
   if (!show) return null;
 
-  const nombreDuplicadoActual = buscarDuplicado(existingItems, "nombre", form.nombre, form.ref);
-  const codigoDuplicadoActual = buscarDuplicado(existingItems, "codigo", form.codigo, form.ref);
+  const mismaLinea = (item) => tipo !== "familia" || String(getLineaIdFamilia(item)) === String(form.lineaId || "");
+  const nombreDuplicadoActual = buscarDuplicado(existingItems, "nombre", form.nombre, form.ref, mismaLinea);
+  const codigoDuplicadoActual = buscarDuplicado(existingItems, "codigo", form.codigo, form.ref, mismaLinea);
 
   const guardar = (event) => {
     event.preventDefault();
@@ -217,6 +239,10 @@ export function SimpleDraftModal({
       return;
     }
 
+    const lineaSeleccionada = tipo === "familia"
+      ? lineas.find((item) => String(item.id || item.ref) === String(form.lineaId))
+      : null;
+
     onSave({
       ...form,
       id: form.ref,
@@ -225,6 +251,12 @@ export function SimpleDraftModal({
       descripcion: form.descripcion?.trim() || "",
       lineaId: tipo === "familia" && !esRefBorrador(form.lineaId) ? Number(form.lineaId) : undefined,
       lineaRef: tipo === "familia" && esRefBorrador(form.lineaId) ? form.lineaId : undefined,
+      ...(tipo === "familia"
+        ? {
+            linea: lineaSeleccionada,
+            lineaNombre: lineaSeleccionada?.nombre || ""
+          }
+        : {}),
       _pending: true
     });
   };
@@ -422,8 +454,12 @@ export function ModeloDraftModal({
     ),
     [familiaSeleccionada?.lineaId, familiaSeleccionada?.lineaRef, lineas]
   );
-  const modeloConflictoNombre = buscarDuplicado(modelos, "nombre", form.nombre, form.ref);
-  const modeloConflictoCodigo = buscarDuplicado(modelos, "codigo", form.codigo, form.ref);
+  const modelosMismaFamilia = useMemo(
+    () => modelos.filter((item) => String(getModeloFamiliaId(item)) === String(form.familiaId || "")),
+    [form.familiaId, modelos]
+  );
+  const modeloConflictoNombre = buscarDuplicado(modelosMismaFamilia, "nombre", form.nombre, form.ref);
+  const modeloConflictoCodigo = buscarDuplicado(modelosMismaFamilia, "codigo", form.codigo, form.ref);
   const categoriasComparablesActuales = [...categoriasExistentes, ...(form.categorias || [])];
   const categoriaRepetidaActual = (form.categorias || []).find((item) =>
     (item.categoriaId && (form.categorias || []).some(
@@ -564,9 +600,9 @@ export function ModeloDraftModal({
 
   useEffect(() => {
     if (!show) return;
-    const codigo = crearCodigoDisponible(form.nombre, modelos, form.ref);
+    const codigo = form.familiaId ? crearCodigoDisponible(form.nombre, modelosMismaFamilia, form.ref) : "";
     setForm((prev) => prev.codigo === codigo ? prev : { ...prev, codigo });
-  }, [form.nombre, form.ref, modelos, show]);
+  }, [form.familiaId, form.nombre, form.ref, modelosMismaFamilia, show]);
 
   if (!show) return null;
 
@@ -645,7 +681,8 @@ export function ModeloDraftModal({
                       options={familias}
                       onChange={(value) => setForm((prev) => ({ ...prev, familiaId: value }))}
                       getOptionValue={(item) => item.id || item.ref}
-                      getOptionLabel={(item) => `${item._pending ? "[Pendiente] " : ""}${item.codigo ? `[${item.codigo}] ` : ""}${item.nombre || "-"}`}
+                      getOptionLabel={getFamiliaLabel}
+                      getOptionSearchText={(item) => [item.codigo, getLineaNombreFamilia(item), item.nombre, item.descripcion].filter(Boolean).join(" ").toLowerCase()}
                       error={errores.familiaId}
                       actionNode={<button type="button" className="btn btn-outline-primary" onClick={() => {
                         setFamiliaEditando(null);

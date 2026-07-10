@@ -129,7 +129,13 @@ export default function ModelosFormPage() {
           setErrorProductos("");
         }
 
-        const respuesta = await obtenerProductos();
+        const respuesta = await obtenerProductos({
+          page: 0,
+          size: 100,
+          modeloId: id,
+          sortBy: "sku",
+          direction: "asc"
+        });
         const lista = extraerListaProductos(respuesta);
         const filtrados = lista.filter(
           (producto) => String(obtenerModeloRelacionadoId(producto) ?? "") === String(id)

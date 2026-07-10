@@ -1,6 +1,17 @@
 import request from "../../../services/api";
 import { API_PATHS } from "../../../config/apiPaths";
 
+function buildQuery(params = {}) {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      query.set(key, String(value));
+    }
+  });
+  const queryString = query.toString();
+  return queryString ? `?${queryString}` : "";
+}
+
 // ============================
 // LOGIN
 // ============================
@@ -46,8 +57,8 @@ export function getPermissions() {
   return request(API_PATHS.AUTH_PERMISOS);
 }
 
-export function getRolesConfig() {
-  return request(API_PATHS.AUTH_ROLES_CONFIG);
+export function getRolesConfig(params = {}) {
+  return request(`${API_PATHS.AUTH_ROLES_CONFIG}${buildQuery(params)}`);
 }
 
 export function createRole(payload) {
@@ -64,8 +75,8 @@ export function updateRole(id, payload) {
   });
 }
 
-export function getAccessUsers() {
-  return request(API_PATHS.AUTH_USUARIOS);
+export function getAccessUsers(params = {}) {
+  return request(`${API_PATHS.AUTH_USUARIOS}${buildQuery(params)}`);
 }
 
 export function createAccessUser(payload) {
@@ -111,8 +122,8 @@ export function createInvitation(payload) {
   });
 }
 
-export function getPendingUsers() {
-  return request(API_PATHS.AUTH_PENDIENTES);
+export function getPendingUsers(params = {}) {
+  return request(`${API_PATHS.AUTH_PENDIENTES}${buildQuery(params)}`);
 }
 
 export function approvePendingUser(id) {

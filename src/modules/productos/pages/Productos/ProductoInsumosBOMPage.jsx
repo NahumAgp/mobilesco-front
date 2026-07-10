@@ -102,20 +102,33 @@ export default function ProductoInsumosBOMPage() {
   const cargarDatos = useCallback(async () => {
     try {
       setLoading(true);
-      const [productoData, productosData, insumosData, insumosProductoData, unidadesData] = await Promise.all([
-        obtenerProductoPorId(id),
-        obtenerProductos(),
-        obtenerInsumos(),
-        obtenerInsumosDeProducto(id),
+      const productoData = await obtenerProductoPorId(id);
+      const modeloActualId = String(getModeloId(productoData));
+      const [productosData, insumosData, insumosProductoData, unidadesData] = await Promise.all([
+        obtenerProductos({
+          page: 0,
+          size: 100,
+          modeloId: modeloActualId || undefined,
+          activo: true,
+          sortBy: "sku",
+          direction: "asc"
+        }),
+        obtenerInsumos({
+          page: 0,
+          size: 100,
+          activo: true,
+          sortBy: "nombre",
+          direction: "asc"
+        }),
+        obtenerInsumosDeProducto(id, { page: 0, size: 100 }),
         obtenerUnidadesMedida()
       ]);
       
       setProducto(productoData);
       setInsumosDisponibles(insumosData.content || insumosData || []);
-      setInsumosProducto(insumosProductoData || []);
+      setInsumosProducto(insumosProductoData?.content || insumosProductoData || []);
       setUnidadesMedida(unidadesData.content || unidadesData || []);
 
-      const modeloActualId = String(getModeloId(productoData));
       const productosDelModelo = getLista(productosData)
         .filter((item) => String(item?.id) !== String(id))
         .filter((item) => !modeloActualId || String(getModeloId(item)) === modeloActualId)
@@ -143,9 +156,9 @@ export default function ProductoInsumosBOMPage() {
 
     try {
       setCopiandoBom(true);
-      const insumosOrigen = await obtenerInsumosDeProducto(productoOrigenId);
+      const insumosOrigen = await obtenerInsumosDeProducto(productoOrigenId, { page: 0, size: 100 });
       const existentes = new Set(insumosProducto.map((item) => String(item.insumoId)));
-      const insumosCopiables = (insumosOrigen || [])
+      const insumosCopiables = (insumosOrigen?.content || insumosOrigen || [])
         .filter((item) => item?.insumoId && !existentes.has(String(item.insumoId)))
         .map((item) => ({
           insumoId: Number(item.insumoId),

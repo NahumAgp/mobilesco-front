@@ -59,21 +59,34 @@ export default function ProductoOperacionesBOMPage() {
   const cargarDatos = useCallback(async () => {
     try {
       setLoading(true);
-      const [productoData, productosData, operacionesData, operacionesProductoData] = await Promise.all([
-        obtenerProductoPorId(id),
-        obtenerProductos(),
-        obtenerOperaciones(),
-        obtenerOperacionesDeProducto(id)
+      const productoData = await obtenerProductoPorId(id);
+      const modeloActualId = String(getModeloId(productoData));
+      const [productosData, operacionesData, operacionesProductoData] = await Promise.all([
+        obtenerProductos({
+          page: 0,
+          size: 100,
+          modeloId: modeloActualId || undefined,
+          activo: true,
+          sortBy: "sku",
+          direction: "asc"
+        }),
+        obtenerOperaciones({
+          page: 0,
+          size: 100,
+          activo: true,
+          sortBy: "nombre",
+          direction: "asc"
+        }),
+        obtenerOperacionesDeProducto(id, { page: 0, size: 100 })
       ]);
       
       setProducto(productoData);
       setOperacionesDisponibles(operacionesData.content || operacionesData || []);
       
-      const operacionesOrdenadas = (operacionesProductoData || [])
+      const operacionesOrdenadas = (operacionesProductoData?.content || operacionesProductoData || [])
         .sort((a, b) => (a.orden || 0) - (b.orden || 0));
       setOperacionesProducto(operacionesOrdenadas);
 
-      const modeloActualId = String(getModeloId(productoData));
       const productosDelModelo = getLista(productosData)
         .filter((item) => String(item?.id) !== String(id))
         .filter((item) => !modeloActualId || String(getModeloId(item)) === modeloActualId)
@@ -101,10 +114,10 @@ export default function ProductoOperacionesBOMPage() {
 
     try {
       setCopiandoBom(true);
-      const operacionesOrigen = await obtenerOperacionesDeProducto(productoOrigenId);
+      const operacionesOrigen = await obtenerOperacionesDeProducto(productoOrigenId, { page: 0, size: 100 });
       const existentes = new Set(operacionesProducto.map((item) => String(item.operacionId)));
       const inicioOrden = operacionesProducto.length + 1;
-      const operacionesCopiables = (operacionesOrigen || [])
+      const operacionesCopiables = (operacionesOrigen?.content || operacionesOrigen || [])
         .filter((item) => item?.operacionId && !existentes.has(String(item.operacionId)))
         .map((item, index) => ({
           operacionId: Number(item.operacionId),

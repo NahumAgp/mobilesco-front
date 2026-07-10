@@ -15,6 +15,12 @@ import Toast from "../../../../components/ui/Toast";
 import "./ProductosCompletosPage.css";
 
 const PAGE_SIZE = 10;
+const PAGE_INFO_DEFAULT = {
+  page: 0,
+  size: PAGE_SIZE,
+  totalElements: 0,
+  totalPages: 0
+};
 
 const compararValor = (a, b) => {
   const valorA = a ?? "";
@@ -150,6 +156,7 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
   const navigate = useNavigate();
   const [modoCreacion, setModoCreacion] = useState(iniciarCreacion);
   const [productos, setProductos] = useState([]);
+  const [pageInfo, setPageInfo] = useState(PAGE_INFO_DEFAULT);
   const [modelosCatalogo, setModelosCatalogo] = useState([]);
   const [categoriasCatalogo, setCategoriasCatalogo] = useState([]);
   const [materialesCatalogo, setMaterialesCatalogo] = useState([]);
@@ -168,7 +175,7 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
   const [sortDirection, setSortDirection] = useState("asc");
   const [exportandoExcel, setExportandoExcel] = useState(false);
 
-  const cargarProductos = async () => {
+  const cargarProductos = useCallback(async () => {
     // Limpiar cache legado del modulo cuando existia en modo local.
     localStorage.removeItem("productos_completos_cache");
     localStorage.removeItem("productos_prueba");
@@ -176,14 +183,31 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
     try {
       setLoadingLista(true);
       setErrorLista("");
-      const data = await obtenerProductos();
+      const data = await obtenerProductos({
+        page,
+        size: PAGE_SIZE,
+        busqueda,
+        activo: filtroEstatus === "TODOS" ? undefined : filtroEstatus === "ACTIVO",
+        modeloId: filtroModelo,
+        nivelId: filtroNivel,
+        colorId: filtroColor,
+        sortBy: sortField,
+        direction: sortDirection
+      });
       setProductos(getLista(data));
+      setPageInfo(data?.content ? {
+        page: data.page ?? page,
+        size: data.size ?? PAGE_SIZE,
+        totalElements: data.totalElements ?? 0,
+        totalPages: data.totalPages ?? 0
+      } : PAGE_INFO_DEFAULT);
     } catch (error) {
       setErrorLista(error?.message || "No se pudieron cargar los productos.");
+      setPageInfo(PAGE_INFO_DEFAULT);
     } finally {
       setLoadingLista(false);
     }
-  };
+  }, [busqueda, filtroColor, filtroEstatus, filtroModelo, filtroNivel, page, sortDirection, sortField]);
 
   const cargarCatalogos = async () => {
     try {
@@ -205,6 +229,9 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
 
   useEffect(() => {
     cargarProductos();
+  }, [cargarProductos]);
+
+  useEffect(() => {
     cargarCatalogos();
   }, []);
 
@@ -589,119 +616,33 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
   );
 
   const modelosDisponibles = useMemo(() => {
-    const mapa = new Map();
-    productosEnriquecidos.forEach((producto) => {
-      const id = producto?.modeloId || producto?.id_modelo || producto?.modelo_id || producto?.productoBaseId || "";
-      const nombre = producto?.modeloNombre || producto?.nombre_modelo || producto?.productoBaseNombre || "";
-      if (id && nombre) mapa.set(String(id), nombre);
-    });
-    return Array.from(mapa.entries()).map(([id, nombre]) => ({ id, nombre })).sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
-  }, [productosEnriquecidos]);
+    return modelosCatalogo
+      .map((modelo) => ({ id: modelo?.id, nombre: modelo?.nombre }))
+      .filter((modelo) => modelo.id && modelo.nombre)
+      .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+  }, [modelosCatalogo]);
 
   const nivelesDisponibles = useMemo(() => {
-    const mapa = new Map();
-    productosEnriquecidos.forEach((producto) => {
-      const id = producto?.nivelId || producto?.id_nivel || producto?.nivel_id || producto?.categoriaId || "";
-      const nombre = producto?.nivelNombre || producto?.nombre_nivel || producto?.categoriaNombre || "";
-      if (id && nombre) mapa.set(String(id), nombre);
-    });
-    return Array.from(mapa.entries()).map(([id, nombre]) => ({ id, nombre })).sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
-  }, [productosEnriquecidos]);
+    return categoriasCatalogo
+      .map((nivel) => ({ id: nivel?.id, nombre: nivel?.nombre }))
+      .filter((nivel) => nivel.id && nivel.nombre)
+      .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+  }, [categoriasCatalogo]);
 
   const coloresDisponibles = useMemo(() => {
-    const mapa = new Map();
-    productosEnriquecidos.forEach((producto) => {
-      const id = producto?.colorId || producto?.id_color || producto?.color_id || "";
-      const nombre = producto?.colorNombre || producto?.nombre_color || "";
-      if (id && nombre) mapa.set(String(id), nombre);
-    });
-    return Array.from(mapa.entries()).map(([id, nombre]) => ({ id, nombre })).sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
-  }, [productosEnriquecidos]);
+    return coloresCatalogo
+      .map((color) => ({ id: color?.id, nombre: color?.nombre }))
+      .filter((color) => color.id && color.nombre)
+      .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+  }, [coloresCatalogo]);
 
-  const productosFiltrados = useMemo(() => {
-    const termino = busqueda.toLowerCase().trim().replace(/\s+/g, " ");
-    const palabras = termino ? termino.split(" ") : [];
-
-    const filtrados = productosEnriquecidos.filter((productoEnriquecido) => {
-      const texto = [
-        productoEnriquecido?.sku,
-        productoEnriquecido?.nombre,
-        productoEnriquecido?.descripcion,
-        productoEnriquecido?.lineaNombre,
-        productoEnriquecido?.familiaNombre,
-        productoEnriquecido?.productoBaseNombre,
-        productoEnriquecido?.nombre_modelo,
-        productoEnriquecido?.modeloNombre,
-        productoEnriquecido?.nivelNombre,
-        productoEnriquecido?.nombre_nivel,
-        productoEnriquecido?.categoriaNombre,
-        productoEnriquecido?.materialNombre,
-        productoEnriquecido?.nombre_material,
-        productoEnriquecido?.colorNombre,
-        productoEnriquecido?.nombre_color,
-        productoEnriquecido?.activo ? "activo" : "inactivo"
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-
-      const coincideBusqueda = palabras.length === 0 || palabras.every((palabra) => texto.includes(palabra));
-      const coincideEstatus =
-        filtroEstatus === "TODOS" ||
-        (filtroEstatus === "ACTIVO" && productoEnriquecido?.activo) ||
-        (filtroEstatus === "INACTIVO" && !productoEnriquecido?.activo);
-      const coincideModelo =
-        !filtroModelo ||
-        String(productoEnriquecido?.modeloId || productoEnriquecido?.id_modelo || productoEnriquecido?.modelo_id || productoEnriquecido?.productoBaseId || "") === String(filtroModelo);
-      const coincideNivel =
-        !filtroNivel ||
-        String(productoEnriquecido?.nivelId || productoEnriquecido?.id_nivel || productoEnriquecido?.nivel_id || productoEnriquecido?.categoriaId || "") === String(filtroNivel);
-      const coincideColor =
-        !filtroColor ||
-        String(productoEnriquecido?.colorId || productoEnriquecido?.id_color || productoEnriquecido?.color_id || "") === String(filtroColor);
-
-      return coincideBusqueda && coincideEstatus && coincideModelo && coincideNivel && coincideColor;
-    });
-
-    return filtrados.sort((a, b) => {
-      const getValor = (producto) => {
-        switch (sortField) {
-          case "modeloNombre":
-            return producto?.modeloNombre || producto?.nombre_modelo || "";
-          case "lineaNombre":
-            return producto?.lineaNombre || "";
-          case "familiaNombre":
-            return producto?.familiaNombre || "";
-          case "nivelNombre":
-            return producto?.nivelNombre || producto?.nombre_nivel || producto?.categoriaNombre || "";
-          case "colorNombre":
-            return producto?.colorNombre || producto?.nombre_color || "";
-          default:
-            return producto?.[sortField];
-        }
-      };
-
-      const resultado = compararValor(getValor(a), getValor(b));
-      return sortDirection === "asc" ? resultado : -resultado;
-    });
-  }, [
-    busqueda,
-    filtroColor,
-    filtroEstatus,
-    filtroModelo,
-    filtroNivel,
-    productosEnriquecidos,
-    sortDirection,
-    sortField
-  ]);
-
-  const totalElements = productosFiltrados.length;
-  const totalPages = Math.ceil(totalElements / PAGE_SIZE);
+  const totalElements = pageInfo.totalElements || 0;
+  const totalPages = pageInfo.totalPages || 0;
   const paginaActual = totalPages > 0 ? Math.min(page, totalPages - 1) : 0;
-  const productosPaginados = productosFiltrados.slice(paginaActual * PAGE_SIZE, paginaActual * PAGE_SIZE + PAGE_SIZE);
+  const productosPaginados = productosEnriquecidos;
   const hayFiltrosActivos = Boolean(busqueda.trim()) || filtroEstatus !== "TODOS" || Boolean(filtroModelo) || Boolean(filtroNivel) || Boolean(filtroColor);
   const mostrarVacio = !loadingLista && !errorLista && productos.length === 0;
-  const mostrarSinCoincidencias = !loadingLista && !errorLista && productos.length > 0 && productosFiltrados.length === 0;
+  const mostrarSinCoincidencias = !loadingLista && !errorLista && productos.length === 0 && hayFiltrosActivos;
 
   useEffect(() => {
     if (!loadingLista && totalPages > 0 && page >= totalPages) {

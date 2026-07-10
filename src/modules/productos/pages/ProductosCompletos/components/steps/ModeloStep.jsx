@@ -78,6 +78,17 @@ const normalizarImagenesExistentes = (producto, variante) => {
   return imagenes.map(({ _sourceKey, ...imagen }) => imagen);
 };
 
+const getNombreLinea = (modelo = {}) =>
+  modelo?.linea?.nombre || modelo?.lineaNombre || modelo?.familia?.linea?.nombre || modelo?.familia?.lineaNombre || "";
+
+const getNombreFamilia = (modelo = {}) =>
+  modelo?.familia?.nombre || modelo?.familiaNombre || "";
+
+const getModeloLabel = (modelo = {}) => {
+  const ruta = [getNombreLinea(modelo), getNombreFamilia(modelo), modelo?.nombre || "-"].filter(Boolean).join(" / ");
+  return `${modelo.codigo ? `[${modelo.codigo}] ` : ""}${ruta}`;
+};
+
 export default function ModeloStep({ data, onUpdate, borradores, onUpsertDraft }) {
   const [modelos, setModelos] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -187,8 +198,8 @@ export default function ModeloStep({ data, onUpdate, borradores, onUpsertDraft }
             placeholder="Seleccionar modelo..."
             searchPlaceholder="Busca por codigo, nombre o descripcion..."
             getOptionValue={(item) => item.id}
-            getOptionLabel={(item) => `${item.codigo ? `[${item.codigo}] ` : ""}${item.nombre}`}
-            getOptionSearchText={(item) => [item.codigo, item.nombre, item.descripcion].filter(Boolean).join(" ").toLowerCase()}
+            getOptionLabel={getModeloLabel}
+            getOptionSearchText={(item) => [item.codigo, getNombreLinea(item), getNombreFamilia(item), item.nombre, item.descripcion].filter(Boolean).join(" ").toLowerCase()}
           />
           {cargandoVariantes && (
             <div className="form-text">Cargando variantes ya creadas del modelo...</div>
@@ -203,7 +214,7 @@ export default function ModeloStep({ data, onUpdate, borradores, onUpsertDraft }
                   {modelo?._pending && <span className="badge text-bg-warning ms-2">Pendiente</span>}
                 </div>
                 <div className="small text-muted">
-                  {[visible.codigo, visible.familiaNombre || visible.familia?.nombre].filter(Boolean).join(" - ")}
+                  {[visible.codigo, [getNombreLinea(visible), getNombreFamilia(visible)].filter(Boolean).join(" / ")].filter(Boolean).join(" - ")}
                 </div>
               </div>
               <span className="badge text-bg-light ms-auto">{(visible.categorias || []).length} categorias</span>

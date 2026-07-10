@@ -2,9 +2,18 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import PageHeader from "../../../../components/Sistema/PageHeader";
+import CatalogPagination from "../../../../components/ui/CatalogPagination.jsx";
 import { API_BASE_URL } from "../../../../config/apiConfig";
 import { obtenerProductos } from "../../services/productos";
 import "./ProductoCatalogoPage.css";
+
+const PAGE_SIZE = 30;
+const PAGE_INFO_DEFAULT = {
+  page: 0,
+  size: PAGE_SIZE,
+  totalElements: 0,
+  totalPages: 0
+};
 
 const COLOR_FALLBACKS = [
   { pattern: /blanco|white/i, value: "#f8fafc" },
@@ -254,6 +263,8 @@ export default function ProductoCatalogoPage() {
   const [error, setError] = useState("");
   const [busqueda, setBusqueda] = useState("");
   const [soloActivos, setSoloActivos] = useState(true);
+  const [page, setPage] = useState(0);
+  const [pageInfo, setPageInfo] = useState(PAGE_INFO_DEFAULT);
   const [imagenSeleccionada, setImagenSeleccionada] = useState(0);
 
   useEffect(() => {
@@ -261,48 +272,40 @@ export default function ProductoCatalogoPage() {
       try {
         setLoading(true);
         setError("");
-        const data = await obtenerProductos();
+        const data = await obtenerProductos({
+          page,
+          size: PAGE_SIZE,
+          busqueda,
+          activo: soloActivos ? true : undefined,
+          sortBy: "modeloNombre",
+          direction: "asc"
+        });
         setProductos(getLista(data));
+        setPageInfo(data?.content ? {
+          page: data.page ?? page,
+          size: data.size ?? PAGE_SIZE,
+          totalElements: data.totalElements ?? 0,
+          totalPages: data.totalPages ?? 0
+        } : PAGE_INFO_DEFAULT);
       } catch (err) {
         setError(err?.message || "No se pudieron cargar los productos.");
+        setPageInfo(PAGE_INFO_DEFAULT);
       } finally {
         setLoading(false);
       }
     };
 
     cargarProductos();
-  }, []);
+  }, [busqueda, page, soloActivos]);
 
-  const productosFiltrados = useMemo(() => {
-    const termino = normalizar(busqueda);
-    const palabras = termino ? termino.split(/\s+/) : [];
-
-    return productos.filter((producto) => {
-      if (soloActivos && !producto?.activo) return false;
-
-      const texto = normalizar(
-        [
-          producto?.sku,
-          producto?.nombre,
-          producto?.descripcion,
-          producto?.modeloNombre,
-          producto?.nombre_modelo,
-          producto?.familiaNombre,
-          producto?.lineaNombre,
-          producto?.nivelNombre,
-          producto?.nombre_nivel,
-          producto?.materialNombre,
-          producto?.nombre_material,
-          producto?.colorNombre,
-          producto?.nombre_color
-        ]
-          .filter(Boolean)
-          .join(" ")
-      );
-
-      return palabras.length === 0 || palabras.every((palabra) => texto.includes(palabra));
-    });
-  }, [busqueda, productos, soloActivos]);
+  const productosFiltrados = productos;
+  const totalElements = pageInfo.totalElements || 0;
+  const totalPages = pageInfo.totalPages || 0;
+  const paginaActual = totalPages > 0 ? Math.min(page, totalPages - 1) : 0;
+  const resetPage = (updater) => {
+    setPage(0);
+    updater();
+  };
 
   const modelos = useMemo(() => construirModelos(productosFiltrados), [productosFiltrados]);
   const productoSeleccionado = useMemo(() => {
@@ -393,7 +396,7 @@ export default function ProductoCatalogoPage() {
           <input
             type="search"
             value={busqueda}
-            onChange={(event) => setBusqueda(event.target.value)}
+            onChange={(event) => resetPage(() => setBusqueda(event.target.value))}
             placeholder="Buscar por SKU, modelo, color, material..."
           />
         </div>
@@ -401,7 +404,7 @@ export default function ProductoCatalogoPage() {
           <input
             type="checkbox"
             checked={soloActivos}
-            onChange={(event) => setSoloActivos(event.target.checked)}
+            onChange={(event) => resetPage(() => setSoloActivos(event.target.checked))}
           />
           <span>Solo activos</span>
         </label>
@@ -421,6 +424,7 @@ export default function ProductoCatalogoPage() {
       )}
 
       {!loading && !error && productoSeleccionado && (
+        <>
         <div className="producto-catalogo-shell">
           <aside className="producto-catalogo-groups" aria-label="Grupos de productos">
             <h2>Modelos</h2>
@@ -658,6 +662,18 @@ export default function ProductoCatalogoPage() {
             </section>
           </main>
         </div>
+        <CatalogPagination
+          currentPage={paginaActual}
+          totalPages={totalPages}
+          totalElements={totalElements}
+          pageSize={PAGE_SIZE}
+          currentCount={productos.length}
+          itemLabel="productos"
+          ariaLabel="Paginacion del catalogo visual de productos"
+          onPageChange={setPage}
+          className="mt-3"
+        />
+        </>
       )}
     </>
   );

@@ -33,13 +33,19 @@ export default function ProductoBOMPage() {
       setLoading(true);
       const [productoData, insumosData, insumosProductoData] = await Promise.all([
         obtenerProductoPorId(id),
-        obtenerInsumos(),
-        obtenerInsumosDeProducto(id)
+        obtenerInsumos({
+          page: 0,
+          size: 100,
+          activo: true,
+          sortBy: "nombre",
+          direction: "asc"
+        }),
+        obtenerInsumosDeProducto(id, { page: 0, size: 100 })
       ]);
       
       setProducto(productoData);
       setInsumos(insumosData.content || insumosData || []);
-      setInsumosProducto(insumosProductoData || []);
+      setInsumosProducto(insumosProductoData?.content || insumosProductoData || []);
     } catch (error) {
       console.error("Error cargando datos:", error);
       setToastType("danger");

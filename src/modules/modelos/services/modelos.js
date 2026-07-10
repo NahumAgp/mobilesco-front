@@ -11,6 +11,9 @@ export function obtenerModelos(params = {}) {
   const size = typeof params === "object" ? params.size : undefined;
   const sortBy = typeof params === "object" ? params.sortBy : undefined;
   const direction = typeof params === "object" ? params.direction : undefined;
+  const busqueda = typeof params === "object" ? params.busqueda : undefined;
+  const activo = typeof params === "object" ? params.activo : undefined;
+  const familiaId = typeof params === "object" ? params.familiaId : undefined;
 
   const searchParams = new URLSearchParams();
 
@@ -28,6 +31,18 @@ export function obtenerModelos(params = {}) {
 
   if (direction) {
     searchParams.set("direction", direction);
+  }
+
+  if (busqueda) {
+    searchParams.set("busqueda", busqueda);
+  }
+
+  if (activo !== undefined && activo !== null && activo !== "") {
+    searchParams.set("activo", String(activo));
+  }
+
+  if (familiaId !== undefined && familiaId !== null && familiaId !== "") {
+    searchParams.set("familiaId", String(familiaId));
   }
 
   const queryString = searchParams.toString();
@@ -54,8 +69,12 @@ export function actualizarModelo(id, data) {
   });
 }
 
-export function obtenerCodigoSugerido(nombre) {
-  return request(`${API_PATHS.MODELOS}/codigo-sugerido?nombre=${encodeURIComponent(nombre)}`);
+export function obtenerCodigoSugerido(nombre, familiaId) {
+  const params = new URLSearchParams({ nombre });
+  if (familiaId !== undefined && familiaId !== null && familiaId !== "") {
+    params.set("familiaId", String(familiaId));
+  }
+  return request(`${API_PATHS.MODELOS}/codigo-sugerido?${params.toString()}`);
 }
 
 export function subirImagenModelo(id, archivo) {
@@ -101,7 +120,7 @@ export function obtenerModelosActivos() {
 }
 
 export function obtenerModelosPorFamilia(familiaId) {
-  const url = `${API_PATHS.MODELOS}/familia/${familiaId}`;
+  const url = `${API_PATHS.MODELOS}/por-familia/${familiaId}`;
   return request(url);
 }
 

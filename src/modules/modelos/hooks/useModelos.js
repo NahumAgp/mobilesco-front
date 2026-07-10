@@ -82,7 +82,15 @@ async function resolverImagenPrincipalModelo(modelo) {
   return getUrlImagenEnModelo(modelo);
 }
 
-export function useModelos({ page, size = 10, sortBy = "nombre", direction = "asc" } = {}) {
+export function useModelos({
+  page,
+  size = 10,
+  sortBy = "nombre",
+  direction = "asc",
+  busqueda = "",
+  activo = null,
+  familiaId = ""
+} = {}) {
   const [modelos, setModelos] = useState([]);
   const [pageInfo, setPageInfo] = useState(PAGE_INFO_DEFAULT);
   const [loadingLista, setLoadingLista] = useState(false);
@@ -96,7 +104,7 @@ export function useModelos({ page, size = 10, sortBy = "nombre", direction = "as
       const data =
         page === undefined || page === null
           ? await obtenerModelos()
-          : await obtenerModelos({ page, size, sortBy, direction });
+          : await obtenerModelos({ page, size, sortBy, direction, busqueda, activo, familiaId });
 
       if (data?.content) {
         setModelos(data.content);
@@ -130,7 +138,7 @@ export function useModelos({ page, size = 10, sortBy = "nombre", direction = "as
     } finally {
       setLoadingLista(false);
     }
-  }, [direction, page, size, sortBy]);
+  }, [direction, page, size, sortBy, busqueda, activo, familiaId]);
 
   useEffect(() => {
     cargar();
