@@ -1,7 +1,8 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import PageHeader from "../../../../components/Sistema/PageHeader.jsx";
+import CatalogPagination from "../../../../components/ui/CatalogPagination.jsx";
 import Toast from "../../../../components/ui/Toast.jsx";
 import { obtenerMovimientosPorCompra } from "../../../kardex/services/kardex.js";
 import { obtenerEntradas } from "../services/entradas.js";
@@ -49,6 +50,14 @@ function numero(valor) {
   const normalizado = Number(valor || 0);
   return Number.isFinite(normalizado) ? normalizado : 0;
 }
+
+const PAGE_SIZE = 10;
+const PAGE_INFO_DEFAULT = {
+  page: 0,
+  size: PAGE_SIZE,
+  totalElements: 0,
+  totalPages: 0
+};
 
 function getPendienteDetalle(detalle) {
   if (detalle.cantidadPendiente !== null && detalle.cantidadPendiente !== undefined) {
@@ -132,11 +141,13 @@ function agruparMovimientosPorVisita(movimientos) {
 export default function EntradasPage() {
   const navigate = useNavigate();
   const [entradas, setEntradas] = useState([]);
+  const [pageInfo, setPageInfo] = useState(PAGE_INFO_DEFAULT);
   const [loading, setLoading] = useState(true);
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("TODOS");
+  const [page, setPage] = useState(0);
   const [historialAbiertoId, setHistorialAbiertoId] = useState(null);
   const [historialCargandoPorCompra, setHistorialCargandoPorCompra] = useState({});
   const [historialPorCompra, setHistorialPorCompra] = useState({});
@@ -145,35 +156,41 @@ export default function EntradasPage() {
     const cargar = async () => {
       try {
         setLoading(true);
-        const data = await obtenerEntradas();
+        const data = await obtenerEntradas({
+          page,
+          size: PAGE_SIZE,
+          busqueda,
+          estado: filtroEstado
+        });
         setEntradas(Array.isArray(data?.content) ? data.content : Array.isArray(data) ? data : []);
+        setPageInfo(data?.content ? {
+          page: data.page ?? page,
+          size: data.size ?? PAGE_SIZE,
+          totalElements: data.totalElements ?? 0,
+          totalPages: data.totalPages ?? 0
+        } : PAGE_INFO_DEFAULT);
       } catch (error) {
         console.error("Error cargando entradas:", error);
         setToastType("danger");
         setToastMessage("No se pudieron cargar las entradas");
+        setPageInfo(PAGE_INFO_DEFAULT);
       } finally {
         setLoading(false);
       }
     };
 
     cargar();
-  }, []);
+  }, [page, busqueda, filtroEstado]);
 
-  const entradasFiltradas = useMemo(() => {
-    const termino = busqueda.trim().toLowerCase();
-    return entradas.filter((entrada) => {
-      const coincideTexto = !termino ||
-        entrada.folio?.toLowerCase().includes(termino) ||
-        entrada.proveedorRazonSocial?.toLowerCase().includes(termino) ||
-        entrada.proveedorRfc?.toLowerCase().includes(termino) ||
-        entrada.numeroDocumento?.toLowerCase().includes(termino) ||
-        entrada.entregadoPor?.toLowerCase().includes(termino);
+  const totalElements = pageInfo.totalElements || 0;
+  const totalPages = pageInfo.totalPages || 0;
+  const paginaActual = totalPages > 0 ? Math.min(page, totalPages - 1) : 0;
 
-      const estadoOperativo = getEstadoOperativo(entrada);
-      const coincideEstado = filtroEstado === "TODOS" || estadoOperativo === filtroEstado;
-      return coincideTexto && coincideEstado;
-    });
-  }, [busqueda, entradas, filtroEstado]);
+  useEffect(() => {
+    if (totalPages > 0 && page >= totalPages) {
+      setPage(totalPages - 1);
+    }
+  }, [page, totalPages]);
 
   const historialCargado = (entradaId) => Object.prototype.hasOwnProperty.call(historialPorCompra, entradaId);
 
@@ -225,7 +242,7 @@ export default function EntradasPage() {
   };
 
   useEffect(() => {
-    entradasFiltradas.forEach((entrada) => {
+    entradas.forEach((entrada) => {
       const resumen = getResumenEntrada(entrada);
       const estadoOperativo = getEstadoOperativo(entrada);
       const esParcialConPendiente = resumen.totalRecibido > 0
@@ -238,7 +255,7 @@ export default function EntradasPage() {
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entradasFiltradas, historialPorCompra, historialCargandoPorCompra]);
+  }, [entradas, historialPorCompra, historialCargandoPorCompra]);
 
   return (
     <div className="container py-4">
@@ -264,11 +281,21 @@ export default function EntradasPage() {
                 className="form-control"
                 placeholder="Buscar por folio, proveedor, RFC, documento o entregante..."
                 value={busqueda}
-                onChange={(e) => setBusqueda(e.target.value)}
+                onChange={(e) => {
+                  setBusqueda(e.target.value);
+                  setPage(0);
+                }}
               />
             </div>
             <div className="col-md-3">
-              <select className="form-select" value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}>
+              <select
+                className="form-select"
+                value={filtroEstado}
+                onChange={(e) => {
+                  setFiltroEstado(e.target.value);
+                  setPage(0);
+                }}
+              >
                 <option value="TODOS">Todos los estados</option>
                 <option value="PENDIENTE">Pendientes</option>
                 <option value="RECIBIDA_PARCIAL">Parciales</option>
@@ -284,6 +311,7 @@ export default function EntradasPage() {
                 onClick={() => {
                   setBusqueda("");
                   setFiltroEstado("TODOS");
+                  setPage(0);
                 }}
               >
                 Limpiar
@@ -311,7 +339,7 @@ export default function EntradasPage() {
                 </tr>
               </thead>
               <tbody>
-                {entradasFiltradas.length > 0 ? entradasFiltradas.map((entrada) => {
+                {entradas.length > 0 ? entradas.map((entrada) => {
                   const estadoOperativo = getEstadoOperativo(entrada);
                   const color = colorEstado(estadoOperativo);
                   const cerrada = estadoOperativo === "CANCELADA" || estadoOperativo === "RECIBIDA";
@@ -438,6 +466,19 @@ export default function EntradasPage() {
               </tbody>
             </table>
           </div>
+          {totalElements > 0 && (
+            <CatalogPagination
+              currentPage={paginaActual}
+              totalPages={totalPages}
+              totalElements={totalElements}
+              pageSize={PAGE_SIZE}
+              currentCount={entradas.length}
+              itemLabel="entradas"
+              ariaLabel="Paginacion de entradas"
+              onPageChange={setPage}
+              className="mt-3"
+            />
+          )}
         </div>
       )}
     </div>

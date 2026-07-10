@@ -2,8 +2,8 @@ import request from "../../../../services/api";
 import { API_PATHS } from "../../../../config/apiPaths";
 import { obtenerCompras, obtenerCompraPorId } from "../../../compras/services/compras.js";
 
-export function obtenerEntradas() {
-  return obtenerCompras();
+export function obtenerEntradas(params = {}) {
+  return obtenerCompras(params);
 }
 
 export function obtenerEntradaPorId(id) {

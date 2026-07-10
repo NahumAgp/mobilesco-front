@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import Toast from "../../../components/ui/Toast.jsx";
+import { crearAreaTrabajo, obtenerAreasTrabajo } from "../../areas-trabajo/services/areasTrabajo.js";
 import { obtenerInsumoPorId, obtenerInsumos } from "../../insumos/services/insumos.js";
 import { crearSalidaInsumo } from "../services/salidasInsumos.js";
 
@@ -19,21 +20,35 @@ export default function SalidasInsumosNuevaPage() {
   const [toastType, setToastType] = useState("success");
   const [errores, setErrores] = useState({});
   const [insumos, setInsumos] = useState([]);
+  const [areasTrabajo, setAreasTrabajo] = useState([]);
   const [detalles, setDetalles] = useState([]);
   const [busquedaInsumo, setBusquedaInsumo] = useState("");
   const [sugerenciasInsumo, setSugerenciasInsumo] = useState([]);
   const [cantidadEntrada, setCantidadEntrada] = useState(1);
   const [actualizandoStock, setActualizandoStock] = useState(false);
+  const [mostrarModalArea, setMostrarModalArea] = useState(false);
+  const [guardandoArea, setGuardandoArea] = useState(false);
+  const [nuevaArea, setNuevaArea] = useState({
+    nombre: "",
+    descripcion: ""
+  });
   const [formData, setFormData] = useState({
+    tipoSalida: "DIRECTA",
     ordenProduccion: "",
     fechaSalida: obtenerFechaHoraLocal(),
     observaciones: "",
-    responsable: ""
+    responsable: "",
+    area: ""
   });
   const [cargando, setCargando] = useState(false);
 
   const normalizarRespuestaInsumos = (insumosResp) =>
     Array.isArray(insumosResp?.content) ? insumosResp.content : Array.isArray(insumosResp) ? insumosResp : [];
+
+  const normalizarRespuestaAreas = (areasResp) =>
+    (Array.isArray(areasResp?.content) ? areasResp.content : Array.isArray(areasResp) ? areasResp : [])
+      .filter((area) => area?.activo !== false)
+      .sort((a, b) => String(a.nombre || "").localeCompare(String(b.nombre || ""), "es", { sensitivity: "base" }));
 
   const actualizarInsumoEnCatalogo = useCallback((insumoActualizado) => {
     if (!insumoActualizado?.id) return;
@@ -45,13 +60,17 @@ export default function SalidasInsumosNuevaPage() {
 
   const cargarCatalogos = useCallback(async ({ silencioso = false } = {}) => {
     try {
-      const insumosResp = await obtenerInsumos();
+      const [insumosResp, areasResp] = await Promise.all([
+        obtenerInsumos(),
+        obtenerAreasTrabajo({ activo: true })
+      ]);
       setInsumos(normalizarRespuestaInsumos(insumosResp));
+      setAreasTrabajo(normalizarRespuestaAreas(areasResp));
     } catch (error) {
-      console.error("Error cargando insumos:", error);
+      console.error("Error cargando catalogos:", error);
       if (!silencioso) {
         setToastType("danger");
-        setToastMessage("No se pudieron cargar los insumos");
+        setToastMessage("No se pudieron cargar los catalogos de la salida");
       }
     }
   }, []);
@@ -140,14 +159,24 @@ export default function SalidasInsumosNuevaPage() {
     () => detalles.reduce((acc, item) => acc + Number(item.cantidad || 0), 0),
     [detalles]
   );
+  const salidaDirecta = formData.tipoSalida === "DIRECTA";
 
   const handleFormChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (errores[name]) {
+    setFormData((prev) => {
+      const siguiente = { ...prev, [name]: value };
+      if (name === "tipoSalida" && value === "INDIRECTA") {
+        siguiente.ordenProduccion = "";
+      }
+      return siguiente;
+    });
+    if (errores[name] || (name === "tipoSalida" && errores.ordenProduccion)) {
       setErrores((prev) => {
         const copia = { ...prev };
         delete copia[name];
+        if (name === "tipoSalida") {
+          delete copia.ordenProduccion;
+        }
         return copia;
       });
     }
@@ -188,6 +217,46 @@ export default function SalidasInsumosNuevaPage() {
       const codigo = String(insumo.codigo || "").toLowerCase();
       return codigoBarras.includes(termino) || codigo.includes(termino);
     }) || null;
+  };
+
+  const cerrarModalArea = () => {
+    setMostrarModalArea(false);
+    setNuevaArea({ nombre: "", descripcion: "" });
+  };
+
+  const guardarNuevaArea = async (event) => {
+    event.preventDefault();
+
+    const nombre = nuevaArea.nombre.trim();
+    if (!nombre) {
+      setToastType("danger");
+      setToastMessage("Escribe el nombre del area");
+      return;
+    }
+
+    try {
+      setGuardandoArea(true);
+      const areaCreada = await crearAreaTrabajo({
+        nombre,
+        descripcion: nuevaArea.descripcion.trim() || ""
+      });
+
+      setAreasTrabajo((prev) => {
+        const sinDuplicado = prev.filter((area) => String(area.id) !== String(areaCreada.id));
+        return [...sinDuplicado, areaCreada]
+          .filter((area) => area?.activo !== false)
+          .sort((a, b) => String(a.nombre || "").localeCompare(String(b.nombre || ""), "es", { sensitivity: "base" }));
+      });
+      setFormData((prev) => ({ ...prev, area: areaCreada.nombre || nombre }));
+      setToastType("success");
+      setToastMessage("Area creada y seleccionada correctamente");
+      cerrarModalArea();
+    } catch (error) {
+      setToastType("danger");
+      setToastMessage(error.message || "No se pudo crear el area");
+    } finally {
+      setGuardandoArea(false);
+    }
   };
 
   const actualizarSugerencias = (valor) => {
@@ -303,17 +372,39 @@ export default function SalidasInsumosNuevaPage() {
     }
   };
 
-  const actualizarCantidadDetalle = (id, valor) => {
-    const nuevaCantidad = Number(valor || 0);
+  const normalizarCantidadInput = (valor) => {
+    const limpio = String(valor || "")
+      .replace(",", ".")
+      .replace(/[^\d.]/g, "");
+    const partes = limpio.split(".");
 
-    if (nuevaCantidad <= 0) {
-      return;
+    if (partes.length <= 2) {
+      return limpio;
     }
+
+    return `${partes[0]}.${partes.slice(1).join("")}`;
+  };
+
+  const handleCantidadEntradaChange = (valor) => {
+    setCantidadEntrada(normalizarCantidadInput(valor));
+  };
+
+  const actualizarCantidadDetalle = (id, valor) => {
+    const cantidadNormalizada = normalizarCantidadInput(valor);
+    const nuevaCantidad = Number(cantidadNormalizada || 0);
 
     setDetalles((prev) =>
       prev.map((item) => {
         if (item.id !== id) {
           return item;
+        }
+
+        if (!cantidadNormalizada || nuevaCantidad <= 0) {
+          return {
+            ...item,
+            cantidad: cantidadNormalizada,
+            stockActual: Number(item.stockBase || 0)
+          };
         }
 
         if (nuevaCantidad > Number(item.stockBase || 0)) {
@@ -337,10 +428,12 @@ export default function SalidasInsumosNuevaPage() {
 
   const limpiarFormulario = () => {
     setFormData({
+      tipoSalida: "DIRECTA",
       ordenProduccion: "",
       fechaSalida: obtenerFechaHoraLocal(),
       observaciones: "",
-      responsable: ""
+      responsable: "",
+      area: ""
     });
     setDetalles([]);
     setBusquedaInsumo("");
@@ -353,9 +446,15 @@ export default function SalidasInsumosNuevaPage() {
     e.preventDefault();
 
     const nuevosErrores = {};
-    if (!formData.ordenProduccion.trim()) nuevosErrores.ordenProduccion = "La orden de producción es obligatoria";
+    if (!formData.tipoSalida) nuevosErrores.tipoSalida = "Selecciona el tipo de salida";
+    if (salidaDirecta && !formData.ordenProduccion.trim()) {
+      nuevosErrores.ordenProduccion = "La orden de producción es obligatoria para salidas directas";
+    }
     if (!formData.responsable.trim()) nuevosErrores.responsable = "La persona responsable es obligatoria";
     if (detalles.length === 0) nuevosErrores.detalles = "Agrega al menos un insumo";
+    if (detalles.some((item) => Number(item.cantidad || 0) <= 0)) {
+      nuevosErrores.detalles = "Todas las cantidades deben ser mayores a cero";
+    }
 
     if (Object.keys(nuevosErrores).length > 0) {
       setErrores(nuevosErrores);
@@ -380,10 +479,12 @@ export default function SalidasInsumosNuevaPage() {
         : detalles;
 
       const payload = {
-        ordenProduccion: formData.ordenProduccion.trim(),
+        tipoSalida: formData.tipoSalida,
+        ordenProduccion: salidaDirecta ? formData.ordenProduccion.trim() : null,
         fechaSalida: formData.fechaSalida || null,
         observaciones: formData.observaciones.trim() || null,
         responsable: formData.responsable.trim(),
+        area: formData.area.trim() || null,
         detalles: detallesParaGuardar.map((item) => ({
           insumoId: item.insumoId,
           cantidad: Number(item.cantidad),
@@ -413,7 +514,7 @@ export default function SalidasInsumosNuevaPage() {
       <div className="d-flex flex-wrap gap-3 align-items-center justify-content-between mb-4">
         <div>
           <h2 className="fw-bold mb-1">Nueva salida de insumos</h2>
-          <p className="text-muted mb-0">Captura insumos por código o nombre y regístralos por orden de producción.</p>
+          <p className="text-muted mb-0">Captura insumos por código o nombre y regístralos como salida directa o indirecta.</p>
         </div>
         <div className="d-flex gap-2">
           <button className="btn btn-outline-secondary" type="button" onClick={() => navigate("/salidas-insumos")}>
@@ -433,17 +534,42 @@ export default function SalidasInsumosNuevaPage() {
           <div className="card-body">
             <div className="row g-3">
               <div className="col-md-4">
-                <label className="form-label fw-semibold">Orden de producción *</label>
-                <input
-                  type="text"
-                  name="ordenProduccion"
-                  className={`form-control ${errores.ordenProduccion ? "is-invalid" : ""}`}
-                  value={formData.ordenProduccion}
+                <label className="form-label fw-semibold">Tipo de salida *</label>
+                <select
+                  name="tipoSalida"
+                  className={`form-select ${errores.tipoSalida ? "is-invalid" : ""}`}
+                  value={formData.tipoSalida}
                   onChange={handleFormChange}
-                  placeholder="OP-001"
-                />
-                <div className="invalid-feedback">{errores.ordenProduccion}</div>
+                >
+                  <option value="DIRECTA">Directa</option>
+                  <option value="INDIRECTA">Indirecta</option>
+                </select>
+                <div className="invalid-feedback">{errores.tipoSalida}</div>
+                <div className="form-text">
+                  Directa: para una orden de producción. Indirecta: consumo interno de la empresa.
+                </div>
               </div>
+              {salidaDirecta ? (
+                <div className="col-md-4">
+                  <label className="form-label fw-semibold">Orden de producción *</label>
+                  <input
+                    type="text"
+                    name="ordenProduccion"
+                    className={`form-control ${errores.ordenProduccion ? "is-invalid" : ""}`}
+                    value={formData.ordenProduccion}
+                    onChange={handleFormChange}
+                    placeholder="OP-001"
+                  />
+                  <div className="invalid-feedback">{errores.ordenProduccion}</div>
+                </div>
+              ) : (
+                <div className="col-md-4 d-flex align-items-end">
+                  <div className="alert alert-light border mb-0 py-2 w-100">
+                    <div className="fw-semibold small mb-1">Salida indirecta</div>
+                    <small className="text-muted">No requiere folio o ID de orden de producción.</small>
+                  </div>
+                </div>
+              )}
               <div className="col-md-4">
                 <label className="form-label fw-semibold">Fecha y hora</label>
                 <input
@@ -465,6 +591,36 @@ export default function SalidasInsumosNuevaPage() {
                   placeholder="Nombre de la persona que recibe el insumo"
                 />
                 <div className="invalid-feedback">{errores.responsable}</div>
+              </div>
+              <div className="col-md-6">
+                <label className="form-label fw-semibold">Area</label>
+                <div className="input-group">
+                  <select
+                    name="area"
+                    className="form-select"
+                    value={formData.area}
+                    onChange={handleFormChange}
+                  >
+                    <option value="">Seleccionar area...</option>
+                    {areasTrabajo.map((area) => (
+                      <option key={area.id ?? area.nombre} value={area.nombre}>
+                        {area.nombre}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="btn btn-outline-success"
+                    onClick={() => setMostrarModalArea(true)}
+                    aria-label="Crear area"
+                    title="Crear area"
+                  >
+                    <i className="bi bi-plus-lg"></i>
+                  </button>
+                </div>
+                <div className="form-text">
+                  Selecciona un area existente o crea una nueva con el boton +.
+                </div>
               </div>
               <div className="col-md-12">
                 <label className="form-label fw-semibold">Observaciones</label>
@@ -506,11 +662,12 @@ export default function SalidasInsumosNuevaPage() {
                         <td>{item.insumoNombre}</td>
                         <td className="text-end" style={{ maxWidth: "130px" }}>
                           <input
-                            type="number"
-                            min="0.01"
-                            step="0.01"
+                            type="text"
+                            inputMode="decimal"
+                            pattern="[0-9]*[.]?[0-9]*"
                             className="form-control form-control-sm text-end"
                             value={item.cantidad}
+                            placeholder="0.00"
                             onChange={(e) => actualizarCantidadDetalle(item.id, e.target.value)}
                           />
                         </td>
@@ -593,12 +750,13 @@ export default function SalidasInsumosNuevaPage() {
                 <div className="col-md-2">
                   <label className="form-label fw-semibold small">Cantidad</label>
                   <input
-                    type="number"
-                    min="1"
-                    step="1"
+                    type="text"
+                    inputMode="decimal"
+                    pattern="[0-9]*[.]?[0-9]*"
                     className="form-control"
                     value={cantidadEntrada}
-                    onChange={(e) => setCantidadEntrada(e.target.value)}
+                    placeholder="0.00"
+                    onChange={(e) => handleCantidadEntradaChange(e.target.value)}
                   />
                 </div>
                 <div className="col-md-2">
@@ -634,6 +792,70 @@ export default function SalidasInsumosNuevaPage() {
           </button>
         </div>
       </form>
+
+      {mostrarModalArea && (
+        <>
+          <div className="modal-backdrop fade show"></div>
+          <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-modal="true">
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content border-0 shadow-lg">
+                <form onSubmit={guardarNuevaArea}>
+                  <div className="modal-header">
+                    <div>
+                      <h5 className="modal-title mb-0">Nueva area</h5>
+                      <small className="text-muted">Crea el area y se seleccionara en la salida.</small>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn-close"
+                      onClick={cerrarModalArea}
+                      disabled={guardandoArea}
+                      aria-label="Cerrar"
+                    ></button>
+                  </div>
+                  <div className="modal-body">
+                    <div className="mb-3">
+                      <label className="form-label fw-semibold">Nombre *</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={nuevaArea.nombre}
+                        onChange={(event) => setNuevaArea((prev) => ({ ...prev, nombre: event.target.value }))}
+                        placeholder="Ej: Produccion, Almacen, Tapiceria"
+                        autoFocus
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="form-label fw-semibold">Descripcion</label>
+                      <textarea
+                        className="form-control"
+                        rows="3"
+                        value={nuevaArea.descripcion}
+                        onChange={(event) => setNuevaArea((prev) => ({ ...prev, descripcion: event.target.value }))}
+                        placeholder="Opcional"
+                      />
+                    </div>
+                  </div>
+                  <div className="modal-footer">
+                    <button
+                      type="button"
+                      className="btn btn-light"
+                      onClick={cerrarModalArea}
+                      disabled={guardandoArea}
+                    >
+                      Cancelar
+                    </button>
+                    <button type="submit" className="btn btn-success" disabled={guardandoArea}>
+                      {guardandoArea ? "Guardando..." : "Crear area"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

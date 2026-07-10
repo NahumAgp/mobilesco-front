@@ -1,13 +1,21 @@
 import request from "../../../services/api";
 import { API_PATHS } from "../../../config/apiPaths";
 
-export function obtenerAreasTrabajo(params = {}) {
+function buildQuery(params = {}) {
   const query = new URLSearchParams();
-  if (params.activo !== undefined) {
-    query.set("activo", String(params.activo));
-  }
 
-  const suffix = query.toString() ? `?${query.toString()}` : "";
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      query.set(key, String(value));
+    }
+  });
+
+  return query.toString();
+}
+
+export function obtenerAreasTrabajo(params = {}) {
+  const query = buildQuery(params);
+  const suffix = query ? `?${query}` : "";
   return request(`${API_PATHS.AREAS_TRABAJO}${suffix}`);
 }
 

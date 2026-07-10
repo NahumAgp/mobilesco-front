@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import CatalogPagination from "../../../components/ui/CatalogPagination.jsx";
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
@@ -15,6 +15,12 @@ import {
 import "./AreasTrabajoPage.css";
 
 const PAGE_SIZE = 10;
+const PAGE_INFO_DEFAULT = {
+  page: 0,
+  size: PAGE_SIZE,
+  totalElements: 0,
+  totalPages: 0
+};
 const initialForm = {
   codigo: "",
   nombre: "",
@@ -22,12 +28,9 @@ const initialForm = {
   activo: true
 };
 
-function normalize(value = "") {
-  return String(value).toLowerCase().trim().replace(/\s+/g, " ");
-}
-
 export default function AreasTrabajoPage() {
   const [areas, setAreas] = useState([]);
+  const [pageInfo, setPageInfo] = useState(PAGE_INFO_DEFAULT);
   const [form, setForm] = useState(initialForm);
   const [editando, setEditando] = useState(null);
   const [busqueda, setBusqueda] = useState("");
@@ -42,11 +45,22 @@ export default function AreasTrabajoPage() {
     obtenerCodigoSugeridoAreaTrabajo
   );
 
-  const cargarAreas = async () => {
+  const cargarAreas = async (pagina = page) => {
     try {
       setLoading(true);
-      const data = await obtenerAreasTrabajo();
-      setAreas(Array.isArray(data) ? data : []);
+      const data = await obtenerAreasTrabajo({
+        page: pagina,
+        size: PAGE_SIZE,
+        busqueda,
+        activo: soloActivas ? true : undefined
+      });
+      setAreas(Array.isArray(data?.content) ? data.content : Array.isArray(data) ? data : []);
+      setPageInfo(data?.content ? {
+        page: data.page ?? pagina,
+        size: data.size ?? PAGE_SIZE,
+        totalElements: data.totalElements ?? 0,
+        totalPages: data.totalPages ?? 0
+      } : PAGE_INFO_DEFAULT);
     } catch (error) {
       setToastType("danger");
       setToastMessage(error.message || "No se pudieron cargar las areas.");
@@ -56,28 +70,10 @@ export default function AreasTrabajoPage() {
   };
 
   useEffect(() => {
-    cargarAreas();
-  }, []);
+    cargarAreas(page);
+  }, [page, busqueda, soloActivas]);
 
-  const termino = normalize(busqueda);
-
-  const areasFiltradas = useMemo(() => {
-    const filtradas = areas.filter((area) => {
-      const texto = [area.codigo, area.nombre, area.descripcion, area.activo ? "activo" : "inactivo"]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      const coincideTexto = !termino || termino.split(" ").every((palabra) => texto.includes(palabra));
-      const coincideActivo = !soloActivas || area.activo;
-      return coincideTexto && coincideActivo;
-    });
-
-    return filtradas.sort((a, b) => String(a.nombre || "").localeCompare(String(b.nombre || ""), "es"));
-  }, [areas, soloActivas, termino]);
-
-  const totalPages = areasFiltradas.length > 0 ? Math.ceil(areasFiltradas.length / PAGE_SIZE) : 0;
-  const areasPagina = areasFiltradas.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
-
+  const totalPages = pageInfo.totalPages || 0;
   useEffect(() => {
     if (totalPages > 0 && page >= totalPages) {
       setPage(totalPages - 1);
@@ -109,7 +105,7 @@ export default function AreasTrabajoPage() {
       setToastType("success");
       setForm(initialForm);
       setEditando(null);
-      await cargarAreas();
+      await cargarAreas(page);
     } catch (error) {
       setToastType("danger");
       setToastMessage(error.message || "No se pudo guardar el area.");
@@ -144,7 +140,7 @@ export default function AreasTrabajoPage() {
         setToastMessage("Area activada correctamente.");
       }
       setToastType("success");
-      await cargarAreas();
+      await cargarAreas(page);
     } catch (error) {
       setToastType("danger");
       setToastMessage(error.message || "No se pudo cambiar el estado del area.");
@@ -210,7 +206,7 @@ export default function AreasTrabajoPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {areasPagina.length > 0 ? areasPagina.map((area) => (
+                  {areas.length > 0 ? areas.map((area) => (
                     <tr key={area.id} onClick={() => editarArea(area)} role="button">
                       <td><span className="badge text-bg-light border">{area.codigo}</span></td>
                       <td className="fw-semibold">{area.nombre}</td>
@@ -256,11 +252,11 @@ export default function AreasTrabajoPage() {
           </div>
 
           <CatalogPagination
-            currentPage={page}
+           currentPage={page}
             totalPages={totalPages}
-            totalElements={areasFiltradas.length}
+            totalElements={pageInfo.totalElements || 0}
             pageSize={PAGE_SIZE}
-            currentCount={areasPagina.length}
+            currentCount={areas.length}
             itemLabel="areas"
             ariaLabel="Paginacion de areas de trabajo"
             onPageChange={setPage}

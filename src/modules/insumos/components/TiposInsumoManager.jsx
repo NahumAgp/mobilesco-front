@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import CatalogPagination from "../../../components/ui/CatalogPagination.jsx";
 import CatalogStatusBadge from "../../../components/ui/CatalogStatusBadge";
 import {
   actualizarEstadoTipoInsumo,
@@ -19,8 +20,18 @@ const emptyPreview = {
   mensaje: "Escribe un nombre para generar un codigo de 1 a 3 letras"
 };
 
+const PAGE_SIZE = 10;
+const PAGE_INFO_DEFAULT = {
+  page: 0,
+  size: PAGE_SIZE,
+  totalElements: 0,
+  totalPages: 0
+};
+
 export default function TiposInsumoManager({ puedeGestionar, onFeedback }) {
   const [tipos, setTipos] = useState([]);
+  const [page, setPage] = useState(0);
+  const [pageInfo, setPageInfo] = useState(PAGE_INFO_DEFAULT);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -41,18 +52,31 @@ export default function TiposInsumoManager({ puedeGestionar, onFeedback }) {
   const cargarTipos = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await obtenerTiposInsumo();
-      setTipos(Array.isArray(data) ? data : []);
+      const data = await obtenerTiposInsumo({ page, size: PAGE_SIZE });
+      setTipos(Array.isArray(data?.content) ? data.content : Array.isArray(data) ? data : []);
+      setPageInfo(data?.content ? {
+        page: data.page ?? page,
+        size: data.size ?? PAGE_SIZE,
+        totalElements: data.totalElements ?? 0,
+        totalPages: data.totalPages ?? 0
+      } : PAGE_INFO_DEFAULT);
     } catch (error) {
       emitirFeedback(error.message || "No se pudo cargar el catalogo de tipos de insumo", "danger");
+      setPageInfo(PAGE_INFO_DEFAULT);
     } finally {
       setLoading(false);
     }
-  }, [emitirFeedback]);
+  }, [emitirFeedback, page]);
 
   useEffect(() => {
     void cargarTipos();
   }, [cargarTipos]);
+
+  useEffect(() => {
+    if (pageInfo.totalPages > 0 && page >= pageInfo.totalPages) {
+      setPage(pageInfo.totalPages - 1);
+    }
+  }, [page, pageInfo.totalPages]);
 
   useEffect(() => {
     if (editingTipo) {
@@ -210,15 +234,15 @@ export default function TiposInsumoManager({ puedeGestionar, onFeedback }) {
           <div className="tipos-insumo-stats">
             <div className="tipos-insumo-stat">
               <strong>{resumen.total}</strong>
-              <span>Total</span>
+              <span>En pagina</span>
             </div>
             <div className="tipos-insumo-stat">
               <strong>{resumen.activos}</strong>
-              <span>Activos</span>
+              <span>Activos pagina</span>
             </div>
             <div className="tipos-insumo-stat">
               <strong>{resumen.inactivos}</strong>
-              <span>Inactivos</span>
+              <span>Inactivos pagina</span>
             </div>
           </div>
         </div>
@@ -396,6 +420,19 @@ export default function TiposInsumoManager({ puedeGestionar, onFeedback }) {
                   </tbody>
                 </table>
               </div>
+              {pageInfo.totalElements > 0 && (
+                <CatalogPagination
+                  currentPage={Math.min(page, Math.max(pageInfo.totalPages - 1, 0))}
+                  totalPages={pageInfo.totalPages || 0}
+                  totalElements={pageInfo.totalElements || 0}
+                  pageSize={PAGE_SIZE}
+                  currentCount={tipos.length}
+                  itemLabel="tipos de insumo"
+                  ariaLabel="Paginacion de tipos de insumo"
+                  onPageChange={setPage}
+                  className="mt-3"
+                />
+              )}
             </div>
           </div>
         </div>
