@@ -8,6 +8,7 @@ import {
 import { obtenerProveedores } from "../../proveedores/services/proveedores.js";
 import ProveedorModal from "../../proveedores/pages/ProveedorModal.jsx";
 import { buscarInsumos, crearInsumo } from "../../insumos/services/insumos.js";
+import InsumoForm from "../../insumos/pages/InsumoForm.jsx";
 import { obtenerUnidadesMedida } from "../../unidades-medida/services/unidadMedidas.js";
 import SearchableSelect from "../../../components/ui/SearchableSelect.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
@@ -52,8 +53,7 @@ export default function CompraForm({
     fechaCompra: new Date().toISOString().split('T')[0],
     fechaRecepcion: "",
     proveedorId: "",
-    tipoDocumento: "FACTURA",
-    numeroDocumento: "",
+    metodoPago: "",
     subtotal: 0,
     impuesto: 0,
     total: 0,
@@ -66,10 +66,10 @@ export default function CompraForm({
   const [detalles, setDetalles] = useState([]);
   const [nuevoDetalle, setNuevoDetalle] = useState({
     insumoId: "",
-    cantidad: 1,
+    cantidad: "",
     unidadCompraId: "",
-    precioUnitario: 0,
-    factorConversion: 1,
+    precioUnitario: "",
+    factorConversion: "",
     requiereConversion: false,
     insumoSeleccionado: null
   });
@@ -78,6 +78,13 @@ export default function CompraForm({
 
   const obtenerUnidadMedidaPorId = (unidadId) =>
     unidadesMedida.find((um) => String(um.id) === String(unidadId)) || null;
+
+  const esDecimalValido = (valor) => /^\d*(\.\d{0,4})?$/.test(String(valor));
+
+  const obtenerEtiquetaUnidad = (unidad) => {
+    if (!unidad) return "";
+    return unidad.simbolo || unidad.nombre || "";
+  };
 
   const recalcularDetalle = (detalleBase, cambios = {}) => {
     const cantidad = Number(cambios.cantidad ?? detalleBase.cantidad ?? 0);
@@ -141,8 +148,7 @@ export default function CompraForm({
           fechaCompra: compra.fechaCompra?.split('T')[0] || "",
           fechaRecepcion: compra.fechaRecepcion?.split('T')[0] || "",
           proveedorId: compra.proveedorId || "",
-          tipoDocumento: compra.tipoDocumento || "FACTURA",
-          numeroDocumento: compra.numeroDocumento || "",
+          metodoPago: compra.metodoPago || "",
           impuesto: compra.impuesto || 0,
           observaciones: compra.observaciones || "",
           estado: compra.estado || "PENDIENTE",
@@ -161,8 +167,7 @@ export default function CompraForm({
             fechaCompra: data.fechaCompra?.split('T')[0] || "",
             fechaRecepcion: data.fechaRecepcion?.split('T')[0] || "",
             proveedorId: data.proveedorId || "",
-            tipoDocumento: data.tipoDocumento || "FACTURA",
-            numeroDocumento: data.numeroDocumento || "",
+            metodoPago: data.metodoPago || "",
             impuesto: data.impuesto || 0,
             observaciones: data.observaciones || "",
             estado: data.estado || "PENDIENTE",
@@ -239,7 +244,7 @@ export default function CompraForm({
         insumoId: value,
         insumoSeleccionado: insumo,
         unidadCompraId: "",
-        factorConversion: 1,
+        factorConversion: "",
         requiereConversion: false
       }));
     } 
@@ -255,15 +260,17 @@ export default function CompraForm({
         unidadCompraId: value,
         requiereConversion,
         // Si no requiere conversión, el factor es 1
-        factorConversion: requiereConversion ? prev.factorConversion : 1
+        factorConversion: requiereConversion ? prev.factorConversion : ""
       }));
     }
     else {
+      if (["cantidad", "precioUnitario", "factorConversion"].includes(name) && !esDecimalValido(value)) {
+        return;
+      }
+
       setNuevoDetalle(prev => ({
         ...prev,
-        [name]: name === "cantidad" || name === "precioUnitario" || name === "factorConversion" 
-                ? parseFloat(value) || 0 
-                : value
+        [name]: value
       }));
     }
   }
@@ -276,7 +283,7 @@ export default function CompraForm({
       insumoId: String(insumo.id),
       insumoSeleccionado: insumo,
       unidadCompraId: String(insumo.unidadMedida?.id || ""),
-      factorConversion: 1,
+      factorConversion: "",
       requiereConversion: false
     }));
     setMostrarAltaRapida(false);
@@ -291,17 +298,24 @@ export default function CompraForm({
 
   const iniciarAltaRapida = () => {
     const termino = busquedaInsumo.trim();
-    if (!termino) {
-      setToastType("warning");
-      setToastMessage("Escribe un código o nombre para crear el insumo");
-      return;
-    }
-
     setNuevoInsumoRapido((prev) => ({
       ...prev,
       codigo: termino
     }));
     setMostrarAltaRapida(true);
+  };
+
+  const manejarInsumoCreadoDesdeModal = (creado) => {
+    const insumoNormalizado = {
+      ...creado,
+      unidadMedida: creado.unidadMedida || obtenerUnidadMedidaPorId(creado.unidadMedidaId) || null
+    };
+
+    setInsumosBuscados((prev) => [insumoNormalizado, ...prev]);
+    seleccionarInsumo(insumoNormalizado);
+    setMostrarAltaRapida(false);
+    setToastType("success");
+    setToastMessage("Insumo creado y seleccionado para la compra");
   };
 
   const cambiarInsumoRapido = (campo, valor) => {
@@ -378,7 +392,11 @@ export default function CompraForm({
   const prepararDetalle = (detalleBase) => recalcularDetalle(detalleBase);
 
   function agregarDetalle() {
-    if (!nuevoDetalle.insumoSeleccionado || !nuevoDetalle.unidadCompraId || !nuevoDetalle.cantidad || !nuevoDetalle.precioUnitario) {
+    const cantidad = Number(nuevoDetalle.cantidad);
+    const precioUnitario = Number(nuevoDetalle.precioUnitario);
+    const factorConversion = nuevoDetalle.requiereConversion ? Number(nuevoDetalle.factorConversion) : 1;
+
+    if (!nuevoDetalle.insumoSeleccionado || !nuevoDetalle.unidadCompraId || cantidad <= 0 || precioUnitario <= 0) {
       alert("Completa todos los campos del detalle");
       return;
     }
@@ -393,24 +411,23 @@ export default function CompraForm({
     
     if (!insumo || !unidad) return;
 
-    const factorConversion = nuevoDetalle.factorConversion;
-    const cantidadEnUnidadConsumo = nuevoDetalle.cantidad * factorConversion;
-    const costoPorUnidadConsumo = nuevoDetalle.precioUnitario / factorConversion;
-    const subtotal = nuevoDetalle.cantidad * nuevoDetalle.precioUnitario;
+    const cantidadEnUnidadConsumo = cantidad * factorConversion;
+    const costoPorUnidadConsumo = precioUnitario / factorConversion;
+    const subtotal = cantidad * precioUnitario;
 
     const nuevoDetalleCompleto = prepararDetalle({
       id: Date.now(), // temporal
       insumoId: insumo.id,
       insumoSeleccionado: insumo,
       insumoNombre: insumo.nombre,
-      cantidad: nuevoDetalle.cantidad,
+      cantidad,
       factorConversion,
       cantidadEnUnidadConsumo,
       unidadCompraId: unidad.id,
       unidadCompraSimbolo: unidad.simbolo,
       unidadConsumoId: insumo.unidadMedida?.id,
       unidadConsumoSimbolo: insumo.unidadMedida?.simbolo,
-      precioUnitario: nuevoDetalle.precioUnitario,
+      precioUnitario,
       costoPorUnidadConsumo,
       subtotal,
       observaciones: ""
@@ -419,10 +436,10 @@ export default function CompraForm({
     setDetalles((prev) => [...prev, nuevoDetalleCompleto]);
     setNuevoDetalle({
       insumoId: "",
-      cantidad: 1,
+      cantidad: "",
       unidadCompraId: "",
-      precioUnitario: 0,
-      factorConversion: 1,
+      precioUnitario: "",
+      factorConversion: "",
       requiereConversion: false,
       insumoSeleccionado: null
     });
@@ -468,6 +485,24 @@ export default function CompraForm({
 
   async function handleSubmit(e) {
     e.preventDefault();
+
+    const erroresValidacion = {};
+
+    if (!formData.folio?.trim()) {
+      erroresValidacion.folio = "El folio es obligatorio";
+    }
+
+    if (!formData.metodoPago) {
+      erroresValidacion.metodoPago = "Selecciona un metodo de pago";
+    }
+
+    if (Object.keys(erroresValidacion).length > 0) {
+      setErroresBackend((prev) => ({
+        ...prev,
+        ...erroresValidacion
+      }));
+      return;
+    }
 
     if (detalles.length === 0) {
       alert("Agrega al menos un detalle a la compra");
@@ -607,7 +642,11 @@ export default function CompraForm({
                       value={formData.folio} 
                       onChange={handleChange} 
                       placeholder="Ej: COMP-001"
+                      required
                     />
+                    {(erroresBackend.folio || erroresExternos.folio) && (
+                      <div className="invalid-feedback">{erroresBackend.folio || erroresExternos.folio}</div>
+                    )}
                   </div>
 
                   <div className="col-md-4">
@@ -622,7 +661,7 @@ export default function CompraForm({
                   </div>
 
                   <div className="col-md-4">
-                    <label className="form-label fw-semibold">Fecha Recepción</label>
+                    <label className="form-label fw-semibold">Fecha Recepción <span className="text-muted fw-normal">(opcional)</span></label>
                     <input 
                       type="date" 
                       name="fechaRecepcion" 
@@ -674,29 +713,25 @@ export default function CompraForm({
                   </div>
 
                   <div className="col-md-3">
-                    <label className="form-label fw-semibold">Tipo Documento</label>
+                    <label className="form-label fw-semibold">Metodo de pago *</label>
                     <select
-                      name="tipoDocumento"
-                      className={selectClass("tipoDocumento")}
-                      value={formData.tipoDocumento}
+                      name="metodoPago"
+                      className={selectClass("metodoPago")}
+                      value={formData.metodoPago || ""}
                       onChange={handleChange}
+                      required
                     >
-                      <option value="FACTURA">Factura</option>
-                      <option value="REMISION">Remisión</option>
-                      <option value="NOTA">Nota</option>
+                      <option value="">Seleccionar metodo</option>
+                      <option value="EFECTIVO">Efectivo</option>
+                      <option value="TRANSFERENCIA">Transferencia</option>
+                      <option value="TARJETA">Tarjeta</option>
+                      <option value="CHEQUE">Cheque</option>
+                      <option value="CREDITO">Credito</option>
                       <option value="OTRO">Otro</option>
                     </select>
-                  </div>
-
-                  <div className="col-md-3">
-                    <label className="form-label fw-semibold">Número Documento</label>
-                    <input 
-                      type="text" 
-                      name="numeroDocumento" 
-                      className={inputClass("numeroDocumento")} 
-                      value={formData.numeroDocumento} 
-                      onChange={handleChange} 
-                    />
+                    {(erroresBackend.metodoPago || erroresExternos.metodoPago) && (
+                      <div className="invalid-feedback">{erroresBackend.metodoPago || erroresExternos.metodoPago}</div>
+                    )}
                   </div>
 
                   <div className="col-md-12">
@@ -714,7 +749,10 @@ export default function CompraForm({
             </div>
 
             {/* Detalles de compra */}
-            <div className="card shadow-sm border-0 mb-4">
+            <div
+              className="card shadow-sm border-0 mb-4"
+              style={!esModal ? { width: "calc(150% + 1.5rem)", maxWidth: "calc(150% + 1.5rem)" } : undefined}
+            >
               <div className="card-header bg-white py-3">
                 <h5 className="mb-0 text-secondary">
                   <i className="bi bi-list-ul me-2"></i>Detalles de Compra
@@ -881,8 +919,8 @@ export default function CompraForm({
                   </table>
                 </div>
 
-                <div className="row g-2 align-items-end bg-light p-3 rounded">
-                  <div className="col-12 col-xl-6">
+                <div className="row g-2 align-items-end bg-light p-3 rounded flex-nowrap">
+                  <div className="col" style={{ minWidth: 0 }}>
                     <SearchableSelect
                       label="Buscar insumo"
                       value={nuevoDetalle.insumoId}
@@ -917,29 +955,30 @@ export default function CompraForm({
                       actionNode={(
                         <button
                           type="button"
-                          className="btn btn-outline-secondary"
+                          className="btn btn-outline-secondary px-3"
                           onClick={iniciarAltaRapida}
+                          title="Agregar insumo"
                         >
-                          Alta rápida
+                          <i className="bi bi-plus-lg"></i>
                         </button>
                       )}
                     />
                   </div>
 
-                  <div className="col-6 col-xl-1">
+                  <div className="col-auto" style={{ width: "90px" }}>
                     <label className="form-label fw-semibold small">Cant.</label>
                     <input
-                      type="number"
-                      step="0.01"
-                      min="0.01"
+                      type="text"
+                      inputMode="decimal"
                       className="form-control form-control-sm"
                       name="cantidad"
                       value={nuevoDetalle.cantidad}
                       onChange={handleDetalleChange}
+                      placeholder="0.00"
                     />
                   </div>
 
-                  <div className="col-6 col-xl-2">
+                  <div className="col-auto" style={{ width: "190px" }}>
                     <label className="form-label fw-semibold small">Unidad Compra</label>
                     <select
                       className="form-select form-select-sm"
@@ -951,40 +990,40 @@ export default function CompraForm({
                       <option value="">Seleccionar...</option>
                       {unidadesMedida.map((um) => (
                         <option key={um.id} value={um.id}>
-                          {um.simbolo} - {um.nombre}
+                          {String(nuevoDetalle.unidadCompraId) === String(um.id) ? obtenerEtiquetaUnidad(um) : `${um.simbolo} - ${um.nombre}`}
                         </option>
                       ))}
                     </select>
                   </div>
 
-                  <div className="col-6 col-xl-1">
+                  <div className="col-auto" style={{ width: "95px" }}>
                     <label className="form-label fw-semibold small">Precio $</label>
                     <input
-                      type="number"
-                      step="0.01"
-                      min="0"
+                      type="text"
+                      inputMode="decimal"
                       className="form-control form-control-sm"
                       name="precioUnitario"
                       value={nuevoDetalle.precioUnitario}
                       onChange={handleDetalleChange}
+                      placeholder="0.00"
                     />
                   </div>
 
-                  <div className="col-6 col-xl-1">
+                  <div className="col-auto" style={{ width: "95px" }}>
                     <label className="form-label fw-semibold small">Factor</label>
                     <input
-                      type="number"
-                      step="0.01"
-                      min="0.01"
+                      type="text"
+                      inputMode="decimal"
                       className="form-control form-control-sm"
                       name="factorConversion"
                       value={nuevoDetalle.factorConversion}
                       onChange={handleDetalleChange}
                       disabled={!nuevoDetalle.requiereConversion}
+                      placeholder="0.00"
                     />
                   </div>
 
-                  {nuevoDetalle.insumoSeleccionado && (
+                  {false && (
                     <div className="col-12 col-xl-2">
                       <small className="text-muted d-block">
                         <strong>UC:</strong> {nuevoDetalle.insumoSeleccionado.unidadMedida?.simbolo || '?'}
@@ -998,7 +1037,7 @@ export default function CompraForm({
                     </div>
                   )}
 
-                  <div className="col-12 col-xl-1">
+                  <div className="col-auto" style={{ width: "120px" }}>
                     <button
                       type="button"
                       className="btn btn-sm btn-success w-100"
@@ -1025,7 +1064,7 @@ export default function CompraForm({
                   </div>
                 )}
 
-                {mostrarAltaRapida && (
+                {false && (
                   <div className="border rounded p-3 mt-3 bg-white">
                     <div className="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
                       <div>
@@ -1106,11 +1145,6 @@ export default function CompraForm({
                     </div>
                   </div>
                 )}
-
-                <small className="text-muted d-block mt-2">
-                  <i className="bi bi-info-circle me-1"></i>
-                  UC = Unidad de Consumo (unidad base del insumo)
-                </small>
 
               </div>
             </div>
@@ -1218,6 +1252,36 @@ export default function CompraForm({
         onClose={cerrarAltaProveedor}
         onSave={manejarProveedorCreado}
       />
+
+      {mostrarAltaRapida && (
+        <>
+          <div className="modal-backdrop fade show"></div>
+          <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-modal="true">
+            <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+              <div className="modal-content border-0 shadow-lg">
+                <div className="modal-header bg-white">
+                  <div>
+                    <h5 className="modal-title mb-0">Agregar insumo</h5>
+                    <small className="text-muted">Completa el formulario del catálogo para usarlo en esta compra.</small>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-close"
+                    aria-label="Cerrar"
+                    onClick={() => setMostrarAltaRapida(false)}
+                  ></button>
+                </div>
+                <div className="modal-body">
+                  <InsumoForm
+                    onSave={manejarInsumoCreadoDesdeModal}
+                    onCancel={() => setMostrarAltaRapida(false)}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

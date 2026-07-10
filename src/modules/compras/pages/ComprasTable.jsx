@@ -55,7 +55,7 @@ export default function ComprasTable({
               <th>Folio</th>
               <th>Fecha</th>
               <th>Proveedor</th>
-              <th>Documento</th>
+              <th>Metodo de pago</th>
               <th>Total</th>
               <th>Estado</th>
               <th>Acciones</th>
@@ -88,7 +88,7 @@ export default function ComprasTable({
                   </td>
                   <td>
                     <small>
-                      {compra.tipoDocumento} {compra.numeroDocumento}
+                      {compra.metodoPago || "-"}
                     </small>
                   </td>
                   <td className="text-end fw-bold">

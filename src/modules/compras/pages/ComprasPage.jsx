@@ -1,14 +1,16 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useCompras } from "../hooks/useCompras";
 import ComprasTable from "./ComprasTable.jsx";
 
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
+import CatalogPagination from "../../../components/ui/CatalogPagination.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
 import { getUser } from "../../auth/services/authService.js";
 
 const ROLES_GESTION_COMPRAS = ["ADMIN", "SUPER_ADMIN", "DIRECTOR_GENERAL", "SUBDIRECCION_ADMINISTRATIVA", "JEFE_ALMACEN"];
+const PAGE_SIZE = 10;
 
 export default function ComprasPage() {
 
@@ -22,18 +24,28 @@ export default function ComprasPage() {
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
 
-  const {
-    compras,
-    loadingLista,
-    error,
-    eliminarCompra
-  } = useCompras();
-
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("TODOS");
   const [filtroProveedor, setFiltroProveedor] = useState("");
   const [fechaInicio, setFechaInicio] = useState("");
   const [fechaFin, setFechaFin] = useState("");
+  const [page, setPage] = useState(0);
+
+  const {
+    compras,
+    pageInfo,
+    loadingLista,
+    error,
+    eliminarCompra
+  } = useCompras({
+    page,
+    size: PAGE_SIZE,
+    busqueda,
+    estado: filtroEstado,
+    proveedor: filtroProveedor,
+    fechaInicio,
+    fechaFin
+  });
 
   const abrirVer = (compra) => {
     if (!compra?.id) return;
@@ -61,29 +73,12 @@ export default function ComprasPage() {
   // Obtener proveedores únicos para el filtro
   const proveedoresUnicos = [...new Set(compras.map(c => c.proveedorRazonSocial).filter(Boolean))];
 
-  const comprasFiltradas = compras.filter((compra) => {
-    const terminoBusqueda = busqueda.toLowerCase().trim();
-    
-    const pasaFiltroTexto = !terminoBusqueda || 
-      compra.folio?.toLowerCase().includes(terminoBusqueda) ||
-      compra.numeroDocumento?.toLowerCase().includes(terminoBusqueda) ||
-      compra.proveedorRazonSocial?.toLowerCase().includes(terminoBusqueda) ||
-      compra.proveedorRfc?.toLowerCase().includes(terminoBusqueda);
+  useEffect(() => {
+    setPage(0);
+  }, [busqueda, filtroEstado, filtroProveedor, fechaInicio, fechaFin]);
 
-    const pasaFiltroEstado = filtroEstado === "TODOS" || compra.estado === filtroEstado;
-    
-    const pasaFiltroProveedor = !filtroProveedor || compra.proveedorRazonSocial === filtroProveedor;
-
-    const pasaFiltroFechas = (() => {
-      if (!fechaInicio && !fechaFin) return true;
-      const fechaCompra = new Date(compra.fechaCompra);
-      if (fechaInicio && fechaCompra < new Date(fechaInicio)) return false;
-      if (fechaFin && fechaCompra > new Date(fechaFin)) return false;
-      return true;
-    })();
-
-    return pasaFiltroTexto && pasaFiltroEstado && pasaFiltroProveedor && pasaFiltroFechas;
-  });
+  const totalPages = Math.max(pageInfo.totalPages || 0, 1);
+  const safePage = Math.min(page, totalPages - 1);
 
   return (
     <>
@@ -93,15 +88,24 @@ export default function ComprasPage() {
         title="Compras"
         subtitle="Gestión de compras de insumos"
         actions={
-          puedeGestionarCompra ? (
+          <div className="d-flex flex-wrap gap-2">
             <button
-              className="btn btn-success"
-              onClick={() => navigate("/compras/nueva")}
+              className="btn btn-outline-primary"
+              onClick={() => navigate("/compras/cuentas-por-pagar")}
             >
-              <i className="bi bi-plus-circle me-2"></i>
-              Nueva Compra
+              <i className="bi bi-cash-stack me-2"></i>
+              Cuentas por pagar
             </button>
-          ) : null
+            {puedeGestionarCompra && (
+              <button
+                className="btn btn-success"
+                onClick={() => navigate("/compras/nueva")}
+              >
+                <i className="bi bi-plus-circle me-2"></i>
+                Nueva Compra
+              </button>
+            )}
+          </div>
         }
       />
 
@@ -115,7 +119,7 @@ export default function ComprasPage() {
               <input
                 type="text"
                 className="form-control"
-                placeholder="Buscar por folio, documento o proveedor..."
+                placeholder="Buscar por folio, metodo de pago o proveedor..."
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
               />
@@ -187,10 +191,22 @@ export default function ComprasPage() {
       </div>
 
       <ComprasTable
-        data={comprasFiltradas}
+        data={compras}
         onVer={abrirVer}
         onEliminar={manejarEliminar}
         puedeEliminar={puedeEliminarCompra}
+      />
+
+      <CatalogPagination
+        currentPage={safePage}
+        totalPages={totalPages}
+        totalElements={pageInfo.totalElements || 0}
+        pageSize={PAGE_SIZE}
+        currentCount={compras.length}
+        itemLabel="compras"
+        ariaLabel="Paginacion de compras"
+        onPageChange={setPage}
+        className="mt-3"
       />
     </>
   );

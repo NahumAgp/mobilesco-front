@@ -210,12 +210,8 @@ export default function CompraDetallePage() {
                   </td>
                 </tr>
                 <tr>
-                  <th>Tipo Documento:</th>
-                  <td>{compra.tipoDocumento}</td>
-                </tr>
-                <tr>
-                  <th>Número Documento:</th>
-                  <td>{compra.numeroDocumento || '-'}</td>
+                  <th>Metodo de pago:</th>
+                  <td>{compra.metodoPago || '-'}</td>
                 </tr>
                 <tr>
                   <th>Observaciones:</th>

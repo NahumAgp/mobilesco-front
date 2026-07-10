@@ -5,15 +5,47 @@ import { API_PATHS } from "../../../config/apiPaths";
 // COMPRAS
 // ========================================
 
-export function obtenerCompras() {
+function buildQuery(params = {}) {
+  const searchParams = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      searchParams.set(key, String(value));
+    }
+  });
+
+  const query = searchParams.toString();
+  return query ? `?${query}` : "";
+}
+
+export function obtenerCompras(params = {}) {
+  const query = buildQuery(params);
+  const url = `${API_PATHS.COMPRAS}${query}`;
   console.log("🌐 GET Compras - URL:", API_PATHS.COMPRAS);
-  return request(API_PATHS.COMPRAS);
+  return request(url);
 }
 
 export function obtenerCompraPorId(id) {
   const url = `${API_PATHS.COMPRAS}/${id}`;
   console.log("🌐 GET Compra by ID - URL:", url);
   return request(url);
+}
+
+export function obtenerCuentasPorPagar(params = {}) {
+  const filtros = typeof params === "string" ? { estado: params } : params;
+  const query = buildQuery(filtros);
+  return request(`${API_PATHS.CUENTAS_POR_PAGAR}${query}`);
+}
+
+export function obtenerCuentaPorPagarPorId(id) {
+  return request(`${API_PATHS.CUENTAS_POR_PAGAR}/${id}`);
+}
+
+export function registrarPagoCuentaPorPagar(id, data) {
+  return request(`${API_PATHS.CUENTAS_POR_PAGAR}/${id}/pagos`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
 }
 
 export function crearCompra(data) {

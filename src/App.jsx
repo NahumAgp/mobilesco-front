@@ -56,6 +56,8 @@ import CifFormPage from "./modules/cif/pages/CifFormPage.jsx";
 
 import ComprasPage from "./modules/compras/pages/ComprasPage.jsx";
 import ComprasFormPage from "./modules/compras/pages/CompraFormPage.jsx";
+import CuentasPorPagarPage from "./modules/compras/pages/CuentasPorPagarPage.jsx";
+import CuentaPorPagarDetallePage from "./modules/compras/pages/CuentaPorPagarDetallePage.jsx";
 
 import KardexPage from "./modules/kardex/pages/KardexPage"; 
 import CompraDetallePage from "./modules/compras/pages/CompraDetallePage.jsx";
@@ -220,6 +222,8 @@ export default function App() {
 
          {/* Compras */}
         <Route path="/compras" element={withPermission(<ComprasPage />, "VIEW_PURCHASES")} />
+        <Route path="/compras/cuentas-por-pagar" element={withPermission(<CuentasPorPagarPage />, "VIEW_PURCHASES")} />
+        <Route path="/compras/cuentas-por-pagar/:id" element={withPermission(<CuentaPorPagarDetallePage />, "VIEW_PURCHASES")} />
         <Route path="/compras/nueva" element={withRoles(<ComprasFormPage />, ROLES_GESTION_COMPRAS)} />
         <Route path="/compras/:id" element={withRoles(<ComprasFormPage />, ROLES_GESTION_COMPRAS)} />
         <Route path="/compras/:id/ver" element={withPermission(<CompraDetallePage />, "VIEW_PURCHASES")} />

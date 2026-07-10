@@ -90,7 +90,7 @@ export default function ProveedorCompras({ proveedorId, proveedorNombre }) {
                 <tr>
                   <th>Folio</th>
                   <th>Fecha</th>
-                  <th>Documento</th>
+                  <th>Metodo de pago</th>
                   <th className="text-end">Total</th>
                   <th>Estado</th>
                   <th>Acciones</th>
@@ -109,7 +109,7 @@ export default function ProveedorCompras({ proveedorId, proveedorNombre }) {
                     <td>{formatDate(compra.fechaCompra)}</td>
                     <td>
                       <small>
-                        {compra.tipoDocumento} {compra.numeroDocumento}
+                        {compra.metodoPago || "-"}
                       </small>
                     </td>
                     <td className="text-end fw-bold">

@@ -47,6 +47,7 @@ export const API_PATHS = {
 
   // Compras
    COMPRAS: `${API_VERSION}/compras`,
+  CUENTAS_POR_PAGAR: `${API_VERSION}/cuentas-por-pagar`,
   DETALLES_COMPRA: `${API_VERSION}/detalles-compra`,
   SALIDAS_INSUMOS: `${API_VERSION}/salidas-insumos`,
   KARDEX: `${API_VERSION}/kardex`,
