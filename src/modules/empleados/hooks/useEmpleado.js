@@ -6,30 +6,47 @@ import {
   obtenerEmpleados
 } from "../services/empleados";
 
-export function useEmpleado() {
+const PAGE_INFO_DEFAULT = {
+  page: 0,
+  size: 10,
+  totalElements: 0,
+  totalPages: 0
+};
+
+export function useEmpleado(params = {}) {
 
   const [empleados, setEmpleados] = useState([]);
+  const [pageInfo, setPageInfo] = useState(PAGE_INFO_DEFAULT);
   const [loadingLista, setLoadingLista] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     cargarEmpleados();
-  }, []);
+  }, [params.page, params.size, params.busqueda, params.activo]);
 
-  const cargarEmpleados = async () => {
+  const cargarEmpleados = async (overrides = {}) => {
 
     try {
 
       setLoadingLista(true);
       setError(null);
 
-      const data = await obtenerEmpleados();
+      const filtros = { ...params, ...overrides };
+      const data = await obtenerEmpleados(filtros);
 
-      setEmpleados(data || []);
+      const lista = data?.content || data || [];
+      setEmpleados(Array.isArray(lista) ? lista : []);
+      setPageInfo(data?.content ? {
+        page: data.page ?? filtros.page ?? 0,
+        size: data.size ?? filtros.size ?? 10,
+        totalElements: data.totalElements ?? 0,
+        totalPages: data.totalPages ?? 0
+      } : PAGE_INFO_DEFAULT);
 
     } catch (err) {
 
       setError("Error al cargar empleados");
+      setPageInfo(PAGE_INFO_DEFAULT);
       console.error(err);
 
     } finally {
@@ -74,6 +91,7 @@ export function useEmpleado() {
   return {
 
     empleados,
+    pageInfo,
     loadingLista,
     error,
     eliminarEmpleado: eliminarEmpleadoHook,

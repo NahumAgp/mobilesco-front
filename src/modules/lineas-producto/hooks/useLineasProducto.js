@@ -26,7 +26,7 @@ function normalizarPageInfo(data, fallbackPage = 0) {
   };
 }
 
-export function useLineasProducto({ page, sortBy = "nombre", direction = "asc" } = {}) {
+export function useLineasProducto({ page, sortBy = "nombre", direction = "asc", busqueda = "", activo = null } = {}) {
   const [lineasProducto, setLineasProducto] = useState([]);
   const [pageInfo, setPageInfo] = useState(PAGE_INFO_DEFAULT);
   const [loadingLista, setLoadingLista] = useState(false);
@@ -40,7 +40,7 @@ export function useLineasProducto({ page, sortBy = "nombre", direction = "asc" }
       const data =
           page === undefined || page === null
           ? await lineaProductoGateway.obtenerLineasProducto()
-          : await lineaProductoGateway.obtenerLineasProducto({ page, sortBy, direction });
+          : await lineaProductoGateway.obtenerLineasProducto({ page, sortBy, direction, busqueda, activo });
 
       if (data?.content) {
         setLineasProducto(data.content);
@@ -64,7 +64,7 @@ export function useLineasProducto({ page, sortBy = "nombre", direction = "asc" }
     } finally {
       setLoadingLista(false);
     }
-  }, [page, sortBy, direction]);
+  }, [page, sortBy, direction, busqueda, activo]);
 
   useEffect(() => {
     cargar();

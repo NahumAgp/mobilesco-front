@@ -4,8 +4,21 @@ import { API_PATHS } from "../../../config/apiPaths";
 // ========================================
 // OBTENER TODOS LOS EMPLEADOS (GET)
 // ========================================
-export function obtenerEmpleados() {
-  return request(API_PATHS.EMPLEADOS);
+function buildQuery(params = {}) {
+  const query = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      query.set(key, String(value));
+    }
+  });
+
+  return query.toString();
+}
+
+export function obtenerEmpleados(params = {}) {
+  const query = buildQuery(params);
+  return request(query ? `${API_PATHS.EMPLEADOS}?${query}` : API_PATHS.EMPLEADOS);
 }
 
 // ========================================

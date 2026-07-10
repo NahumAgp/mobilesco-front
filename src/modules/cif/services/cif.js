@@ -1,8 +1,21 @@
 import request from "../../../services/api";
 import { API_PATHS } from "../../../config/apiPaths";
 
-export function obtenerConceptosCif() {
-  return request(`${API_PATHS.CIF}/conceptos`);
+function buildQuery(params = {}) {
+  const query = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      query.set(key, String(value));
+    }
+  });
+
+  return query.toString();
+}
+
+export function obtenerConceptosCif(params = {}) {
+  const query = buildQuery(params);
+  return request(query ? `${API_PATHS.CIF}/conceptos?${query}` : `${API_PATHS.CIF}/conceptos`);
 }
 
 export function obtenerConceptoCif(id) {

@@ -1,13 +1,7 @@
 export default function CentrosTrabajoTable({ data, onEditar, onEliminar }) {
   return (
-    <div className="card">
-      <div
-        className="table-responsive"
-        style={{
-          height: "calc(100vh - 350px)",
-          overflowY: "auto"
-        }}
-      >
+    <div className="card border-0 shadow-sm">
+      <div className="table-responsive">
         <table className="table table-hover mb-0">
           <thead
             className="table-light"
@@ -24,8 +18,10 @@ export default function CentrosTrabajoTable({ data, onEditar, onEliminar }) {
               <th>Nombre</th>
               <th>Descripción</th>
               <th>Costo/Hora</th>
+              <th>Costo/Min</th>
               <th>Capacidad</th>
               <th>Horas/Día</th>
+              <th>Drive</th>
               <th>Estado</th>
               <th>Acciones</th>
             </tr>
@@ -54,10 +50,26 @@ export default function CentrosTrabajoTable({ data, onEditar, onEliminar }) {
                     {centro.costoHora ? `$${centro.costoHora.toFixed(2)}` : "-"}
                   </td>
                   <td className="text-end">
+                    {centro.costoMinuto ? `$${centro.costoMinuto.toFixed(4)}` : "-"}
+                  </td>
+                  <td className="text-end">
                     {centro.capacidadDiaria ? `${centro.capacidadDiaria} ${centro.unidadCapacidad || ''}` : "-"}
                   </td>
                   <td className="text-end">
                     {centro.horasDisponiblesDia ? `${centro.horasDisponiblesDia} h` : "-"}
+                  </td>
+                  <td>
+                    {centro.enlaceDriveReporte ? (
+                      <a
+                        href={centro.enlaceDriveReporte}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn btn-sm btn-outline-secondary"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        Abrir
+                      </a>
+                    ) : "-"}
                   </td>
                   <td>
                     <span
@@ -96,7 +108,7 @@ export default function CentrosTrabajoTable({ data, onEditar, onEliminar }) {
               ))
             ) : (
               <tr>
-                <td colSpan="9" className="text-center text-muted py-5">
+                <td colSpan="11" className="text-center text-muted py-5">
                   <i className="bi bi-gear-wide-connected fs-1 d-block mb-3 text-secondary"></i>
                   <span className="fs-5">No hay centros de trabajo registrados</span>
                   <p className="text-secondary mt-2">Comienza creando un nuevo centro de trabajo</p>

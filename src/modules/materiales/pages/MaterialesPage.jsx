@@ -1,5 +1,5 @@
 // pages/Materiales/MaterialesPage.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useMateriales } from "../hooks/useMateriales";
@@ -25,6 +25,14 @@ export default function MaterialesPage() {
   const [sortField] = useState("nombre");
   const [sortDirection] = useState("asc");
   const [exportandoExcel, setExportandoExcel] = useState(false);
+  const terminoBusqueda = busqueda.toLowerCase().trim().replace(/\s+/g, " ");
+  const filtroActivo = soloActivos
+    ? true
+    : filtroEstatus === "ACTIVO"
+      ? true
+      : filtroEstatus === "INACTIVO"
+        ? false
+        : null;
 
   const {
     materiales,
@@ -32,44 +40,21 @@ export default function MaterialesPage() {
     loadingLista,
     error,
     cambiarEstadoMaterial
-  } = useMateriales({ page, size: PAGE_SIZE, sortBy: sortField, direction: sortDirection });
+  } = useMateriales({
+    page,
+    size: PAGE_SIZE,
+    sortBy: sortField,
+    direction: sortDirection,
+    busqueda: terminoBusqueda,
+    activo: filtroActivo
+  });
 
   const totalElements = pageInfo.totalElements ?? 0;
   const totalPages = pageInfo.totalPages ?? 0;
-  const terminoBusqueda = busqueda.toLowerCase().trim().replace(/\s+/g, " ");
-
-  const materialesFiltrados = useMemo(() => {
-    return materiales.filter((material) => {
-      const pasaFiltroTexto = (() => {
-        if (!terminoBusqueda) return true;
-
-        const palabras = terminoBusqueda.split(" ");
-        const infoMaterial = [
-          material.nombre,
-          material.codigo,
-          material.descripcion
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-
-        return palabras.every((palabra) => infoMaterial.includes(palabra));
-      })();
-
-      const coincideEstatus =
-        filtroEstatus === "TODOS" ||
-        (filtroEstatus === "ACTIVO" && material.activo) ||
-        (filtroEstatus === "INACTIVO" && !material.activo);
-
-      const coincideSoloActivos = !soloActivos || material.activo;
-
-      return pasaFiltroTexto && coincideEstatus && coincideSoloActivos;
-    });
-  }, [filtroEstatus, materiales, soloActivos, terminoBusqueda]);
 
   const hayFiltrosActivos = Boolean(terminoBusqueda) || filtroEstatus !== "TODOS" || soloActivos;
-  const mostrarVacio = !loadingLista && !error && totalElements === 0;
-  const mostrarSinCoincidencias = !loadingLista && !error && totalElements > 0 && materialesFiltrados.length === 0;
+  const mostrarVacio = !loadingLista && !error && !hayFiltrosActivos && totalElements === 0;
+  const mostrarSinCoincidencias = !loadingLista && !error && hayFiltrosActivos && totalElements === 0;
 
   useEffect(() => {
     if (!loadingLista && totalPages > 0 && page >= totalPages) {
@@ -105,7 +90,7 @@ export default function MaterialesPage() {
       setExportandoExcel(true);
 
       const blob = await materialGateway.exportarMaterialesExcel({
-        activo: soloActivos ? true : undefined,
+        activo: filtroActivo ?? undefined,
         busqueda: terminoBusqueda || undefined,
         sortBy: sortField,
         direction: sortDirection
@@ -249,13 +234,13 @@ export default function MaterialesPage() {
                 <i className="bi bi-funnel fs-1 d-block mb-3 text-secondary"></i>
                 <span className="fs-5 d-block">No hay coincidencias</span>
                 <p className="text-secondary mt-2 mb-0">
-                  Ajusta los filtros para ver materiales en esta pagina
+                  Ajusta los filtros para ver materiales
                 </p>
               </div>
             </div>
           ) : (
             <MaterialesTable
-              data={materialesFiltrados}
+              data={materiales}
               onEditar={abrirEditar}
               onCambiarEstado={manejarCambioEstado}
             />
@@ -271,7 +256,7 @@ export default function MaterialesPage() {
               itemLabel="materiales"
               summary={
                 hayFiltrosActivos
-                  ? `Mostrando ${materialesFiltrados.length} coincidencias en esta pagina`
+                  ? `Mostrando ${materiales.length} de ${totalElements} coincidencias`
                   : undefined
               }
               ariaLabel="Paginacion de materiales"

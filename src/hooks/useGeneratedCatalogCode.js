@@ -5,7 +5,11 @@ export function useGeneratedCatalogCode(nombre, enabled, fetchSuggestedCode) {
   const [generandoCodigo, setGenerandoCodigo] = useState(false);
 
   useEffect(() => {
-    if (!enabled) return undefined;
+    if (!enabled) {
+      setCodigoGenerado("");
+      setGenerandoCodigo(false);
+      return undefined;
+    }
 
     const nombreNormalizado = nombre?.trim() || "";
     if (!nombreNormalizado) {

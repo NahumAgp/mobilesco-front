@@ -1,8 +1,9 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import Card from "../../../components/ui/Card.jsx";
+import CatalogPagination from "../../../components/ui/CatalogPagination.jsx";
 
-export default function KardexTable({ movimientos, loading, insumoNombre }) {
+export default function KardexTable({ movimientos, loading, insumoNombre, pagination }) {
   const navigate = useNavigate();
 
   const formatDate = (dateString) => {
@@ -221,6 +222,19 @@ export default function KardexTable({ movimientos, loading, insumoNombre }) {
           </tbody>
         </table>
       </div>
+      {pagination?.totalElements > 0 && (
+        <CatalogPagination
+          currentPage={pagination.currentPage}
+          totalPages={pagination.totalPages}
+          totalElements={pagination.totalElements}
+          pageSize={pagination.pageSize}
+          currentCount={pagination.currentCount}
+          itemLabel="movimientos"
+          ariaLabel="Paginacion de movimientos de kardex"
+          onPageChange={pagination.onPageChange}
+          className="mt-3"
+        />
+      )}
     </Card>
   );
 }

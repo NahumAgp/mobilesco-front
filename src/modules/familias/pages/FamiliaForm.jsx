@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { familiaGateway } from "../services/familiaGateway.js";
@@ -26,10 +26,14 @@ export default function FamiliaForm({ familiaId }) {
   const [modelosFamilia, setModelosFamilia] = useState([]);
   const [cargandoModelos, setCargandoModelos] = useState(false);
   const [errorModelos, setErrorModelos] = useState("");
+  const obtenerCodigoSugeridoPorLinea = useCallback(
+    (nombre) => familiaGateway.obtenerCodigoSugerido(nombre, formData.lineaId),
+    [formData.lineaId]
+  );
   const { codigoGenerado, generandoCodigo } = useGeneratedCatalogCode(
     formData.nombre,
-    !esEdicion,
-    familiaGateway.obtenerCodigoSugerido
+    !esEdicion && Boolean(formData.lineaId),
+    obtenerCodigoSugeridoPorLinea
   );
 
   const obtenerErrorCampo = (campo) =>
@@ -281,7 +285,7 @@ export default function FamiliaForm({ familiaId }) {
             onChange={handleChange}
             readOnly={!esEdicion}
             maxLength="3"
-            placeholder={generandoCodigo ? "Generando..." : "Automatico"}
+            placeholder={!formData.lineaId ? "Selecciona linea" : generandoCodigo ? "Generando..." : "Automatico"}
           />
           <div className="invalid-feedback">
             {obtenerErrorCampo("codigo")}

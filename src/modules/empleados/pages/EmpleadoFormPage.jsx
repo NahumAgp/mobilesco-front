@@ -413,7 +413,7 @@ export default function EmpleadoFormPage() {
       email,
       nombre: formData.nombre?.trim() || "NOMBRE",
       apellidoPaterno: formData.apellidoPaterno?.trim() || "APELLIDO",
-      apellidoMaterno: formData.apellidoMaterno?.trim() || "SIN_DATO",
+      apellidoMaterno: formData.apellidoMaterno?.trim() || null,
       telefono: formData.telefono?.trim() || "0000000000",
       puesto: acceso.puesto?.trim() || "EMPLEADO",
       rol,

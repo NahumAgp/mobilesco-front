@@ -10,6 +10,9 @@ export function obtenerFamilias(params = {}) {
   const size = typeof params === "object" ? params.size : undefined;
   const sortBy = typeof params === "object" ? params.sortBy : undefined;
   const direction = typeof params === "object" ? params.direction : undefined;
+  const busqueda = typeof params === "object" ? params.busqueda : undefined;
+  const activo = typeof params === "object" ? params.activo : undefined;
+  const lineaId = typeof params === "object" ? params.lineaId : undefined;
 
   const searchParams = new URLSearchParams();
 
@@ -29,6 +32,18 @@ export function obtenerFamilias(params = {}) {
     searchParams.set("direction", direction);
   }
 
+  if (busqueda) {
+    searchParams.set("busqueda", busqueda);
+  }
+
+  if (activo !== undefined && activo !== null && activo !== "") {
+    searchParams.set("activo", String(activo));
+  }
+
+  if (lineaId !== undefined && lineaId !== null && lineaId !== "") {
+    searchParams.set("lineaId", String(lineaId));
+  }
+
   const queryString = searchParams.toString();
 
   return request(queryString ? `${API_PATHS.FAMILIAS}?${queryString}` : API_PATHS.FAMILIAS);
@@ -38,8 +53,12 @@ export function obtenerFamiliaPorId(id) {
   return request(`${API_PATHS.FAMILIAS}/${id}`);
 }
 
-export function obtenerCodigoSugerido(nombre) {
-  return request(`${API_PATHS.FAMILIAS}/codigo-sugerido?nombre=${encodeURIComponent(nombre)}`);
+export function obtenerCodigoSugerido(nombre, lineaId) {
+  const params = new URLSearchParams({ nombre });
+  if (lineaId !== undefined && lineaId !== null && lineaId !== "") {
+    params.set("lineaId", String(lineaId));
+  }
+  return request(`${API_PATHS.FAMILIAS}/codigo-sugerido?${params.toString()}`);
 }
 
 export function crearFamilia(data) {

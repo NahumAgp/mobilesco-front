@@ -26,7 +26,14 @@ function normalizarPageInfo(data, fallbackPage = 0, fallbackSize = 10) {
   };
 }
 
-export function useUnidadesMedida({ page, size = 10, sortBy = "nombre", direction = "asc" } = {}) {
+export function useUnidadesMedida({
+  page,
+  size = 10,
+  sortBy = "nombre",
+  direction = "asc",
+  busqueda = "",
+  estado = null
+} = {}) {
   const [unidadesMedida, setUnidadesMedida] = useState([]);
   const [pageInfo, setPageInfo] = useState(PAGE_INFO_DEFAULT);
   const [loadingLista, setLoadingLista] = useState(true);
@@ -40,7 +47,7 @@ export function useUnidadesMedida({ page, size = 10, sortBy = "nombre", directio
       const data =
         page === undefined || page === null
           ? await obtenerUnidadesMedida()
-          : await obtenerUnidadesMedida({ page, size, sortBy, direction });
+          : await obtenerUnidadesMedida({ page, size, sortBy, direction, busqueda, estado });
 
       if (data?.content) {
         setUnidadesMedida(data.content);
@@ -65,7 +72,7 @@ export function useUnidadesMedida({ page, size = 10, sortBy = "nombre", directio
     } finally {
       setLoadingLista(false);
     }
-  }, [direction, page, size, sortBy]);
+  }, [direction, page, size, sortBy, busqueda, estado]);
 
   useEffect(() => {
     cargarUnidades();

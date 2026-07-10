@@ -9,6 +9,8 @@ export function obtenerMateriales(params = {}) {
   const size = typeof params === "object" ? params.size : undefined;
   const sortBy = typeof params === "object" ? params.sortBy : undefined;
   const direction = typeof params === "object" ? params.direction : undefined;
+  const busqueda = typeof params === "object" ? params.busqueda : undefined;
+  const activo = typeof params === "object" ? params.activo : undefined;
 
   const searchParams = new URLSearchParams();
 
@@ -26,6 +28,14 @@ export function obtenerMateriales(params = {}) {
 
   if (direction) {
     searchParams.set("direction", direction);
+  }
+
+  if (busqueda) {
+    searchParams.set("busqueda", busqueda);
+  }
+
+  if (activo !== undefined && activo !== null && activo !== "") {
+    searchParams.set("activo", String(activo));
   }
 
   const queryString = searchParams.toString();

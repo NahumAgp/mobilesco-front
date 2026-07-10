@@ -2,11 +2,19 @@ import React, { useCallback, useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { obtenerInsumos } from "../../insumos/services/insumos.js";
 import { obtenerCompraPorId } from "../../compras/services/compras.js";
-import { obtenerHistorialInsumo, obtenerMovimientosPorPeriodo, obtenerCostoPromedio } from "../services/kardex.js";
+import { obtenerHistorialInsumo, obtenerCostoPromedio } from "../services/kardex.js";
 import KardexTable from "./KardexTable.jsx";
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
 import Card from "../../../components/ui/Card.jsx";
+
+const PAGE_SIZE = 10;
+const PAGE_INFO_DEFAULT = {
+  page: 0,
+  size: PAGE_SIZE,
+  totalElements: 0,
+  totalPages: 0
+};
 
 export default function KardexPage() {
   const location = useLocation();
@@ -20,6 +28,9 @@ export default function KardexPage() {
   const [movimientos, setMovimientos] = useState([]);
   const [insumoSeleccionado, setInsumoSeleccionado] = useState("");
   const [costoPromedio, setCostoPromedio] = useState(0);
+  const [page, setPage] = useState(0);
+  const [pageInfo, setPageInfo] = useState(PAGE_INFO_DEFAULT);
+  const [consultaRealizada, setConsultaRealizada] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   
@@ -116,7 +127,7 @@ export default function KardexPage() {
     }
   };
 
-  const handleConsultar = useCallback(async ({ mostrarAviso = true } = {}) => {
+  const handleConsultar = useCallback(async ({ mostrarAviso = true, pageOverride = 0 } = {}) => {
     if (!insumoSeleccionado) {
       if (mostrarAviso) {
         setToastType("warning");
@@ -130,6 +141,11 @@ export default function KardexPage() {
 
     try {
       let data;
+      const pageToLoad = Math.max(Number(pageOverride) || 0, 0);
+      const paramsConsulta = {
+        page: pageToLoad,
+        size: PAGE_SIZE
+      };
       if (usarFiltroFechas && fechaInicio && fechaFin) {
         // Convertir fechas a LocalDateTime (inicio y fin del día)
         const inicio = new Date(fechaInicio);
@@ -137,17 +153,25 @@ export default function KardexPage() {
         const fin = new Date(fechaFin);
         fin.setHours(23, 59, 59, 999);
         
-        data = await obtenerMovimientosPorPeriodo(
-          inicio.toISOString(),
-          fin.toISOString()
-        );
+        data = await obtenerHistorialInsumo(insumoSeleccionado, {
+          ...paramsConsulta,
+          fechaInicio: inicio.toISOString(),
+          fechaFin: fin.toISOString()
+        });
         // Filtrar por insumo (el endpoint de período trae todos)
-        data = data.filter(m => m.insumoId === parseInt(insumoSeleccionado));
       } else {
-        data = await obtenerHistorialInsumo(insumoSeleccionado);
+        data = await obtenerHistorialInsumo(insumoSeleccionado, paramsConsulta);
       }
       
-      setMovimientos(await completarDatosCompras(data));
+      const movimientosBase = Array.isArray(data?.content) ? data.content : Array.isArray(data) ? data : [];
+      setMovimientos(await completarDatosCompras(movimientosBase));
+      setPageInfo(data?.content ? {
+        page: data.page ?? pageToLoad,
+        size: data.size ?? PAGE_SIZE,
+        totalElements: data.totalElements ?? 0,
+        totalPages: data.totalPages ?? 0
+      } : PAGE_INFO_DEFAULT);
+      setConsultaRealizada(true);
       
       // Obtener costo promedio
       const promedio = await obtenerCostoPromedio(insumoSeleccionado);
@@ -157,9 +181,16 @@ export default function KardexPage() {
       console.error("Error consultando kardex:", error);
       setError("Error al consultar el kardex");
       setMovimientos([]);
+      setPageInfo(PAGE_INFO_DEFAULT);
     } finally {
       setLoading(false);
     }
+  }, [fechaFin, fechaInicio, insumoSeleccionado, usarFiltroFechas]);
+
+  useEffect(() => {
+    setPage(0);
+    setPageInfo(PAGE_INFO_DEFAULT);
+    setConsultaRealizada(false);
   }, [fechaFin, fechaInicio, insumoSeleccionado, usarFiltroFechas]);
 
   useEffect(() => {
@@ -167,10 +198,23 @@ export default function KardexPage() {
       return;
     }
 
-    handleConsultar({ mostrarAviso: false });
+    handleConsultar({ mostrarAviso: false, pageOverride: 0 });
   }, [esConsultaEspecifica, fechaFin, fechaInicio, handleConsultar, insumoSeleccionado, usarFiltroFechas]);
 
+  const consultarPrimeraPagina = () => {
+    setPage(0);
+    handleConsultar({ pageOverride: 0 });
+  };
+
+  const handlePageChange = (nextPage) => {
+    setPage(nextPage);
+    handleConsultar({ mostrarAviso: false, pageOverride: nextPage });
+  };
+
   const insumoInfo = insumos.find(i => i.id === parseInt(insumoSeleccionado));
+  const totalMovimientos = pageInfo.totalElements || 0;
+  const totalPages = pageInfo.totalPages || 0;
+  const paginaActual = totalPages > 0 ? Math.min(page, totalPages - 1) : 0;
   const abrirEdicion = () => {
     if (!insumoSeleccionado) return;
     navigate(`/insumos/${insumoSeleccionado}`);
@@ -318,7 +362,7 @@ export default function KardexPage() {
                   <div className="col-md-2">
                     <button
                       className="btn btn-primary w-100"
-                      onClick={handleConsultar}
+                      onClick={consultarPrimeraPagina}
                       disabled={loading}
                     >
                       {loading ? (
@@ -415,6 +459,14 @@ export default function KardexPage() {
         movimientos={movimientos}
         loading={loading}
         insumoNombre={insumoInfo?.nombre}
+        pagination={{
+          currentPage: paginaActual,
+          totalPages,
+          totalElements: totalMovimientos,
+          pageSize: PAGE_SIZE,
+          currentCount: movimientos.length,
+          onPageChange: handlePageChange
+        }}
       />
     </>
   );

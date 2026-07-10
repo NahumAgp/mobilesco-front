@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useFamilias } from "../hooks/useFamilias";
@@ -26,6 +26,8 @@ export default function FamiliasPage() {
   const [sortDirection, setSortDirection] = useState("asc");
   const [lineasDisponibles, setLineasDisponibles] = useState([]);
   const [exportandoExcel, setExportandoExcel] = useState(false);
+  const terminoBusqueda = busqueda.toLowerCase().trim().replace(/\s+/g, " ");
+  const lineaFiltroNormalizado = lineaFiltroId ? String(lineaFiltroId) : "";
 
   const {
     familias,
@@ -33,12 +35,18 @@ export default function FamiliasPage() {
     loadingLista,
     error,
     cambiarEstadoFamilia
-  } = useFamilias({ page, size: PAGE_SIZE, sortBy: sortField, direction: sortDirection });
+  } = useFamilias({
+    page,
+    size: PAGE_SIZE,
+    sortBy: sortField,
+    direction: sortDirection,
+    busqueda: terminoBusqueda,
+    activo: soloActivos ? true : null,
+    lineaId: lineaFiltroNormalizado || ""
+  });
 
   const totalElements = pageInfo.totalElements ?? 0;
   const totalPages = pageInfo.totalPages ?? 0;
-  const terminoBusqueda = busqueda.toLowerCase().trim().replace(/\s+/g, " ");
-  const lineaFiltroNormalizado = lineaFiltroId ? String(lineaFiltroId) : "";
 
   useEffect(() => {
     let activo = true;
@@ -69,71 +77,9 @@ export default function FamiliasPage() {
     };
   }, []);
 
-  const familiasFiltradas = useMemo(() => {
-    const compararValor = (a, b) => {
-      const valorA = a ?? "";
-      const valorB = b ?? "";
-
-      if (typeof valorA === "number" && typeof valorB === "number") {
-        return valorA - valorB;
-      }
-
-      if (typeof valorA === "boolean" && typeof valorB === "boolean") {
-        return Number(valorA) - Number(valorB);
-      }
-
-      return String(valorA).localeCompare(String(valorB), "es", {
-        numeric: true,
-        sensitivity: "base"
-      });
-    };
-
-    const filtradas = familias.filter((familia) => {
-      const pasaFiltroTexto = (() => {
-        if (!terminoBusqueda) return true;
-
-        const palabras = terminoBusqueda.split(" ");
-        const infoFamilia = [
-          familia.codigo,
-          familia.nombre,
-          familia.descripcion,
-          familia.lineaNombre,
-          familia.linea?.nombre,
-          familia.lineaId
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-
-        return palabras.every((palabra) => infoFamilia.includes(palabra));
-      })();
-
-      const lineaFamiliaId = familia.lineaId ?? familia.linea?.id ?? "";
-      const coincideLinea =
-        !lineaFiltroNormalizado || String(lineaFamiliaId) === lineaFiltroNormalizado;
-      const coincideSoloActivos = !soloActivos || familia.activo;
-
-      return pasaFiltroTexto && coincideLinea && coincideSoloActivos;
-    });
-
-    return filtradas.sort((a, b) => {
-      const valorA =
-        sortField === "createdAt"
-          ? new Date(a?.createdAt || 0).getTime()
-          : a?.[sortField];
-      const valorB =
-        sortField === "createdAt"
-          ? new Date(b?.createdAt || 0).getTime()
-          : b?.[sortField];
-
-      const resultado = compararValor(valorA, valorB);
-      return sortDirection === "asc" ? resultado : -resultado;
-    });
-  }, [familias, lineaFiltroNormalizado, soloActivos, sortDirection, sortField, terminoBusqueda]);
-
   const hayFiltrosActivos = Boolean(terminoBusqueda) || Boolean(lineaFiltroNormalizado) || soloActivos;
-  const mostrarVacio = !loadingLista && !error && totalElements === 0;
-  const mostrarSinCoincidencias = !loadingLista && !error && totalElements > 0 && familiasFiltradas.length === 0;
+  const mostrarVacio = !loadingLista && !error && !hayFiltrosActivos && totalElements === 0;
+  const mostrarSinCoincidencias = !loadingLista && !error && hayFiltrosActivos && totalElements === 0;
 
   useEffect(() => {
     if (!loadingLista && totalPages > 0 && page >= totalPages) {
@@ -328,13 +274,13 @@ export default function FamiliasPage() {
                 <i className="bi bi-funnel fs-1 d-block mb-3 text-secondary"></i>
                 <span className="fs-5 d-block">No hay coincidencias</span>
                 <p className="text-secondary mt-2 mb-0">
-                  Ajusta los filtros para ver familias en esta pagina
+                  Ajusta los filtros para ver familias
                 </p>
               </div>
             </div>
           ) : (
             <FamiliasTable
-              data={familiasFiltradas}
+              data={familias}
               onEditar={abrirEditar}
               onCambiarEstado={manejarCambioEstado}
               sortField={sortField}
@@ -353,7 +299,7 @@ export default function FamiliasPage() {
               itemLabel="familias"
               summary={
                 hayFiltrosActivos
-                  ? `Mostrando ${familiasFiltradas.length} coincidencias en esta pagina`
+                  ? `Mostrando ${familias.length} de ${totalElements} coincidencias`
                   : undefined
               }
               ariaLabel="Paginacion de familias"

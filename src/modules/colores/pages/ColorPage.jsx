@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useColor } from "../hooks/useColor.js";
@@ -18,9 +18,12 @@ export default function ColorPage() {
   const [toastType, setToastType] = useState("success");
   const [page, setPage] = useState(0);
 
-  const { colores, loadingLista, error, recargar } = useColor();
-
   const [busqueda, setBusqueda] = useState("");
+  const { colores, pageInfo, loadingLista, error, recargar } = useColor({
+    page,
+    size: PAGE_SIZE,
+    busqueda
+  });
 
   const abrirEditar = (color) => {
     navigate(`/colores/${color.id}`);
@@ -39,30 +42,22 @@ export default function ColorPage() {
       setToastMessage(
         nuevoEstado ? "Color activado correctamente" : "Color desactivado correctamente"
       );
-      await recargar();
+      await recargar({ page });
     } catch {
       setToastType("danger");
       setToastMessage("Error al cambiar el estado del color");
     }
   };
 
-  const coloresFiltrados = colores.filter((color) => {
-    const terminoBusqueda = busqueda.toLowerCase().trim().replace(/\s+/g, " ");
-    if (!terminoBusqueda) return true;
-
-    const palabras = terminoBusqueda.split(" ");
-    const infoColor = [color.codigo, color.nombre, color.descripcion, color.hex].filter(Boolean).join(" ").toLowerCase();
-
-    return palabras.every((palabra) => infoColor.includes(palabra));
-  });
-
-  const totalElements = coloresFiltrados.length;
-  const totalPages = Math.ceil(totalElements / PAGE_SIZE);
+  const totalElements = pageInfo.totalElements || 0;
+  const totalPages = pageInfo.totalPages || 0;
   const paginaActual = totalPages > 0 ? Math.min(page, totalPages - 1) : 0;
-  const coloresPaginados = useMemo(
-    () => coloresFiltrados.slice(paginaActual * PAGE_SIZE, paginaActual * PAGE_SIZE + PAGE_SIZE),
-    [coloresFiltrados, paginaActual]
-  );
+  useEffect(() => {
+    if (totalPages > 0 && page >= totalPages) {
+      setPage(totalPages - 1);
+    }
+  }, [page, totalPages]);
+
   const handleBusquedaChange = (e) => {
     setBusqueda(e.target.value);
     setPage(0);
@@ -102,7 +97,7 @@ export default function ColorPage() {
       </div>
 
       <ColorTable
-        data={coloresPaginados}
+        data={colores}
         onEditar={abrirEditar}
         onCambiarEstado={manejarCambioEstado}
       />
@@ -113,7 +108,7 @@ export default function ColorPage() {
           totalPages={totalPages}
           totalElements={totalElements}
           pageSize={PAGE_SIZE}
-          currentCount={coloresPaginados.length}
+          currentCount={colores.length}
           itemLabel="colores"
           ariaLabel="Paginacion de colores"
           onPageChange={setPage}

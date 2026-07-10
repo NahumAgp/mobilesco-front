@@ -4,10 +4,25 @@ import { API_PATHS } from "../../../config/apiPaths";
 // En productos, "Categoria" visualmente corresponde al catalogo backend de niveles.
 const CATEGORIAS_PRODUCTO_PATH = API_PATHS.NIVELES;
 
-export function obtenerCategorias(modeloId) {
+function buildQuery(params = {}) {
+  const query = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      query.set(key, String(value));
+    }
+  });
+
+  return query.toString();
+}
+
+export function obtenerCategorias(modeloId, params = {}) {
+  const query = buildQuery(params);
+  const suffix = query ? `?${query}` : "";
+
   return modeloId
-    ? request(`${CATEGORIAS_PRODUCTO_PATH}/por-modelo/${modeloId}`)
-    : request(CATEGORIAS_PRODUCTO_PATH);
+    ? request(`${CATEGORIAS_PRODUCTO_PATH}/por-modelo/${modeloId}${suffix}`)
+    : request(`${CATEGORIAS_PRODUCTO_PATH}${suffix}`);
 }
 
 export function obtenerCategoriaPorId(id) {

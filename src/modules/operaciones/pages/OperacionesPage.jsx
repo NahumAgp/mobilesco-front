@@ -1,87 +1,83 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useOperaciones } from "../hooks/useOperaciones";
 import OperacionesTable from "./OperacionesTable.jsx";
 
+import CatalogPagination from "../../../components/ui/CatalogPagination.jsx";
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
 
-export default function OperacionesPage() {
+const PAGE_SIZE = 10;
 
+export default function OperacionesPage() {
   const navigate = useNavigate();
 
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
-
-  const {
-    operaciones,
-    loadingLista,
-    error,
-    eliminarOperacion
-  } = useOperaciones();
-
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstatus, setFiltroEstatus] = useState("TODOS");
   const [soloActivos, setSoloActivos] = useState(false);
   const [filtroCentroTrabajo, setFiltroCentroTrabajo] = useState("");
+  const [page, setPage] = useState(0);
+  const activo = filtroEstatus === "TODOS" && !soloActivos
+    ? undefined
+    : filtroEstatus === "INACTIVO"
+      ? false
+      : true;
+
+  const {
+    operaciones,
+    pageInfo,
+    loadingLista,
+    error,
+    eliminarOperacion
+  } = useOperaciones({
+    page,
+    size: PAGE_SIZE,
+    busqueda,
+    activo,
+    centroTrabajo: filtroCentroTrabajo
+  });
+
+  const totalElements = pageInfo.totalElements || 0;
+  const totalPages = pageInfo.totalPages || 0;
+  const paginaActual = totalPages > 0 ? Math.min(page, totalPages - 1) : 0;
+
+  useEffect(() => {
+    if (totalPages > 0 && page >= totalPages) {
+      setPage(totalPages - 1);
+    }
+  }, [page, totalPages]);
+
+  const centrosUnicos = useMemo(
+    () => [...new Set(operaciones.map((op) => op.centroTrabajoNombre).filter(Boolean))].sort(),
+    [operaciones]
+  );
 
   const abrirEditar = (operacion) => {
     navigate(`/operaciones/${operacion.id}`);
   };
 
   const manejarEliminar = async (id) => {
-
-    const confirmacion = window.confirm("¿Seguro que deseas eliminar esta operación?");
+    const confirmacion = window.confirm("Seguro que deseas eliminar esta operacion?");
     if (!confirmacion) return;
 
     try {
-
       await eliminarOperacion(id);
-
       setToastType("success");
-      setToastMessage("Operación eliminada correctamente");
-
+      setToastMessage("Operacion eliminada correctamente");
     } catch {
-
       setToastType("danger");
-      setToastMessage("Error al eliminar operación");
+      setToastMessage("Error al eliminar operacion");
     }
   };
 
-  // Obtener centros de trabajo únicos para el filtro
-  const centrosUnicos = [...new Set(operaciones.map(op => op.centroTrabajoNombre).filter(Boolean))];
+  const resetPage = (callback) => {
+    callback();
+    setPage(0);
+  };
 
- const operacionesFiltradas = operaciones.filter((operacion) => {
-  const terminoBusqueda = busqueda.toLowerCase().trim().replace(/\s+/g, ' ');
-  
-  const pasaFiltroTexto = (() => {
-    if (!terminoBusqueda) return true;
-
-    const palabras = terminoBusqueda.split(' ');
-
-    const infoOperacion = [
-      operacion.codigo,
-      operacion.nombre,
-      operacion.descripcion,
-      operacion.centroTrabajoNombre
-    ].filter(Boolean).join(' ').toLowerCase();
-
-    return palabras.every(palabra => infoOperacion.includes(palabra));
-  })();
-
-  const coincideEstatus =
-    filtroEstatus === "TODOS" ||
-    (filtroEstatus === "ACTIVO" && operacion.activo) ||
-    (filtroEstatus === "INACTIVO" && !operacion.activo);
-
-  const coincideSoloActivos = !soloActivos || operacion.activo;
-  
-  const coincideCentro = !filtroCentroTrabajo || operacion.centroTrabajoNombre === filtroCentroTrabajo;
-
-  return pasaFiltroTexto && coincideEstatus && coincideSoloActivos && coincideCentro;
-});
-  
   return (
     <>
       <Toast
@@ -92,13 +88,13 @@ export default function OperacionesPage() {
 
       <PageHeader
         title="Operaciones"
-        subtitle="Catálogo de operaciones de fabricación (Mano de Obra Directa)"
+        subtitle="Catalogo de operaciones de fabricacion (Mano de Obra Directa)"
         actions={
           <button
             className="btn btn-success"
             onClick={() => navigate("/operaciones/nuevo")}
           >
-            Nueva Operación
+            Nueva Operacion
           </button>
         }
       />
@@ -118,14 +114,13 @@ export default function OperacionesPage() {
       <div className="card mb-3">
         <div className="card-body">
           <div className="row g-2 align-items-center">
-
             <div className="col-md-3">
               <input
                 type="text"
                 className="form-control"
-                placeholder="Buscar por código, nombre o descripción..."
+                placeholder="Buscar por codigo, nombre o descripcion..."
                 value={busqueda}
-                onChange={(e) => setBusqueda(e.target.value)}
+                onChange={(event) => resetPage(() => setBusqueda(event.target.value))}
               />
             </div>
 
@@ -133,7 +128,7 @@ export default function OperacionesPage() {
               <select
                 className="form-select"
                 value={filtroEstatus}
-                onChange={(e) => setFiltroEstatus(e.target.value)}
+                onChange={(event) => resetPage(() => setFiltroEstatus(event.target.value))}
               >
                 <option value="TODOS">Todos</option>
                 <option value="ACTIVO">Activos</option>
@@ -145,10 +140,10 @@ export default function OperacionesPage() {
               <select
                 className="form-select"
                 value={filtroCentroTrabajo}
-                onChange={(e) => setFiltroCentroTrabajo(e.target.value)}
+                onChange={(event) => resetPage(() => setFiltroCentroTrabajo(event.target.value))}
               >
                 <option value="">Todos los centros</option>
-                {centrosUnicos.map(centro => (
+                {centrosUnicos.map((centro) => (
                   <option key={centro} value={centro}>{centro}</option>
                 ))}
               </select>
@@ -160,23 +155,36 @@ export default function OperacionesPage() {
                   className="form-check-input"
                   type="checkbox"
                   checked={soloActivos}
-                  onChange={() => setSoloActivos(!soloActivos)}
+                  onChange={() => resetPage(() => setSoloActivos((prev) => !prev))}
                 />
                 <label className="form-check-label">
                   Solo activos
                 </label>
               </div>
             </div>
-
           </div>
         </div>
       </div>
 
       <OperacionesTable
-        data={operacionesFiltradas}
+        data={operaciones}
         onEditar={abrirEditar}
         onEliminar={manejarEliminar}
       />
+
+      {totalElements > 0 && (
+        <CatalogPagination
+          currentPage={paginaActual}
+          totalPages={totalPages}
+          totalElements={totalElements}
+          pageSize={PAGE_SIZE}
+          currentCount={operaciones.length}
+          itemLabel="operaciones"
+          ariaLabel="Paginacion de operaciones"
+          onPageChange={setPage}
+          className="mt-3"
+        />
+      )}
     </>
   );
 }

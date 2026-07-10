@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useLineasProducto } from "../hooks/useLineasProducto";
@@ -23,6 +23,7 @@ export default function LineaProductoPage() {
   const [sortField, setSortField] = useState("nombre");
   const [sortDirection, setSortDirection] = useState("asc");
   const [exportandoExcel, setExportandoExcel] = useState(false);
+  const terminoBusqueda = busqueda.toLowerCase().trim().replace(/\s+/g, " ");
 
   const {
     lineasProducto,
@@ -30,72 +31,20 @@ export default function LineaProductoPage() {
     loadingLista,
     error,
     cambiarEstadoLineaProducto
-  } = useLineasProducto({ page, sortBy: sortField, direction: sortDirection });
+  } = useLineasProducto({
+    page,
+    sortBy: sortField,
+    direction: sortDirection,
+    busqueda: terminoBusqueda,
+    activo: soloActivos ? true : null
+  });
 
   const totalElements = pageInfo.totalElements ?? 0;
   const totalPages = pageInfo.totalPages ?? 0;
-  const terminoBusqueda = busqueda.toLowerCase().trim().replace(/\s+/g, " ");
-
-  const lineasFiltradas = useMemo(() => {
-    const compararValor = (a, b) => {
-      const valorA = a ?? "";
-      const valorB = b ?? "";
-
-      if (typeof valorA === "number" && typeof valorB === "number") {
-        return valorA - valorB;
-      }
-
-      if (typeof valorA === "boolean" && typeof valorB === "boolean") {
-        return Number(valorA) - Number(valorB);
-      }
-
-      return String(valorA).localeCompare(String(valorB), "es", {
-        numeric: true,
-        sensitivity: "base"
-      });
-    };
-
-    const filtradas = lineasProducto.filter((linea) => {
-      const pasaFiltroTexto = (() => {
-        if (!terminoBusqueda) return true;
-
-        const palabras = terminoBusqueda.split(" ");
-        const infoLinea = [
-          linea.codigo,
-          linea.nombre,
-          linea.createdAt,
-          linea.activo ? "activo" : "inactivo"
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-
-        return palabras.every((palabra) => infoLinea.includes(palabra));
-      })();
-
-      const coincideSoloActivos = !soloActivos || linea.activo;
-
-      return pasaFiltroTexto && coincideSoloActivos;
-    });
-
-    return filtradas.sort((a, b) => {
-      const valorA =
-        sortField === "createdAt"
-          ? new Date(a?.createdAt || 0).getTime()
-          : a?.[sortField];
-      const valorB =
-        sortField === "createdAt"
-          ? new Date(b?.createdAt || 0).getTime()
-          : b?.[sortField];
-
-      const resultado = compararValor(valorA, valorB);
-      return sortDirection === "asc" ? resultado : -resultado;
-    });
-  }, [lineasProducto, soloActivos, sortDirection, sortField, terminoBusqueda]);
 
   const hayFiltrosActivos = Boolean(terminoBusqueda) || soloActivos;
-  const mostrarVacio = !loadingLista && !error && totalElements === 0;
-  const mostrarSinCoincidencias = !loadingLista && !error && totalElements > 0 && lineasFiltradas.length === 0;
+  const mostrarVacio = !loadingLista && !error && !hayFiltrosActivos && totalElements === 0;
+  const mostrarSinCoincidencias = !loadingLista && !error && hayFiltrosActivos && totalElements === 0;
 
   useEffect(() => {
     if (!loadingLista && totalPages > 0 && page >= totalPages) {
@@ -269,13 +218,13 @@ export default function LineaProductoPage() {
                 <i className="bi bi-funnel fs-1 d-block mb-3 text-secondary"></i>
                 <span className="fs-5 d-block">No hay coincidencias</span>
                 <p className="text-secondary mt-2 mb-0">
-                  Ajusta los filtros para ver lineas en esta pagina
+                  Ajusta los filtros para ver lineas
                 </p>
               </div>
             </div>
           ) : (
             <LineaProductoTable
-              data={lineasFiltradas}
+              data={lineasProducto}
               onEditar={abrirEditar}
               onCambiarEstado={manejarCambioEstado}
               sortField={sortField}
@@ -294,7 +243,7 @@ export default function LineaProductoPage() {
               itemLabel="lineas"
               summary={
                 hayFiltrosActivos
-                  ? `Mostrando ${lineasFiltradas.length} coincidencias en esta pagina`
+                  ? `Mostrando ${lineasProducto.length} de ${totalElements} coincidencias`
                   : undefined
               }
               ariaLabel="Paginacion de lineas de producto"

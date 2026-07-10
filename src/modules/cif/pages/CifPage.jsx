@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
+import CatalogPagination from "../../../components/ui/CatalogPagination.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
 import CifConfiguracionWarning from "../components/CifConfiguracionWarning.jsx";
 import { getUser } from "../../auth/services/authService";
@@ -14,6 +15,13 @@ import {
 import "../../productos/pages/Productos/ProductoForm.css";
 
 const ROLES_GESTION_CIF = ["ADMIN", "SUPER_ADMIN", "SUBDIRECCION_ADMINISTRATIVA"];
+const PAGE_SIZE = 10;
+const PAGE_INFO_DEFAULT = {
+  page: 0,
+  size: PAGE_SIZE,
+  totalElements: 0,
+  totalPages: 0
+};
 
 function isConfiguracionCifError(error) {
   const message = `${error?.message || ""} ${error?.data?.message || ""}`.toLowerCase();
@@ -47,10 +55,12 @@ export default function CifPage() {
   const user = getUser();
   const puedeGestionar = user?.roles?.some((rol) => ROLES_GESTION_CIF.includes(rol));
   const [conceptos, setConceptos] = useState([]);
+  const [pageInfo, setPageInfo] = useState(PAGE_INFO_DEFAULT);
   const [configuracion, setConfiguracion] = useState(null);
   const [resumen, setResumen] = useState(null);
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("TODOS");
+  const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [toast, setToast] = useState({ message: "", type: "success" });
@@ -76,15 +86,27 @@ export default function CifPage() {
     }, 2200);
   };
 
-  const cargarDatos = async () => {
+  const cargarDatos = async (pagina = page) => {
     try {
       setLoading(true);
+      const activo = filtroEstado === "TODOS" ? undefined : filtroEstado === "ACTIVO";
       const [conceptosResp, configResp, resumenResp] = await Promise.all([
-        obtenerConceptosCif(),
+        obtenerConceptosCif({
+          page: pagina,
+          size: PAGE_SIZE,
+          busqueda,
+          activo
+        }),
         obtenerConfiguracionCif(),
         obtenerResumenCif(),
       ]);
-      setConceptos(Array.isArray(conceptosResp) ? conceptosResp : []);
+      setConceptos(Array.isArray(conceptosResp?.content) ? conceptosResp.content : Array.isArray(conceptosResp) ? conceptosResp : []);
+      setPageInfo(conceptosResp?.content ? {
+        page: conceptosResp.page ?? pagina,
+        size: conceptosResp.size ?? PAGE_SIZE,
+        totalElements: conceptosResp.totalElements ?? 0,
+        totalPages: conceptosResp.totalPages ?? 0
+      } : PAGE_INFO_DEFAULT);
       setConfiguracion(configResp);
       setResumen(resumenResp);
     } catch (error) {
@@ -102,8 +124,8 @@ export default function CifPage() {
   };
 
   useEffect(() => {
-    cargarDatos();
-  }, []);
+    cargarDatos(page);
+  }, [page, busqueda, filtroEstado]);
 
   useEffect(() => {
     if (!location.state?.enfocarConfiguracion) return;
@@ -123,21 +145,15 @@ export default function CifPage() {
     };
   }, []);
 
-  const conceptosFiltrados = useMemo(() => {
-    const termino = busqueda.trim().toLowerCase();
-    return conceptos.filter((concepto) => {
-      const texto = [concepto.nombre, concepto.descripcion, concepto.tipo, concepto.periodicidad]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      const pasaTexto = !termino || texto.includes(termino);
-      const pasaEstado =
-        filtroEstado === "TODOS" ||
-        (filtroEstado === "ACTIVO" && concepto.activo) ||
-        (filtroEstado === "INACTIVO" && !concepto.activo);
-      return pasaTexto && pasaEstado;
-    });
-  }, [conceptos, busqueda, filtroEstado]);
+  const totalElements = pageInfo.totalElements || 0;
+  const totalPages = pageInfo.totalPages || 0;
+  const paginaActual = totalPages > 0 ? Math.min(page, totalPages - 1) : 0;
+
+  useEffect(() => {
+    if (totalPages > 0 && page >= totalPages) {
+      setPage(totalPages - 1);
+    }
+  }, [page, totalPages]);
 
   const configuracionPendiente = !loading && configuracion && configuracion.id == null;
 
@@ -151,7 +167,7 @@ export default function CifPage() {
         turnos: Number(configuracion.turnos),
       });
       setToast({ message: "Configuracion CIF actualizada.", type: "success" });
-      await cargarDatos();
+      await cargarDatos(page);
     } catch (error) {
       setToast({ message: error.message || "No fue posible actualizar la configuracion.", type: "danger" });
     } finally {
@@ -164,7 +180,7 @@ export default function CifPage() {
     try {
       await cambiarEstadoConceptoCif(concepto.id, !concepto.activo);
       setToast({ message: concepto.activo ? "Concepto desactivado." : "Concepto activado.", type: "success" });
-      await cargarDatos();
+      await cargarDatos(page);
     } catch (error) {
       setToast({ message: error.message || "No fue posible cambiar el estado.", type: "danger" });
     }
@@ -179,7 +195,7 @@ export default function CifPage() {
         subtitle="Costos indirectos de fabricacion por minuto productivo"
         actions={
           <div className="d-flex gap-2">
-            <button className="btn btn-outline-secondary" onClick={cargarDatos} disabled={loading}>
+            <button className="btn btn-outline-secondary" onClick={() => cargarDatos(page)} disabled={loading}>
               <i className="bi bi-arrow-clockwise me-2" />
               Actualizar
             </button>
@@ -298,10 +314,25 @@ export default function CifPage() {
         <div className="card-body">
           <div className="row g-2 align-items-center mb-3">
             <div className="col-12 col-md-6">
-              <input className="form-control" placeholder="Buscar por nombre o descripcion..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
+              <input
+                className="form-control"
+                placeholder="Buscar por nombre o descripcion..."
+                value={busqueda}
+                onChange={(e) => {
+                  setBusqueda(e.target.value);
+                  setPage(0);
+                }}
+              />
             </div>
             <div className="col-12 col-md-3">
-              <select className="form-select" value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}>
+              <select
+                className="form-select"
+                value={filtroEstado}
+                onChange={(e) => {
+                  setFiltroEstado(e.target.value);
+                  setPage(0);
+                }}
+              >
                 <option value="TODOS">Todos</option>
                 <option value="ACTIVO">Activos</option>
                 <option value="INACTIVO">Inactivos</option>
@@ -327,7 +358,7 @@ export default function CifPage() {
                   </tr>
                 </thead>
                 <tbody className="text-center">
-                  {conceptosFiltrados.map((concepto) => (
+                  {conceptos.map((concepto) => (
                     <tr key={concepto.id}>
                       <td className="text-start">
                         <div className="fw-semibold">{concepto.nombre}</div>
@@ -357,7 +388,7 @@ export default function CifPage() {
                       </td>
                     </tr>
                   ))}
-                  {!conceptosFiltrados.length && (
+                  {!conceptos.length && (
                     <tr>
                       <td colSpan="8" className="text-muted py-4">No hay conceptos CIF para mostrar.</td>
                     </tr>
@@ -365,6 +396,19 @@ export default function CifPage() {
                 </tbody>
               </table>
             </div>
+          )}
+          {totalElements > 0 && (
+            <CatalogPagination
+              currentPage={paginaActual}
+              totalPages={totalPages}
+              totalElements={totalElements}
+              pageSize={PAGE_SIZE}
+              currentCount={conceptos.length}
+              itemLabel="conceptos CIF"
+              ariaLabel="Paginacion de conceptos CIF"
+              onPageChange={setPage}
+              className="mt-3"
+            />
           )}
         </div>
       </div>

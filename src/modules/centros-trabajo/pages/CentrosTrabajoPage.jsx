@@ -1,11 +1,14 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useCentrosTrabajo } from "../hooks/useCentrosTrabajo";
 import CentrosTrabajoTable from "./CentrosTrabajoTable.jsx";
 
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
+import CatalogPagination from "../../../components/ui/CatalogPagination.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
+
+const PAGE_SIZE = 10;
 
 export default function CentrosTrabajoPage() {
 
@@ -14,16 +17,24 @@ export default function CentrosTrabajoPage() {
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
 
-  const {
-    centrosTrabajo,
-    loadingLista,
-    error,
-    eliminarCentroTrabajo
-  } = useCentrosTrabajo();
-
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstatus, setFiltroEstatus] = useState("TODOS");
   const [soloActivos, setSoloActivos] = useState(false);
+  const [page, setPage] = useState(0);
+
+  const {
+    centrosTrabajo,
+    pageInfo,
+    loadingLista,
+    error,
+    eliminarCentroTrabajo
+  } = useCentrosTrabajo({
+    page,
+    size: PAGE_SIZE,
+    busqueda,
+    estatus: filtroEstatus,
+    soloActivos
+  });
 
   const abrirEditar = (centro) => {
     navigate(`/centros-trabajo/${centro.id}`);
@@ -48,33 +59,12 @@ export default function CentrosTrabajoPage() {
     }
   };
 
- const centrosFiltrados = centrosTrabajo.filter((centro) => {
-  const terminoBusqueda = busqueda.toLowerCase().trim().replace(/\s+/g, ' ');
-  
-  const pasaFiltroTexto = (() => {
-    if (!terminoBusqueda) return true;
+  useEffect(() => {
+    setPage(0);
+  }, [busqueda, filtroEstatus, soloActivos]);
 
-    const palabras = terminoBusqueda.split(' ');
-
-    const infoCentro = [
-      centro.codigo,
-      centro.nombre,
-      centro.descripcion,
-      centro.unidadCapacidad
-    ].filter(Boolean).join(' ').toLowerCase();
-
-    return palabras.every(palabra => infoCentro.includes(palabra));
-  })();
-
-  const coincideEstatus =
-    filtroEstatus === "TODOS" ||
-    (filtroEstatus === "ACTIVO" && centro.activo) ||
-    (filtroEstatus === "INACTIVO" && !centro.activo);
-
-  const coincideSoloActivos = !soloActivos || centro.activo;
-
-  return pasaFiltroTexto && coincideEstatus && coincideSoloActivos;
-});
+  const totalPages = Math.max(pageInfo.totalPages || 0, 1);
+  const safePage = Math.min(page, totalPages - 1);
   
   return (
     <>
@@ -109,11 +99,11 @@ export default function CentrosTrabajoPage() {
         </div>
       )}
 
-      <div className="card mb-3">
+      <div className="card border-0 shadow-sm mb-3">
         <div className="card-body">
           <div className="row g-2 align-items-center">
 
-            <div className="col-md-4">
+            <div className="col-md-5">
               <input
                 type="text"
                 className="form-control"
@@ -135,7 +125,7 @@ export default function CentrosTrabajoPage() {
               </select>
             </div>
 
-            <div className="col-md-2 d-flex align-items-center">
+            <div className="col-md-3 d-flex align-items-center">
               <div className="form-check form-switch">
                 <input
                   className="form-check-input"
@@ -149,14 +139,42 @@ export default function CentrosTrabajoPage() {
               </div>
             </div>
 
+            <div className="col-md-2">
+              <button
+                type="button"
+                className="btn btn-outline-secondary w-100"
+                onClick={() => {
+                  setBusqueda("");
+                  setFiltroEstatus("TODOS");
+                  setSoloActivos(false);
+                }}
+                title="Limpiar filtros"
+              >
+                <i className="bi bi-eraser me-2"></i>
+                Limpiar
+              </button>
+            </div>
+
           </div>
         </div>
       </div>
 
       <CentrosTrabajoTable
-        data={centrosFiltrados}
+        data={centrosTrabajo}
         onEditar={abrirEditar}
         onEliminar={manejarEliminar}
+      />
+
+      <CatalogPagination
+        currentPage={safePage}
+        totalPages={totalPages}
+        totalElements={pageInfo.totalElements || 0}
+        pageSize={PAGE_SIZE}
+        currentCount={centrosTrabajo.length}
+        itemLabel="centros"
+        ariaLabel="Paginacion de centros de trabajo"
+        onPageChange={setPage}
+        className="mt-3"
       />
     </>
   );

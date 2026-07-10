@@ -5,9 +5,24 @@ import { API_PATHS } from "../../../config/apiPaths";
 // CENTROS DE TRABAJO
 // ========================================
 
-export function obtenerCentrosTrabajo() {
+function buildQuery(params = {}) {
+  const searchParams = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      searchParams.set(key, String(value));
+    }
+  });
+
+  const query = searchParams.toString();
+  return query ? `?${query}` : "";
+}
+
+export function obtenerCentrosTrabajo(params = {}) {
+  const query = buildQuery(params);
+  const url = `${API_PATHS.CENTRO_TRABAJO}${query}`;
   console.log("🌐 GET Centros Trabajo - URL:", API_PATHS.CENTRO_TRABAJO);
-  return request(API_PATHS.CENTRO_TRABAJO);
+  return request(url);
 }
 
 export function obtenerCentroTrabajoPorId(id) {

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useUnidadesMedida } from "../hooks/useUnidadesMedida";
@@ -41,6 +41,13 @@ export default function UnidadesMedidaPage() {
   const [sortField, setSortField] = useState("nombre");
   const [sortDirection, setSortDirection] = useState("asc");
   const [exportandoExcel, setExportandoExcel] = useState(false);
+  const terminoBusqueda = busqueda.toLowerCase().trim().replace(/\s+/g, " ");
+  const estadoFiltro =
+    soloActivos || filtroEstatus === "ACTIVO"
+      ? true
+      : filtroEstatus === "INACTIVO"
+        ? false
+        : null;
 
   const {
     unidadesMedida,
@@ -48,7 +55,14 @@ export default function UnidadesMedidaPage() {
     loadingLista,
     error,
     eliminarUnidadMedida
-  } = useUnidadesMedida({ page, size: PAGE_SIZE, sortBy: sortField, direction: sortDirection });
+  } = useUnidadesMedida({
+    page,
+    size: PAGE_SIZE,
+    sortBy: sortField,
+    direction: sortDirection,
+    busqueda: terminoBusqueda,
+    estado: estadoFiltro
+  });
 
   const totalElements = pageInfo.totalElements ?? 0;
   const totalPages = pageInfo.totalPages ?? 0;
@@ -56,69 +70,12 @@ export default function UnidadesMedidaPage() {
   const paginasVisibles = construirRangoPaginas(totalPages, paginaActual);
   const desde = totalElements > 0 ? page * PAGE_SIZE + 1 : 0;
   const hasta = totalElements > 0 ? page * PAGE_SIZE + unidadesMedida.length : 0;
-  const terminoBusqueda = busqueda.toLowerCase().trim().replace(/\s+/g, " ");
-
-  const unidadesFiltradas = useMemo(() => {
-    const compararValor = (a, b) => {
-      const valorA = a ?? "";
-      const valorB = b ?? "";
-
-      if (typeof valorA === "number" && typeof valorB === "number") {
-        return valorA - valorB;
-      }
-
-      if (typeof valorA === "boolean" && typeof valorB === "boolean") {
-        return Number(valorA) - Number(valorB);
-      }
-
-      return String(valorA).localeCompare(String(valorB), "es", {
-        numeric: true,
-        sensitivity: "base"
-      });
-    };
-
-    const filtradas = unidadesMedida.filter((unidad) => {
-      const pasaFiltroTexto = (() => {
-        if (!terminoBusqueda) return true;
-
-        const palabras = terminoBusqueda.split(" ");
-        const infoUnidad = [
-          unidad.id,
-          unidad.nombre,
-          unidad.simbolo,
-          unidad.tipo,
-          unidad.estado ? "activo" : "inactivo",
-          unidad.fechaRegistro
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-
-        return palabras.every((palabra) => infoUnidad.includes(palabra));
-      })();
-
-      const coincideEstatus =
-        filtroEstatus === "TODOS" ||
-        (filtroEstatus === "ACTIVO" && unidad.estado) ||
-        (filtroEstatus === "INACTIVO" && !unidad.estado);
-      const coincideSoloActivos = !soloActivos || unidad.estado;
-
-      return pasaFiltroTexto && coincideEstatus && coincideSoloActivos;
-    });
-
-    return filtradas.sort((a, b) => {
-      const valorA = a?.[sortField];
-      const valorB = b?.[sortField];
-      const resultado = compararValor(valorA, valorB);
-      return sortDirection === "asc" ? resultado : -resultado;
-    });
-  }, [filtroEstatus, soloActivos, sortDirection, sortField, terminoBusqueda, unidadesMedida]);
 
   const hayFiltrosActivos =
     Boolean(terminoBusqueda) || filtroEstatus !== "TODOS" || soloActivos;
-  const mostrarVacio = !loadingLista && !error && totalElements === 0;
+  const mostrarVacio = !loadingLista && !error && !hayFiltrosActivos && totalElements === 0;
   const mostrarSinCoincidencias =
-    !loadingLista && !error && totalElements > 0 && unidadesFiltradas.length === 0;
+    !loadingLista && !error && hayFiltrosActivos && totalElements === 0;
 
   useEffect(() => {
     if (!loadingLista && totalPages > 0 && page >= totalPages) {
@@ -150,15 +107,8 @@ export default function UnidadesMedidaPage() {
     try {
       setExportandoExcel(true);
 
-      const estadoFiltro =
-        soloActivos || filtroEstatus === "ACTIVO"
-          ? true
-          : filtroEstatus === "INACTIVO"
-            ? false
-            : undefined;
-
       const blob = await exportarUnidadesMedidaExcel({
-        estado: estadoFiltro,
+        estado: estadoFiltro ?? undefined,
         busqueda: terminoBusqueda || undefined,
         sortBy: sortField,
         direction: sortDirection
@@ -319,13 +269,13 @@ export default function UnidadesMedidaPage() {
                 <i className="bi bi-funnel fs-1 d-block mb-3 text-secondary"></i>
                 <span className="fs-5 d-block">No hay coincidencias</span>
                 <p className="text-secondary mt-2 mb-0">
-                  Ajusta los filtros para ver unidades en esta pagina
+                  Ajusta los filtros para ver unidades
                 </p>
               </div>
             </div>
           ) : (
             <UnidadesMedidaTable
-              data={unidadesFiltradas}
+              data={unidadesMedida}
               onEditar={abrirEditar}
               onEliminar={manejarEliminar}
               sortField={sortField}
@@ -338,7 +288,7 @@ export default function UnidadesMedidaPage() {
             <div className="unidades-pagination-panel">
               <div className="unidades-pagination-summary">
                 {hayFiltrosActivos
-                  ? `Mostrando ${unidadesFiltradas.length} coincidencias en esta pagina`
+                  ? `Mostrando ${unidadesMedida.length} de ${totalElements} coincidencias`
                   : `Mostrando ${desde} a ${hasta} de ${totalElements} unidades`}
               </div>
 

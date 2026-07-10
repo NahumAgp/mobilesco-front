@@ -25,7 +25,14 @@ function normalizarPageInfo(data, fallbackPage = 0) {
   };
 }
 
-export function useMateriales({ page, size = 10, sortBy = "nombre", direction = "asc" } = {}) {
+export function useMateriales({
+  page,
+  size = 10,
+  sortBy = "nombre",
+  direction = "asc",
+  busqueda = "",
+  activo = null
+} = {}) {
   const [materiales, setMateriales] = useState([]);
   const [pageInfo, setPageInfo] = useState(PAGE_INFO_DEFAULT);
   const [loadingLista, setLoadingLista] = useState(false);
@@ -39,7 +46,7 @@ export function useMateriales({ page, size = 10, sortBy = "nombre", direction = 
       const data =
         page === undefined || page === null
           ? await materialGateway.obtenerMateriales()
-          : await materialGateway.obtenerMateriales({ page, size, sortBy, direction });
+          : await materialGateway.obtenerMateriales({ page, size, sortBy, direction, busqueda, activo });
 
       if (data?.content) {
         setMateriales(data.content);
@@ -63,7 +70,7 @@ export function useMateriales({ page, size = 10, sortBy = "nombre", direction = 
     } finally {
       setLoadingLista(false);
     }
-  }, [direction, page, size, sortBy]);
+  }, [direction, page, size, sortBy, busqueda, activo]);
 
   useEffect(() => {
     cargar();

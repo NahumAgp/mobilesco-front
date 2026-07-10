@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useEmpleado } from "../hooks/useEmpleado";
@@ -23,50 +23,28 @@ export default function EmpleadoPage() {
   const [page, setPage] = useState(0);
   const currentUser = getUser();
   const puedeGestionarEmpleados = currentUser?.roles?.some((rol) => ROLES_GESTION_EMPLEADOS.includes(rol));
+  const activo = filtroEstatus === "TODOS" && !soloActivos
+    ? undefined
+    : filtroEstatus === "INACTIVO"
+      ? false
+      : true;
 
-  const { empleados, loadingLista, error, cambiarEstadoEmpleado } = useEmpleado();
+  const { empleados, pageInfo, loadingLista, error, cambiarEstadoEmpleado } = useEmpleado({
+    page,
+    size: PAGE_SIZE,
+    busqueda,
+    activo
+  });
 
-  const terminoBusqueda = busqueda.toLowerCase().trim().replace(/\s+/g, " ");
-
-  const empleadosFiltrados = useMemo(() => {
-    return empleados.filter((emp) => {
-      const pasaFiltroTexto = (() => {
-        if (!terminoBusqueda) return true;
-
-        const palabras = terminoBusqueda.split(" ");
-        const infoEmpleado = [
-          emp.id?.toString(),
-          emp.nombre,
-          emp.apellidoPaterno,
-          emp.apellidoMaterno,
-          emp.telefono,
-          emp.correo
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-
-        return palabras.every((palabra) => infoEmpleado.includes(palabra));
-      })();
-
-      const coincideEstatus =
-        filtroEstatus === "TODOS" ||
-        (filtroEstatus === "ACTIVO" && emp.activo) ||
-        (filtroEstatus === "INACTIVO" && !emp.activo);
-
-      const coincideSoloActivos = !soloActivos || emp.activo;
-
-      return pasaFiltroTexto && coincideEstatus && coincideSoloActivos;
-    });
-  }, [empleados, filtroEstatus, soloActivos, terminoBusqueda]);
-
-  const totalElements = empleadosFiltrados.length;
-  const totalPages = Math.ceil(totalElements / PAGE_SIZE);
+  const totalElements = pageInfo.totalElements || 0;
+  const totalPages = pageInfo.totalPages || 0;
   const paginaActual = totalPages > 0 ? Math.min(page, totalPages - 1) : 0;
-  const empleadosPagina = empleadosFiltrados.slice(
-    paginaActual * PAGE_SIZE,
-    paginaActual * PAGE_SIZE + PAGE_SIZE
-  );
+
+  useEffect(() => {
+    if (totalPages > 0 && page >= totalPages) {
+      setPage(totalPages - 1);
+    }
+  }, [page, totalPages]);
 
   const handleBusquedaChange = (event) => {
     setBusqueda(event.target.value);
@@ -104,8 +82,8 @@ export default function EmpleadoPage() {
     }
   };
 
-  const mostrarVacio = !loadingLista && !error && empleados.length === 0;
-  const mostrarSinCoincidencias = !loadingLista && !error && empleados.length > 0 && totalElements === 0;
+  const mostrarVacio = !loadingLista && !error && empleados.length === 0 && totalElements === 0 && !busqueda && activo === undefined;
+  const mostrarSinCoincidencias = !loadingLista && !error && empleados.length === 0 && totalElements === 0 && !mostrarVacio;
 
   return (
     <>
@@ -116,8 +94,8 @@ export default function EmpleadoPage() {
       />
 
       <PageHeader
-        title="Catálogo de Empleados"
-        subtitle="Administración de empleados y colaboradores"
+        title="Catalogo de Empleados"
+        subtitle="Administracion de empleados y colaboradores"
         actions={puedeGestionarEmpleados ? (
           <div className="d-flex flex-wrap gap-2">
             <button
@@ -150,7 +128,7 @@ export default function EmpleadoPage() {
               <input
                 type="text"
                 className="form-control"
-                placeholder="Buscar por nombre, apellidos, teléfono, correo o ID..."
+                placeholder="Buscar por nombre, apellidos, telefono, correo o ID..."
                 value={busqueda}
                 onChange={handleBusquedaChange}
               />
@@ -204,13 +182,13 @@ export default function EmpleadoPage() {
                 <i className="bi bi-funnel fs-1 d-block mb-3 text-secondary"></i>
                 <span className="fs-5 d-block">No hay coincidencias</span>
                 <p className="text-secondary mt-2 mb-0">
-                  Ajusta los filtros para ver empleados en esta página
+                  Ajusta los filtros para ver empleados en esta pagina
                 </p>
               </div>
             </div>
           ) : (
             <EmpleadosTable
-              data={empleadosPagina}
+              data={empleados}
               onEditar={abrirEditar}
               onCambiarEstado={manejarCambioEstado}
             />
@@ -222,7 +200,7 @@ export default function EmpleadoPage() {
               totalPages={totalPages}
               totalElements={totalElements}
               pageSize={PAGE_SIZE}
-              currentCount={empleadosPagina.length}
+              currentCount={empleados.length}
               itemLabel="empleados"
               ariaLabel="Paginacion de empleados"
               onPageChange={setPage}
@@ -234,4 +212,3 @@ export default function EmpleadoPage() {
     </>
   );
 }
-

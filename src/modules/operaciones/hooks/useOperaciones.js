@@ -4,32 +4,46 @@ import {
   eliminarOperacion as eliminarService
 } from "../services/operaciones.js";
 
-export function useOperaciones() {
+const PAGE_INFO_DEFAULT = {
+  page: 0,
+  size: 10,
+  totalElements: 0,
+  totalPages: 0
+};
 
+export function useOperaciones(params = {}) {
   const [operaciones, setOperaciones] = useState([]);
+  const [pageInfo, setPageInfo] = useState(PAGE_INFO_DEFAULT);
   const [loadingLista, setLoadingLista] = useState(false);
   const [error, setError] = useState("");
 
-  async function cargar() {
+  async function cargar(overrides = {}) {
     try {
       setLoadingLista(true);
       setError("");
 
-      console.log("🔍 Iniciando llamada a obtenerOperaciones...");
-      const data = await obtenerOperaciones();
-      console.log("✅ Datos recibidos:", data);
+      const filtros = { ...params, ...overrides };
+      const data = await obtenerOperaciones(filtros);
 
-      if (data.content) {
+      if (data?.content) {
         setOperaciones(data.content);
+        setPageInfo({
+          page: data.page ?? filtros.page ?? 0,
+          size: data.size ?? filtros.size ?? 10,
+          totalElements: data.totalElements ?? 0,
+          totalPages: data.totalPages ?? 0
+        });
       } else if (Array.isArray(data)) {
         setOperaciones(data);
+        setPageInfo(PAGE_INFO_DEFAULT);
       } else {
         setOperaciones([]);
+        setPageInfo(PAGE_INFO_DEFAULT);
       }
-
     } catch (error) {
-      console.error("❌ Error cargando operaciones:", error);
       setError("Error cargando operaciones: " + (error.message || "Error desconocido"));
+      setOperaciones([]);
+      setPageInfo(PAGE_INFO_DEFAULT);
     } finally {
       setLoadingLista(false);
     }
@@ -37,7 +51,7 @@ export function useOperaciones() {
 
   useEffect(() => {
     cargar();
-  }, []);
+  }, [params.page, params.size, params.busqueda, params.activo, params.centroTrabajo]);
 
   async function eliminarOperacion(id) {
     await eliminarService(id);
@@ -46,9 +60,10 @@ export function useOperaciones() {
 
   return {
     operaciones,
+    pageInfo,
     loadingLista,
     error,
-    eliminarOperacion
+    eliminarOperacion,
+    recargar: cargar
   };
 }
-

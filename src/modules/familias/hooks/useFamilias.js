@@ -25,7 +25,15 @@ function normalizarPageInfo(data, fallbackPage = 0) {
   };
 }
 
-export function useFamilias({ page, size = 10, sortBy = "nombre", direction = "asc" } = {}) {
+export function useFamilias({
+  page,
+  size = 10,
+  sortBy = "nombre",
+  direction = "asc",
+  busqueda = "",
+  activo = null,
+  lineaId = ""
+} = {}) {
   const [familias, setFamilias] = useState([]);
   const [pageInfo, setPageInfo] = useState(PAGE_INFO_DEFAULT);
   const [loadingLista, setLoadingLista] = useState(false);
@@ -39,7 +47,7 @@ export function useFamilias({ page, size = 10, sortBy = "nombre", direction = "a
       const data =
           page === undefined || page === null
           ? await familiaGateway.obtenerFamilias()
-          : await familiaGateway.obtenerFamilias({ page, size, sortBy, direction });
+          : await familiaGateway.obtenerFamilias({ page, size, sortBy, direction, busqueda, activo, lineaId });
 
       if (data?.content) {
         setFamilias(data.content);
@@ -63,7 +71,7 @@ export function useFamilias({ page, size = 10, sortBy = "nombre", direction = "a
     } finally {
       setLoadingLista(false);
     }
-  }, [page, size, sortBy, direction]);
+  }, [page, size, sortBy, direction, busqueda, activo, lineaId]);
 
   useEffect(() => {
     cargar();

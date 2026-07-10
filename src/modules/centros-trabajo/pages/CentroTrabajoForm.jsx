@@ -24,9 +24,11 @@ export default function CentroTrabajoForm({
     nombre: "",
     descripcion: "",
     costoHora: "",
+    costoMinuto: "",
     capacidadDiaria: "",
     unidadCapacidad: "",
     horasDisponiblesDia: "",
+    enlaceDriveReporte: "",
     activo: true
   });
 
@@ -39,9 +41,11 @@ export default function CentroTrabajoForm({
           nombre: centro.nombre || "",
           descripcion: centro.descripcion || "",
           costoHora: centro.costoHora || "",
+          costoMinuto: centro.costoMinuto || "",
           capacidadDiaria: centro.capacidadDiaria || "",
           unidadCapacidad: centro.unidadCapacidad || "",
           horasDisponiblesDia: centro.horasDisponiblesDia || "",
+          enlaceDriveReporte: centro.enlaceDriveReporte || "",
           activo: centro.activo ?? true
         });
         return;
@@ -55,9 +59,11 @@ export default function CentroTrabajoForm({
             nombre: data.nombre || "",
             descripcion: data.descripcion || "",
             costoHora: data.costoHora || "",
+            costoMinuto: data.costoMinuto || "",
             capacidadDiaria: data.capacidadDiaria || "",
             unidadCapacidad: data.unidadCapacidad || "",
             horasDisponiblesDia: data.horasDisponiblesDia || "",
+            enlaceDriveReporte: data.enlaceDriveReporte || "",
             activo: data.activo ?? true
           });
         } catch (error) {
@@ -71,11 +77,20 @@ export default function CentroTrabajoForm({
   function handleChange(e) {
     const { name, value, type, checked } = e.target;
 
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : 
-              (type === "number" ? (value === "" ? "" : parseFloat(value)) : value)
-    }));
+    setFormData(prev => {
+      const nextValue = type === "checkbox" ? checked : (type === "number" ? (value === "" ? "" : parseFloat(value)) : value);
+      const next = { ...prev, [name]: nextValue };
+
+      if (name === "costoHora") {
+        next.costoMinuto = nextValue === "" ? "" : Number((Number(nextValue) / 60).toFixed(4));
+      }
+
+      if (name === "costoMinuto") {
+        next.costoHora = nextValue === "" ? "" : Number((Number(nextValue) * 60).toFixed(2));
+      }
+
+      return next;
+    });
 
     if (erroresBackend[name]) {
       setErroresBackend(prev => {
@@ -93,8 +108,10 @@ export default function CentroTrabajoForm({
     const dataToSend = {
       ...formData,
       costoHora: formData.costoHora === "" ? null : formData.costoHora,
+      costoMinuto: formData.costoMinuto === "" ? null : formData.costoMinuto,
       capacidadDiaria: formData.capacidadDiaria === "" ? null : formData.capacidadDiaria,
-      horasDisponiblesDia: formData.horasDisponiblesDia === "" ? null : formData.horasDisponiblesDia
+      horasDisponiblesDia: formData.horasDisponiblesDia === "" ? null : formData.horasDisponiblesDia,
+      enlaceDriveReporte: formData.enlaceDriveReporte?.trim() || null
     };
 
     try {
@@ -239,6 +256,23 @@ export default function CentroTrabajoForm({
               </div>
 
               <div className="col-md-4">
+                <label className="form-label fw-semibold">Costo por minuto</label>
+                <div className="input-group">
+                  <span className="input-group-text">$</span>
+                  <input
+                    type="number"
+                    step="0.0001"
+                    min="0"
+                    name="costoMinuto"
+                    className={inputClass("costoMinuto")}
+                    value={formData.costoMinuto}
+                    onChange={handleChange}
+                    placeholder="0.0000"
+                  />
+                </div>
+              </div>
+
+              <div className="col-md-4">
                 <label className="form-label fw-semibold">Unidad de Capacidad</label>
                 <input 
                   type="text" 
@@ -263,6 +297,19 @@ export default function CentroTrabajoForm({
                   onChange={handleChange} 
                   placeholder="8"
                 />
+              </div>
+
+              <div className="col-md-8">
+                <label className="form-label fw-semibold">Enlace Drive del reporte</label>
+                <input
+                  type="url"
+                  name="enlaceDriveReporte"
+                  className={inputClass("enlaceDriveReporte")}
+                  value={formData.enlaceDriveReporte || ""}
+                  onChange={handleChange}
+                  placeholder="https://drive.google.com/..."
+                />
+                <div className="invalid-feedback">{erroresBackend.enlaceDriveReporte || erroresExternos.enlaceDriveReporte}</div>
               </div>
 
               <div className="col-md-12">
