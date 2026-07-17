@@ -34,6 +34,12 @@ const parseOptionalNumber = (value) => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
+const calcularPesoVolumetrico = ({ ancho, alto, fondo }) => {
+  const valores = [ancho, alto, fondo].map((valor) => Number(String(valor ?? "").replace(",", ".")));
+  if (valores.some((valor) => !Number.isFinite(valor) || valor <= 0)) return "";
+  return (valores[0] * valores[1] * valores[2] / 5000).toFixed(2);
+};
+
 const getArchivoNombre = (url) => {
   if (!url) return "Imagen";
   const partes = url.split("/");
@@ -415,6 +421,14 @@ export default function ProductoForm({
     setFormData((prev) => ({
       ...prev,
       [name]: value,
+      ...(name === "ancho" || name === "alto" || name === "fondo"
+        ? {
+            pesoVolumetrico: calcularPesoVolumetrico({
+              ...prev,
+              [name]: value
+            })
+          }
+        : {}),
     }));
 
     if (erroresBackend[name]) {
@@ -711,11 +725,13 @@ export default function ProductoForm({
               </div>
               <div className="col-md-4 col-lg">
                 <label className="form-label fw-semibold">Peso volumetrico</label>
-                <DecimalInput
+                <input
+                  type="text"
                   name="pesoVolumetrico"
-                  className={inputClass("pesoVolumetrico")}
+                  className={`${inputClass("pesoVolumetrico")} bg-light text-secondary`}
                   value={formData.pesoVolumetrico}
-                  onValueChange={handleDecimalChange}
+                  readOnly
+                  placeholder="Automatico"
                 />
               </div>
               <div className="col-md-4 col-lg">

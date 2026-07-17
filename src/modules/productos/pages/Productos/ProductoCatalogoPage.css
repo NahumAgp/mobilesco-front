@@ -109,6 +109,53 @@
   white-space: nowrap;
 }
 
+.producto-catalogo-line-tabs {
+  display: flex;
+  gap: 10px;
+  margin: 0 0 16px;
+  overflow-x: auto;
+  padding: 2px 0 10px;
+  scrollbar-width: thin;
+}
+
+.producto-catalogo-line-tabs button {
+  flex: 0 0 auto;
+  display: grid;
+  gap: 2px;
+  min-width: 190px;
+  padding: 10px 14px;
+  border: 1px solid var(--ms-line-soft);
+  background: var(--ms-surface);
+  color: #1C3D35;
+  text-align: left;
+}
+
+.producto-catalogo-line-tabs button:hover,
+.producto-catalogo-line-tabs button:focus {
+  border-color: rgba(84, 134, 116, 0.7);
+  background: rgba(84, 134, 116, 0.08);
+  outline: none;
+}
+
+.producto-catalogo-line-tabs button.is-active {
+  border-color: #285349;
+  background: #FBF6EE;
+  box-shadow: inset 0 -3px 0 #285349;
+}
+
+.producto-catalogo-line-tabs strong {
+  font-size: 0.95rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.producto-catalogo-line-tabs span {
+  color: #61727d;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
 .producto-catalogo-shell {
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
@@ -619,6 +666,10 @@
 @media (max-width: 760px) {
   .producto-catalogo-toolbar {
     grid-template-columns: 1fr;
+  }
+
+  .producto-catalogo-line-tabs button {
+    min-width: 160px;
   }
 
   .producto-catalogo-header-actions,

@@ -444,8 +444,10 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
       const refsMaterial = new Set(variantesNuevas.map((item) => item?.materialId).filter(esRef).map(String));
       const refsColor = new Set(variantesNuevas.map((item) => item?.colorId).filter(esRef).map(String));
       const familiaBorrador = (borradores?.familias || []).find((item) => String(item.ref) === String(modelo?.familiaRef));
+      const subfamiliaBorrador = (borradores?.subfamilias || []).find((item) => String(item.ref) === String(modelo?.subfamiliaRef));
       const refsLinea = new Set(familiaBorrador?.lineaRef ? [String(familiaBorrador.lineaRef)] : []);
-      const refsFamilia = new Set(modelo?.familiaRef ? [String(modelo.familiaRef)] : []);
+      const refsFamilia = new Set([modelo?.familiaRef, subfamiliaBorrador?.familiaRef].filter(Boolean).map(String));
+      const refsSubfamilia = new Set(modelo?.subfamiliaRef ? [String(modelo.subfamiliaRef)] : []);
 
       if (variantesNuevas.length === 0) {
         throw new Error("Las combinaciones marcadas ya existen. Agrega al menos una variante nueva para guardar.");
@@ -465,6 +467,16 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
             lineaId: item.lineaId || undefined,
             lineaRef: item.lineaRef || undefined
           })),
+        subfamilias: (borradores?.subfamilias || [])
+          .filter((item) => refsSubfamilia.has(String(item.ref)))
+          .map((item) => ({
+            ref: item.ref,
+            codigo: item.codigo,
+            nombre: item.nombre,
+            descripcion: item.descripcion,
+            familiaId: item.familiaId || undefined,
+            familiaRef: item.familiaRef || undefined
+          })),
         modelo: modelo?._pending
           ? {
               ref: modelo.ref,
@@ -475,6 +487,8 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
               activo: modelo.activo !== false,
               familiaId: modelo.familiaId || undefined,
               familiaRef: modelo.familiaRef || undefined,
+              subfamiliaId: modelo.subfamiliaId || undefined,
+              subfamiliaRef: modelo.subfamiliaRef || undefined,
               categorias: [...(modelo.categorias || [])].sort(ordenarCategoriasPorCodigo).map((item) => ({
                 ref: item.ref || item.id,
                 categoriaId: item.categoriaId || undefined,

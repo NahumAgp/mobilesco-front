@@ -30,8 +30,13 @@ const getNombreFamilia = (modelo) =>
   || modelo?.familiaNombre
   || "";
 
+const getNombreSubfamilia = (modelo) =>
+  modelo?.subfamilia?.nombre
+  || modelo?.subfamiliaNombre
+  || "";
+
 const getRutaModelo = (modelo) =>
-  [getNombreLinea(modelo), getNombreFamilia(modelo), modelo?.nombre || "Sin nombre"]
+  [getNombreLinea(modelo), getNombreFamilia(modelo), getNombreSubfamilia(modelo), modelo?.nombre || "Sin nombre"]
     .filter(Boolean)
     .join(" / ");
 
@@ -45,6 +50,7 @@ export default function ProductoWizard({ onComplete, onCancel }) {
   const [borradores, setBorradores] = useState({
     lineas: [],
     familias: [],
+    subfamilias: [],
     categorias: [],
     materiales: [],
     colores: []
@@ -58,6 +64,7 @@ export default function ProductoWizard({ onComplete, onCancel }) {
       descripcion: "",
       descripcionCorta: "",
       familiaId: "",
+      subfamiliaId: "",
       activo: true,
       categorias: [],
       materiales: []

@@ -8,7 +8,7 @@
 }
 
 .variantes-table {
-  min-width: 1260px;
+  min-width: 1380px;
   table-layout: fixed;
 }
 
@@ -36,7 +36,8 @@
 }
 
 .variantes-col-linea,
-.variantes-col-familia {
+.variantes-col-familia,
+.variantes-col-subfamilia {
   width: 140px;
 }
 
@@ -83,7 +84,8 @@
 .variantes-table td:nth-child(6),
 .variantes-table td:nth-child(7),
 .variantes-table td:nth-child(8),
-.variantes-table td:nth-child(9) {
+.variantes-table td:nth-child(9),
+.variantes-table td:nth-child(10) {
   white-space: nowrap;
 }
 

@@ -3,7 +3,9 @@ import { useNavigate } from "react-router-dom";
 
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
 import CatalogPagination from "../../../components/ui/CatalogPagination.jsx";
-import { obtenerCuentasPorPagar } from "../services/compras.js";
+import Toast from "../../../components/ui/Toast.jsx";
+import { exportarCuentasPorPagarExcel, obtenerCuentasPorPagar } from "../services/compras.js";
+import "./CuentasPorPagarPage.css";
 
 const PAGE_SIZE = 10;
 
@@ -34,6 +36,32 @@ function getEstadoBadge(estado) {
   }
 }
 
+function getMonthStart(value) {
+  return value ? `${value}-01` : "";
+}
+
+function getMonthEnd(value) {
+  if (!value) return "";
+  const [year, month] = value.split("-").map(Number);
+  return new Date(year, month, 0).toISOString().slice(0, 10);
+}
+
+function getMonthLabel(value) {
+  if (!value) return "Sin fecha";
+  return new Intl.DateTimeFormat("es-MX", { month: "short", year: "numeric" }).format(new Date(`${value}-01T00:00:00`));
+}
+
+function descargarBlob(blob, filename) {
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+}
+
 export default function CuentasPorPagarPage() {
   const navigate = useNavigate();
   const [cuentas, setCuentas] = useState([]);
@@ -41,7 +69,13 @@ export default function CuentasPorPagarPage() {
   const [error, setError] = useState("");
   const [busqueda, setBusqueda] = useState("");
   const [estado, setEstado] = useState("TODOS");
+  const [mesInicio, setMesInicio] = useState("");
+  const [mesFin, setMesFin] = useState("");
   const [page, setPage] = useState(0);
+  const [cuentasReporte, setCuentasReporte] = useState([]);
+  const [exportandoExcel, setExportandoExcel] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState("success");
   const [pageInfo, setPageInfo] = useState({
     page: 0,
     size: PAGE_SIZE,
@@ -57,6 +91,8 @@ export default function CuentasPorPagarPage() {
         const data = await obtenerCuentasPorPagar({
           estado,
           busqueda,
+          fechaInicio: getMonthStart(mesInicio),
+          fechaFin: getMonthEnd(mesFin),
           page,
           size: PAGE_SIZE
         });
@@ -74,33 +110,105 @@ export default function CuentasPorPagarPage() {
       }
     };
     cargar();
-  }, [busqueda, estado, page]);
+  }, [busqueda, estado, mesInicio, mesFin, page]);
+
+  useEffect(() => {
+    const cargarReporte = async () => {
+      try {
+        const data = await obtenerCuentasPorPagar({
+          estado,
+          busqueda,
+          fechaInicio: getMonthStart(mesInicio),
+          fechaFin: getMonthEnd(mesFin)
+        });
+        setCuentasReporte(Array.isArray(data) ? data : []);
+      } catch {
+        setCuentasReporte([]);
+      }
+    };
+    cargarReporte();
+  }, [busqueda, estado, mesInicio, mesFin]);
 
   useEffect(() => {
     setPage(0);
-  }, [busqueda, estado]);
+  }, [busqueda, estado, mesInicio, mesFin]);
 
   const totalPages = Math.max(pageInfo.totalPages || 0, 1);
   const safePage = Math.min(page, totalPages - 1);
 
   const resumen = useMemo(() => {
-    const totalAdeudo = cuentas.reduce((sum, cuenta) => sum + Number(cuenta.saldoPendiente || 0), 0);
-    const totalCompras = cuentas.reduce((sum, cuenta) => sum + Number(cuenta.montoTotal || 0), 0);
-    const totalPagado = cuentas.reduce((sum, cuenta) => sum + Number(cuenta.montoPagado || 0), 0);
-    const proveedores = new Set(cuentas.map((cuenta) => cuenta.proveedorId).filter(Boolean)).size;
+    const base = cuentasReporte.length ? cuentasReporte : cuentas;
+    const totalAdeudo = base.reduce((sum, cuenta) => sum + Number(cuenta.saldoPendiente || 0), 0);
+    const totalCompras = base.reduce((sum, cuenta) => sum + Number(cuenta.montoTotal || 0), 0);
+    const totalPagado = base.reduce((sum, cuenta) => sum + Number(cuenta.montoPagado || 0), 0);
+    const proveedores = new Set(base.map((cuenta) => cuenta.proveedorId).filter(Boolean)).size;
     return { totalAdeudo, totalCompras, totalPagado, proveedores };
-  }, [cuentas]);
+  }, [cuentas, cuentasReporte]);
+
+  const resumenMensual = useMemo(() => {
+    const mapa = new Map();
+    cuentasReporte.forEach((cuenta) => {
+      const fecha = cuenta.fechaCuenta || cuenta.fechaCompra;
+      const key = fecha ? fecha.slice(0, 7) : "sin-fecha";
+      const actual = mapa.get(key) || {
+        mes: key,
+        total: 0,
+        pagado: 0,
+        pendiente: 0,
+        cuentas: 0,
+        pagadas: 0,
+        pendientes: 0
+      };
+      actual.total += Number(cuenta.montoTotal || 0);
+      actual.pagado += Number(cuenta.montoPagado || 0);
+      actual.pendiente += Number(cuenta.saldoPendiente || 0);
+      actual.cuentas += 1;
+      if (cuenta.estado === "PAGADA") actual.pagadas += 1;
+      if (cuenta.estado !== "PAGADA" && cuenta.estado !== "CANCELADA") actual.pendientes += 1;
+      mapa.set(key, actual);
+    });
+    return Array.from(mapa.values()).sort((a, b) => a.mes.localeCompare(b.mes));
+  }, [cuentasReporte]);
+
+  const maxMensual = Math.max(...resumenMensual.map((item) => Math.max(item.pagado, item.pendiente)), 1);
+
+  const exportarExcel = async () => {
+    try {
+      setExportandoExcel(true);
+      const blob = await exportarCuentasPorPagarExcel({
+        estado,
+        busqueda,
+        fechaInicio: getMonthStart(mesInicio),
+        fechaFin: getMonthEnd(mesFin)
+      });
+      descargarBlob(blob, "cuentas-por-pagar.xlsx");
+      setToastType("success");
+      setToastMessage("Reporte de Excel generado correctamente");
+    } catch (err) {
+      setToastType("danger");
+      setToastMessage(err?.message || "No se pudo generar el reporte de Excel");
+    } finally {
+      setExportandoExcel(false);
+    }
+  };
 
   return (
     <>
+      <Toast message={toastMessage} type={toastType} onClose={() => setToastMessage("")} />
       <PageHeader
         title="Cuentas por pagar"
         subtitle="Control de adeudos a proveedores generados por compras a credito."
         actions={
-          <button className="btn btn-outline-secondary" onClick={() => navigate("/compras")}>
-            <i className="bi bi-arrow-left me-2"></i>
-            Volver a compras
-          </button>
+          <div className="cuentas-header-actions">
+            <button className="btn btn-outline-success" onClick={exportarExcel} disabled={exportandoExcel}>
+              <i className="bi bi-file-earmark-excel me-2"></i>
+              {exportandoExcel ? "Generando..." : "Reporte Excel"}
+            </button>
+            <button className="btn btn-outline-secondary" onClick={() => navigate("/compras")}>
+              <i className="bi bi-arrow-left me-2"></i>
+              Volver a compras
+            </button>
+          </div>
         }
       />
 
@@ -145,7 +253,7 @@ export default function CuentasPorPagarPage() {
       <div className="card border-0 shadow-sm mb-3">
         <div className="card-body">
           <div className="row g-2">
-            <div className="col-md-8">
+            <div className="col-md-4">
               <input
                 className="form-control"
                 value={busqueda}
@@ -153,7 +261,7 @@ export default function CuentasPorPagarPage() {
                 placeholder="Buscar por proveedor, folio, RFC o estado"
               />
             </div>
-            <div className="col-md-4">
+            <div className="col-md-2">
               <select className="form-select" value={estado} onChange={(event) => setEstado(event.target.value)}>
                 <option value="TODOS">Todos los estados</option>
                 <option value="PENDIENTE">Pendiente</option>
@@ -162,8 +270,63 @@ export default function CuentasPorPagarPage() {
                 <option value="CANCELADA">Cancelada</option>
               </select>
             </div>
+            <div className="col-md-3">
+              <input
+                type="month"
+                className="form-control"
+                value={mesInicio}
+                onChange={(event) => setMesInicio(event.target.value)}
+                aria-label="Mes inicial"
+              />
+            </div>
+            <div className="col-md-3">
+              <input
+                type="month"
+                className="form-control"
+                value={mesFin}
+                onChange={(event) => setMesFin(event.target.value)}
+                aria-label="Mes final"
+              />
+            </div>
           </div>
         </div>
+      </div>
+
+      <div className="cuentas-chart-panel">
+        <div className="cuentas-chart-header">
+          <div>
+            <h2>Pagado vs pendiente por mes</h2>
+            <span>{cuentasReporte.length} documentos dentro de los filtros</span>
+          </div>
+          <div className="cuentas-chart-legend">
+            <span><i className="legend-paid"></i>Pagado</span>
+            <span><i className="legend-pending"></i>Pendiente</span>
+          </div>
+        </div>
+        {resumenMensual.length ? (
+          <div className="cuentas-month-bars">
+            {resumenMensual.map((item) => (
+              <div className="cuentas-month-row" key={item.mes}>
+                <div className="cuentas-month-label">
+                  <strong>{getMonthLabel(item.mes)}</strong>
+                  <span>{item.cuentas} docs</span>
+                </div>
+                <div className="cuentas-bars">
+                  <div className="cuentas-bar-line">
+                    <span style={{ width: `${Math.max((item.pagado / maxMensual) * 100, item.pagado ? 4 : 0)}%` }} className="bar-paid"></span>
+                    <em>{formatCurrency(item.pagado)}</em>
+                  </div>
+                  <div className="cuentas-bar-line">
+                    <span style={{ width: `${Math.max((item.pendiente / maxMensual) * 100, item.pendiente ? 4 : 0)}%` }} className="bar-pending"></span>
+                    <em>{formatCurrency(item.pendiente)}</em>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-muted py-3">No hay datos para graficar con los filtros actuales.</div>
+        )}
       </div>
 
       <div className="card border-0 shadow-sm">

@@ -32,6 +32,7 @@ export default function SearchableSelect({
   getOptionSearchText = defaultGetSearchText,
   renderOptionLabel,
   actionNode = null,
+  keepOpenOnSelect = false,
   className = ""
 }) {
   const [query, setQuery] = useState("");
@@ -50,9 +51,15 @@ export default function SearchableSelect({
 
   const handleSelect = (option) => {
     const optionValue = getOptionValue(option);
+    onChange?.(optionValue, option);
+    if (keepOpenOnSelect) {
+      setQuery("");
+      setOpen(true);
+      onSearchChange?.("");
+      return;
+    }
     setQuery(getOptionLabel(option));
     setOpen(false);
-    onChange?.(optionValue, option);
   };
 
   const handleClear = () => {

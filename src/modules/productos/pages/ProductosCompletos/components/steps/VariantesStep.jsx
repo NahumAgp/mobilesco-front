@@ -74,12 +74,13 @@ const construirCodigoMaterial = (material) => {
   return construirCodigoCatalogo(material, (iniciales || "MAT").slice(0, 3).padEnd(3, "X"));
 };
 
-const construirSku = ({ linea, familia, modelo, categoria, material, color }) => {
+const construirSku = ({ linea, familia, subfamilia, modelo, categoria, material, color }) => {
   const codigoLinea = construirCodigoCatalogo(linea, "X");
   const codigoFamilia = construirCodigoCatalogo(familia, "X");
+  const codigoSubfamilia = subfamilia ? construirCodigoCatalogo(subfamilia, "") : "";
   const codigoModelo = construirCodigoCatalogo(modelo, "X");
 
-  return `${codigoLinea}${codigoFamilia}${codigoModelo}-${construirCodigoCategoria(categoria)}-${construirCodigoMaterial(material)}-${construirCodigoColor(color)}`;
+  return `${codigoLinea}${codigoFamilia}${codigoSubfamilia}${codigoModelo}-${construirCodigoCategoria(categoria)}-${construirCodigoMaterial(material)}-${construirCodigoColor(color)}`;
 };
 
 const getParKey = (categoriaId, materialId, colorId) => `${categoriaId}::${materialId}::${colorId}`;
@@ -116,6 +117,11 @@ const primeraImagenDisponible = (mapaVariantes) => {
 const getCategoriaKey = (categoriaId) => String(categoriaId);
 const getMaterialKey = (materialId) => String(materialId);
 const getColorKey = (colorId) => String(colorId);
+const calcularPesoVolumetrico = ({ ancho, alto, fondo }) => {
+  const valores = [ancho, alto, fondo].map((valor) => Number(String(valor ?? "").replace(",", ".")));
+  if (valores.some((valor) => !Number.isFinite(valor) || valor <= 0)) return "";
+  return (valores[0] * valores[1] * valores[2] / 5000).toFixed(2);
+};
 const obtenerCampo = (item, claves = []) => {
   for (const clave of claves) {
     const valor = item?.[clave];
@@ -840,6 +846,7 @@ export default function VariantesStep({
           const sku = construirSku({
             linea: lineaActual,
             familia: familiaActual,
+            subfamilia: data?.modelo?.subfamilia || null,
             modelo: data?.modelo,
             categoria,
             material,
@@ -990,7 +997,15 @@ export default function VariantesStep({
         i === index
           ? {
               ...variante,
-              [campo]: valor
+              [campo]: valor,
+              ...(["ancho", "alto", "fondo"].includes(campo)
+                ? {
+                    pesoVolumetrico: calcularPesoVolumetrico({
+                      ...variante,
+                      [campo]: valor
+                    })
+                  }
+                : {})
             }
           : variante
         )
@@ -1486,14 +1501,12 @@ export default function VariantesStep({
                         </td>
                         <td>
                           <input
-                            type="number"
-                            className="form-control form-control-sm"
-                            min="0"
-                            step="0.01"
+                            type="text"
+                            className="form-control form-control-sm bg-light text-secondary"
                             value={variante.pesoVolumetrico ?? ""}
                             disabled={variante._existing}
-                            onChange={(event) => actualizarVariante(indexReal, "pesoVolumetrico", event.target.value)}
-                            placeholder="0.00"
+                            readOnly
+                            placeholder="Automatico"
                           />
                         </td>
                         <td>

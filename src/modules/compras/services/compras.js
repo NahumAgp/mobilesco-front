@@ -48,6 +48,13 @@ export function registrarPagoCuentaPorPagar(id, data) {
   });
 }
 
+export function exportarCuentasPorPagarExcel(params = {}) {
+  const query = buildQuery(params);
+  return request(`${API_PATHS.CUENTAS_POR_PAGAR}/reporte/excel${query}`, {
+    responseType: "blob"
+  });
+}
+
 export function crearCompra(data) {
   console.log("🌐 POST Compra - URL:", API_PATHS.COMPRAS, "Data:", data);
   return request(API_PATHS.COMPRAS, {

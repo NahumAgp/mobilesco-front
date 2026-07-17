@@ -179,7 +179,6 @@ export default function ProductoDetallePage() {
                 <tr><th>Peso volumetrico:</th><td>{producto.pesoVolumetrico != null ? `${formatNumber(producto.pesoVolumetrico)} kg` : '-'}</td></tr>
                 <tr><th>Peso:</th><td>{producto.pesoKg ? `${producto.pesoKg} kg` : '-'}</td></tr>
                 <tr><th>Dimensiones nuevas:</th><td>{producto.dimensiones || '-'}</td></tr>
-                <tr><th>Peso volumetrico nuevo:</th><td>{producto.pesoKg != null ? `${producto.pesoKg} kg` : '-'}</td></tr>
               </tbody>
             </table>
           </Card>
@@ -190,8 +189,12 @@ export default function ProductoDetallePage() {
               <tbody>
                 <tr><th style={{width: '30%'}}>Tipo:</th><td><span className="badge bg-info">{producto.tipoProductoNombre}</span></td></tr>
                 <tr><th>Línea:</th><td>{producto.lineaNombre || '-'}</td></tr>
-                <tr><th>Categoría:</th><td>{producto.categoriaNombre || '-'}</td></tr>
+                <tr><th>Familia:</th><td>{producto.familiaNombre || producto.familia?.nombre || '-'}</td></tr>
+                <tr><th>Subfamilia:</th><td>{producto.subfamiliaNombre || producto.subfamilia?.nombre || producto.modelo?.subfamilia?.nombre || '-'}</td></tr>
+                <tr><th>Modelo:</th><td>{producto.modeloNombre || producto.productoBaseNombre || producto.modelo?.nombre || '-'}</td></tr>
+                <tr><th>Nivel:</th><td>{producto.nivelNombre || producto.categoriaNombre || '-'}</td></tr>
                 <tr><th>Material:</th><td>{producto.materialNombre || '-'}</td></tr>
+                <tr><th>Color:</th><td>{producto.colorNombre || producto.color?.nombre || '-'}</td></tr>
               </tbody>
             </table>
           </Card>

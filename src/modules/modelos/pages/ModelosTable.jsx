@@ -62,7 +62,7 @@ export default function TiposProductoTable({
                         ? `${tipo.descripcion.substring(0, 50)}...`
                         : tipo.descripcion || "-"}
                     </td>
-                    <td>{[tipo.lineaNombre, tipo.familiaNombre].filter(Boolean).join(" / ") || "-"}</td>
+                    <td>{[tipo.lineaNombre, tipo.familiaNombre, tipo.subfamiliaNombre].filter(Boolean).join(" / ") || "-"}</td>
                     <td>
                       <span className="badge text-bg-light border catalog-code-badge modelos-code-badge">{tipo.codigo || "-"}</span>
                     </td>

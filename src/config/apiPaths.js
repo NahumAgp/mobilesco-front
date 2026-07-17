@@ -24,6 +24,7 @@ export const API_PATHS = {
   LINEAS: `${API_VERSION}/lineas`,
   LINEA_PRODUCTO: `${API_VERSION}/lineas`,
   FAMILIAS: `${API_VERSION}/familias`,
+  SUBFAMILIAS: `${API_VERSION}/subfamilias`,
   MODELOS: `${API_VERSION}/modelos`,
   VARIANTES: `${API_VERSION}/productos`,
   CATEGORIAS: `${API_VERSION}/categorias`,

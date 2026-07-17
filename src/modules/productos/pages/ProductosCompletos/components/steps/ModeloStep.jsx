@@ -84,8 +84,11 @@ const getNombreLinea = (modelo = {}) =>
 const getNombreFamilia = (modelo = {}) =>
   modelo?.familia?.nombre || modelo?.familiaNombre || "";
 
+const getNombreSubfamilia = (modelo = {}) =>
+  modelo?.subfamilia?.nombre || modelo?.subfamiliaNombre || "";
+
 const getModeloLabel = (modelo = {}) => {
-  const ruta = [getNombreLinea(modelo), getNombreFamilia(modelo), modelo?.nombre || "-"].filter(Boolean).join(" / ");
+  const ruta = [getNombreLinea(modelo), getNombreFamilia(modelo), getNombreSubfamilia(modelo), modelo?.nombre || "-"].filter(Boolean).join(" / ");
   return `${modelo.codigo ? `[${modelo.codigo}] ` : ""}${ruta}`;
 };
 
@@ -126,8 +129,10 @@ export default function ModeloStep({ data, onUpdate, borradores, onUpsertDraft }
       descripcion: opcion?.descripcion || "",
       descripcionCorta: opcion?.descripcionCorta || "",
       familiaId: opcion?.familiaId || opcion?.familia?.id || "",
+      subfamiliaId: opcion?.subfamiliaId || opcion?.subfamilia?.id || "",
       familiaRef: undefined,
       familia: opcion?.familia || null,
+      subfamilia: opcion?.subfamilia || null,
       linea: opcion?.linea || null,
       categorias: Array.isArray(opcion?.categorias) ? opcion.categorias : [],
       materiales: Array.isArray(opcion?.materiales) ? opcion.materiales : []

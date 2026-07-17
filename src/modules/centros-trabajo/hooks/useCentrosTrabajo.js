@@ -6,7 +6,7 @@ import {
 
 const PAGE_INFO_DEFAULT = {
   page: 0,
-  size: 10,
+  size: 12,
   totalElements: 0,
   totalPages: 0,
   first: true,
@@ -15,7 +15,7 @@ const PAGE_INFO_DEFAULT = {
   hasPrevious: false
 };
 
-function normalizarPageInfo(data, fallbackPage = 0, fallbackSize = 10) {
+function normalizarPageInfo(data, fallbackPage = 0, fallbackSize = 12) {
   if (!data?.content) {
     const total = Array.isArray(data) ? data.length : 0;
     return {
@@ -52,7 +52,7 @@ export function useCentrosTrabajo(params = {}) {
 
       const data = await obtenerCentrosTrabajo(params);
       setCentrosTrabajo(data?.content || (Array.isArray(data) ? data : []));
-      setPageInfo(normalizarPageInfo(data, params.page ?? 0, params.size ?? 10));
+      setPageInfo(normalizarPageInfo(data, params.page ?? 0, params.size ?? 12));
     } catch (error) {
       console.error("Error cargando centros de trabajo:", error);
       setError("Error cargando centros de trabajo: " + (error.message || "Error desconocido"));

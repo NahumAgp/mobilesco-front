@@ -10,6 +10,11 @@ import {
   obtenerCodigoSugerido
 } from "../services/modelos.js";
 import { obtenerFamilias } from "../../familias/services/familias.js";
+import {
+  crearSubfamilia,
+  obtenerCodigoSubfamiliaSugerido,
+  obtenerSubfamiliasActivas
+} from "../../subfamilias/services/subfamilias.js";
 import { obtenerProductos } from "../../productos/services/productos.js";
 import { materialGateway } from "../../materiales/services/materialGateway.js";
 import MaterialModal from "../../materiales/pages/MaterialModal.jsx";
@@ -192,6 +197,17 @@ const getFamiliaLabel = (familia = {}) => {
   return `${codigo}${lineaNombre ? `${lineaNombre} / ` : ""}${nombre}`;
 };
 
+const getSubfamiliaFamiliaId = (subfamilia = {}) =>
+  subfamilia?.familiaId || subfamilia?.familia_id || subfamilia?.familia?.id || "";
+
+const buildRutaFamiliaValue = (familiaId, subfamiliaId = "") =>
+  [familiaId || "", subfamiliaId || ""].join("::");
+
+const parseRutaFamiliaValue = (value = "") => {
+  const [familiaId = "", subfamiliaId = ""] = String(value || "").split("::");
+  return { familiaId, subfamiliaId };
+};
+
 const getImagenActiva = (imagen) =>
   imagen?.activo ?? imagen?.active ?? imagen?.habilitada ?? true;
 
@@ -249,6 +265,7 @@ export default function ModeloForm({
   const [toastType, setToastType] = useState("success");
   const [erroresBackend, setErroresBackend] = useState({});
   const [familias, setFamilias] = useState([]);
+  const [subfamilias, setSubfamilias] = useState([]);
   const [materialesCatalogo, setMaterialesCatalogo] = useState([]);
   const [materialesSeleccionados, setMaterialesSeleccionados] = useState([]);
   const [materialSeleccionadoId, setMaterialSeleccionadoId] = useState("");
@@ -262,10 +279,18 @@ export default function ModeloForm({
   const [cargandoCategorias, setCargandoCategorias] = useState(false);
   const [mostrarModalMaterial, setMostrarModalMaterial] = useState(false);
   const [mostrarModalCategoria, setMostrarModalCategoria] = useState(false);
+  const [mostrarModalSubfamilia, setMostrarModalSubfamilia] = useState(false);
   const [guardandoCategoria, setGuardandoCategoria] = useState(false);
+  const [guardandoSubfamilia, setGuardandoSubfamilia] = useState(false);
   const [erroresCategoriaModal, setErroresCategoriaModal] = useState({});
+  const [erroresSubfamiliaModal, setErroresSubfamiliaModal] = useState({});
   const [categoriaModalData, setCategoriaModalData] = useState({
     nombre: "",
+    descripcion: ""
+  });
+  const [subfamiliaModalData, setSubfamiliaModalData] = useState({
+    nombre: "",
+    codigo: "",
     descripcion: ""
   });
 
@@ -282,6 +307,7 @@ export default function ModeloForm({
     descripcion: "",
     descripcionCorta: "",
     familiaId: "",
+    subfamiliaId: "",
     activo: true
   });
   const obtenerCodigoSugeridoPorFamilia = useCallback(
@@ -297,8 +323,12 @@ export default function ModeloForm({
   useEffect(() => {
     const cargarCatalogos = async () => {
       try {
-        const familiasResp = await obtenerFamilias();
+        const [familiasResp, subfamiliasResp] = await Promise.all([
+          obtenerFamilias(),
+          obtenerSubfamiliasActivas()
+        ]);
         setFamilias(getLista(familiasResp));
+        setSubfamilias(getLista(subfamiliasResp));
       } catch (error) {
         console.error("Error cargando catalogos:", error);
       }
@@ -405,6 +435,7 @@ export default function ModeloForm({
           descripcion: modelo.descripcion || "",
           descripcionCorta: modelo.descripcionCorta || "",
           familiaId: modelo.familiaId || modelo.familia_id || modelo.familia?.id || "",
+          subfamiliaId: modelo.subfamiliaId || modelo.subfamilia_id || modelo.subfamilia?.id || "",
           activo: modelo.activo ?? true
         });
         setMaterialesSeleccionados(getMaterialesDelModelo(modelo));
@@ -423,6 +454,7 @@ export default function ModeloForm({
             descripcion: data.descripcion || "",
             descripcionCorta: data.descripcionCorta || "",
             familiaId: data.familiaId || data.familia_id || data.familia?.id || "",
+            subfamiliaId: data.subfamiliaId || data.subfamilia_id || data.subfamilia?.id || "",
             activo: data.activo ?? true
           });
           setMaterialesSeleccionados(getMaterialesDelModelo(data));
@@ -443,7 +475,8 @@ export default function ModeloForm({
 
     setFormData((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value
+      [name]: type === "checkbox" ? checked : value,
+      ...(name === "familiaId" ? { subfamiliaId: "" } : {})
     }));
 
     if (erroresBackend[name]) {
@@ -454,6 +487,60 @@ export default function ModeloForm({
       });
     }
   }
+
+  const rutasFamilia = useMemo(() => {
+    return familias.flatMap((familia) => {
+      const familiaId = familia.id ?? familia.familiaId;
+      if (!familiaId) return [];
+      const subfamiliasFamilia = subfamilias.filter(
+        (subfamilia) => String(getSubfamiliaFamiliaId(subfamilia)) === String(familiaId)
+      );
+      const rutaFamilia = {
+        id: buildRutaFamiliaValue(familiaId),
+        familiaId,
+        subfamiliaId: "",
+        label: getFamiliaLabel(familia),
+        search: [familia.codigo, getFamiliaLineaNombre(familia), familia.nombre, familia.descripcion].filter(Boolean).join(" ").toLowerCase()
+      };
+
+      if (subfamiliasFamilia.length === 0) return [rutaFamilia];
+
+      return [
+        rutaFamilia,
+        ...subfamiliasFamilia.map((subfamilia) => ({
+          id: buildRutaFamiliaValue(familiaId, subfamilia.id ?? subfamilia.subfamiliaId),
+          familiaId,
+          subfamiliaId: subfamilia.id ?? subfamilia.subfamiliaId,
+          label: `${getFamiliaLabel(familia)} / ${subfamilia.nombre || "-"}`,
+          search: [
+            familia.codigo,
+            getFamiliaLineaNombre(familia),
+            familia.nombre,
+            subfamilia.codigo,
+            subfamilia.nombre,
+            subfamilia.descripcion
+          ].filter(Boolean).join(" ").toLowerCase()
+        }))
+      ];
+    });
+  }, [familias, subfamilias]);
+
+  const rutaFamiliaValue = buildRutaFamiliaValue(formData.familiaId, formData.subfamiliaId);
+
+  const cambiarRutaFamilia = (value) => {
+    const { familiaId, subfamiliaId } = parseRutaFamiliaValue(value);
+    setFormData((prev) => ({
+      ...prev,
+      familiaId,
+      subfamiliaId
+    }));
+    setErroresBackend((prev) => {
+      const copia = { ...prev };
+      delete copia.familiaId;
+      delete copia.subfamiliaId;
+      return copia;
+    });
+  };
 
   const materialesDisponibles = materialesCatalogo.filter(
     (material) =>
@@ -621,13 +708,105 @@ export default function ModeloForm({
     }
   };
 
+  const abrirModalSubfamilia = async () => {
+    if (!formData.familiaId) {
+      setErroresBackend((prev) => ({
+        ...prev,
+        familiaId: "Selecciona una familia antes de crear una subfamilia"
+      }));
+      return;
+    }
+    setSubfamiliaModalData({ nombre: "", codigo: "", descripcion: "" });
+    setErroresSubfamiliaModal({});
+    setMostrarModalSubfamilia(true);
+  };
+
+  const cerrarModalSubfamilia = () => {
+    if (guardandoSubfamilia) return;
+    setMostrarModalSubfamilia(false);
+    setSubfamiliaModalData({ nombre: "", codigo: "", descripcion: "" });
+    setErroresSubfamiliaModal({});
+  };
+
+  const manejarCambioSubfamiliaModal = async (event) => {
+    const { name, value } = event.target;
+    setSubfamiliaModalData((prev) => ({
+      ...prev,
+      [name]: value
+    }));
+
+    if (name === "nombre" && value.trim() && formData.familiaId) {
+      try {
+        const sugerido = await obtenerCodigoSubfamiliaSugerido(value.trim(), formData.familiaId);
+        setSubfamiliaModalData((prev) => ({
+          ...prev,
+          codigo: sugerido?.codigo || prev.codigo
+        }));
+      } catch {
+        // El codigo se valida tambien en backend al guardar.
+      }
+    }
+
+    if (erroresSubfamiliaModal[name]) {
+      setErroresSubfamiliaModal((prev) => {
+        const copia = { ...prev };
+        delete copia[name];
+        return copia;
+      });
+    }
+  };
+
+  const guardarSubfamilia = async (event) => {
+    event.preventDefault();
+
+    try {
+      setGuardandoSubfamilia(true);
+      setErroresSubfamiliaModal({});
+
+      const payload = {
+        nombre: subfamiliaModalData.nombre?.trim() || "",
+        codigo: subfamiliaModalData.codigo?.trim() || null,
+        descripcion: subfamiliaModalData.descripcion?.trim() || null,
+        familia_id: Number(formData.familiaId)
+      };
+
+      const subfamiliaCreada = await crearSubfamilia(payload);
+      const listaActualizada = getLista(await obtenerSubfamiliasActivas());
+      setSubfamilias(listaActualizada);
+
+      const idCreado = subfamiliaCreada?.id ?? subfamiliaCreada?.subfamiliaId;
+      if (idCreado) {
+        setFormData((prev) => ({
+          ...prev,
+          subfamiliaId: idCreado
+        }));
+      }
+
+      setMostrarModalSubfamilia(false);
+      setSubfamiliaModalData({ nombre: "", codigo: "", descripcion: "" });
+      setToastType("success");
+      setToastMessage("Subfamilia creada y seleccionada.");
+    } catch (error) {
+      if (error.errors) {
+        setErroresSubfamiliaModal(error.errors);
+      } else {
+        setToastType("danger");
+        setToastMessage(error.message || "No se pudo crear la subfamilia.");
+      }
+    } finally {
+      setGuardandoSubfamilia(false);
+    }
+  };
+
   async function handleSubmit(e) {
     e.preventDefault();
 
     try {
       setErroresBackend({});
       const rawFamiliaId = formData.familiaId?.toString().trim();
+      const rawSubfamiliaId = formData.subfamiliaId?.toString().trim();
       const familiaIdNormalizado = rawFamiliaId && /^\d+$/.test(rawFamiliaId) ? Number(rawFamiliaId) : null;
+      const subfamiliaIdNormalizado = rawSubfamiliaId && /^\d+$/.test(rawSubfamiliaId) ? Number(rawSubfamiliaId) : null;
 
       if (!familiaIdNormalizado) {
         setErroresBackend((prev) => ({
@@ -659,6 +838,7 @@ export default function ModeloForm({
         descripcion: formData.descripcion?.trim() || "",
         descripcionCorta: formData.descripcionCorta?.trim() || "",
         familia_id: familiaIdNormalizado,
+        subfamilia_id: subfamiliaIdNormalizado,
         activo: Boolean(formData.activo),
         categorias: categorias.map((categoria) => Object.fromEntries(Object.entries(categoria).filter(([key]) => key !== "orden"))),
         materiales: materialesSeleccionados
@@ -843,17 +1023,26 @@ export default function ModeloForm({
 
                   <div className="col-md-4">
                     <SearchableSelect
-                      label="Familia"
-                      value={formData.familiaId}
-                      options={familias}
-                      onChange={(value) => handleChange({ target: { name: "familiaId", value } })}
-                      placeholder="Selecciona una familia..."
+                      label="Familia / Subfamilia"
+                      value={rutaFamiliaValue}
+                      options={rutasFamilia}
+                      onChange={cambiarRutaFamilia}
+                      placeholder="Selecciona una ruta..."
                       searchPlaceholder="Escribe código, nombre o descripción..."
                       error={erroresBackend.familiaId || erroresExternos.familiaId}
-                      getOptionValue={(familia) => familia.id ?? familia.familiaId}
-                      getOptionLabel={getFamiliaLabel}
-                      getOptionSearchText={(familia) =>
-                        [familia.codigo, getFamiliaLineaNombre(familia), familia.nombre, familia.descripcion].filter(Boolean).join(" ").toLowerCase()
+                      getOptionValue={(ruta) => ruta.id}
+                      getOptionLabel={(ruta) => ruta.label}
+                      getOptionSearchText={(ruta) => ruta.search}
+                      actionNode={
+                        <button
+                          type="button"
+                          className="btn btn-outline-primary px-3"
+                          onClick={abrirModalSubfamilia}
+                          title="Nueva subfamilia"
+                          aria-label="Nueva subfamilia"
+                        >
+                          <i className="bi bi-plus-lg"></i>
+                        </button>
                       }
                     />
                   </div>
@@ -899,6 +1088,7 @@ export default function ModeloForm({
                         `${material.codigo ? `[${material.codigo}] ` : ""}${material.nombre || "-"}`
                       }
                       helperText="Selecciona materiales para este modelo sin sacarlos del catálogo general."
+                      keepOpenOnSelect
                       actionNode={
                         <button
                           type="button"
@@ -991,6 +1181,7 @@ export default function ModeloForm({
                         `${categoria.codigo ? `[${categoria.codigo}] ` : ""}${categoria.nombre || "-"}`
                       }
                       helperText="Selecciona una categoría del catálogo global y se enlazará al modelo."
+                      keepOpenOnSelect
                       actionNode={
                         <button
                           type="button"
@@ -1252,6 +1443,94 @@ export default function ModeloForm({
                   </button>
                   <button type="submit" className="btn modelos-brand-primary" disabled={guardandoCategoria}>
                     {guardandoCategoria ? "Guardando..." : "Guardar y usar"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {mostrarModalSubfamilia && (
+        <div
+          className="modal fade show"
+          style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)" }}
+          tabIndex="-1"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="modal-dialog modal-lg modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Nueva subfamilia</h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={cerrarModalSubfamilia}
+                  disabled={guardandoSubfamilia}
+                  aria-label="Cerrar"
+                ></button>
+              </div>
+
+              <form onSubmit={guardarSubfamilia} noValidate>
+                <div className="modal-body">
+                  <div className="row g-3">
+                    <div className="col-md-8">
+                      <label className="form-label fw-semibold">
+                        Nombre <span className="text-danger">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="nombre"
+                        className={`form-control ${erroresSubfamiliaModal.nombre ? "is-invalid" : "border-soft"}`}
+                        value={subfamiliaModalData.nombre}
+                        onChange={manejarCambioSubfamiliaModal}
+                        placeholder="Ej: Mesabanco, Sillas con paleta"
+                        autoFocus
+                      />
+                      <div className="invalid-feedback">{erroresSubfamiliaModal.nombre}</div>
+                    </div>
+
+                    <div className="col-md-4">
+                      <label className="form-label fw-semibold">Codigo</label>
+                      <input
+                        type="text"
+                        name="codigo"
+                        className={`form-control ${erroresSubfamiliaModal.codigo ? "is-invalid" : "border-soft"}`}
+                        value={subfamiliaModalData.codigo}
+                        onChange={manejarCambioSubfamiliaModal}
+                        maxLength="10"
+                        placeholder="Automatico"
+                      />
+                      <div className="invalid-feedback">{erroresSubfamiliaModal.codigo}</div>
+                    </div>
+
+                    <div className="col-md-12">
+                      <label className="form-label fw-semibold">Descripcion</label>
+                      <textarea
+                        name="descripcion"
+                        className={`form-control ${erroresSubfamiliaModal.descripcion ? "is-invalid" : "border-soft"}`}
+                        value={subfamiliaModalData.descripcion}
+                        onChange={manejarCambioSubfamiliaModal}
+                        rows="3"
+                        placeholder="Descripcion opcional"
+                      />
+                      <div className="invalid-feedback">{erroresSubfamiliaModal.descripcion}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="modal-footer">
+                  <button
+                    type="button"
+                    className="btn btn-light"
+                    onClick={cerrarModalSubfamilia}
+                    disabled={guardandoSubfamilia}
+                  >
+                    Cancelar
+                  </button>
+                  <button type="submit" className="btn modelos-brand-primary" disabled={guardandoSubfamilia}>
+                    {guardandoSubfamilia ? "Guardando..." : "Guardar y usar"}
                   </button>
                 </div>
               </form>

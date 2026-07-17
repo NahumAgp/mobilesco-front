@@ -19,7 +19,9 @@ export default function ProductosTable({
               <th>Nombre</th>
               <th>Tipo</th>
               <th>Línea</th>
-              <th>Categoría</th>
+              <th>Familia</th>
+              <th>Subfamilia</th>
+              <th>Nivel</th>
               <th>Material</th>
               <th>Peso volumetrico (kg)</th>
               <th>Estado</th>
@@ -44,9 +46,11 @@ export default function ProductosTable({
                   </td>
                   <td>{producto.tipoProductoNombre || '-'}</td>
                   <td>{producto.lineaNombre || '-'}</td>
-                  <td>{producto.categoriaNombre || '-'}</td>
+                  <td>{producto.familiaNombre || producto.familia?.nombre || '-'}</td>
+                  <td>{producto.subfamiliaNombre || producto.subfamilia?.nombre || producto.modelo?.subfamilia?.nombre || '-'}</td>
+                  <td>{producto.nivelNombre || producto.categoriaNombre || '-'}</td>
                   <td>{producto.materialNombre || '-'}</td>
-                  <td className="text-end">{producto.pesoKg != null ? Number(producto.pesoKg).toFixed(2) : '-'}</td>
+                  <td className="text-end">{producto.pesoVolumetrico != null ? Number(producto.pesoVolumetrico).toFixed(2) : '-'}</td>
                   <td>
                     <CatalogStatusBadge active={producto.activo} />
                   </td>
@@ -88,7 +92,7 @@ export default function ProductosTable({
               ))
             ) : (
               <tr>
-                <td colSpan="10" className="text-center text-muted py-5">
+                <td colSpan="12" className="text-center text-muted py-5">
                   <i className="bi bi-box fs-1 d-block mb-3 text-secondary"></i>
                   <span className="fs-5">No hay productos registrados</span>
                   <p className="text-secondary mt-2">Comienza creando un nuevo producto</p>

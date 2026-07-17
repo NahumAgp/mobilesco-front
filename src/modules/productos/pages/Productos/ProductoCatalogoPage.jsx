@@ -2,18 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import PageHeader from "../../../../components/Sistema/PageHeader";
-import CatalogPagination from "../../../../components/ui/CatalogPagination.jsx";
 import { API_BASE_URL } from "../../../../config/apiConfig";
 import { obtenerProductos } from "../../services/productos";
 import "./ProductoCatalogoPage.css";
 
-const PAGE_SIZE = 30;
-const PAGE_INFO_DEFAULT = {
-  page: 0,
-  size: PAGE_SIZE,
-  totalElements: 0,
-  totalPages: 0
-};
+const FETCH_PAGE_SIZE = 200;
 
 const COLOR_FALLBACKS = [
   { pattern: /blanco|white/i, value: "#f8fafc" },
@@ -141,8 +134,21 @@ const getModeloInfo = (productos) => {
     titulo: modelo || base?.nombre || "Modelo",
     modelo: modelo || "Sin modelo",
     familia: getTexto(base?.familiaNombre, base?.familia?.nombre, base?.modelo?.familia?.nombre),
+    subfamilia: getTexto(base?.subfamiliaNombre, base?.subfamilia?.nombre, base?.modelo?.subfamilia?.nombre),
     linea: getTexto(base?.lineaNombre, base?.linea?.nombre, base?.modelo?.familia?.linea?.nombre)
   };
+};
+
+const getLineaKey = (producto) => {
+  const linea =
+    producto?.lineaId ||
+    producto?.linea?.id ||
+    producto?.modelo?.familia?.linea?.id ||
+    producto?.lineaNombre ||
+    producto?.linea?.nombre ||
+    producto?.modelo?.familia?.linea?.nombre ||
+    "sin-linea";
+  return normalizar(linea || "sin-linea");
 };
 
 const getAtributo = (producto, tipo) => {
@@ -255,6 +261,38 @@ const construirModelos = (productos) => {
     .sort((a, b) => a.titulo.localeCompare(b.titulo, "es", { numeric: true, sensitivity: "base" }));
 };
 
+const construirLineas = (productos) => {
+  const mapa = new Map();
+  productos.forEach((producto) => {
+    const key = getLineaKey(producto);
+    if (!mapa.has(key)) {
+      mapa.set(key, {
+        key,
+        nombre: getTexto(
+          producto?.lineaNombre,
+          producto?.linea?.nombre,
+          producto?.modelo?.familia?.linea?.nombre,
+          "Sin linea"
+        ),
+        productos: []
+      });
+    }
+    mapa.get(key).productos.push(producto);
+  });
+
+  return Array.from(mapa.values())
+    .map((linea) => {
+      const modelos = construirModelos(linea.productos);
+      return {
+        ...linea,
+        modelos,
+        totalModelos: modelos.length,
+        totalProductos: linea.productos.length
+      };
+    })
+    .sort((a, b) => a.nombre.localeCompare(b.nombre, "es", { numeric: true, sensitivity: "base" }));
+};
+
 export default function ProductoCatalogoPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -263,8 +301,7 @@ export default function ProductoCatalogoPage() {
   const [error, setError] = useState("");
   const [busqueda, setBusqueda] = useState("");
   const [soloActivos, setSoloActivos] = useState(true);
-  const [page, setPage] = useState(0);
-  const [pageInfo, setPageInfo] = useState(PAGE_INFO_DEFAULT);
+  const [lineaSeleccionadaKey, setLineaSeleccionadaKey] = useState("");
   const [imagenSeleccionada, setImagenSeleccionada] = useState(0);
 
   useEffect(() => {
@@ -272,47 +309,63 @@ export default function ProductoCatalogoPage() {
       try {
         setLoading(true);
         setError("");
-        const data = await obtenerProductos({
-          page,
-          size: PAGE_SIZE,
-          busqueda,
-          activo: soloActivos ? true : undefined,
-          sortBy: "modeloNombre",
-          direction: "asc"
-        });
-        setProductos(getLista(data));
-        setPageInfo(data?.content ? {
-          page: data.page ?? page,
-          size: data.size ?? PAGE_SIZE,
-          totalElements: data.totalElements ?? 0,
-          totalPages: data.totalPages ?? 0
-        } : PAGE_INFO_DEFAULT);
+        const acumulados = [];
+        let pagina = 0;
+        let totalPaginas = 1;
+
+        do {
+          const data = await obtenerProductos({
+            page: pagina,
+            size: FETCH_PAGE_SIZE,
+            busqueda,
+            activo: soloActivos ? true : undefined,
+            sortBy: "modeloNombre",
+            direction: "asc"
+          });
+
+          const lista = getLista(data);
+          acumulados.push(...lista);
+          totalPaginas = data?.content ? Number(data.totalPages || 0) : 1;
+          pagina += 1;
+
+          if (!data?.content) break;
+        } while (pagina < totalPaginas);
+
+        setProductos(acumulados);
       } catch (err) {
         setError(err?.message || "No se pudieron cargar los productos.");
-        setPageInfo(PAGE_INFO_DEFAULT);
+        setProductos([]);
       } finally {
         setLoading(false);
       }
     };
 
     cargarProductos();
-  }, [busqueda, page, soloActivos]);
+  }, [busqueda, soloActivos]);
 
   const productosFiltrados = productos;
-  const totalElements = pageInfo.totalElements || 0;
-  const totalPages = pageInfo.totalPages || 0;
-  const paginaActual = totalPages > 0 ? Math.min(page, totalPages - 1) : 0;
   const resetPage = (updater) => {
-    setPage(0);
+    setLineaSeleccionadaKey("");
     updater();
   };
 
-  const modelos = useMemo(() => construirModelos(productosFiltrados), [productosFiltrados]);
+  const lineas = useMemo(() => construirLineas(productosFiltrados), [productosFiltrados]);
+  const lineaSeleccionada = useMemo(
+    () => lineas.find((linea) => linea.key === lineaSeleccionadaKey) || lineas[0] || null,
+    [lineaSeleccionadaKey, lineas]
+  );
+  const modelos = lineaSeleccionada?.modelos || [];
   const productoSeleccionado = useMemo(() => {
     const porRuta = productosFiltrados.find((producto) => String(getProductoId(producto)) === String(id));
     if (porRuta) return porRuta;
     return modelos[0]?.productos?.[0] || null;
   }, [id, modelos, productosFiltrados]);
+
+  useEffect(() => {
+    if (!productoSeleccionado) return;
+    const key = getLineaKey(productoSeleccionado);
+    if (key && key !== lineaSeleccionadaKey) setLineaSeleccionadaKey(key);
+  }, [lineaSeleccionadaKey, productoSeleccionado]);
 
   const modeloSeleccionado = useMemo(() => {
     if (!productoSeleccionado) return null;
@@ -409,7 +462,7 @@ export default function ProductoCatalogoPage() {
           <span>Solo activos</span>
         </label>
         <div className="producto-catalogo-count">
-          {modelos.length} modelos / {productosFiltrados.length} productos
+          {lineas.length} lineas / {productosFiltrados.length} productos
         </div>
       </section>
 
@@ -425,6 +478,22 @@ export default function ProductoCatalogoPage() {
 
       {!loading && !error && productoSeleccionado && (
         <>
+        <nav className="producto-catalogo-line-tabs" aria-label="Lineas de producto">
+          {lineas.map((linea) => (
+            <button
+              key={linea.key}
+              type="button"
+              className={linea.key === lineaSeleccionada?.key ? "is-active" : ""}
+              onClick={() => {
+                setLineaSeleccionadaKey(linea.key);
+                if (linea.modelos[0]?.productos?.[0]) cambiarProducto(linea.modelos[0].productos[0]);
+              }}
+            >
+              <strong>{linea.nombre}</strong>
+              <span>{linea.totalModelos} modelos · {linea.totalProductos} productos</span>
+            </button>
+          ))}
+        </nav>
         <div className="producto-catalogo-shell">
           <aside className="producto-catalogo-groups" aria-label="Grupos de productos">
             <h2>Modelos</h2>
@@ -447,7 +516,7 @@ export default function ProductoCatalogoPage() {
                     )}
                     <span className="producto-catalogo-group-copy">
                       <strong>{modelo.modelo || modelo.titulo}</strong>
-                      <small>{[modelo.linea, modelo.familia].filter(Boolean).join(" - ") || "Sin clasificacion"}</small>
+                      <small>{[modelo.linea, modelo.familia, modelo.subfamilia].filter(Boolean).join(" - ") || "Sin clasificacion"}</small>
                       <span>
                         {modelo.productos.length} productos · {modelo.materiales.length} materiales · {modelo.niveles.length} niveles
                       </span>
@@ -471,7 +540,7 @@ export default function ProductoCatalogoPage() {
                 <span>Modelo</span>
                 <strong>{modeloSeleccionado?.modelo || "-"}</strong>
                 <small>
-                  {[modeloSeleccionado?.linea, modeloSeleccionado?.familia].filter(Boolean).join(" - ") || "Sin clasificacion"}
+                  {[modeloSeleccionado?.linea, modeloSeleccionado?.familia, modeloSeleccionado?.subfamilia].filter(Boolean).join(" - ") || "Sin clasificacion"}
                 </small>
               </div>
               <div className="producto-catalogo-model-stats">
@@ -557,6 +626,10 @@ export default function ProductoCatalogoPage() {
                 <div>
                   <span>Familia</span>
                   <strong>{modeloSeleccionado?.familia || "-"}</strong>
+                </div>
+                <div>
+                  <span>Subfamilia</span>
+                  <strong>{modeloSeleccionado?.subfamilia || "-"}</strong>
                 </div>
                 <div>
                   <span>Modelo</span>
@@ -662,17 +735,6 @@ export default function ProductoCatalogoPage() {
             </section>
           </main>
         </div>
-        <CatalogPagination
-          currentPage={paginaActual}
-          totalPages={totalPages}
-          totalElements={totalElements}
-          pageSize={PAGE_SIZE}
-          currentCount={productos.length}
-          itemLabel="productos"
-          ariaLabel="Paginacion del catalogo visual de productos"
-          onPageChange={setPage}
-          className="mt-3"
-        />
         </>
       )}
     </>

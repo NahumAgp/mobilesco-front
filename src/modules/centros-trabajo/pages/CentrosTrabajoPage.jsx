@@ -8,7 +8,7 @@ import PageHeader from "../../../components/Sistema/PageHeader.jsx";
 import CatalogPagination from "../../../components/ui/CatalogPagination.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 12;
 
 export default function CentrosTrabajoPage() {
 

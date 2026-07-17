@@ -8,6 +8,7 @@ const COLUMNAS_ORDENABLES = {
   nombre: "Descripcion",
   lineaNombre: "Linea",
   familiaNombre: "Familia",
+  subfamiliaNombre: "Subfamilia",
   modeloNombre: "Modelo",
   nivelNombre: "Nivel",
   materialNombre: "Material",
@@ -77,6 +78,15 @@ const getFamiliaNombre = (producto) =>
     producto?.modelo?.familia?.nombre,
     producto?.productoBase?.familia?.nombre,
     producto?.familia
+  ]);
+
+const getSubfamiliaNombre = (producto) =>
+  getEtiquetaEntidad([
+    producto?.subfamiliaNombre,
+    producto?.subfamilia?.nombre,
+    producto?.modelo?.subfamilia?.nombre,
+    producto?.productoBase?.subfamilia?.nombre,
+    producto?.subfamilia
   ]);
 
 const getNivelNombre = (producto) =>
@@ -195,6 +205,7 @@ export default function ProductosListadoTable({
             <col className="variantes-col-descripcion" />
             <col className="variantes-col-linea" />
             <col className="variantes-col-familia" />
+            <col className="variantes-col-subfamilia" />
             <col className="variantes-col-modelo" />
             <col className="variantes-col-nivel" />
             <col className="variantes-col-material" />
@@ -209,6 +220,7 @@ export default function ProductosListadoTable({
               {renderHeader("nombre", "Descripcion")}
               {renderHeader("lineaNombre", "Linea")}
               {renderHeader("familiaNombre", "Familia")}
+              {renderHeader("subfamiliaNombre", "Subfamilia")}
               {renderHeader("modeloNombre", "Modelo")}
               {renderHeader("nivelNombre", "Nivel")}
               {renderHeader("materialNombre", "Material")}
@@ -263,6 +275,7 @@ export default function ProductosListadoTable({
                     </td>
                     <td>{getLineaNombre(producto)}</td>
                     <td>{getFamiliaNombre(producto)}</td>
+                    <td>{getSubfamiliaNombre(producto)}</td>
                     <td>{getProductoBaseNombre(producto)}</td>
                     <td>{getNivelNombre(producto)}</td>
                     <td>
@@ -294,7 +307,7 @@ export default function ProductosListadoTable({
               })
             ) : (
               <tr>
-                <td colSpan="11" className="text-center text-muted py-5">
+                <td colSpan="12" className="text-center text-muted py-5">
                   <i className="bi bi-box fs-1 d-block mb-3 text-secondary"></i>
                   <span className="fs-5">No hay productos registrados</span>
                   <p className="text-secondary mt-2">Crea un producto para comenzar</p>

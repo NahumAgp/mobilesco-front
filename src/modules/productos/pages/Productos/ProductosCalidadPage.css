@@ -1,0 +1,212 @@
+.productos-calidad-score {
+  display: grid;
+  grid-template-columns: auto minmax(180px, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  padding: 16px 18px;
+  margin-bottom: 16px;
+  background: var(--ms-surface);
+  border: 1px solid var(--ms-line-soft);
+}
+
+.productos-calidad-score span,
+.productos-calidad-score small,
+.productos-calidad-toolbar span {
+  color: #5b6b76;
+  font-weight: 700;
+}
+
+.productos-calidad-score strong {
+  display: block;
+  color: #1f3f37;
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.productos-calidad-progress {
+  height: 12px;
+  overflow: hidden;
+  background: #e8eef1;
+}
+
+.productos-calidad-progress div {
+  height: 100%;
+  background: #2f6b58;
+}
+
+.productos-calidad-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.productos-calidad-metric {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 58px;
+  padding: 10px 12px;
+  border: 1px solid var(--ms-line-soft);
+  background: var(--ms-surface);
+  color: #21343d;
+  text-align: left;
+}
+
+.productos-calidad-metric:hover,
+.productos-calidad-metric:focus {
+  border-color: #739383;
+  outline: none;
+}
+
+.productos-calidad-metric.is-active {
+  border-color: #2f6b58;
+  box-shadow: inset 0 -3px 0 #2f6b58;
+}
+
+.productos-calidad-metric i {
+  color: #45626d;
+  font-size: 1.05rem;
+}
+
+.productos-calidad-metric span {
+  min-width: 0;
+  overflow: hidden;
+  color: #51626d;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.productos-calidad-metric strong {
+  color: #1f3f37;
+  font-size: 1.35rem;
+}
+
+.productos-calidad-metric.tone-danger i,
+.productos-calidad-metric.tone-danger strong {
+  color: #a33d34;
+}
+
+.productos-calidad-metric.tone-warning i,
+.productos-calidad-metric.tone-warning strong {
+  color: #9a651a;
+}
+
+.productos-calidad-metric.tone-info i,
+.productos-calidad-metric.tone-info strong {
+  color: #2b6675;
+}
+
+.productos-calidad-toolbar {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(190px, 260px) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  background: var(--ms-surface);
+  border: 1px solid var(--ms-line-soft);
+}
+
+.productos-calidad-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid #d8e0e5;
+  background: #f8fafc;
+}
+
+.productos-calidad-search i {
+  color: #627480;
+}
+
+.productos-calidad-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+}
+
+.productos-calidad-table {
+  overflow-x: auto;
+  background: var(--ms-surface);
+  border: 1px solid var(--ms-line-soft);
+}
+
+.productos-calidad-table th {
+  color: #405461;
+  font-size: 0.78rem;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.productos-calidad-name {
+  max-width: 310px;
+  overflow: hidden;
+  color: #1f2933;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.productos-calidad-table small {
+  display: block;
+  max-width: 310px;
+  overflow: hidden;
+  color: #687985;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.productos-calidad-route,
+.productos-calidad-attrs,
+.productos-calidad-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 180px;
+}
+
+.productos-calidad-route span,
+.productos-calidad-attrs span {
+  padding: 3px 8px;
+  background: #eef4f1;
+  color: #28483f;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.productos-calidad-attrs span {
+  background: #f2f4f6;
+  color: #455761;
+}
+
+.productos-calidad-badges {
+  min-width: 240px;
+}
+
+.productos-calidad-empty {
+  padding: 34px 16px;
+  color: #60717c;
+  font-weight: 700;
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .productos-calidad-score,
+  .productos-calidad-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .productos-calidad-score small,
+  .productos-calidad-toolbar span {
+    justify-self: start;
+  }
+}

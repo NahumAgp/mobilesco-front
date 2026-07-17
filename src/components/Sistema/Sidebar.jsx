@@ -141,10 +141,12 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
             <div className={`collapse sidebar-submenu ${openSubmenu === "productos" ? "show" : ""}`} id="menuProductos">
               {can("VIEW_PRODUCTS") && <LinkItem to="/lineas-producto" label="Lineas" icon="bi-collection" sub onClick={handleNavigation} />}
               {can("VIEW_PRODUCTS") && <LinkItem to="/familias" label="Familias" icon="bi-diagram-3" sub onClick={handleNavigation} />}
+              {can("VIEW_PRODUCTS") && <LinkItem to="/subfamilias" label="Subfamilias" icon="bi-diagram-2" sub onClick={handleNavigation} />}
               {can("VIEW_PRODUCTS") && <LinkItem to="/modelos" label="Modelos" icon="bi-boxes" sub onClick={handleNavigation} />}
               {can("VIEW_PRODUCTS") && <LinkItem to="/materiales" label="Materiales" icon="bi-layers" sub onClick={handleNavigation} />}
               {can("VIEW_PRODUCTS") && <LinkItem to="/colores" label="Colores" icon="bi-palette" sub onClick={handleNavigation} />}
               {can("VIEW_PRODUCTS") && <LinkItem to="/productos" label="Productos" icon="bi-box-seam" onClick={handleNavigation} />}
+              {can("VIEW_PRODUCTS") && <LinkItem to="/productos/calidad" label="Calidad de datos" icon="bi-clipboard-check" sub onClick={handleNavigation} />}
               {can("VIEW_PRODUCT_CATALOG") && <LinkItem to="/productos/catalogo" label="Catalogo visual" icon="bi-images" sub onClick={handleNavigation} />}
             </div>
           </div>

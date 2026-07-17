@@ -26,6 +26,8 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 import RoleRoute from "./components/auth/RoleRoute";
 import FamiliasPage from "./modules/familias/pages/FamiliasPage.jsx";
 import FamiliaFormPage from "./modules/familias/pages/FamiliaFormPage.jsx";
+import SubfamiliasPage from "./modules/subfamilias/pages/SubfamiliasPage.jsx";
+import SubfamiliaFormPage from "./modules/subfamilias/pages/SubfamiliaFormPage.jsx";
 
 import LineaProductoFormPage from "./modules/lineas-producto/pages/LineaProductoFormPage.jsx";
 import LineaProductoPage from "./modules/lineas-producto/pages/LineaProductoPage.jsx";
@@ -65,6 +67,7 @@ import CompraDetallePage from "./modules/compras/pages/CompraDetallePage.jsx";
 import ProductoFormPage from "./modules/productos/pages/Productos/ProductoFormPage.jsx";
 import ProductosCompletosPage from "./modules/productos/pages/ProductosCompletos/ProductosCompletosPage.jsx";
 import ProductoCatalogoPage from "./modules/productos/pages/Productos/ProductoCatalogoPage.jsx";
+import ProductosCalidadPage from "./modules/productos/pages/Productos/ProductosCalidadPage.jsx";
 import ProductoInsumosBOMPage from "./modules/productos/pages/Productos/ProductoInsumosBOMPage.jsx";
 import ProductoOperacionesBOMPage from "./modules/productos/pages/Productos/ProductoOperacionesBOMPage.jsx";
 import UsuariosAccesoPage from "./modules/usuarios/pages/UsuariosAccesoPage.jsx";
@@ -152,9 +155,14 @@ export default function App() {
         <Route path="/unidades-medida/:id" element={withPermission(<UnidadMedidaFormPage />, "VIEW_INVENTORY")} />
 
         {/* FAMILIAS */}
-         <Route path="/familias" element={withPermission(<FamiliasPage />, "VIEW_PRODUCTS")} />
-         <Route path="/familias/nuevo" element={withPermission(<FamiliaFormPage />, "VIEW_PRODUCTS")} />
-         <Route path="/familias/:id" element={withPermission(<FamiliaFormPage />, "VIEW_PRODUCTS")} />
+        <Route path="/familias" element={withPermission(<FamiliasPage />, "VIEW_PRODUCTS")} />
+        <Route path="/familias/nuevo" element={withPermission(<FamiliaFormPage />, "VIEW_PRODUCTS")} />
+        <Route path="/familias/:id" element={withPermission(<FamiliaFormPage />, "VIEW_PRODUCTS")} />
+
+        {/* SUBFAMILIAS */}
+        <Route path="/subfamilias" element={withPermission(<SubfamiliasPage />, "VIEW_PRODUCTS")} />
+        <Route path="/subfamilias/nuevo" element={withPermission(<SubfamiliaFormPage />, "VIEW_PRODUCTS")} />
+        <Route path="/subfamilias/:id" element={withPermission(<SubfamiliaFormPage />, "VIEW_PRODUCTS")} />
 
         {/* LINEA - PRODUCTO */}
         <Route path="/lineas-producto" element={withPermission(<LineaProductoPage />, "VIEW_PRODUCTS")} />
@@ -236,6 +244,7 @@ export default function App() {
         <Route path="/productos" element={withPermission(<ProductosCompletosPage />, "VIEW_PRODUCTS")} />
         <Route path="/productos/catalogo" element={withPermission(<ProductoCatalogoPage />, "VIEW_PRODUCT_CATALOG")} />
         <Route path="/productos/catalogo/:id" element={withPermission(<ProductoCatalogoPage />, "VIEW_PRODUCT_CATALOG")} />
+        <Route path="/productos/calidad" element={withPermission(<ProductosCalidadPage />, "VIEW_PRODUCTS")} />
         <Route path="/productos/nuevo" element={withPermission(<ProductosCompletosPage iniciarCreacion />, "VIEW_PRODUCTS")} />
         <Route path="/productos/:id" element={withPermission(<ProductoFormPage />, "VIEW_PRODUCTS")} />
         <Route path="/productos/:id/ver" element={withPermission(<ProductoDetalleRedirect />, "VIEW_PRODUCTS")} />
