@@ -620,6 +620,19 @@
   background: #285349;
 }
 
+.producto-operacion-capture-note {
+  border-color: rgba(184, 103, 45, 0.2);
+  background: linear-gradient(135deg, rgba(255, 244, 235, 0.95), rgba(255, 255, 255, 0.96));
+}
+
+.producto-operacion-capture-note > i {
+  background: #b8672d;
+}
+
+.producto-operacion-cantidad {
+  width: 88px;
+}
+
 .producto-insumo-capture-note div {
   display: flex;
   flex-direction: column;

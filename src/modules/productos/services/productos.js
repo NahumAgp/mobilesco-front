@@ -145,6 +145,13 @@ export function actualizarOperacionDeProducto(productoId, operacionId, operacion
   });
 }
 
+export function aplicarCantidadesOperacionesMismoNivel(productoId, operaciones) {
+  return request(`${API_PATHS.PRODUCTOS}/${productoId}/operaciones/aplicar-mismo-nivel`, {
+    method: "PUT",
+    body: JSON.stringify(operaciones),
+  });
+}
+
 export function reordenarOperaciones(productoId, operacionesIds) {
   return request(`${API_PATHS.PRODUCTOS}/${productoId}/operaciones/reordenar`, {
     method: "PUT",

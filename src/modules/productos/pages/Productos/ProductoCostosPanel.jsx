@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   aplicarCantidadesInsumosMismoNivel,
+  aplicarCantidadesOperacionesMismoNivel,
   actualizarInsumoDeProducto,
+  actualizarOperacionDeProducto,
   obtenerEstructuraCostos,
 } from "../../services/productos.js";
 import Card from "../../../../components/ui/Card.jsx";
@@ -126,6 +128,12 @@ export default function ProductoCostosPanel({ productoId, embedded = false, summ
   const [guardandoCantidades, setGuardandoCantidades] = useState(false);
   const [aplicandoNivel, setAplicandoNivel] = useState(false);
   const [mensajeCantidades, setMensajeCantidades] = useState("");
+  const [errorInsumos, setErrorInsumos] = useState("");
+  const [cantidadesOperaciones, setCantidadesOperaciones] = useState({});
+  const [guardandoOperaciones, setGuardandoOperaciones] = useState(false);
+  const [aplicandoOperacionesNivel, setAplicandoOperacionesNivel] = useState(false);
+  const [mensajeOperaciones, setMensajeOperaciones] = useState("");
+  const [errorOperaciones, setErrorOperaciones] = useState("");
 
   const cargar = useCallback(async () => {
     if (!productoId) {
@@ -140,6 +148,9 @@ export default function ProductoCostosPanel({ productoId, embedded = false, summ
       setEstructura(data);
       setCantidades(Object.fromEntries(
         (data.insumos || []).map((item) => [item.insumoId, item.cantidad == null ? "" : String(item.cantidad)])
+      ));
+      setCantidadesOperaciones(Object.fromEntries(
+        (data.operaciones || []).map((item) => [item.operacionId, item.cantidad == null ? "" : String(item.cantidad)])
       ));
     } catch (e) {
       console.error("Error cargando estructura de costos:", e);
@@ -177,18 +188,33 @@ export default function ProductoCostosPanel({ productoId, embedded = false, summ
     return total + cantidad * (1 + desperdicio / 100) * Number(item.costoUnitario || 0);
   }, 0), [cantidades, estructura?.insumos]);
 
+  const operacionesPayload = useMemo(() => (estructura?.operaciones || []).map((item, index) => ({
+    operacionId: item.operacionId,
+    cantidad: Number(cantidadesOperaciones[item.operacionId]),
+    orden: item.orden || index + 1,
+    observaciones: item.observaciones || null,
+  })), [cantidadesOperaciones, estructura?.operaciones]);
+
+  const cantidadesOperacionesValidas = operacionesPayload.length > 0
+    && operacionesPayload.every((item) => Number.isInteger(item.cantidad) && item.cantidad > 0);
+
+  const totalOperacionesCapturado = useMemo(() => (estructura?.operaciones || []).reduce((total, item) => {
+    const cantidad = Number(cantidadesOperaciones[item.operacionId] || 0);
+    return total + cantidad * Number(item.tiempoOperacion || 0) * Number(item.costoMinutoOperacion || 0);
+  }, 0), [cantidadesOperaciones, estructura?.operaciones]);
+
   const notificarActualizacion = () => {
     window.dispatchEvent(new CustomEvent("producto-costos-actualizados", { detail: { productoId } }));
   };
 
   const guardarCantidades = async () => {
     if (!cantidadesValidas) {
-      setError("Captura una cantidad mayor a 0 para cada insumo.");
+      setErrorInsumos("Captura una cantidad mayor a 0 para cada insumo.");
       return;
     }
     try {
       setGuardandoCantidades(true);
-      setError("");
+      setErrorInsumos("");
       setMensajeCantidades("");
       await Promise.all(insumosPayload.map((item) =>
         actualizarInsumoDeProducto(productoId, item.insumoId, item)
@@ -196,7 +222,7 @@ export default function ProductoCostosPanel({ productoId, embedded = false, summ
       setMensajeCantidades("Cantidades guardadas en este producto.");
       notificarActualizacion();
     } catch (e) {
-      setError(e.message || "No fue posible guardar las cantidades.");
+      setErrorInsumos(e.message || "No fue posible guardar las cantidades.");
     } finally {
       setGuardandoCantidades(false);
     }
@@ -204,7 +230,7 @@ export default function ProductoCostosPanel({ productoId, embedded = false, summ
 
   const aplicarMismoNivel = async () => {
     if (!cantidadesValidas) {
-      setError("Captura una cantidad mayor a 0 para cada insumo.");
+      setErrorInsumos("Captura una cantidad mayor a 0 para cada insumo.");
       return;
     }
     if (!window.confirm("Se copiarán estas cantidades a todas las variantes del mismo modelo y nivel, sin importar el color. ¿Deseas continuar?")) {
@@ -212,7 +238,7 @@ export default function ProductoCostosPanel({ productoId, embedded = false, summ
     }
     try {
       setAplicandoNivel(true);
-      setError("");
+      setErrorInsumos("");
       setMensajeCantidades("");
       const resultado = await aplicarCantidadesInsumosMismoNivel(productoId, insumosPayload);
       setMensajeCantidades(
@@ -220,9 +246,54 @@ export default function ProductoCostosPanel({ productoId, embedded = false, summ
       );
       notificarActualizacion();
     } catch (e) {
-      setError(e.message || "No fue posible aplicar las cantidades al mismo nivel.");
+      setErrorInsumos(e.message || "No fue posible aplicar las cantidades al mismo nivel.");
     } finally {
       setAplicandoNivel(false);
+    }
+  };
+
+  const guardarCantidadesOperaciones = async () => {
+    if (!cantidadesOperacionesValidas) {
+      setErrorOperaciones("Captura una cantidad entera mayor a 0 para cada operación.");
+      return;
+    }
+    try {
+      setGuardandoOperaciones(true);
+      setErrorOperaciones("");
+      setMensajeOperaciones("");
+      await Promise.all(operacionesPayload.map((item) =>
+        actualizarOperacionDeProducto(productoId, item.operacionId, item)
+      ));
+      setMensajeOperaciones("Cantidades de operaciones guardadas en este producto.");
+      notificarActualizacion();
+    } catch (e) {
+      setErrorOperaciones(e.message || "No fue posible guardar las cantidades de operaciones.");
+    } finally {
+      setGuardandoOperaciones(false);
+    }
+  };
+
+  const aplicarOperacionesMismoNivel = async () => {
+    if (!cantidadesOperacionesValidas) {
+      setErrorOperaciones("Captura una cantidad entera mayor a 0 para cada operación.");
+      return;
+    }
+    if (!window.confirm("Se copiarán estas cantidades de operaciones a todas las variantes del mismo modelo y nivel, sin importar el color o material. ¿Deseas continuar?")) {
+      return;
+    }
+    try {
+      setAplicandoOperacionesNivel(true);
+      setErrorOperaciones("");
+      setMensajeOperaciones("");
+      const resultado = await aplicarCantidadesOperacionesMismoNivel(productoId, operacionesPayload);
+      setMensajeOperaciones(
+        `Operaciones aplicadas a ${resultado.productosActualizados} producto${resultado.productosActualizados === 1 ? "" : "s"} del nivel ${resultado.nivelNombre}.`
+      );
+      notificarActualizacion();
+    } catch (e) {
+      setErrorOperaciones(e.message || "No fue posible aplicar las operaciones al mismo nivel.");
+    } finally {
+      setAplicandoOperacionesNivel(false);
     }
   };
 
@@ -325,6 +396,7 @@ export default function ProductoCostosPanel({ productoId, embedded = false, summ
           <i className="bi bi-rulers" />
           <div><strong>Cantidades por nivel</strong><span>Captura el consumo correspondiente al tamaño de este producto.</span></div>
         </div>
+        {errorInsumos && <div className="alert alert-danger py-2 mb-3">{errorInsumos}</div>}
         {mensajeCantidades && <div className="alert alert-success py-2 mb-3">{mensajeCantidades}</div>}
         {estructura.insumos?.length ? (
           <>
@@ -359,6 +431,7 @@ export default function ProductoCostosPanel({ productoId, embedded = false, summ
                         placeholder="0.0000"
                         onChange={(event) => {
                           setMensajeCantidades("");
+                          setErrorInsumos("");
                           setCantidades((actual) => ({ ...actual, [item.insumoId]: event.target.value }));
                         }}
                       />
@@ -406,13 +479,21 @@ export default function ProductoCostosPanel({ productoId, embedded = false, summ
             Agregar operacion
           </button>
         </CostSectionActions>
+        <div className="producto-insumo-capture-note producto-operacion-capture-note">
+          <i className="bi bi-stopwatch" />
+          <div><strong>Repeticiones por nivel</strong><span>Captura cuántas veces se realiza cada operación para este tamaño.</span></div>
+        </div>
+        {errorOperaciones && <div className="alert alert-danger py-2 mb-3">{errorOperaciones}</div>}
+        {mensajeOperaciones && <div className="alert alert-success py-2 mb-3">{mensajeOperaciones}</div>}
         {estructura.operaciones?.length ? (
+          <>
           <div className="table-responsive">
             <table className="table table-sm align-middle mb-0">
               <thead className="table-light">
                 <tr>
                   <th>#</th>
                   <th>Operacion</th>
+                  <th className="text-end">Cantidad</th>
                   <th>Centro de trabajo</th>
                   <th className="text-end">Tiempo total</th>
                   <th className="text-end">Costo/min</th>
@@ -427,21 +508,56 @@ export default function ProductoCostosPanel({ productoId, embedded = false, summ
                       <div className="fw-semibold">{item.operacionNombre}</div>
                       <div className="text-muted small">{item.operacionCodigo}</div>
                     </td>
+                    <td className="text-end">
+                      <input
+                        className="form-control form-control-sm producto-insumo-cantidad producto-operacion-cantidad"
+                        type="number"
+                        inputMode="numeric"
+                        min="1"
+                        step="1"
+                        aria-label={`Cantidad de operación ${item.operacionNombre}`}
+                        value={cantidadesOperaciones[item.operacionId] ?? ""}
+                        placeholder="0"
+                        onChange={(event) => {
+                          setMensajeOperaciones("");
+                          setErrorOperaciones("");
+                          setCantidadesOperaciones((actual) => ({ ...actual, [item.operacionId]: event.target.value }));
+                        }}
+                      />
+                    </td>
                     <td>{item.centroTrabajoNombre || "-"}</td>
-                    <td className="text-end">{Number(item.tiempoTotal || 0).toFixed(2)} min</td>
+                    <td className="text-end">{
+                      (Number(cantidadesOperaciones[item.operacionId] || 0) * Number(item.tiempoOperacion || 0)).toFixed(2)
+                    } min</td>
                     <td className="text-end">{formatCurrency(item.costoMinutoOperacion)}</td>
-                    <td className="text-end fw-semibold">{formatCurrency(item.importeActividad)}</td>
+                    <td className="text-end fw-semibold">{formatCurrency(
+                      Number(cantidadesOperaciones[item.operacionId] || 0)
+                      * Number(item.tiempoOperacion || 0)
+                      * Number(item.costoMinutoOperacion || 0)
+                    )}</td>
                   </tr>
                 ))}
               </tbody>
               <tfoot className="table-light">
                 <tr>
-                  <td colSpan="5" className="text-end fw-bold">TOTAL OPERACIONES:</td>
-                  <td className="text-end fw-bold text-success">{formatCurrency(estructura.costoOperaciones)}</td>
+                  <td colSpan="6" className="text-end fw-bold">TOTAL OPERACIONES:</td>
+                  <td className="text-end fw-bold text-success">{formatCurrency(totalOperacionesCapturado)}</td>
                 </tr>
               </tfoot>
             </table>
           </div>
+          <div className="producto-insumo-savebar">
+            <div><strong>¿Terminaste las operaciones de este tamaño?</strong><span>Guarda este producto o replica cantidades, orden y tiempos a todas sus variantes del mismo nivel.</span></div>
+            <div className="producto-insumo-savebar-actions">
+              <button type="button" className="btn btn-outline-secondary" disabled={!cantidadesOperacionesValidas || guardandoOperaciones || aplicandoOperacionesNivel} onClick={guardarCantidadesOperaciones}>
+                <i className="bi bi-floppy me-2" />{guardandoOperaciones ? "Guardando..." : "Guardar cantidades"}
+              </button>
+              <button type="button" className="btn producto-form-primary" disabled={!cantidadesOperacionesValidas || guardandoOperaciones || aplicandoOperacionesNivel} onClick={aplicarOperacionesMismoNivel}>
+                <i className="bi bi-copy me-2" />{aplicandoOperacionesNivel ? "Aplicando..." : "Aplicar a todos los productos del mismo nivel"}
+              </button>
+            </div>
+          </div>
+          </>
         ) : (
           <div className="text-muted">No hay operaciones registradas.</div>
         )}
