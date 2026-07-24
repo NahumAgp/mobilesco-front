@@ -8,7 +8,7 @@
 }
 
 .variantes-table {
-  min-width: 1380px;
+  min-width: 1766px;
   table-layout: fixed;
 }
 
@@ -32,28 +32,43 @@
 }
 
 .variantes-col-descripcion {
-  width: 300px;
+  width: 280px;
 }
 
-.variantes-col-linea,
-.variantes-col-familia,
+.variantes-col-linea {
+  width: 110px;
+}
+
+.variantes-col-familia {
+  width: 150px;
+}
+
 .variantes-col-subfamilia {
+  width: 115px;
+}
+
+.variantes-col-modelo {
+  width: 190px;
+}
+
+.variantes-col-nivel {
+  width: 110px;
+}
+
+.variantes-col-material {
   width: 140px;
 }
 
-.variantes-col-modelo,
-.variantes-col-nivel,
-.variantes-col-material,
 .variantes-col-color {
-  width: 120px;
+  width: 110px;
 }
 
 .variantes-col-estado {
-  width: 116px;
+  width: 105px;
 }
 
 .variantes-col-acciones {
-  width: 230px;
+  width: 220px;
 }
 
 .variantes-table-image,
@@ -78,14 +93,7 @@
   font-size: 12px;
 }
 
-.variantes-table-sku,
-.variantes-table td:nth-child(4),
-.variantes-table td:nth-child(5),
-.variantes-table td:nth-child(6),
-.variantes-table td:nth-child(7),
-.variantes-table td:nth-child(8),
-.variantes-table td:nth-child(9),
-.variantes-table td:nth-child(10) {
+.variantes-table-sku {
   white-space: nowrap;
 }
 

@@ -273,11 +273,31 @@ export default function ProductosListadoTable({
                         </small>
                       )}
                     </td>
-                    <td>{getLineaNombre(producto)}</td>
-                    <td>{getFamiliaNombre(producto)}</td>
-                    <td>{getSubfamiliaNombre(producto)}</td>
-                    <td>{getProductoBaseNombre(producto)}</td>
-                    <td>{getNivelNombre(producto)}</td>
+                    <td>
+                      <span className="variantes-table-chip-text" title={getLineaNombre(producto)}>
+                        {getLineaNombre(producto)}
+                      </span>
+                    </td>
+                    <td>
+                      <span className="variantes-table-chip-text" title={getFamiliaNombre(producto)}>
+                        {getFamiliaNombre(producto)}
+                      </span>
+                    </td>
+                    <td>
+                      <span className="variantes-table-chip-text" title={getSubfamiliaNombre(producto)}>
+                        {getSubfamiliaNombre(producto)}
+                      </span>
+                    </td>
+                    <td>
+                      <span className="variantes-table-chip-text" title={getProductoBaseNombre(producto)}>
+                        {getProductoBaseNombre(producto)}
+                      </span>
+                    </td>
+                    <td>
+                      <span className="variantes-table-chip-text" title={getNivelNombre(producto)}>
+                        {getNivelNombre(producto)}
+                      </span>
+                    </td>
                     <td>
                       <span className="variantes-table-chip-text" title={getMaterialNombre(producto)}>
                         {getMaterialNombre(producto)}
