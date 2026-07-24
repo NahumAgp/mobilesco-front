@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { obtenerOperacionPorId, crearOperacion, actualizarOperacion } from "../services/operaciones.js";
 import { obtenerCentrosTrabajoActivos } from "../../centros-trabajo/services/centrosTrabajo.js";
 import Toast from "../../../components/ui/Toast.jsx";
+import "./OperacionForm.css";
 
 export default function OperacionForm({ 
   operacionId,   // para la página
@@ -92,9 +93,28 @@ export default function OperacionForm({
 
     setFormData(prev => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : 
-              (type === "number" ? (value === "" ? "" : parseFloat(value)) : value)
+      [name]: type === "checkbox" ? checked : value
     }));
+
+    if (erroresBackend[name]) {
+      setErroresBackend(prev => {
+        const copia = { ...prev };
+        delete copia[name];
+        return copia;
+      });
+    }
+  }
+
+  function handleNumericChange(e) {
+    const { name, value } = e.target;
+    const limpio = value
+      .replace(",", ".")
+      .replace(/[^\d.]/g, "")
+      .replace(/(\..*)\./g, "$1");
+
+    if (limpio === "" || /^\d*(\.\d*)?$/.test(limpio)) {
+      setFormData(prev => ({ ...prev, [name]: limpio }));
+    }
 
     if (erroresBackend[name]) {
       setErroresBackend(prev => {
@@ -111,9 +131,9 @@ export default function OperacionForm({
     // Convertir valores vacíos a null para números
     const dataToSend = {
       ...formData,
-      costoMinuto: formData.costoMinuto === "" ? null : formData.costoMinuto,
-      costoHora: formData.costoHora === "" ? null : formData.costoHora,
-      tiempoMinutos: formData.tiempoOperacion === "" ? null : formData.tiempoOperacion 
+      costoMinuto: formData.costoMinuto === "" ? null : Number(formData.costoMinuto),
+      costoHora: null,
+      tiempoOperacion: formData.tiempoOperacion === "" ? null : Number(formData.tiempoOperacion)
     };
 
     try {
@@ -160,6 +180,10 @@ export default function OperacionForm({
     }
   };
 
+  const costoHoraCalculado = formData.costoMinuto !== "" && Number(formData.costoMinuto) > 0
+    ? (Number(formData.costoMinuto) * 60).toFixed(2)
+    : "";
+
   return (
     <div className={esModal ? "" : "container py-4"}>
       {!esModal && (
@@ -183,7 +207,7 @@ export default function OperacionForm({
             </h5>
           </div>
           <div className="card-body">
-            <div className="row g-3">
+            <div className="row g-3 operation-form-grid">
               <div className="col-md-4">
                 <label className="form-label fw-semibold">
                   Código <span className="text-danger">*</span>
@@ -195,6 +219,7 @@ export default function OperacionForm({
                   value={formData.codigo} 
                   onChange={handleChange} 
                   placeholder="Ej: CORT-01, ENS-02, PINT-01..."
+                  required
                 />
                 <div className="invalid-feedback">{erroresBackend.codigo || erroresExternos.codigo}</div>
               </div>
@@ -209,12 +234,13 @@ export default function OperacionForm({
                   className={inputClass("nombre")} 
                   value={formData.nombre} 
                   onChange={handleChange} 
+                  required
                   placeholder="Ej: Corte de lámina, Ensamble manual, Pintura..."
                 />
                 <div className="invalid-feedback">{erroresBackend.nombre || erroresExternos.nombre}</div>
               </div>
 
-              <div className="col-md-6">
+              <div className="col-md-3">
                 <label className="form-label fw-semibold">
                   Centro de Trabajo <span className="text-danger">*</span>
                 </label>
@@ -223,6 +249,7 @@ export default function OperacionForm({
                   className={selectClass("centroTrabajoId")}
                   value={formData.centroTrabajoId}
                   onChange={handleChange}
+                  required
                 >
                   <option value="">Selecciona un centro...</option>
                   {centrosTrabajo.map(centro => (
@@ -235,48 +262,68 @@ export default function OperacionForm({
               </div>
 
               <div className="col-md-3">
-                <label className="form-label fw-semibold">Costo por Minuto</label>
+                <label className="form-label fw-semibold">
+                  Costo por minuto <span className="text-danger">*</span>
+                </label>
                 <div className="input-group">
                   <span className="input-group-text">$</span>
                   <input 
-                    type="number" 
-                    step="0.01" 
-                    min="0"
+                    type="text"
+                    inputMode="decimal"
+                    pattern="^\d*(\.\d*)?$"
                     name="costoMinuto" 
                     className={inputClass("costoMinuto")} 
                     value={formData.costoMinuto} 
-                    onChange={handleChange} 
-                    placeholder="0.00"
+                    onChange={handleNumericChange}
+                    placeholder="0.0"
+                    autoComplete="off"
+                    required
                   />
                 </div>
+                {(erroresBackend.costoMinuto || erroresExternos.costoMinuto) && (
+                  <div className="text-danger small mt-1">
+                    {erroresBackend.costoMinuto || erroresExternos.costoMinuto}
+                  </div>
+                )}
               </div>
 
              <div className="col-md-3">
-  <label className="form-label fw-semibold">Costo por Hora</label>
+  <label className="form-label fw-semibold">Costo por hora</label>
   <div className="input-group">
     <span className="input-group-text">$</span>
     <input 
-      type="number" 
+      type="text"
       name="costoHora" 
-      className="form-control bg-light"
-      value={formData.costoHora} 
+      className="form-control operation-readonly"
+      value={costoHoraCalculado}
+      placeholder="0.0"
       readOnly
       tabIndex={-1}
     />
   </div>
-  <small className="text-muted">Calculado automáticamente</small>
+  <small className="form-text text-muted">Calculado automáticamente</small>
 </div>
              
-             {/* ✅ NUEVO CAMPO */}
-          <div className="col-md-2">
-            <label>Tiempo (min)</label>
-            <input 
-              type="number"
-              name="tiempoOperacion"
-              value={formData.tiempoOperacion}
-              onChange={handleChange}
-            />
-          </div>
+              <div className="col-md-3">
+                <label className="form-label fw-semibold">
+                  Tiempo estándar (min) <span className="text-danger">*</span>
+                </label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  pattern="^\d*(\.\d*)?$"
+                  name="tiempoOperacion"
+                  className={inputClass("tiempoOperacion")}
+                  value={formData.tiempoOperacion}
+                  onChange={handleNumericChange}
+                  placeholder="0.0"
+                  autoComplete="off"
+                  required
+                />
+                <div className="invalid-feedback">
+                  {erroresBackend.tiempoOperacion || erroresExternos.tiempoOperacion}
+                </div>
+              </div>
 
               <div className="col-md-12">
                 <label className="form-label fw-semibold">Descripción</label>

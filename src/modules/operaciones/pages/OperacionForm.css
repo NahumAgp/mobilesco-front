@@ -1,0 +1,46 @@
+.operation-form-grid .form-label {
+  min-height: 21px;
+  margin-bottom: 8px;
+  color: #24302d;
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.operation-form-grid .form-control,
+.operation-form-grid .form-select,
+.operation-form-grid .input-group-text {
+  min-height: 42px;
+  border-color: #ddd8d1;
+}
+
+.operation-form-grid .form-control,
+.operation-form-grid .form-select {
+  border-radius: 12px;
+}
+
+.operation-form-grid .input-group .input-group-text {
+  border-radius: 12px 0 0 12px;
+  background: #f8faf9;
+  color: #20302c;
+}
+
+.operation-form-grid .input-group .form-control {
+  border-radius: 0 12px 12px 0;
+}
+
+.operation-form-grid .form-control::placeholder {
+  color: #8b9491;
+  opacity: 1;
+}
+
+.operation-form-grid .operation-readonly {
+  cursor: not-allowed;
+  background: #f1f3f2;
+  color: #596460;
+}
+
+.operation-form-grid .form-text {
+  display: block;
+  margin-top: 5px;
+  font-size: 12px;
+}
