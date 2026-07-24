@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { logout, getUser, hasPermission } from "../../modules/auth/services/authService";
 import { useState, useRef, useEffect } from "react";
 import { API_BASE_URL } from "../../config/apiConfig";
+import { contarNotificacionesNoLeidas } from "../../modules/notificaciones/services/notificaciones";
 
 function LinkItem({ to, label, icon, sub = false, onClick }) {
   return (
@@ -19,6 +20,7 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
   const [failedFoto, setFailedFoto] = useState(null);
   const [openMenu, setOpenMenu] = useState(false);
   const [openSubmenu, setOpenSubmenu] = useState(null);
+  const [notificacionesNoLeidas, setNotificacionesNoLeidas] = useState(0);
   const menuRef = useRef(null);
 
   const handleNavigation = () => {
@@ -101,6 +103,25 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    const cargarNotificaciones = async () => {
+      try {
+        const data = await contarNotificacionesNoLeidas();
+        setNotificacionesNoLeidas(data.noLeidas || 0);
+      } catch {
+        setNotificacionesNoLeidas(0);
+      }
+    };
+
+    cargarNotificaciones();
+    const timer = window.setInterval(cargarNotificaciones, 60000);
+    window.addEventListener("notificaciones:actualizar", cargarNotificaciones);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("notificaciones:actualizar", cargarNotificaciones);
+    };
   }, []);
 
   return (
@@ -213,6 +234,21 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
             ) : (
               <span>{iniciales}</span>
             )}
+            {notificacionesNoLeidas > 0 && (
+              <button
+                type="button"
+                className="sidebar-profile-notification-count"
+                aria-label={`${notificacionesNoLeidas} notificaciones sin leer`}
+                title={`${notificacionesNoLeidas} notificaciones sin leer`}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handleNavigation();
+                  navigate("/notificaciones");
+                }}
+              >
+                {notificacionesNoLeidas > 99 ? "99+" : notificacionesNoLeidas}
+              </button>
+            )}
           </div>
 
           <div className="sidebar-profile-text">
@@ -223,6 +259,21 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
 
         {openMenu && (
           <div className="sidebar-user-menu">
+            <button
+              onClick={() => {
+                handleNavigation();
+                navigate("/notificaciones");
+              }}
+            >
+              <i className="bi bi-bell me-2"></i>
+              Notificaciones
+              {notificacionesNoLeidas > 0 && (
+                <span className="sidebar-user-menu-count">
+                  {notificacionesNoLeidas > 99 ? "99+" : notificacionesNoLeidas}
+                </span>
+              )}
+            </button>
+
             <button
               onClick={() => {
                 handleNavigation();

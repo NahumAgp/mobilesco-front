@@ -206,13 +206,14 @@
 }
 
 .sidebar-profile-avatar {
+  position: relative;
   width: 36px;
   height: 36px;
   flex: 0 0 36px;
   border-radius: 50%;
   background: var(--ms-brand-500);
   color: #fff;
-  overflow: hidden;
+  overflow: visible;
   display: grid;
   place-items: center;
 }
@@ -222,12 +223,33 @@
   height: 100%;
   object-fit: cover;
   display: block;
+  border-radius: 50%;
 }
 
 .sidebar-profile-avatar span {
   font-size: 14px;
   font-weight: 700;
   letter-spacing: 0;
+}
+
+.sidebar-profile-notification-count {
+  position: absolute;
+  top: -8px;
+  right: -10px;
+  z-index: 2;
+  display: grid;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  place-items: center;
+  border: 2px solid var(--ms-sidebar-deep);
+  border-radius: 999px;
+  background: #dc3545;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 30%);
 }
 
 .sidebar-profile-text {
@@ -267,6 +289,8 @@
 }
 
 .sidebar-user-menu button {
+  display: flex;
+  align-items: center;
   width: 100%;
   border: none;
   background: transparent;
@@ -275,6 +299,18 @@
   text-align: left;
   cursor: pointer;
   font-size: 0.9rem;
+}
+
+.sidebar-user-menu-count {
+  min-width: 21px;
+  margin-left: auto;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #dc3545;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  text-align: center;
 }
 
 .sidebar-user-menu button:hover {
