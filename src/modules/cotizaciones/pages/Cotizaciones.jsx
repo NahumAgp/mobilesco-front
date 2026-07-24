@@ -43,7 +43,7 @@ export default function Cotizaciones() {
     <div className="cot-page">
       <header className="cot-header">
         <div><h1>Cotizaciones</h1><p>Consulta, da seguimiento y comparte propuestas comerciales.</p></div>
-        <button className="cot-primary" onClick={() => navigate("/cotizaciones/nueva")}><Plus size={18} /> Nueva cotización</button>
+        <button className="cot-primary cot-new-button" onClick={() => navigate("/cotizaciones/nueva")}><span className="cot-new-button-icon"><Plus size={20} /></span><span>Nueva cotización</span></button>
       </header>
       <section className="cot-card cot-filters">
         <label className="cot-search"><Search size={18} /><input value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder="Buscar por folio o cliente..." /></label>

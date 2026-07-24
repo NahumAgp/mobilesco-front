@@ -15,8 +15,8 @@ export const listarCotizaciones = (params = {}) =>
 export const obtenerCotizacion = (id) =>
   request(`${API_PATHS.COTIZACIONES}/${id}`);
 
-export const buscarProductosCotizables = (busqueda, tipo) =>
-  request(`${API_PATHS.COTIZACIONES}/productos?${query({ busqueda, tipo })}`);
+export const buscarProductosCotizables = (busqueda) =>
+  request(`${API_PATHS.COTIZACIONES}/productos?${query({ busqueda })}`);
 
 export const crearCotizacion = (data) =>
   request(API_PATHS.COTIZACIONES, { method: "POST", body: JSON.stringify(data) });
