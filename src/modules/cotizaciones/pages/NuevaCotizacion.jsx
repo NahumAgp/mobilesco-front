@@ -1,248 +1,109 @@
+import { useEffect, useMemo, useState } from "react";
+import { ArrowLeft, Barcode, Download, MessageCircle, Plus, Search, Trash2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { obtenerClientesActivos } from "../../clientes/services/clientes";
+import { buscarProductosCotizables, crearCotizacion } from "../services/cotizaciones";
+import { descargarPdfCotizacion, compartirCotizacionWhatsApp } from "../utils/cotizacionPdf";
+import "./cotizaciones.css";
+
+const moneda = (value) => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(Number(value || 0));
+
 export default function NuevaCotizacion() {
-  return (
-    <div className="p-4">
+  const navigate = useNavigate();
+  const [clientes, setClientes] = useState([]);
+  const [clienteId, setClienteId] = useState("");
+  const [busqueda, setBusqueda] = useState("");
+  const [tipo, setTipo] = useState("NOMBRE");
+  const [resultados, setResultados] = useState([]);
+  const [carrito, setCarrito] = useState([]);
+  const [margen, setMargen] = useState(35);
+  const [descuento, setDescuento] = useState(0);
+  const [flete, setFlete] = useState(0);
+  const [iva, setIva] = useState(16);
+  const [vigencia, setVigencia] = useState(15);
+  const [notas, setNotas] = useState("");
+  const [condiciones, setCondiciones] = useState("Precios sujetos a la vigencia indicada y disponibilidad.");
+  const [error, setError] = useState("");
+  const [guardando, setGuardando] = useState(false);
+  const [guardada, setGuardada] = useState(null);
 
-      {/* Header */}
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <div>
-          <h2 className="fw-bold mb-1">Nueva Cotización</h2>
-          <p className="text-muted mb-0">
-            Configurador de Mobiliario a Medida
-          </p>
-        </div>
+  useEffect(() => { obtenerClientesActivos().then(setClientes).catch((e) => setError(e.message)); }, []);
+  useEffect(() => {
+    if (!busqueda.trim()) { setResultados([]); return undefined; }
+    const timer = setTimeout(() => buscarProductosCotizables(busqueda, tipo)
+      .then(setResultados).catch((e) => setError(e.message)), 250);
+    return () => clearTimeout(timer);
+  }, [busqueda, tipo]);
 
-        <div className="d-flex gap-2">
-          <button className="btn btn-outline-secondary">
-            Guardar Borrador
-          </button>
-          <button className="btn btn-warning text-white">
-            Enviar Cotización
-          </button>
-        </div>
-      </div>
+  const resumen = useMemo(() => {
+    const divisor = 1 - Number(margen || 0) / 100;
+    const subtotalCostos = carrito.reduce((s, item) => s + Number(item.costoTotal) * item.cantidad, 0);
+    const subtotal = divisor > 0 ? carrito.reduce((s, item) => s + (Number(item.costoTotal) / divisor) * item.cantidad, 0) : 0;
+    const montoDescuento = subtotal * Number(descuento || 0) / 100;
+    const baseIva = subtotal - montoDescuento + Number(flete || 0);
+    const montoIva = baseIva * Number(iva || 0) / 100;
+    return { subtotalCostos, subtotal, montoDescuento, baseIva, montoIva, total: baseIva + montoIva };
+  }, [carrito, margen, descuento, flete, iva]);
 
-      {/* 1. Información del Cliente */}
-      <div className="card mb-4">
-        <div className="card-header fw-semibold">
-          1. Información del Cliente
-        </div>
-        <div className="card-body">
+  const agregar = (producto) => {
+    if (!producto.cotizable) return;
+    setCarrito((actual) => {
+      const existente = actual.find((i) => i.id === producto.id);
+      return existente
+        ? actual.map((i) => i.id === producto.id ? { ...i, cantidad: i.cantidad + 1 } : i)
+        : [...actual, { ...producto, cantidad: 1 }];
+    });
+    setBusqueda("");
+  };
+  const cantidad = (id, valor) => setCarrito((items) => items.map((i) => i.id === id ? { ...i, cantidad: Math.max(1, Number(valor) || 1) } : i));
 
-          <div className="mb-3">
-            <div className="btn-group">
-              <button className="btn btn-sm btn-outline-primary active">
-                Nuevo
-              </button>
-              <button className="btn btn-sm btn-outline-primary">
-                Recurrente
-              </button>
-            </div>
-          </div>
+  const guardar = async (estado) => {
+    if (!clienteId) return setError("Selecciona un cliente.");
+    if (!carrito.length) return setError("Agrega al menos un producto cotizable.");
+    setGuardando(true); setError("");
+    try {
+      const creada = await crearCotizacion({
+        clienteId: Number(clienteId), estado, vigenciaDias: Number(vigencia),
+        margenPorcentaje: Number(margen), descuentoPorcentaje: Number(descuento),
+        flete: Number(flete), ivaPorcentaje: Number(iva), notas, condiciones,
+        detalles: carrito.map((item) => ({ productoId: item.id, cantidad: item.cantidad })),
+      });
+      setGuardada(creada);
+    } catch (e) { setError(e.message); } finally { setGuardando(false); }
+  };
 
-          <div className="row g-3">
-            <div className="col-md-4">
-              <label className="form-label">Nombre o Razón Social</label>
-              <input className="form-control" placeholder="Ej. Colegio Montes" />
-            </div>
+  if (guardada) return <div className="cot-page">
+    <section className="cot-success cot-card">
+      <div className="cot-success-icon">✓</div><h1>Cotización creada</h1>
+      <p>{guardada.folio} · {guardada.clienteNombre}</p><strong>{moneda(guardada.total)}</strong>
+      <div><button onClick={() => descargarPdfCotizacion(guardada)}><Download size={18} /> Descargar PDF</button>
+      <button className="cot-primary" onClick={() => compartirCotizacionWhatsApp(guardada)}><MessageCircle size={18} /> Enviar por WhatsApp</button></div>
+      <button className="cot-link" onClick={() => navigate("/cotizaciones")}>Volver a cotizaciones</button>
+    </section>
+  </div>;
 
-            <div className="col-md-4">
-              <label className="form-label">Lugar de Entrega</label>
-              <input className="form-control" placeholder="Dirección Completa" />
-            </div>
-
-            <div className="col-md-4">
-              <label className="form-label">Datos del Pedido</label>
-              <input type="date" className="form-control" />
-            </div>
-
-            <div className="col-md-3">
-              <label className="form-label">Ciudad</label>
-              <input className="form-control" placeholder="Pachuca" />
-            </div>
-
-            <div className="col-md-3">
-              <label className="form-label">Estado</label>
-              <input className="form-control" placeholder="Hidalgo" />
-            </div>
-
-            <div className="col-md-3">
-              <label className="form-label">Teléfono</label>
-              <input className="form-control" placeholder="WhatsApp" />
-            </div>
-
-            <div className="col-md-3">
-              <label className="form-label">Email</label>
-              <input className="form-control" placeholder="contacto@ejemplo.com" />
-            </div>
-
-            <div className="col-md-12">
-              <label className="form-label">Urgencia</label>
-              <div className="btn-group ms-2">
-                <button className="btn btn-outline-secondary active">
-                  Normal
-                </button>
-                <button className="btn btn-outline-secondary">
-                  Urgente
-                </button>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      {/* 2. Cálculo de Flete */}
-      <div className="card mb-4">
-        <div className="card-header fw-semibold">
-          2. Cálculo de Flete
-        </div>
-        <div className="card-body">
-
-          <div className="row g-3 align-items-center">
-            <div className="col-md-3">
-              <label className="form-label">Distancia desde Planta (km)</label>
-              <input className="form-control" value="0" readOnly />
-            </div>
-
-            <div className="col-md-3 text-center">
-              <small className="text-muted">Zona Asignada</small>
-              <h4 className="fw-bold">Zona 1</h4>
-            </div>
-
-            <div className="col-md-3 text-center">
-              <small className="text-muted">Tarifa de Flete</small>
-              <h4 className="fw-bold">$500</h4>
-            </div>
-
-            <div className="col-md-3">
-              <ul className="list-unstyled mb-0 small">
-                <li>Zona 1 (0–30km) <strong>$500</strong></li>
-                <li>Zona 2 (31–80km) <strong>$1,200</strong></li>
-                <li>Zona 3 (+81km) <strong>$2,500</strong></li>
-              </ul>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      {/* Productos */}
-      <div className="card mb-4">
-        <div className="card-body text-center py-5">
-          <div className="mb-2 text-muted">
-            No hay productos agregados todavía.
-          </div>
-          <button className="btn btn-outline-secondary">
-            Seleccionar del catálogo
-          </button>
-        </div>
-      </div>
-
-      {/* Desglose + Resumen */}
-      <div className="row g-3">
-
-        {/* Desglose Técnico */}
-        <div className="col-md-8">
-          <div className="card h-100">
-            <div className="card-header fw-semibold">
-              Desglose Técnico y Margen
-            </div>
-            <div className="card-body">
-
-              <div className="row g-3 mb-4">
-                <div className="col-md-4">
-                  <div className="p-3 bg-light rounded text-center">
-                    <small className="text-muted">Costo Ind. Total</small>
-                    <h5 className="fw-bold">$0</h5>
-                  </div>
-                </div>
-
-                <div className="col-md-4">
-                  <div className="p-3 bg-light rounded text-center">
-                    <small className="text-muted">Flete Zona 1</small>
-                    <h5 className="fw-bold">$500</h5>
-                  </div>
-                </div>
-
-                <div className="col-md-4">
-                  <div className="p-3 bg-light rounded text-center">
-                    <small className="text-muted">Margen Real</small>
-                    <h5 className="fw-bold">35.0%</h5>
-                  </div>
-                </div>
-              </div>
-
-              <div className="border rounded p-3">
-                <label className="form-label fw-semibold">
-                  Descuento Comercial (%)
-                </label>
-
-                <div className="d-flex gap-2 mb-2">
-                  <input className="form-control w-auto" value="0" readOnly />
-                </div>
-
-                <div className="d-flex gap-2">
-                  <button className="btn btn-outline-secondary btn-sm">0%</button>
-                  <button className="btn btn-outline-secondary btn-sm">3%</button>
-                  <button className="btn btn-outline-secondary btn-sm">5%</button>
-                  <button className="btn btn-outline-secondary btn-sm">10%</button>
-                </div>
-              </div>
-
-            </div>
-          </div>
-        </div>
-
-        {/* Resumen */}
-        <div className="col-md-4">
-          <div className="card h-100 bg-dark text-white">
-            <div className="card-body">
-
-              <h5 className="fw-bold mb-4">Resumen General</h5>
-
-              <div className="d-flex justify-content-between mb-2">
-                <span>Subtotal Productos</span>
-                <span>$0</span>
-              </div>
-
-              <div className="d-flex justify-content-between mb-2">
-                <span>Flete Calculado</span>
-                <span>$500</span>
-              </div>
-
-              <div className="d-flex justify-content-between mb-2">
-                <span>Subtotal c/ Flete</span>
-                <span>$500</span>
-              </div>
-
-              <div className="d-flex justify-content-between mb-3">
-                <span>IVA (16%)</span>
-                <span>$80</span>
-              </div>
-
-              <hr />
-
-              <div className="text-center mb-3">
-                <small className="text-uppercase text-muted">
-                  Total Final
-                </small>
-                <h2 className="fw-bold">$580</h2>
-              </div>
-
-              <button className="btn btn-warning w-100 text-white mb-2">
-                Guardar y Enviar
-              </button>
-
-              <button className="btn btn-outline-light w-100">
-                Generar PDF
-              </button>
-
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-    </div>
-  );
+  return <div className="cot-page">
+    <header className="cot-header"><div><button className="cot-back" onClick={() => navigate("/cotizaciones")}><ArrowLeft size={18} /> Cotizaciones</button><h1>Nueva cotización</h1><p>Agrega productos con costos completos y calcula la propuesta.</p></div>
+      <div className="cot-header-actions"><button disabled={guardando} onClick={() => guardar("BORRADOR")}>Guardar borrador</button><button className="cot-primary" disabled={guardando} onClick={() => guardar("PENDIENTE")}>{guardando ? "Guardando..." : "Finalizar cotización"}</button></div></header>
+    {error && <div className="cot-alert cot-alert-error">{error}</div>}
+    <div className="cot-form-grid"><main>
+      <section className="cot-card cot-section"><h2>1. Cliente</h2><select value={clienteId} onChange={(e) => setClienteId(e.target.value)}><option value="">Selecciona un cliente...</option>{clientes.map((c) => <option key={c.id} value={c.id}>{c.codigo} · {c.nombreVisual}</option>)}</select></section>
+      <section className="cot-card cot-section"><h2>2. Productos</h2>
+        <div className="cot-search-mode"><button className={tipo === "NOMBRE" ? "active" : ""} onClick={() => setTipo("NOMBRE")}><Search size={17} /> Nombre</button><button className={tipo === "CODIGO" ? "active" : ""} onClick={() => setTipo("CODIGO")}><Barcode size={17} /> Código / barras</button></div>
+        <label className="cot-search cot-product-search"><Search size={19} /><input autoFocus value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder={tipo === "CODIGO" ? "Escanea o escribe el SKU..." : "Escribe el nombre del producto..."} /></label>
+        {!!resultados.length && <div className="cot-results">{resultados.map((p) => <button key={p.id} disabled={!p.cotizable} onClick={() => agregar(p)}>
+          <span><strong>{p.sku}</strong><small>{p.nombre}</small>{!p.cotizable && <em>{p.faltantes.join(". ")}</em>}</span>
+          <span>{p.cotizable ? <><b>{moneda(p.costoTotal)}</b><Plus size={18} /></> : "No cotizable"}</span></button>)}</div>}
+        <div className="cot-lines">{carrito.map((p) => <div key={p.id} className="cot-line"><div><strong>{p.sku}</strong><span>{p.nombre}</span></div><input aria-label="Cantidad" type="number" min="1" value={p.cantidad} onChange={(e) => cantidad(p.id, e.target.value)} /><span>{moneda((p.costoTotal / (1 - margen / 100)) * p.cantidad)}</span><button onClick={() => setCarrito((items) => items.filter((i) => i.id !== p.id))}><Trash2 size={18} /></button></div>)}</div>
+        {!carrito.length && <div className="cot-empty">Busca por nombre o código para agregar productos.</div>}
+      </section>
+      <section className="cot-card cot-section"><h2>3. Condiciones</h2><div className="cot-fields"><label>Vigencia (días)<input type="number" min="1" value={vigencia} onChange={(e) => setVigencia(e.target.value)} /></label><label>Notas<textarea value={notas} onChange={(e) => setNotas(e.target.value)} /></label><label className="wide">Condiciones<textarea value={condiciones} onChange={(e) => setCondiciones(e.target.value)} /></label></div></section>
+    </main><aside className="cot-card cot-summary"><h2>Resumen</h2>
+      <div className="cot-fields compact"><label>Margen real (%)<input type="number" min="0.01" max="95" value={margen} onChange={(e) => setMargen(e.target.value)} /></label><label>Descuento (%)<input type="number" min="0" max="100" value={descuento} onChange={(e) => setDescuento(e.target.value)} /></label><label>Flete<input type="number" min="0" value={flete} onChange={(e) => setFlete(e.target.value)} /></label><label>IVA (%)<input type="number" min="0" value={iva} onChange={(e) => setIva(e.target.value)} /></label></div>
+      <dl><div><dt>Costo de productos</dt><dd>{moneda(resumen.subtotalCostos)}</dd></div><div><dt>Subtotal venta</dt><dd>{moneda(resumen.subtotal)}</dd></div><div><dt>Descuento</dt><dd>-{moneda(resumen.montoDescuento)}</dd></div><div><dt>Flete</dt><dd>{moneda(flete)}</dd></div><div><dt>IVA</dt><dd>{moneda(resumen.montoIva)}</dd></div></dl>
+      <div className="cot-grand-total"><span>Total</span><strong>{moneda(resumen.total)}</strong></div>
+      <p className="cot-cost-note">El precio se calcula con margen real. El servidor volverá a validar todos los costos antes de guardar.</p>
+      <button className="cot-primary cot-full" disabled={guardando} onClick={() => guardar("PENDIENTE")}>Finalizar cotización</button>
+    </aside></div>
+  </div>;
 }

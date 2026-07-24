@@ -1,144 +1,92 @@
-function Cotizacion() {
-    const cotizaciones = [
-    {
-      folio: "COT-2543",
-      cliente: "Escuela Secundaria Técnica #45",
-      fecha: "2024-05-14",
-      monto: "$45,200",
-      estatus: "Seguimiento",
-    },
-    {
-      folio: "COT-2542",
-      cliente: "Gobierno del Estado (Hidalgo)",
-      fecha: "2024-05-14",
-      monto: "$128,500",
-      estatus: "Pendiente",
-    },
-    {
-      folio: "COT-2541",
-      cliente: "Distribuidora del Centro",
-      fecha: "2024-05-13",
-      monto: "$18,400",
-      estatus: "Cerrada",
-    },
-    {
-      folio: "COT-2540",
-      cliente: "Colegio Montessori",
-      fecha: "2024-05-12",
-      monto: "$32,100",
-      estatus: "Seguimiento",
-    },
-    {
-      folio: "COT-2539",
-      cliente: "Particular - Ana García",
-      fecha: "2024-05-11",
-      monto: "$5,800",
-      estatus: "Pendiente",
-    },
-    {
-      folio: "COT-2538",
-      cliente: "Oficinas Corporativas S.A.",
-      fecha: "2024-05-10",
-      monto: "$210,000",
-      estatus: "Cerrada",
-    },
-  ];
+import { useEffect, useState } from "react";
+import { Download, Eye, MessageCircle, Plus, Search } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { listarCotizaciones, obtenerCotizacion } from "../services/cotizaciones";
+import { descargarPdfCotizacion, compartirCotizacionWhatsApp } from "../utils/cotizacionPdf";
+import "./cotizaciones.css";
 
-  const badgePorEstatus = (estatus) => {
-    switch (estatus) {
-      case "Seguimiento":
-        return "bg-warning-subtle text-warning";
-      case "Pendiente":
-        return "bg-primary-subtle text-primary";
-      case "Cerrada":
-        return "bg-success-subtle text-success";
-      default:
-        return "bg-secondary";
-    }
-  };
+const estados = {
+  BORRADOR: "Borrador", PENDIENTE: "Pendiente", ENVIADA: "Enviada", ACEPTADA: "Aceptada",
+  RECHAZADA: "Rechazada", VENCIDA: "Vencida", COMPLETADA: "Completada", CANCELADA: "Cancelada",
+};
+const moneda = (value) => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(value || 0);
 
-    return ( 
-        
-    <div className="p-4">
+export default function Cotizaciones() {
+  const navigate = useNavigate();
+  const [items, setItems] = useState([]);
+  const [busqueda, setBusqueda] = useState("");
+  const [estado, setEstado] = useState("");
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState("");
+  const [detalle, setDetalle] = useState(null);
 
-      {/* Header */}
-      <div className="d-flex justify-content-between align-items-start mb-4">
-        <div>
-          <h2 className="fw-bold mb-1">Registro de Cotizaciones</h2>
-          <p className="text-muted mb-0">
-            Historial y seguimiento de cotizaciones generadas.
-          </p>
-        </div>
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      setCargando(true);
+      try {
+        const data = await listarCotizaciones({ busqueda, estado, size: 50 });
+        setItems(data.content || []);
+        setError("");
+      } catch (e) {
+        setError(e.message);
+      } finally {
+        setCargando(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [busqueda, estado]);
 
-        <button className="btn btn-success">
-          + Nueva Cotización
-        </button>
-      </div>
+  const cargarDetalle = async (id) => setDetalle(await obtenerCotizacion(id));
+  const conCotizacion = async (id, accion) => accion(await obtenerCotizacion(id));
 
-      {/* Filtros fake */}
-      <div className="card mb-4">
-        <div className="card-body d-flex gap-2 align-items-center">
-          <input
-            type="text"
-            className="form-control"
-            placeholder="Buscar por folio o cliente..."
-          />
-          <select className="form-select w-auto">
-            <option>Todos los estatus</option>
-            <option>Seguimiento</option>
-            <option>Pendiente</option>
-            <option>Cerrada</option>
-          </select>
-          <input type="date" className="form-control w-auto" />
-        </div>
-      </div>
-
-      {/* Tabla */}
-      <div className="card">
-        <div className="table-responsive">
-          <table className="table table-hover mb-0">
-            <thead className="table-light">
-              <tr>
-                <th>No. Cotización</th>
-                <th>Cliente</th>
-                <th>Fecha</th>
-                <th>Monto</th>
-                <th>Estatus</th>
-                <th className="text-end">Acciones</th>
+  return (
+    <div className="cot-page">
+      <header className="cot-header">
+        <div><h1>Cotizaciones</h1><p>Consulta, da seguimiento y comparte propuestas comerciales.</p></div>
+        <button className="cot-primary" onClick={() => navigate("/cotizaciones/nueva")}><Plus size={18} /> Nueva cotización</button>
+      </header>
+      <section className="cot-card cot-filters">
+        <label className="cot-search"><Search size={18} /><input value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder="Buscar por folio o cliente..." /></label>
+        <select value={estado} onChange={(e) => setEstado(e.target.value)}>
+          <option value="">Todos los estados</option>
+          {Object.entries(estados).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+        </select>
+      </section>
+      {error && <div className="cot-alert cot-alert-error">{error}</div>}
+      <section className="cot-card cot-table-wrap">
+        <table className="cot-table">
+          <thead><tr><th>Folio</th><th>Cliente</th><th>Emisión</th><th>Vigencia</th><th>Total</th><th>Estado</th><th>Acciones</th></tr></thead>
+          <tbody>
+            {!cargando && items.map((item) => (
+              <tr key={item.id}>
+                <td><strong>{item.folio}</strong></td><td>{item.clienteNombre}</td><td>{item.fechaEmision}</td>
+                <td>{item.fechaVencimiento}</td><td><strong>{moneda(item.total)}</strong></td>
+                <td><span className={`cot-status cot-status-${item.estado.toLowerCase()}`}>{estados[item.estado]}</span></td>
+                <td><div className="cot-actions">
+                  <button title="Ver" onClick={() => cargarDetalle(item.id)}><Eye size={17} /></button>
+                  <button title="Descargar PDF" onClick={() => conCotizacion(item.id, descargarPdfCotizacion)}><Download size={17} /></button>
+                  <button title="Enviar por WhatsApp" onClick={() => conCotizacion(item.id, compartirCotizacionWhatsApp)}><MessageCircle size={17} /></button>
+                </div></td>
               </tr>
-            </thead>
-            <tbody>
-              {cotizaciones.map((c) => (
-                <tr key={c.folio}>
-                  <td className="fw-semibold">{c.folio}</td>
-                  <td>{c.cliente}</td>
-                  <td className="text-muted">{c.fecha}</td>
-                  <td className="fw-semibold">{c.monto}</td>
-                  <td>
-                    <span className={`badge ${badgePorEstatus(c.estatus)}`}>
-                      {c.estatus}
-                    </span>
-                  </td>
-                  <td className="text-end">
-                    <button className="btn btn-sm btn-outline-secondary me-1">
-                      👁
-                    </button>
-                    <button className="btn btn-sm btn-outline-secondary me-1">
-                      ✏️
-                    </button>
-                    <button className="btn btn-sm btn-outline-secondary">
-                      ⋯
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
+            ))}
+          </tbody>
+        </table>
+        {cargando && <div className="cot-empty">Cargando cotizaciones...</div>}
+        {!cargando && !items.length && <div className="cot-empty">No hay cotizaciones con estos filtros.</div>}
+      </section>
+      {detalle && <div className="cot-modal-backdrop" onClick={() => setDetalle(null)}>
+        <article className="cot-modal" onClick={(e) => e.stopPropagation()}>
+          <button className="cot-modal-close" onClick={() => setDetalle(null)}>×</button>
+          <span className={`cot-status cot-status-${detalle.estado.toLowerCase()}`}>{estados[detalle.estado]}</span>
+          <h2>{detalle.folio}</h2><p>{detalle.clienteNombre}</p>
+          <div className="cot-detail-list">{detalle.detalles.map((d) => <div key={d.id}><span>{d.cantidad} × {d.sku} · {d.nombre}</span><strong>{moneda(d.importe)}</strong></div>)}</div>
+          <div className="cot-modal-total"><span>Total</span><strong>{moneda(detalle.total)}</strong></div>
+          <div className="cot-modal-buttons">
+            <button onClick={() => descargarPdfCotizacion(detalle)}><Download size={17} /> PDF</button>
+            <button className="cot-primary" onClick={() => compartirCotizacionWhatsApp(detalle)}><MessageCircle size={17} /> WhatsApp</button>
+          </div>
+        </article>
+      </div>}
     </div>
-     );
+  );
 }
-
-export default Cotizacion;

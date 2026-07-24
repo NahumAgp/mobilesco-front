@@ -127,9 +127,10 @@ export default function App() {
         <Route path="/unidadMedida" element={withPermission(<UnidadMedida />, "VIEW_INVENTORY")} />
         <Route path="/almacen" element={<Navigate to="/insumos" replace />} />
 
-        <Route path="/nuevaCotizacion" element={withPermission(<NuevaCotizacion />, "VIEW_QUOTES")} />
+        <Route path="/nuevaCotizacion" element={<Navigate to="/cotizaciones/nueva" replace />} />
 
         <Route path="/cotizaciones" element={withPermission(<Cotizacion />, "VIEW_QUOTES")} />
+        <Route path="/cotizaciones/nueva" element={withPermission(<NuevaCotizacion />, "VIEW_QUOTES")} />
 
         {/* CLIENTES */}
         <Route path="/clientes" element={withPermission(<ClientesPage />, "VIEW_CUSTOMERS")} />
