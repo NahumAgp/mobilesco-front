@@ -71,6 +71,8 @@ import ProductosCalidadPage from "./modules/productos/pages/Productos/ProductosC
 import ProductoInsumosBOMPage from "./modules/productos/pages/Productos/ProductoInsumosBOMPage.jsx";
 import ProductoOperacionesBOMPage from "./modules/productos/pages/Productos/ProductoOperacionesBOMPage.jsx";
 import UsuariosAccesoPage from "./modules/usuarios/pages/UsuariosAccesoPage.jsx";
+import ClientesPage from "./modules/clientes/pages/ClientesPage.jsx";
+import ClienteFormPage from "./modules/clientes/pages/ClienteFormPage.jsx";
 
 function ProductoDetalleRedirect() {
   const { id } = useParams();
@@ -123,6 +125,11 @@ export default function App() {
         <Route path="/nuevaCotizacion" element={withPermission(<NuevaCotizacion />, "VIEW_QUOTES")} />
 
         <Route path="/cotizaciones" element={withPermission(<Cotizacion />, "VIEW_QUOTES")} />
+
+        {/* CLIENTES */}
+        <Route path="/clientes" element={withPermission(<ClientesPage />, "VIEW_CUSTOMERS")} />
+        <Route path="/clientes/nuevo" element={withPermission(<ClienteFormPage />, "VIEW_CUSTOMERS")} />
+        <Route path="/clientes/:id" element={withPermission(<ClienteFormPage />, "VIEW_CUSTOMERS")} />
 
         {/* EMPLEADOS */}
         <Route path="/empleados/nuevo" element={withPermission(<EmpleadoFormPage />, "VIEW_EMPLOYEES")} />

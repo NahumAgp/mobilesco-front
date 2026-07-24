@@ -183,6 +183,7 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
         {can("VIEW_CIF") && <LinkItem to="/cif" label="CIF" icon="bi-diagram-3" onClick={handleNavigation} />}
         {can("VIEW_PURCHASES") && <LinkItem to="/compras" label="Compras" icon="bi-cart-check" onClick={handleNavigation} />}
         {can("VIEW_KARDEX") && <LinkItem to="/kardex" label="Kardex" icon="bi-journal-text" onClick={handleNavigation} />}
+        {can("VIEW_CUSTOMERS") && <LinkItem to="/clientes" label="Clientes" icon="bi-person-vcard" onClick={handleNavigation} />}
         {can("VIEW_QUOTES") && <LinkItem to="/cotizaciones" label="Cotizaciones" icon="bi-file-earmark-text" onClick={handleNavigation} />}
       </nav>
 
