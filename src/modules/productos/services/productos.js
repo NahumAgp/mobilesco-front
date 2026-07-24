@@ -113,6 +113,13 @@ export function actualizarInsumoDeProducto(productoId, insumoId, data) {
   });
 }
 
+export function aplicarCantidadesInsumosMismoNivel(productoId, insumos) {
+  return request(`${API_PATHS.PRODUCTOS}/${productoId}/insumos/aplicar-mismo-nivel`, {
+    method: "PUT",
+    body: JSON.stringify(insumos),
+  });
+}
+
 export function obtenerOperacionesDeProducto(productoId, params = {}) {
   const query = buildQuery(params);
   return request(query ? `${API_PATHS.PRODUCTOS}/${productoId}/operaciones?${query}` : `${API_PATHS.PRODUCTOS}/${productoId}/operaciones`);
