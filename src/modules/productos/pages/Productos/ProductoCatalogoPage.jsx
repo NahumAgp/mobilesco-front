@@ -6,7 +6,7 @@ import { API_BASE_URL } from "../../../../config/apiConfig";
 import { obtenerProductos } from "../../services/productos";
 import "./ProductoCatalogoPage.css";
 
-const FETCH_PAGE_SIZE = 200;
+const LOAD_SIZE = 100;
 
 const COLOR_FALLBACKS = [
   { pattern: /blanco|white/i, value: "#f8fafc" },
@@ -126,6 +126,24 @@ const getModeloKey = (producto) => {
   return normalizar(modelo || "sin-modelo");
 };
 
+const getFamiliaNombre = (producto) =>
+  getTexto(
+    producto?.familiaNombre,
+    producto?.nombre_familia,
+    producto?.familia?.nombre,
+    producto?.modelo?.familia?.nombre,
+    "Sin familia"
+  );
+
+const getFamiliaKey = (producto) => {
+  const familiaId =
+    producto?.familiaId ||
+    producto?.id_familia ||
+    producto?.familia?.id ||
+    producto?.modelo?.familia?.id;
+  return familiaId ? `familia-${familiaId}` : normalizar(getFamiliaNombre(producto));
+};
+
 const getModeloInfo = (productos) => {
   const base = productos[0] || {};
   const modelo = getTexto(base?.modeloNombre, base?.nombre_modelo, base?.productoBaseNombre, base?.modelo?.nombre);
@@ -134,21 +152,8 @@ const getModeloInfo = (productos) => {
     titulo: modelo || base?.nombre || "Modelo",
     modelo: modelo || "Sin modelo",
     familia: getTexto(base?.familiaNombre, base?.familia?.nombre, base?.modelo?.familia?.nombre),
-    subfamilia: getTexto(base?.subfamiliaNombre, base?.subfamilia?.nombre, base?.modelo?.subfamilia?.nombre),
     linea: getTexto(base?.lineaNombre, base?.linea?.nombre, base?.modelo?.familia?.linea?.nombre)
   };
-};
-
-const getLineaKey = (producto) => {
-  const linea =
-    producto?.lineaId ||
-    producto?.linea?.id ||
-    producto?.modelo?.familia?.linea?.id ||
-    producto?.lineaNombre ||
-    producto?.linea?.nombre ||
-    producto?.modelo?.familia?.linea?.nombre ||
-    "sin-linea";
-  return normalizar(linea || "sin-linea");
 };
 
 const getAtributo = (producto, tipo) => {
@@ -261,33 +266,23 @@ const construirModelos = (productos) => {
     .sort((a, b) => a.titulo.localeCompare(b.titulo, "es", { numeric: true, sensitivity: "base" }));
 };
 
-const construirLineas = (productos) => {
+const construirFamilias = (productos) => {
   const mapa = new Map();
   productos.forEach((producto) => {
-    const key = getLineaKey(producto);
-    if (!mapa.has(key)) {
-      mapa.set(key, {
-        key,
-        nombre: getTexto(
-          producto?.lineaNombre,
-          producto?.linea?.nombre,
-          producto?.modelo?.familia?.linea?.nombre,
-          "Sin linea"
-        ),
-        productos: []
-      });
-    }
-    mapa.get(key).productos.push(producto);
+    const key = getFamiliaKey(producto);
+    if (!mapa.has(key)) mapa.set(key, []);
+    mapa.get(key).push(producto);
   });
 
-  return Array.from(mapa.values())
-    .map((linea) => {
-      const modelos = construirModelos(linea.productos);
+  return Array.from(mapa.entries())
+    .map(([key, lista]) => {
+      const modelos = construirModelos(lista);
       return {
-        ...linea,
+        key,
+        nombre: getFamiliaNombre(lista[0]),
+        productos: lista,
         modelos,
-        totalModelos: modelos.length,
-        totalProductos: linea.productos.length
+        imagen: getImagenModelo(lista)
       };
     })
     .sort((a, b) => a.nombre.localeCompare(b.nombre, "es", { numeric: true, sensitivity: "base" }));
@@ -301,7 +296,8 @@ export default function ProductoCatalogoPage() {
   const [error, setError] = useState("");
   const [busqueda, setBusqueda] = useState("");
   const [soloActivos, setSoloActivos] = useState(true);
-  const [lineaSeleccionadaKey, setLineaSeleccionadaKey] = useState("");
+  const [lineaSeleccionada, setLineaSeleccionada] = useState("");
+  const [familiaSeleccionada, setFamiliaSeleccionada] = useState("");
   const [imagenSeleccionada, setImagenSeleccionada] = useState(0);
 
   useEffect(() => {
@@ -309,32 +305,27 @@ export default function ProductoCatalogoPage() {
       try {
         setLoading(true);
         setError("");
-        const acumulados = [];
-        let pagina = 0;
-        let totalPaginas = 1;
-
-        do {
-          const data = await obtenerProductos({
-            page: pagina,
-            size: FETCH_PAGE_SIZE,
-            busqueda,
-            activo: soloActivos ? true : undefined,
-            sortBy: "modeloNombre",
-            direction: "asc"
-          });
-
-          const lista = getLista(data);
-          acumulados.push(...lista);
-          totalPaginas = data?.content ? Number(data.totalPages || 0) : 1;
-          pagina += 1;
-
-          if (!data?.content) break;
-        } while (pagina < totalPaginas);
-
-        setProductos(acumulados);
+        const parametros = {
+          busqueda,
+          activo: soloActivos ? true : undefined,
+          sortBy: "modeloNombre",
+          direction: "asc"
+        };
+        const primeraPagina = await obtenerProductos({ ...parametros, page: 0, size: LOAD_SIZE });
+        const totalPaginas = Math.max(Number(primeraPagina?.totalPages || 1), 1);
+        const paginasRestantes = totalPaginas > 1
+          ? await Promise.all(
+              Array.from({ length: totalPaginas - 1 }, (_, index) =>
+                obtenerProductos({ ...parametros, page: index + 1, size: LOAD_SIZE })
+              )
+            )
+          : [];
+        setProductos([
+          ...getLista(primeraPagina),
+          ...paginasRestantes.flatMap((pagina) => getLista(pagina))
+        ]);
       } catch (err) {
         setError(err?.message || "No se pudieron cargar los productos.");
-        setProductos([]);
       } finally {
         setLoading(false);
       }
@@ -343,29 +334,73 @@ export default function ProductoCatalogoPage() {
     cargarProductos();
   }, [busqueda, soloActivos]);
 
-  const productosFiltrados = productos;
-  const resetPage = (updater) => {
-    setLineaSeleccionadaKey("");
-    updater();
-  };
-
-  const lineas = useMemo(() => construirLineas(productosFiltrados), [productosFiltrados]);
-  const lineaSeleccionada = useMemo(
-    () => lineas.find((linea) => linea.key === lineaSeleccionadaKey) || lineas[0] || null,
-    [lineaSeleccionadaKey, lineas]
-  );
-  const modelos = lineaSeleccionada?.modelos || [];
-  const productoSeleccionado = useMemo(() => {
-    const porRuta = productosFiltrados.find((producto) => String(getProductoId(producto)) === String(id));
-    if (porRuta) return porRuta;
-    return modelos[0]?.productos?.[0] || null;
-  }, [id, modelos, productosFiltrados]);
+  const lineas = useMemo(() => {
+    const mapa = new Map();
+    productos.forEach((producto) => {
+      const nombre = getTexto(producto?.lineaNombre, producto?.linea?.nombre, producto?.modelo?.familia?.linea?.nombre, "Sin línea");
+      const key = normalizar(nombre || "sin-linea");
+      if (!mapa.has(key)) mapa.set(key, { key, nombre, productos: 0, familias: new Set(), modelos: new Set() });
+      const linea = mapa.get(key);
+      linea.productos += 1;
+      linea.familias.add(getFamiliaKey(producto));
+      linea.modelos.add(getModeloKey(producto));
+    });
+    return Array.from(mapa.values())
+      .map((linea) => ({ ...linea, familias: linea.familias.size, modelos: linea.modelos.size }))
+      .sort((a, b) => a.nombre.localeCompare(b.nombre, "es", { sensitivity: "base" }));
+  }, [productos]);
 
   useEffect(() => {
-    if (!productoSeleccionado) return;
-    const key = getLineaKey(productoSeleccionado);
-    if (key && key !== lineaSeleccionadaKey) setLineaSeleccionadaKey(key);
-  }, [lineaSeleccionadaKey, productoSeleccionado]);
+    if (!lineas.length) {
+      setLineaSeleccionada("");
+      return;
+    }
+    const productoRuta = productos.find((producto) => String(getProductoId(producto)) === String(id));
+    const lineaRuta = productoRuta
+      ? normalizar(getTexto(productoRuta?.lineaNombre, productoRuta?.linea?.nombre, productoRuta?.modelo?.familia?.linea?.nombre, "Sin línea"))
+      : "";
+    setLineaSeleccionada((actual) => {
+      if (lineaRuta && lineas.some((linea) => linea.key === lineaRuta)) return lineaRuta;
+      if (lineas.some((linea) => linea.key === actual)) return actual;
+      return lineas[0].key;
+    });
+  }, [id, lineas, productos]);
+
+  const productosFiltrados = useMemo(
+    () => productos.filter((producto) => {
+      const linea = normalizar(getTexto(producto?.lineaNombre, producto?.linea?.nombre, producto?.modelo?.familia?.linea?.nombre, "Sin línea"));
+      return !lineaSeleccionada || linea === lineaSeleccionada;
+    }),
+    [lineaSeleccionada, productos]
+  );
+
+  const familias = useMemo(() => construirFamilias(productosFiltrados), [productosFiltrados]);
+
+  useEffect(() => {
+    if (!familias.length) {
+      setFamiliaSeleccionada("");
+      return;
+    }
+    const productoRuta = productosFiltrados.find((producto) => String(getProductoId(producto)) === String(id));
+    const familiaRuta = productoRuta ? getFamiliaKey(productoRuta) : "";
+    setFamiliaSeleccionada((actual) => {
+      if (familiaRuta && familias.some((familia) => familia.key === familiaRuta)) return familiaRuta;
+      if (familias.some((familia) => familia.key === actual)) return actual;
+      return familias[0].key;
+    });
+  }, [familias, id, productosFiltrados]);
+
+  const familiaActual = useMemo(
+    () => familias.find((familia) => familia.key === familiaSeleccionada) || null,
+    [familiaSeleccionada, familias]
+  );
+  const productosFamilia = useMemo(() => familiaActual?.productos || [], [familiaActual]);
+  const modelos = useMemo(() => familiaActual?.modelos || [], [familiaActual]);
+  const productoSeleccionado = useMemo(() => {
+    const porRuta = productosFamilia.find((producto) => String(getProductoId(producto)) === String(id));
+    if (porRuta) return porRuta;
+    return modelos[0]?.productos?.[0] || null;
+  }, [id, modelos, productosFamilia]);
 
   const modeloSeleccionado = useMemo(() => {
     if (!productoSeleccionado) return null;
@@ -403,6 +438,21 @@ export default function ProductoCatalogoPage() {
     if (productoId) navigate(`/productos/catalogo/${productoId}`);
   };
 
+  const cambiarLinea = (linea) => {
+    setLineaSeleccionada(linea.key);
+    const primerProducto = productos.find((producto) => {
+      const nombreLinea = normalizar(getTexto(producto?.lineaNombre, producto?.linea?.nombre, producto?.modelo?.familia?.linea?.nombre, "Sin línea"));
+      return nombreLinea === linea.key;
+    });
+    if (primerProducto) cambiarProducto(primerProducto);
+  };
+
+  const cambiarFamilia = (familia) => {
+    setFamiliaSeleccionada(familia.key);
+    const primerProducto = familia.modelos[0]?.productos?.[0] || familia.productos[0];
+    if (primerProducto) cambiarProducto(primerProducto);
+  };
+
   const cambiarAtributo = (tipo, key) => {
     const siguiente = buscarProductoCompatible(productosDelModelo, { [tipo]: key }, productoSeleccionado);
     if (siguiente) cambiarProducto(siguiente);
@@ -426,7 +476,7 @@ export default function ProductoCatalogoPage() {
     <>
       <PageHeader
         title="Catalogo visual"
-        subtitle="Modelos con selector de material, nivel y color"
+        subtitle="Explora por línea, familia y modelo; después elige material, nivel y color"
         actions={
           <div className="producto-catalogo-header-actions">
             <button className="btn productos-brand-outline" onClick={() => navigate("/productos")}>
@@ -449,22 +499,45 @@ export default function ProductoCatalogoPage() {
           <input
             type="search"
             value={busqueda}
-            onChange={(event) => resetPage(() => setBusqueda(event.target.value))}
-            placeholder="Buscar por SKU, modelo, color, material..."
+            onChange={(event) => setBusqueda(event.target.value)}
+            placeholder="Buscar por SKU, modelo, familia, color o material..."
           />
         </div>
         <label className="producto-catalogo-toggle">
           <input
             type="checkbox"
             checked={soloActivos}
-            onChange={(event) => resetPage(() => setSoloActivos(event.target.checked))}
+            onChange={(event) => setSoloActivos(event.target.checked)}
           />
           <span>Solo activos</span>
         </label>
         <div className="producto-catalogo-count">
-          {lineas.length} lineas / {productosFiltrados.length} productos
+          {familias.length} familias / {modelos.length} modelos / {productosFamilia.length} productos
         </div>
       </section>
+
+      {!loading && !error && lineas.length > 0 && (
+        <nav className="producto-catalogo-lineas" aria-label="Líneas del catálogo">
+          <div className="producto-catalogo-lineas-title">
+            <span>Catálogo por línea</span>
+            <small>Selecciona una línea para consultar sus familias</small>
+          </div>
+          <div className="producto-catalogo-lineas-list">
+            {lineas.map((linea) => (
+              <button
+                key={linea.key}
+                type="button"
+                className={linea.key === lineaSeleccionada ? "is-active" : ""}
+                onClick={() => cambiarLinea(linea)}
+              >
+                <strong>{linea.nombre}</strong>
+                <span>{linea.familias} familias</span>
+                <small>{linea.modelos} modelos · {linea.productos} productos</small>
+              </button>
+            ))}
+          </div>
+        </nav>
+      )}
 
       {loading && <div className="alert alert-info">Cargando catalogo visual...</div>}
       {error && <div className="alert alert-danger">{error}</div>}
@@ -478,47 +551,34 @@ export default function ProductoCatalogoPage() {
 
       {!loading && !error && productoSeleccionado && (
         <>
-        <nav className="producto-catalogo-line-tabs" aria-label="Lineas de producto">
-          {lineas.map((linea) => (
-            <button
-              key={linea.key}
-              type="button"
-              className={linea.key === lineaSeleccionada?.key ? "is-active" : ""}
-              onClick={() => {
-                setLineaSeleccionadaKey(linea.key);
-                if (linea.modelos[0]?.productos?.[0]) cambiarProducto(linea.modelos[0].productos[0]);
-              }}
-            >
-              <strong>{linea.nombre}</strong>
-              <span>{linea.totalModelos} modelos · {linea.totalProductos} productos</span>
-            </button>
-          ))}
-        </nav>
         <div className="producto-catalogo-shell">
-          <aside className="producto-catalogo-groups" aria-label="Grupos de productos">
-            <h2>Modelos</h2>
+          <aside className="producto-catalogo-groups" aria-label="Familias de productos">
+            <div className="producto-catalogo-groups-heading">
+              <h2>Familias</h2>
+              <span>{familias.length}</span>
+            </div>
             <div className="producto-catalogo-group-list">
-              {modelos.map((modelo) => {
-                const activo = modelo.key === modeloSeleccionado?.key;
+              {familias.map((familia) => {
+                const activo = familia.key === familiaSeleccionada;
                 return (
                   <button
-                    key={modelo.key}
+                    key={familia.key}
                     type="button"
                     className={`producto-catalogo-group ${activo ? "is-active" : ""}`}
-                    onClick={() => cambiarProducto(modelo.productos[0])}
+                    onClick={() => cambiarFamilia(familia)}
                   >
-                    {modelo.imagen?.url ? (
-                      <img src={modelo.imagen.url} alt={modelo.titulo} />
+                    {familia.imagen?.url ? (
+                      <img src={familia.imagen.url} alt={familia.nombre} />
                     ) : (
                       <span className="producto-catalogo-group-fallback">
-                        {(modelo.modelo || modelo.titulo).charAt(0).toUpperCase()}
+                        {familia.nombre.charAt(0).toUpperCase()}
                       </span>
                     )}
                     <span className="producto-catalogo-group-copy">
-                      <strong>{modelo.modelo || modelo.titulo}</strong>
-                      <small>{[modelo.linea, modelo.familia, modelo.subfamilia].filter(Boolean).join(" - ") || "Sin clasificacion"}</small>
+                      <strong>{familia.nombre}</strong>
+                      <small>{familia.modelos.length} modelos</small>
                       <span>
-                        {modelo.productos.length} productos · {modelo.materiales.length} materiales · {modelo.niveles.length} niveles
+                        {familia.productos.length} productos
                       </span>
                     </span>
                   </button>
@@ -526,6 +586,42 @@ export default function ProductoCatalogoPage() {
               })}
             </div>
           </aside>
+
+          <div className="producto-catalogo-content">
+            <section className="producto-catalogo-modelos" aria-label={`Modelos de ${familiaActual?.nombre || "la familia"}`}>
+              <div className="producto-catalogo-modelos-heading">
+                <div>
+                  <span>Familia seleccionada</span>
+                  <h2>{familiaActual?.nombre || "Sin familia"}</h2>
+                </div>
+                <small>{modelos.length} modelos · {productosFamilia.length} productos</small>
+              </div>
+              <div className="producto-catalogo-modelos-list">
+                {modelos.map((modelo) => {
+                  const activo = modelo.key === modeloSeleccionado?.key;
+                  return (
+                    <button
+                      key={modelo.key}
+                      type="button"
+                      className={activo ? "is-active" : ""}
+                      onClick={() => cambiarProducto(modelo.productos[0])}
+                    >
+                      {modelo.imagen?.url ? (
+                        <img src={modelo.imagen.url} alt={modelo.titulo} />
+                      ) : (
+                        <span className="producto-catalogo-modelo-fallback">
+                          {(modelo.modelo || modelo.titulo).charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                      <span>
+                        <strong>{modelo.modelo || modelo.titulo}</strong>
+                        <small>{modelo.productos.length} productos</small>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
 
           <main className="producto-catalogo-detail">
             <section className="producto-catalogo-model-hero">
@@ -540,7 +636,7 @@ export default function ProductoCatalogoPage() {
                 <span>Modelo</span>
                 <strong>{modeloSeleccionado?.modelo || "-"}</strong>
                 <small>
-                  {[modeloSeleccionado?.linea, modeloSeleccionado?.familia, modeloSeleccionado?.subfamilia].filter(Boolean).join(" - ") || "Sin clasificacion"}
+                  {[modeloSeleccionado?.linea, modeloSeleccionado?.familia].filter(Boolean).join(" - ") || "Sin clasificacion"}
                 </small>
               </div>
               <div className="producto-catalogo-model-stats">
@@ -626,10 +722,6 @@ export default function ProductoCatalogoPage() {
                 <div>
                   <span>Familia</span>
                   <strong>{modeloSeleccionado?.familia || "-"}</strong>
-                </div>
-                <div>
-                  <span>Subfamilia</span>
-                  <strong>{modeloSeleccionado?.subfamilia || "-"}</strong>
                 </div>
                 <div>
                   <span>Modelo</span>
@@ -734,6 +826,7 @@ export default function ProductoCatalogoPage() {
               </div>
             </section>
           </main>
+          </div>
         </div>
         </>
       )}
