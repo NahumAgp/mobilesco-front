@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from '../components/Sistema/Sidebar';
+import NotificationBell from '../modules/notificaciones/components/NotificationBell';
 import './AppLayout.css';
 
 const AppLayout = () => {
@@ -15,6 +16,9 @@ const AppLayout = () => {
     <div className={`app-layout ${sidebarOpen ? "" : "sidebar-is-compact"}`}>
       <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
       <main className="main-content">
+        <div className="app-topbar">
+          <NotificationBell />
+        </div>
         <div className="content-wrapper">
           <Outlet />
         </div>

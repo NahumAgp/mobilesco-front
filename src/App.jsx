@@ -74,6 +74,7 @@ import ProductosCalidadPage from "./modules/productos/pages/Productos/ProductosC
 import ProductoInsumosBOMPage from "./modules/productos/pages/Productos/ProductoInsumosBOMPage.jsx";
 import ProductoOperacionesBOMPage from "./modules/productos/pages/Productos/ProductoOperacionesBOMPage.jsx";
 import UsuariosAccesoPage from "./modules/usuarios/pages/UsuariosAccesoPage.jsx";
+import NotificacionesPage from "./modules/notificaciones/pages/NotificacionesPage.jsx";
 import ClientesPage from "./modules/clientes/pages/ClientesPage.jsx";
 import ClienteFormPage from "./modules/clientes/pages/ClienteFormPage.jsx";
 
@@ -120,6 +121,7 @@ export default function App() {
       >
 
         <Route path="/tablero" element={<Tablero />} />
+        <Route path="/notificaciones" element={<NotificacionesPage />} />
 
 
         <Route path="/unidadMedida" element={withPermission(<UnidadMedida />, "VIEW_INVENTORY")} />
