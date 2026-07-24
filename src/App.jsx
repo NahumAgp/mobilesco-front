@@ -47,6 +47,9 @@ import SalidasInsumosPage from "./modules/salidas-insumos/pages/SalidasInsumosPa
 import SalidasInsumosNuevaPage from "./modules/salidas-insumos/pages/SalidasInsumosNuevaPage.jsx";
 import EntradasPage from "./modules/almacen/entradas/pages/EntradasPage.jsx";
 import EntradaRecepcionPage from "./modules/almacen/entradas/pages/EntradaRecepcionPage.jsx";
+import RequisicionesPage from "./modules/almacen/requisiciones/pages/RequisicionesPage.jsx";
+import RequisicionNuevaPage from "./modules/almacen/requisiciones/pages/RequisicionNuevaPage.jsx";
+import RequisicionDetallePage from "./modules/almacen/requisiciones/pages/RequisicionDetallePage.jsx";
 
 import CentrosTrabajoPage from "./modules/centros-trabajo/pages/CentrosTrabajoPage.jsx";
 import CentrosTrabajoFormPage from "./modules/centros-trabajo/pages/CentroTrabajoFormPage.jsx";
@@ -201,6 +204,9 @@ export default function App() {
         <Route path="/insumos/:id" element={withRoles(<InsumosFormPage />, ROLES_GESTION_INSUMOS)} />
         <Route path="/salidas-insumos" element={withPermission(<SalidasInsumosPage />, "VIEW_INVENTORY")} />
         <Route path="/salidas-insumos/nueva" element={withRoles(<SalidasInsumosNuevaPage />, ROLES_GESTION_SALIDAS)} />
+        <Route path="/almacen/requisiciones" element={withPermission(<RequisicionesPage />, "VIEW_WAREHOUSE_REQUISITIONS")} />
+        <Route path="/almacen/requisiciones/nueva" element={withRoles(<RequisicionNuevaPage />, ["ADMIN", "SUPER_ADMIN", "DIRECTOR_GENERAL", "JEFE_ALMACEN"])} />
+        <Route path="/almacen/requisiciones/:id" element={withPermission(<RequisicionDetallePage />, "VIEW_WAREHOUSE_REQUISITIONS")} />
         <Route
           path="/almacen/entradas"
           element={

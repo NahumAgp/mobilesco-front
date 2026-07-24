@@ -51,6 +51,7 @@ export const API_PATHS = {
   CUENTAS_POR_PAGAR: `${API_VERSION}/cuentas-por-pagar`,
   DETALLES_COMPRA: `${API_VERSION}/detalles-compra`,
   SALIDAS_INSUMOS: `${API_VERSION}/salidas-insumos`,
+  REQUISICIONES_ALMACEN: `${API_VERSION}/requisiciones-almacen`,
   KARDEX: `${API_VERSION}/kardex`,
   
   // Otros módulos

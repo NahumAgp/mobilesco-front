@@ -173,6 +173,7 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
               <LinkItem to="/almacen/entradas" label="Entradas" icon="bi-box-arrow-in-down" sub onClick={handleNavigation} />
               <LinkItem to="/insumos/tipos" label="Tipos de insumo" icon="bi-tags" sub onClick={handleNavigation} />
               <LinkItem to="/salidas-insumos" label="Salidas" icon="bi-box-arrow-right" sub onClick={handleNavigation} />
+              {can("VIEW_WAREHOUSE_REQUISITIONS") && <LinkItem to="/almacen/requisiciones" label="Requisiciones" icon="bi-clipboard-check" sub onClick={handleNavigation} />}
               <LinkItem to="/unidades-medida" label="Unidad Medida" icon="bi-aspect-ratio" sub onClick={handleNavigation} />
             </div>
           </div>
