@@ -67,7 +67,9 @@ export default function ProductoWizard({ onComplete, onCancel }) {
       subfamiliaId: "",
       activo: true,
       categorias: [],
-      materiales: []
+      materiales: [],
+      insumos: [],
+      operaciones: []
     },
     variantes: [],
     imagenes: {

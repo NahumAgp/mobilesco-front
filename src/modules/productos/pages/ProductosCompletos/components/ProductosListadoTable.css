@@ -8,7 +8,7 @@
 }
 
 .variantes-table {
-  min-width: 1766px;
+  min-width: 1936px;
   table-layout: fixed;
 }
 
@@ -65,6 +65,10 @@
 
 .variantes-col-estado {
   width: 105px;
+}
+
+.variantes-col-calidad {
+  width: 170px;
 }
 
 .variantes-col-acciones {

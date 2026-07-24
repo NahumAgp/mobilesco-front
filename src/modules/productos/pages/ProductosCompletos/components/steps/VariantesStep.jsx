@@ -77,7 +77,10 @@ const construirCodigoMaterial = (material) => {
 const construirSku = ({ linea, familia, subfamilia, modelo, categoria, material, color }) => {
   const codigoLinea = construirCodigoCatalogo(linea, "X");
   const codigoFamilia = construirCodigoCatalogo(familia, "X");
-  const codigoSubfamilia = subfamilia ? construirCodigoCatalogo(subfamilia, "") : "";
+  const subfamiliaSku = subfamilia || modelo?.subfamilia;
+  const codigoSubfamilia = subfamiliaSku
+    ? construirCodigoCatalogo(subfamiliaSku, "")
+    : limpiarCodigo(modelo?.subfamiliaCodigo || modelo?.subfamilia_codigo || "");
   const codigoModelo = construirCodigoCatalogo(modelo, "X");
 
   return `${codigoLinea}${codigoFamilia}${codigoSubfamilia}${codigoModelo}-${construirCodigoCategoria(categoria)}-${construirCodigoMaterial(material)}-${construirCodigoColor(color)}`;
@@ -188,10 +191,17 @@ function CategoriaBatchModal({
 
   useEffect(() => {
     if (!show) return;
-    setSeleccionadas([]);
-    setCategoriaSeleccionadaId("");
-    setManual({ nombre: "", descripcion: "" });
-    setError("");
+    let activo = true;
+    queueMicrotask(() => {
+      if (!activo) return;
+      setSeleccionadas([]);
+      setCategoriaSeleccionadaId("");
+      setManual({ nombre: "", descripcion: "" });
+      setError("");
+    });
+    return () => {
+      activo = false;
+    };
   }, [show]);
 
   const codigoBase = useMemo(() => maxCodigoCategoria(categoriasActuales), [categoriasActuales]);
@@ -1507,6 +1517,7 @@ export default function VariantesStep({
                             disabled={variante._existing}
                             readOnly
                             placeholder="Automatico"
+                            title="Se calcula con ancho × alto × fondo ÷ 5000"
                           />
                         </td>
                         <td>

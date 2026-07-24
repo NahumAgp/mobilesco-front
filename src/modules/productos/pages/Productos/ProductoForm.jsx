@@ -46,6 +46,13 @@ const getArchivoNombre = (url) => {
   return decodeURIComponent(partes[partes.length - 1] || "Imagen");
 };
 
+const getRutaClasificacionModelo = (modelo) => [
+  modelo?.lineaNombre || modelo?.linea?.nombre,
+  modelo?.familiaNombre || modelo?.familia?.nombre,
+  modelo?.subfamiliaNombre || modelo?.subfamilia?.nombre || "Sin subfamilia",
+  modelo?.nombre
+].filter(Boolean);
+
 const esImagenPrincipal = (imagen) => Boolean(imagen?.esPrincipal || imagen?.principal);
 
 const ordenarImagenesPorCarrusel = (lista = []) =>
@@ -111,7 +118,7 @@ const limpiarDecimal = (valor) => {
   return normalizado;
 };
 
-function DecimalInput({ name, className, value, onValueChange }) {
+function DecimalInput({ name, className, value, onValueChange, readOnly = false }) {
   return (
     <input
       type="text"
@@ -119,6 +126,7 @@ function DecimalInput({ name, className, value, onValueChange }) {
       name={name}
       className={className}
       value={value ?? ""}
+      readOnly={readOnly}
       onChange={(event) => {
         const siguiente = limpiarDecimal(event.target.value);
         if (siguiente !== null) onValueChange(name, siguiente);
@@ -270,6 +278,28 @@ export default function ProductoForm({
     colorId: "",
     activo: true,
   });
+
+  const modeloSeleccionado = useMemo(
+    () => modelos.find((modelo) => String(modelo.id) === String(formData.modeloId)) || null,
+    [formData.modeloId, modelos]
+  );
+
+  useEffect(() => {
+    setFormData((prev) => {
+      const calculado = calcularPesoVolumetrico({
+        ancho: prev.ancho,
+        alto: prev.alto,
+        fondo: prev.fondo
+      });
+      return String(prev.pesoVolumetrico ?? "") === String(calculado)
+        ? prev
+        : { ...prev, pesoVolumetrico: calculado };
+    });
+  }, [formData.alto, formData.ancho, formData.fondo]);
+  const rutaClasificacion = useMemo(
+    () => getRutaClasificacionModelo(modeloSeleccionado),
+    [modeloSeleccionado]
+  );
 
   useEffect(() => {
     const cargarCatalogos = async () => {
@@ -733,6 +763,7 @@ export default function ProductoForm({
                   readOnly
                   placeholder="Automatico"
                 />
+                <small className="text-muted">Se calcula con ancho × alto × fondo ÷ 5000</small>
               </div>
               <div className="col-md-4 col-lg">
                 <label className="form-label fw-semibold">Ancho</label>
@@ -800,10 +831,30 @@ export default function ProductoForm({
                 <select name="modeloId" className={selectClass("modeloId")} value={formData.modeloId} onChange={handleChange}>
                   <option value="">Seleccionar producto base...</option>
                   {modelos.map((modelo) => (
-                    <option key={modelo.id} value={modelo.id}>[{modelo.codigo}] {modelo.nombre}</option>
+                    <option key={modelo.id} value={modelo.id}>
+                      {getRutaClasificacionModelo(modelo).map((parte, index) => `${index ? " / " : ""}${parte}`).join("")} [{modelo.codigo}]
+                    </option>
                   ))}
                 </select>
                 <small className="text-muted">Producto base al que pertenece este producto</small>
+                {modeloSeleccionado && (
+                  <div className="alert alert-light border mt-3 mb-0 py-2 px-3">
+                    <div className="small text-muted mb-1">Ruta de clasificación</div>
+                    <div className="d-flex flex-wrap align-items-center gap-2">
+                      {rutaClasificacion.map((parte, index) => (
+                        <span key={`${parte}-${index}`} className="d-flex align-items-center gap-2">
+                          {index > 0 && <i className="bi bi-chevron-right text-muted"></i>}
+                          <span className={`badge ${index === 2 && parte === "Sin subfamilia" ? "text-bg-secondary" : "text-bg-light border text-dark"}`}>{parte}</span>
+                        </span>
+                      ))}
+                    </div>
+                    <div className="row g-2 mt-1 small">
+                      <div className="col-md-4"><strong>Línea:</strong> {modeloSeleccionado.lineaNombre || "No asignada"}</div>
+                      <div className="col-md-4"><strong>Familia:</strong> {modeloSeleccionado.familiaNombre || "No asignada"}</div>
+                      <div className="col-md-4"><strong>Subfamilia:</strong> {modeloSeleccionado.subfamiliaNombre || "Sin subfamilia"}</div>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="col-md-6">
                 <label className="form-label fw-semibold">Categoria del modelo <span className="text-danger">*</span></label>

@@ -5,7 +5,8 @@ import {
   obtenerProductos,
   obtenerInsumosDeProducto,
   agregarInsumosMasivo,
-  eliminarInsumoDeProducto
+  eliminarInsumoDeProducto,
+  actualizarInsumoDeProducto
 } from "../../services/productos.js";
 import { obtenerInsumos, crearInsumo } from "../../../insumos/services/insumos.js";
 import { obtenerUnidadesMedida, crearUnidadMedida } from "../../../unidades-medida/services/unidadMedidas.js";
@@ -42,6 +43,8 @@ const getProductoLabel = (item) => {
 export default function ProductoInsumosBOMPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [editandoInsumoId, setEditandoInsumoId] = useState(null);
+  const [edicionInsumo, setEdicionInsumo] = useState({ cantidad: "", desperdicioPorcentaje: 0, observaciones: "" });
   
   const [producto, setProducto] = useState(null);
   const [insumosDisponibles, setInsumosDisponibles] = useState([]);
@@ -414,6 +417,39 @@ export default function ProductoInsumosBOMPage() {
     }
   };
 
+  const iniciarEdicion = (item) => {
+    setEditandoInsumoId(item.insumoId);
+    setEdicionInsumo({
+      cantidad: item.cantidad ?? "",
+      desperdicioPorcentaje: item.desperdicioPorcentaje ?? 0,
+      observaciones: item.observaciones || ""
+    });
+  };
+
+  const guardarEdicion = async (item) => {
+    const cantidad = Number(edicionInsumo.cantidad);
+    if (!Number.isFinite(cantidad) || cantidad <= 0) {
+      setToastType("danger");
+      setToastMessage("La cantidad debe ser mayor a cero");
+      return;
+    }
+    try {
+      await actualizarInsumoDeProducto(id, item.insumoId, {
+        insumoId: item.insumoId,
+        cantidad,
+        desperdicioPorcentaje: Number(edicionInsumo.desperdicioPorcentaje) || 0,
+        observaciones: edicionInsumo.observaciones
+      });
+      setEditandoInsumoId(null);
+      setToastType("success");
+      setToastMessage("Cantidad del insumo actualizada");
+      await cargarDatos();
+    } catch (error) {
+      setToastType("danger");
+      setToastMessage(error.message || "No se pudo actualizar el insumo");
+    }
+  };
+
   if (loading) {
     return (
       <div className="container mt-4">
@@ -462,17 +498,47 @@ export default function ProductoInsumosBOMPage() {
                 {insumosProducto.map((item) => (
                   <tr key={item.id}>
                     <td>{item.insumoNombre}</td>
-                    <td className="text-end">{item.cantidad.toFixed(2)}</td>
+                    <td className="text-end">
+                      {editandoInsumoId === item.insumoId ? (
+                        <input
+                          type="number"
+                          min="0.0001"
+                          step="0.0001"
+                          className="form-control form-control-sm text-end ms-auto"
+                          style={{ width: "110px" }}
+                          value={edicionInsumo.cantidad}
+                          onChange={(event) => setEdicionInsumo((actual) => ({ ...actual, cantidad: event.target.value }))}
+                        />
+                      ) : item.cantidad != null && item.cantidad > 0
+                        ? Number(item.cantidad).toFixed(2)
+                        : <span className="badge text-bg-warning">Pendiente</span>}
+                    </td>
                     <td>{item.insumoUnidad}</td>
                     <td className="text-end">{item.desperdicioPorcentaje?.toFixed(2) || '0.00'}%</td>
                     <td><small className="text-muted">{item.observaciones || '-'}</small></td>
                     <td>
-                      <button
-                        className="btn btn-sm btn-outline-danger"
-                        onClick={() => handleEliminar(item.insumoId)}
-                      >
-                        <i className="bi bi-trash"></i>
-                      </button>
+                      <div className="d-flex gap-1 justify-content-end">
+                        {editandoInsumoId === item.insumoId ? (
+                          <>
+                            <button className="btn btn-sm btn-success" onClick={() => guardarEdicion(item)}>
+                              <i className="bi bi-check-lg"></i>
+                            </button>
+                            <button className="btn btn-sm btn-outline-secondary" onClick={() => setEditandoInsumoId(null)}>
+                              <i className="bi bi-x-lg"></i>
+                            </button>
+                          </>
+                        ) : (
+                          <button className="btn btn-sm btn-outline-primary" onClick={() => iniciarEdicion(item)}>
+                            <i className="bi bi-pencil"></i>
+                          </button>
+                        )}
+                        <button
+                          className="btn btn-sm btn-outline-danger"
+                          onClick={() => handleEliminar(item.insumoId)}
+                        >
+                          <i className="bi bi-trash"></i>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

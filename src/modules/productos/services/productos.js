@@ -131,6 +131,13 @@ export function eliminarOperacionDeProducto(productoId, operacionId) {
   });
 }
 
+export function actualizarOperacionDeProducto(productoId, operacionId, operacion) {
+  return request(`${API_PATHS.PRODUCTOS}/${productoId}/operaciones/${operacionId}`, {
+    method: "PUT",
+    body: JSON.stringify(operacion),
+  });
+}
+
 export function reordenarOperaciones(productoId, operacionesIds) {
   return request(`${API_PATHS.PRODUCTOS}/${productoId}/operaciones/reordenar`, {
     method: "PUT",

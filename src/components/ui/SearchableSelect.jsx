@@ -33,6 +33,7 @@ export default function SearchableSelect({
   renderOptionLabel,
   actionNode = null,
   keepOpenOnSelect = false,
+  closeOnSelect = true,
   className = ""
 }) {
   const [query, setQuery] = useState("");
@@ -52,7 +53,7 @@ export default function SearchableSelect({
   const handleSelect = (option) => {
     const optionValue = getOptionValue(option);
     onChange?.(optionValue, option);
-    if (keepOpenOnSelect) {
+    if (keepOpenOnSelect || !closeOnSelect) {
       setQuery("");
       setOpen(true);
       onSearchChange?.("");

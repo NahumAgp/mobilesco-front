@@ -18,6 +18,7 @@ import {
 import { obtenerProductos } from "../../productos/services/productos.js";
 import { materialGateway } from "../../materiales/services/materialGateway.js";
 import MaterialModal from "../../materiales/pages/MaterialModal.jsx";
+import ModeloPlantillaProductivaFields from "../components/ModeloPlantillaProductivaFields.jsx";
 import { crearCategoriaGlobal, obtenerCategoriasGlobalesActivas } from "../services/categoriasGlobales.js";
 import { API_BASE_URL } from "../../../config/apiConfig.js";
 import Toast from "../../../components/ui/Toast.jsx";
@@ -269,6 +270,8 @@ export default function ModeloForm({
   const [materialesCatalogo, setMaterialesCatalogo] = useState([]);
   const [materialesSeleccionados, setMaterialesSeleccionados] = useState([]);
   const [materialSeleccionadoId, setMaterialSeleccionadoId] = useState("");
+  const [insumosSeleccionados, setInsumosSeleccionados] = useState([]);
+  const [operacionesSeleccionadas, setOperacionesSeleccionadas] = useState([]);
   const [categoriasCatalogo, setCategoriasCatalogo] = useState([]);
   const [categoriasSeleccionadas, setCategoriasSeleccionadas] = useState([]);
   const [categoriaSeleccionadaId, setCategoriaSeleccionadaId] = useState("");
@@ -439,6 +442,8 @@ export default function ModeloForm({
           activo: modelo.activo ?? true
         });
         setMaterialesSeleccionados(getMaterialesDelModelo(modelo));
+        setInsumosSeleccionados(Array.isArray(modelo.insumos) ? modelo.insumos : []);
+        setOperacionesSeleccionadas(Array.isArray(modelo.operaciones) ? modelo.operaciones : []);
         setCategoriasSeleccionadas(getCategoriasDelModelo(modelo));
 
         await cargarImagenPrincipalModelo(modelo);
@@ -458,6 +463,8 @@ export default function ModeloForm({
             activo: data.activo ?? true
           });
           setMaterialesSeleccionados(getMaterialesDelModelo(data));
+          setInsumosSeleccionados(Array.isArray(data.insumos) ? data.insumos : []);
+          setOperacionesSeleccionadas(Array.isArray(data.operaciones) ? data.operaciones : []);
           setCategoriasSeleccionadas(getCategoriasDelModelo(data));
 
           await cargarImagenPrincipalModelo(data || modeloId);
@@ -843,6 +850,12 @@ export default function ModeloForm({
         categorias: categorias.map((categoria) => Object.fromEntries(Object.entries(categoria).filter(([key]) => key !== "orden"))),
         materiales: materialesSeleccionados
           .map((material) => Number(material.id))
+          .filter((id) => Number.isFinite(id)),
+        insumos: insumosSeleccionados
+          .map((insumo) => Number(insumo?.id ?? insumo?.insumoId ?? insumo))
+          .filter((id) => Number.isFinite(id)),
+        operaciones: operacionesSeleccionadas
+          .map((operacion) => Number(operacion?.id ?? operacion?.operacionId ?? operacion))
           .filter((id) => Number.isFinite(id))
       };
       if (esEdicion) {
@@ -1046,6 +1059,13 @@ export default function ModeloForm({
                       }
                     />
                   </div>
+
+                  <ModeloPlantillaProductivaFields
+                    insumos={insumosSeleccionados}
+                    operaciones={operacionesSeleccionadas}
+                    onInsumosChange={setInsumosSeleccionados}
+                    onOperacionesChange={setOperacionesSeleccionadas}
+                  />
 
                   <div className="col-md-12">
                     <label className="form-label fw-semibold">Descripcion corta</label>

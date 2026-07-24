@@ -160,6 +160,17 @@ const toPreviewUrl = (url) => {
   return `${API_BASE_URL}/${url}`;
 };
 
+const getCalidadColeccion = (items = [], campoCantidad = "cantidad") => {
+  if (!Array.isArray(items) || items.length === 0) {
+    return { texto: "Sin asignar", clase: "text-bg-secondary" };
+  }
+  const completas = items.filter((item) => Number(item?.[campoCantidad]) > 0).length;
+  if (completas === items.length) {
+    return { texto: "Completo", clase: "text-bg-success" };
+  }
+  return { texto: `${completas}/${items.length}`, clase: "text-bg-warning" };
+};
+
 export default function ProductosListadoTable({
   data,
   onEditar,
@@ -211,6 +222,7 @@ export default function ProductosListadoTable({
             <col className="variantes-col-material" />
             <col className="variantes-col-color" />
             <col className="variantes-col-estado" />
+            <col className="variantes-col-calidad" />
             <col className="variantes-col-acciones" />
           </colgroup>
           <thead className="table-light catalog-table-head productos-table-head">
@@ -226,6 +238,7 @@ export default function ProductosListadoTable({
               {renderHeader("materialNombre", "Material")}
               {renderHeader("colorNombre", "Color")}
               {renderHeader("activo", "Estado")}
+              <th>Calidad de datos</th>
               <th>Acciones</th>
             </tr>
           </thead>
@@ -236,6 +249,8 @@ export default function ProductosListadoTable({
                 const imagen = getImagenRepresentativa(producto);
                 const imagenUrl = toPreviewUrl(imagen?.url);
                 const estaActivo = Boolean(producto?.activo);
+                const calidadInsumos = getCalidadColeccion(producto?.insumos);
+                const calidadOperaciones = getCalidadColeccion(producto?.operaciones);
 
                 return (
                   <tr
@@ -311,6 +326,12 @@ export default function ProductosListadoTable({
                     <td>
                       <CatalogStatusBadge active={producto?.activo} />
                     </td>
+                    <td>
+                      <div className="d-flex flex-column gap-1 align-items-start">
+                        <span className={`badge ${calidadInsumos.clase}`}>Insumos: {calidadInsumos.texto}</span>
+                        <span className={`badge ${calidadOperaciones.clase}`}>Operaciones: {calidadOperaciones.texto}</span>
+                      </div>
+                    </td>
                     <td className="catalog-actions productos-actions">
                       <CatalogRowActions
                         item={producto}
@@ -327,7 +348,7 @@ export default function ProductosListadoTable({
               })
             ) : (
               <tr>
-                <td colSpan="12" className="text-center text-muted py-5">
+                <td colSpan="13" className="text-center text-muted py-5">
                   <i className="bi bi-box fs-1 d-block mb-3 text-secondary"></i>
                   <span className="fs-5">No hay productos registrados</span>
                   <p className="text-secondary mt-2">Crea un producto para comenzar</p>

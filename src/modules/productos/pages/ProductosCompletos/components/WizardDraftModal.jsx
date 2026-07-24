@@ -6,6 +6,7 @@ import { obtenerLineasActivas } from "../../../../lineas-producto/services/linea
 import { obtenerCategoriasGlobalesActivas } from "../../../../modelos/services/categoriasGlobales.js";
 import { materialGateway } from "../../../../materiales/services/materialGateway.js";
 import { obtenerSubfamiliasActivas } from "../../../../subfamilias/services/subfamilias.js";
+import ModeloPlantillaProductivaFields from "../../../../modelos/components/ModeloPlantillaProductivaFields.jsx";
 
 export const crearRefBorrador = (tipo) =>
   `draft-${tipo}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -483,6 +484,8 @@ export function ModeloDraftModal({
       familiaId: initialValue?.familiaId || initialValue?.familiaRef || "",
       subfamiliaId: initialValue?.subfamiliaId || initialValue?.subfamiliaRef || "",
       materiales: getMaterialesDelModelo(initialValue),
+      insumos: Array.isArray(initialValue?.insumos) ? initialValue.insumos : [],
+      operaciones: Array.isArray(initialValue?.operaciones) ? initialValue.operaciones : [],
       categorias: initialValue?.categorias?.length
         ? aplicarCodigosCategoriaModelo(initialValue.categorias)
         : []
@@ -779,6 +782,8 @@ export function ModeloDraftModal({
         id: material.id ?? material.materialId,
         _pending: true
       })),
+      insumos: form.insumos || [],
+      operaciones: form.operaciones || [],
       categorias: form.categorias.map((item) => ({
         ...item,
         id: item.ref || item.id,
@@ -862,6 +867,12 @@ export function ModeloDraftModal({
                       </div>
                     )}
                   </div>
+                  <ModeloPlantillaProductivaFields
+                    insumos={form.insumos || []}
+                    operaciones={form.operaciones || []}
+                    onInsumosChange={(insumos) => setForm((prev) => ({ ...prev, insumos }))}
+                    onOperacionesChange={(operaciones) => setForm((prev) => ({ ...prev, operaciones }))}
+                  />
                   <div className="col-12">
                     <label className="form-label fw-semibold">Descripcion corta</label>
                     <input

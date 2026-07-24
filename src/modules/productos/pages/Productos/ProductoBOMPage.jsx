@@ -158,7 +158,9 @@ export default function ProductoBOMPage() {
                     {insumosProducto.map((item) => (
                       <tr key={item.id}>
                         <td>{item.insumoNombre}</td>
-                        <td className="text-end">{item.cantidad.toFixed(2)}</td>
+                        <td className="text-end">
+                          {Number(item.cantidad) > 0 ? Number(item.cantidad).toFixed(2) : <span className="badge text-bg-warning">Pendiente</span>}
+                        </td>
                         <td>{item.insumoUnidad}</td>
                         <td className="text-end">{item.desperdicioPorcentaje?.toFixed(2) || '0.00'}%</td>
                         <td className="text-end fw-bold">

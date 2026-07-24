@@ -239,7 +239,9 @@ export default function ProductoDetallePage() {
                       <td>
                         <span className="fw-semibold">{item.insumoNombre}</span>
                       </td>
-                      <td className="text-end">{item.cantidad.toFixed(2)}</td>
+                      <td className="text-end">
+                        {Number(item.cantidad) > 0 ? Number(item.cantidad).toFixed(2) : <span className="badge text-bg-warning">Pendiente</span>}
+                      </td>
                       <td>{item.insumoUnidad}</td>
                       <td className="text-end">{item.desperdicioPorcentaje?.toFixed(2) || '0.00'}%</td>
                       <td className="text-end ">{formatCurrency(item.costoUnitario)}</td>
@@ -320,7 +322,9 @@ export default function ProductoDetallePage() {
                   <small className="text-muted">{op.operacionCodigo}</small>
                 </td>
                 <td>{op.centroTrabajoNombre || 'No asignado'}</td>
-                <td className="text-end">{op.cantidad}x</td>
+                <td className="text-end">
+                  {Number(op.cantidad) > 0 ? `${op.cantidad}x` : <span className="badge text-bg-warning">Pendiente</span>}
+                </td>
                 <td className="text-end">{op.tiempoOperacion} min</td>
                 <td className="text-end fw-bold">{op.tiempoTotal} min</td>
                 <td className="text-end text-success">{formatCurrency(op.importeActividad)}</td>

@@ -75,7 +75,11 @@ const normalizarImagenesExistentes = (producto, variante) => {
     imagenes[0] = { ...imagenes[0], principal: true };
   }
 
-  return imagenes.map(({ _sourceKey, ...imagen }) => imagen);
+  return imagenes.map((imagen) => {
+    const normalizada = { ...imagen };
+    delete normalizada._sourceKey;
+    return normalizada;
+  });
 };
 
 const getNombreLinea = (modelo = {}) =>
@@ -132,10 +136,16 @@ export default function ModeloStep({ data, onUpdate, borradores, onUpsertDraft }
       subfamiliaId: opcion?.subfamiliaId || opcion?.subfamilia?.id || "",
       familiaRef: undefined,
       familia: opcion?.familia || null,
-      subfamilia: opcion?.subfamilia || null,
+      subfamilia: opcion?.subfamilia || (opcion?.subfamiliaNombre ? {
+        id: opcion.subfamiliaId,
+        nombre: opcion.subfamiliaNombre,
+        codigo: opcion.subfamiliaCodigo
+      } : null),
       linea: opcion?.linea || null,
       categorias: Array.isArray(opcion?.categorias) ? opcion.categorias : [],
-      materiales: Array.isArray(opcion?.materiales) ? opcion.materiales : []
+      materiales: Array.isArray(opcion?.materiales) ? opcion.materiales : [],
+      insumos: Array.isArray(opcion?.insumos) ? opcion.insumos : [],
+      operaciones: Array.isArray(opcion?.operaciones) ? opcion.operaciones : []
     });
 
     if (!modeloId) return;
@@ -219,7 +229,7 @@ export default function ModeloStep({ data, onUpdate, borradores, onUpsertDraft }
                   {modelo?._pending && <span className="badge text-bg-warning ms-2">Pendiente</span>}
                 </div>
                 <div className="small text-muted">
-                  {[visible.codigo, [getNombreLinea(visible), getNombreFamilia(visible)].filter(Boolean).join(" / ")].filter(Boolean).join(" - ")}
+                  {[visible.codigo, [getNombreLinea(visible), getNombreFamilia(visible), visible?.subfamilia?.nombre || visible?.subfamiliaNombre].filter(Boolean).join(" / ")].filter(Boolean).join(" - ")}
                 </div>
               </div>
               <span className="badge text-bg-light ms-auto">{(visible.categorias || []).length} categorias</span>

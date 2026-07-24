@@ -22,24 +22,6 @@ const PAGE_INFO_DEFAULT = {
   totalPages: 0
 };
 
-const compararValor = (a, b) => {
-  const valorA = a ?? "";
-  const valorB = b ?? "";
-
-  if (typeof valorA === "number" && typeof valorB === "number") {
-    return valorA - valorB;
-  }
-
-  if (typeof valorA === "boolean" && typeof valorB === "boolean") {
-    return Number(valorA) - Number(valorB);
-  }
-
-  return String(valorA).localeCompare(String(valorB), "es", {
-    numeric: true,
-    sensitivity: "base"
-  });
-};
-
 const getLista = (respuesta) => {
   if (Array.isArray(respuesta)) return respuesta;
   const visitados = new Set();
@@ -445,8 +427,10 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
       const refsColor = new Set(variantesNuevas.map((item) => item?.colorId).filter(esRef).map(String));
       const familiaBorrador = (borradores?.familias || []).find((item) => String(item.ref) === String(modelo?.familiaRef));
       const subfamiliaBorrador = (borradores?.subfamilias || []).find((item) => String(item.ref) === String(modelo?.subfamiliaRef));
-      const refsLinea = new Set(familiaBorrador?.lineaRef ? [String(familiaBorrador.lineaRef)] : []);
-      const refsFamilia = new Set([modelo?.familiaRef, subfamiliaBorrador?.familiaRef].filter(Boolean).map(String));
+      const familiaRefNecesaria = modelo?.familiaRef || subfamiliaBorrador?.familiaRef;
+      const familiaNecesaria = familiaBorrador || (borradores?.familias || []).find((item) => String(item.ref) === String(familiaRefNecesaria));
+      const refsLinea = new Set(familiaNecesaria?.lineaRef ? [String(familiaNecesaria.lineaRef)] : []);
+      const refsFamilia = new Set(familiaRefNecesaria ? [String(familiaRefNecesaria)] : []);
       const refsSubfamilia = new Set(modelo?.subfamiliaRef ? [String(modelo.subfamiliaRef)] : []);
 
       if (variantesNuevas.length === 0) {
@@ -489,6 +473,8 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
               familiaRef: modelo.familiaRef || undefined,
               subfamiliaId: modelo.subfamiliaId || undefined,
               subfamiliaRef: modelo.subfamiliaRef || undefined,
+              insumos: (modelo.insumos || []).map((item) => Number(item?.id ?? item?.insumoId ?? item)).filter(Number.isFinite),
+              operaciones: (modelo.operaciones || []).map((item) => Number(item?.id ?? item?.operacionId ?? item)).filter(Number.isFinite),
               categorias: [...(modelo.categorias || [])].sort(ordenarCategoriasPorCodigo).map((item) => ({
                 ref: item.ref || item.id,
                 categoriaId: item.categoriaId || undefined,

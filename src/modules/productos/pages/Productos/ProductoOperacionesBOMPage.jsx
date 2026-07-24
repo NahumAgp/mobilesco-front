@@ -6,7 +6,8 @@ import {
   obtenerProductos,
   obtenerOperacionesDeProducto,
   agregarOperacionesMasivo,
-  eliminarOperacionDeProducto
+  eliminarOperacionDeProducto,
+  actualizarOperacionDeProducto
 } from "../../services/productos.js";
 import { obtenerOperaciones } from "../../../operaciones/services/operaciones.js";
 import Card from "../../../../components/ui/Card.jsx";
@@ -51,6 +52,8 @@ export default function ProductoOperacionesBOMPage() {
   const [productosModelo, setProductosModelo] = useState([]);
   const [productoOrigenId, setProductoOrigenId] = useState("");
   const [copiandoBom, setCopiandoBom] = useState(false);
+  const [editandoOperacionId, setEditandoOperacionId] = useState(null);
+  const [edicionOperacion, setEdicionOperacion] = useState({ cantidad: "", observaciones: "" });
   
   const [nuevasOperaciones, setNuevasOperaciones] = useState([
     { operacionId: "", cantidad: 1, observaciones: "" }
@@ -204,6 +207,38 @@ export default function ProductoOperacionesBOMPage() {
     }
   };
 
+  const iniciarEdicion = (operacion) => {
+    setEditandoOperacionId(operacion.operacionId);
+    setEdicionOperacion({
+      cantidad: operacion.cantidad ?? "",
+      observaciones: operacion.observaciones || ""
+    });
+  };
+
+  const guardarEdicion = async (operacion) => {
+    const cantidad = Number(edicionOperacion.cantidad);
+    if (!Number.isInteger(cantidad) || cantidad < 1) {
+      setToastType("danger");
+      setToastMessage("La cantidad debe ser un entero mayor a cero");
+      return;
+    }
+    try {
+      await actualizarOperacionDeProducto(id, operacion.operacionId, {
+        operacionId: operacion.operacionId,
+        cantidad,
+        observaciones: edicionOperacion.observaciones,
+        orden: operacion.orden
+      });
+      setEditandoOperacionId(null);
+      setToastType("success");
+      setToastMessage("Cantidad de la operación actualizada");
+      await cargarDatos();
+    } catch (error) {
+      setToastType("danger");
+      setToastMessage(error.message || "No se pudo actualizar la operación");
+    }
+  };
+
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
@@ -265,18 +300,45 @@ export default function ProductoOperacionesBOMPage() {
                       <small>{op.operacionCodigo}</small>
                     </td>
                     <td>{op.centroTrabajoNombre || '-'}</td>
-                    <td className="text-end">{op.cantidad}x</td>
+                    <td className="text-end">
+                      {editandoOperacionId === op.operacionId ? (
+                        <input
+                          type="number"
+                          min="1"
+                          className="form-control form-control-sm text-end ms-auto"
+                          style={{ width: "90px" }}
+                          value={edicionOperacion.cantidad}
+                          onChange={(event) => setEdicionOperacion((actual) => ({ ...actual, cantidad: event.target.value }))}
+                        />
+                      ) : op.cantidad ? `${op.cantidad}x` : <span className="badge text-bg-warning">Pendiente</span>}
+                    </td>
                     <td className="text-end">{op.tiempoOperacion} min</td>
                     <td className="text-end fw-bold">{op.tiempoTotal} min</td> 
                     <td className="text-end fw-bold">{op.costoMinutoOperacion} min</td>
                     <td className="text-end text-success">{formatCurrency(op.importeActividad)}</td>
                     <td>
-                      <button
-                        className="btn btn-sm btn-outline-danger"
-                        onClick={() => handleEliminar(op.operacionId)}
-                      >
-                        <i className="bi bi-trash"></i>
-                      </button>
+                      <div className="d-flex gap-1 justify-content-end">
+                        {editandoOperacionId === op.operacionId ? (
+                          <>
+                            <button className="btn btn-sm btn-success" onClick={() => guardarEdicion(op)}>
+                              <i className="bi bi-check-lg"></i>
+                            </button>
+                            <button className="btn btn-sm btn-outline-secondary" onClick={() => setEditandoOperacionId(null)}>
+                              <i className="bi bi-x-lg"></i>
+                            </button>
+                          </>
+                        ) : (
+                          <button className="btn btn-sm btn-outline-primary" onClick={() => iniciarEdicion(op)}>
+                            <i className="bi bi-pencil"></i>
+                          </button>
+                        )}
+                        <button
+                          className="btn btn-sm btn-outline-danger"
+                          onClick={() => handleEliminar(op.operacionId)}
+                        >
+                          <i className="bi bi-trash"></i>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
