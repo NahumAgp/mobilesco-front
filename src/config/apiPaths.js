@@ -63,6 +63,7 @@ export const API_PATHS = {
 
   // Catalogo publico (sin autenticacion; lo consume la web publica)
   PUBLIC_CATALOGO: `${API_VERSION}/public/catalogo`,
-  PUBLIC_CATALOGO_MODELOS: `${API_VERSION}/public/catalogo/modelos`
+  PUBLIC_CATALOGO_MODELOS: `${API_VERSION}/public/catalogo/modelos`,
+  PUBLIC_CATALOGO_FACETAS: `${API_VERSION}/public/catalogo/facetas`
 
 };
