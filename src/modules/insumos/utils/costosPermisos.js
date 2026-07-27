@@ -28,5 +28,8 @@ export function puedeGestionarCatalogoInsumos(user) {
 }
 
 export function puedeAjustarStockManual(user) {
-  return user?.roles?.some((rol) => ROLES_AJUSTE_MANUAL_STOCK.includes(rol)) || false;
+  return Boolean(
+    user?.roles?.some((rol) => ROLES_AJUSTE_MANUAL_STOCK.includes(rol)) ||
+    user?.permisos?.includes("ACTION_STOCK_ADJUSTMENTS")
+  );
 }
