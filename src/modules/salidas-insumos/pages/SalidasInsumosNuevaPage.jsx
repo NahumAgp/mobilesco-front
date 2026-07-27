@@ -809,6 +809,14 @@ export default function SalidasInsumosNuevaPage() {
             </div>
 
             <div className="bg-light rounded p-3">
+              {(errores.detalles || errores.insumoBusqueda) && (
+                <div id="insumo-error" className="alert alert-danger d-flex align-items-center gap-2 py-2 px-3 mb-3 small" role="alert">
+                  <i className="bi bi-exclamation-circle-fill" aria-hidden="true"></i>
+                  <span>
+                    {errores.insumoBusqueda || "Selecciona un insumo y pulsa Agregar para incluirlo en la salida."}
+                  </span>
+                </div>
+              )}
               <div className="row g-2 align-items-end">
                 <div className="col-md-8">
                   <label
@@ -872,6 +880,12 @@ export default function SalidasInsumosNuevaPage() {
                             onClick={() => {
                               setBusquedaInsumo(insumo.nombre || "");
                               setSugerenciasInsumo([]);
+                              setErrores((prev) => {
+                                const copia = { ...prev };
+                                delete copia.detalles;
+                                delete copia.insumoBusqueda;
+                                return copia;
+                              });
                             }}
                           >
                             <span className="text-start">
@@ -882,11 +896,6 @@ export default function SalidasInsumosNuevaPage() {
                       </div>
                     )}
                   </div>
-                  {(errores.detalles || errores.insumoBusqueda) && (
-                    <div id="insumo-error" className="text-danger small mt-1" role="alert">
-                      {errores.insumoBusqueda || errores.detalles}
-                    </div>
-                  )}
                 </div>
                 <div className="col-md-2">
                   <label
