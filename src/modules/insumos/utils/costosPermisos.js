@@ -1,4 +1,5 @@
 export const ROLES_GESTION_COSTOS = ["ADMIN", "SUPER_ADMIN", "DIRECTOR_GENERAL", "SUBDIRECCION_ADMINISTRATIVA"];
+export const ROLES_AJUSTE_MANUAL_STOCK = ["ADMIN", "SUPER_ADMIN", "DIRECTOR_GENERAL", "SUBDIRECCION_ADMINISTRATIVA"];
 export const ROLES_GESTION_INSUMOS = [
   "ADMIN",
   "SUPER_ADMIN",
@@ -17,4 +18,8 @@ export function puedeGestionarCostosInsumos(user) {
 
 export function puedeGestionarCatalogoInsumos(user) {
   return user?.roles?.some((rol) => ROLES_GESTION_INSUMOS.includes(rol)) || false;
+}
+
+export function puedeAjustarStockManual(user) {
+  return user?.roles?.some((rol) => ROLES_AJUSTE_MANUAL_STOCK.includes(rol)) || false;
 }

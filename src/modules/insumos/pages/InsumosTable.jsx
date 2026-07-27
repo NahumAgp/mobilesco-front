@@ -80,7 +80,9 @@ export default function InsumosTable({
   onEditar,
   onVerKardex,
   onCambiarEstado,
+  onAjustarStock,
   puedeGestionar = false,
+  puedeAjustarStock = false,
   sortField = "nombre",
   sortDirection = "asc",
   onSort
@@ -281,6 +283,20 @@ export default function InsumosTable({
                       </td>
                       <td className="insumos-actions">
                         <div className="d-flex flex-wrap gap-2 justify-content-end">
+                          {puedeAjustarStock && (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-primary"
+                              title="Ajustar stock"
+                              aria-label={`Ajustar stock de ${insumo.nombre}`}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                onAjustarStock?.(insumo);
+                              }}
+                            >
+                              <i className="bi bi-arrow-left-right"></i>
+                            </button>
+                          )}
                           {puedeGestionar && (
                             <CatalogRowActions
                               item={insumo}

@@ -100,6 +100,12 @@ export default function App() {
     </RoleRoute>
   );
 
+  const withPermissionOrRoles = (element, permission, allowedRoles) => (
+    <RoleRoute permission={permission} allowedRoles={allowedRoles}>
+      {element}
+    </RoleRoute>
+  );
+
   return (
 
     <Routes>
@@ -207,9 +213,9 @@ export default function App() {
         <Route path="/insumos/:id" element={withRoles(<InsumosFormPage />, ROLES_GESTION_INSUMOS)} />
         <Route path="/salidas-insumos" element={withPermission(<SalidasInsumosPage />, "VIEW_INVENTORY")} />
         <Route path="/salidas-insumos/nueva" element={withRoles(<SalidasInsumosNuevaPage />, ROLES_GESTION_SALIDAS)} />
-        <Route path="/almacen/requisiciones" element={withPermission(<RequisicionesPage />, "VIEW_WAREHOUSE_REQUISITIONS")} />
+        <Route path="/almacen/requisiciones" element={withPermissionOrRoles(<RequisicionesPage />, "VIEW_WAREHOUSE_REQUISITIONS", ["JEFE_ALMACEN"])} />
         <Route path="/almacen/requisiciones/nueva" element={withRoles(<RequisicionNuevaPage />, ["ADMIN", "SUPER_ADMIN", "DIRECTOR_GENERAL", "JEFE_ALMACEN"])} />
-        <Route path="/almacen/requisiciones/:id" element={withPermission(<RequisicionDetallePage />, "VIEW_WAREHOUSE_REQUISITIONS")} />
+        <Route path="/almacen/requisiciones/:id" element={withPermissionOrRoles(<RequisicionDetallePage />, "VIEW_WAREHOUSE_REQUISITIONS", ["JEFE_ALMACEN"])} />
         <Route
           path="/almacen/entradas"
           element={

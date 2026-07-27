@@ -4,7 +4,11 @@ import { useNavigate } from "react-router-dom";
 import { useInsumos } from "../hooks/useInsumos";
 import { exportarInsumosExcel } from "../services/insumos.js";
 import { getUser } from "../../auth/services/authService.js";
-import { puedeGestionarCatalogoInsumos, puedeGestionarCostosInsumos } from "../utils/costosPermisos.js";
+import {
+  puedeAjustarStockManual,
+  puedeGestionarCatalogoInsumos,
+  puedeGestionarCostosInsumos
+} from "../utils/costosPermisos.js";
 import InsumosTable from "./InsumosTable.jsx";
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
@@ -36,6 +40,7 @@ export default function InsumosPage() {
   const user = getUser();
   const puedeGestionarInsumos = puedeGestionarCatalogoInsumos(user);
   const puedeGestionarCostos = puedeGestionarCostosInsumos(user);
+  const puedeAjustarStock = puedeAjustarStockManual(user);
 
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
@@ -48,6 +53,8 @@ export default function InsumosPage() {
   const [sortField, setSortField] = useState("nombre");
   const [sortDirection, setSortDirection] = useState("asc");
   const [exportandoExcel, setExportandoExcel] = useState(false);
+  const [ajusteStock, setAjusteStock] = useState(null);
+  const [guardandoAjuste, setGuardandoAjuste] = useState(false);
 
   // Debounce: actualiza el termino de busqueda real desde el input (~350ms)
   useEffect(() => {
@@ -74,7 +81,8 @@ export default function InsumosPage() {
     pageInfo,
     loadingLista,
     error,
-    actualizarEstadoInsumo
+    actualizarEstadoInsumo,
+    ajustarStock
   } = useInsumos({
     page,
     size: PAGE_SIZE,
@@ -127,6 +135,55 @@ export default function InsumosPage() {
     } catch (err) {
       setToastType("danger");
       setToastMessage(err.message || `Error al ${accion} insumo`);
+    }
+  };
+
+  const abrirAjusteStock = (insumo) => {
+    setAjusteStock({
+      insumo,
+      tipo: "ENTRADA",
+      cantidad: "",
+      motivo: ""
+    });
+  };
+
+  const cerrarAjusteStock = () => {
+    if (!guardandoAjuste) setAjusteStock(null);
+  };
+
+  const confirmarAjusteStock = async (event) => {
+    event.preventDefault();
+    if (!ajusteStock?.insumo) return;
+
+    const cantidad = Number(ajusteStock.cantidad);
+    if (!Number.isFinite(cantidad) || cantidad <= 0) {
+      setToastType("danger");
+      setToastMessage("La cantidad del ajuste debe ser mayor a cero.");
+      return;
+    }
+
+    const accion = ajusteStock.tipo === "SALIDA" ? "descontar" : "agregar";
+    const confirmado = window.confirm(
+      `Se va a ${accion} ${cantidad.toFixed(2)} al stock de ${ajusteStock.insumo.nombre}. ¿Confirmas el ajuste manual?`
+    );
+    if (!confirmado) return;
+
+    try {
+      setGuardandoAjuste(true);
+      await ajustarStock(
+        ajusteStock.insumo.id,
+        cantidad,
+        ajusteStock.tipo,
+        ajusteStock.motivo.trim() || "Ajuste manual confirmado"
+      );
+      setToastType("success");
+      setToastMessage("Stock actualizado correctamente.");
+      setAjusteStock(null);
+    } catch (err) {
+      setToastType("danger");
+      setToastMessage(err.message || "No se pudo actualizar el stock.");
+    } finally {
+      setGuardandoAjuste(false);
     }
   };
 
@@ -338,7 +395,9 @@ export default function InsumosPage() {
               onEditar={abrirEditar}
               onVerKardex={abrirKardex}
               onCambiarEstado={manejarCambiarEstado}
+              onAjustarStock={abrirAjusteStock}
               puedeGestionar={puedeGestionarInsumos}
+              puedeAjustarStock={puedeAjustarStock}
               sortField={sortField}
               sortDirection={sortDirection}
               onSort={manejarOrden}
@@ -417,6 +476,83 @@ export default function InsumosPage() {
             </div>
           )}
         </div>
+      )}
+
+      {ajusteStock && (
+        <>
+          <div className="modal-backdrop fade show"></div>
+          <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-modal="true">
+            <div className="modal-dialog modal-dialog-centered">
+              <form className="modal-content border-0 shadow-lg" onSubmit={confirmarAjusteStock}>
+                <div className="modal-header">
+                  <div>
+                    <h5 className="modal-title mb-1">Ajuste manual de stock</h5>
+                    <small className="text-muted">{ajusteStock.insumo.nombre}</small>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-close"
+                    aria-label="Cerrar"
+                    disabled={guardandoAjuste}
+                    onClick={cerrarAjusteStock}
+                  ></button>
+                </div>
+                <div className="modal-body">
+                  <div className="alert alert-warning">
+                    Stock actual: <strong>{Number(ajusteStock.insumo.stockActual || 0).toFixed(2)}</strong>.
+                    Esta acción quedará registrada en Kardex.
+                  </div>
+                  <div className="row g-3">
+                    <div className="col-md-5">
+                      <label className="form-label fw-semibold">Tipo de ajuste</label>
+                      <select
+                        className="form-select"
+                        value={ajusteStock.tipo}
+                        onChange={(event) => setAjusteStock((actual) => ({ ...actual, tipo: event.target.value }))}
+                      >
+                        <option value="ENTRADA">Entrada</option>
+                        <option value="SALIDA">Salida</option>
+                      </select>
+                    </div>
+                    <div className="col-md-7">
+                      <label className="form-label fw-semibold">Cantidad</label>
+                      <input
+                        type="number"
+                        min="0.01"
+                        step="0.01"
+                        className="form-control"
+                        value={ajusteStock.cantidad}
+                        onChange={(event) => setAjusteStock((actual) => ({ ...actual, cantidad: event.target.value }))}
+                        placeholder="0.00"
+                        autoFocus
+                        required
+                      />
+                    </div>
+                    <div className="col-12">
+                      <label className="form-label fw-semibold">Motivo</label>
+                      <textarea
+                        className="form-control"
+                        rows="3"
+                        maxLength="500"
+                        value={ajusteStock.motivo}
+                        onChange={(event) => setAjusteStock((actual) => ({ ...actual, motivo: event.target.value }))}
+                        placeholder="Describe por qué se realiza el ajuste"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="modal-footer">
+                  <button type="button" className="btn btn-light" onClick={cerrarAjusteStock} disabled={guardandoAjuste}>
+                    Cancelar
+                  </button>
+                  <button type="submit" className="btn btn-primary" disabled={guardandoAjuste}>
+                    {guardandoAjuste ? "Actualizando..." : "Confirmar ajuste"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </>
       )}
     </>
   );

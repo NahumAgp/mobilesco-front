@@ -6,6 +6,7 @@ import {
   crearRequisicion,
   obtenerSugerenciasRequisicion,
 } from "../services/requisiciones";
+import InsumoForm from "../../../insumos/pages/InsumoForm.jsx";
 
 export default function RequisicionNuevaPage() {
   const navigate = useNavigate();
@@ -17,8 +18,17 @@ export default function RequisicionNuevaPage() {
   const [cargandoSugerencias, setCargandoSugerencias] = useState(true);
   const [buscando, setBuscando] = useState(false);
   const [guardando, setGuardando] = useState(false);
+  const [mostrarNuevoInsumo, setMostrarNuevoInsumo] = useState(false);
   const [error, setError] = useState("");
   const [aviso, setAviso] = useState("");
+
+  const recargarSugerencias = async () => {
+    try {
+      setSugerencias(await obtenerSugerenciasRequisicion());
+    } catch (err) {
+      setError(err?.message || "No fue posible actualizar las sugerencias");
+    }
+  };
 
   useEffect(() => {
     obtenerSugerenciasRequisicion()
@@ -65,6 +75,26 @@ export default function RequisicionNuevaPage() {
       observaciones: "",
     }]);
     setAviso(`${insumo.nombre} agregado. Confirma la cantidad solicitada.`);
+  };
+
+  const agregarInsumoCreado = async (creado) => {
+    const normalizado = {
+      id: creado.id,
+      codigo: creado.codigoBarras || creado.codigo || "",
+      nombre: creado.nombre,
+      unidadSimbolo: creado.unidadMedida?.simbolo || "",
+      stockActual: Number(creado.stockActual || 0),
+      stockMinimo: creado.stockMinimo === null || creado.stockMinimo === undefined
+        ? null
+        : Number(creado.stockMinimo),
+      cantidadSugerida: 1,
+    };
+
+    agregar(normalizado);
+    setMostrarNuevoInsumo(false);
+    setBusqueda("");
+    setResultados([]);
+    await recargarSugerencias();
   };
 
   const actualizarPartida = (insumoId, campo, value) => {
@@ -150,7 +180,12 @@ export default function RequisicionNuevaPage() {
       </div>
 
       <div className="card border-0 shadow-sm mb-4">
-        <div className="card-header bg-white py-3"><h5 className="mb-0">Buscar otro insumo</h5></div>
+        <div className="card-header bg-white py-3 d-flex justify-content-between align-items-center gap-3">
+          <h5 className="mb-0">Buscar otro insumo</h5>
+          <button type="button" className="btn btn-outline-primary btn-sm" onClick={() => setMostrarNuevoInsumo(true)}>
+            <i className="bi bi-plus-lg me-1"></i>Nuevo insumo
+          </button>
+        </div>
         <div className="card-body">
           <label className="form-label fw-semibold">Código o nombre</label>
           <div className="input-group">
@@ -190,6 +225,28 @@ export default function RequisicionNuevaPage() {
           {guardando ? "Enviando..." : "Enviar requisición"}
         </button>
       </div>
+
+      {mostrarNuevoInsumo && (
+        <>
+          <div className="modal-backdrop fade show"></div>
+          <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-modal="true">
+            <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+              <div className="modal-content border-0 shadow-lg">
+                <div className="modal-header">
+                  <div>
+                    <h5 className="modal-title mb-1">Crear nuevo insumo</h5>
+                    <small className="text-muted">Al guardarlo se agregará a esta requisición.</small>
+                  </div>
+                  <button type="button" className="btn-close" aria-label="Cerrar" onClick={() => setMostrarNuevoInsumo(false)}></button>
+                </div>
+                <div className="modal-body">
+                  <InsumoForm onSave={agregarInsumoCreado} onCancel={() => setMostrarNuevoInsumo(false)} />
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
