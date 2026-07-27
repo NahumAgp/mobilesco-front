@@ -15,6 +15,12 @@ function obtenerFechaHoraLocal() {
 export default function SalidasInsumosNuevaPage() {
   const navigate = useNavigate();
   const buscadorInsumoRef = useRef(null);
+  const tipoSalidaRef = useRef(null);
+  const ordenProduccionRef = useRef(null);
+  const responsableRef = useRef(null);
+  const areaRef = useRef(null);
+  const buscadorInsumoInputRef = useRef(null);
+  const cantidadEntradaRef = useRef(null);
 
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
@@ -161,6 +167,44 @@ export default function SalidasInsumosNuevaPage() {
   );
   const salidaDirecta = formData.tipoSalida === "DIRECTA";
 
+  const enfocarControl = (control) => {
+    if (!control) return;
+    control.focus({ preventScroll: true });
+    control.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  const enfocarPrimerError = (erroresFormulario) => {
+    window.requestAnimationFrame(() => {
+      if (erroresFormulario.tipoSalida) {
+        enfocarControl(tipoSalidaRef.current);
+        return;
+      }
+      if (erroresFormulario.ordenProduccion) {
+        enfocarControl(ordenProduccionRef.current);
+        return;
+      }
+      if (erroresFormulario.responsable) {
+        enfocarControl(responsableRef.current);
+        return;
+      }
+      if (erroresFormulario.area) {
+        enfocarControl(areaRef.current);
+        return;
+      }
+      if (erroresFormulario.insumoBusqueda || (erroresFormulario.detalles && detalles.length === 0)) {
+        enfocarControl(buscadorInsumoInputRef.current);
+        return;
+      }
+      if (erroresFormulario.cantidadEntrada) {
+        enfocarControl(cantidadEntradaRef.current);
+        return;
+      }
+      if (erroresFormulario.detalles) {
+        enfocarControl(document.querySelector("[data-cantidad-detalle-invalida='true']"));
+      }
+    });
+  };
+
   const handleFormChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => {
@@ -293,14 +337,20 @@ export default function SalidasInsumosNuevaPage() {
     const cantidad = Number(cantidadEntrada || 0);
 
     if (!insumo) {
+      const errorInsumo = { insumoBusqueda: "Selecciona un insumo válido" };
+      setErrores((prev) => ({ ...prev, ...errorInsumo }));
       setToastType("danger");
       setToastMessage("Escribe o escanea un insumo válido");
+      enfocarPrimerError(errorInsumo);
       return;
     }
 
     if (cantidad <= 0) {
+      const errorCantidad = { cantidadEntrada: "La cantidad debe ser mayor a cero" };
+      setErrores((prev) => ({ ...prev, ...errorCantidad }));
       setToastType("danger");
       setToastMessage("La cantidad debe ser mayor a cero");
+      enfocarPrimerError(errorCantidad);
       return;
     }
 
@@ -363,6 +413,13 @@ export default function SalidasInsumosNuevaPage() {
     setBusquedaInsumo("");
     setSugerenciasInsumo([]);
     setCantidadEntrada(1);
+    setErrores((prev) => {
+      const copia = { ...prev };
+      delete copia.detalles;
+      delete copia.insumoBusqueda;
+      delete copia.cantidadEntrada;
+      return copia;
+    });
   };
 
   const handleBusquedaKeyDown = (e) => {
@@ -387,6 +444,13 @@ export default function SalidasInsumosNuevaPage() {
 
   const handleCantidadEntradaChange = (valor) => {
     setCantidadEntrada(normalizarCantidadInput(valor));
+    if (errores.cantidadEntrada) {
+      setErrores((prev) => {
+        const copia = { ...prev };
+        delete copia.cantidadEntrada;
+        return copia;
+      });
+    }
   };
 
   const actualizarCantidadDetalle = (id, valor) => {
@@ -451,6 +515,7 @@ export default function SalidasInsumosNuevaPage() {
       nuevosErrores.ordenProduccion = "La orden de producción es obligatoria para salidas directas";
     }
     if (!formData.responsable.trim()) nuevosErrores.responsable = "La persona responsable es obligatoria";
+    if (!formData.area.trim()) nuevosErrores.area = "Selecciona el área responsable de la salida";
     if (detalles.length === 0) nuevosErrores.detalles = "Agrega al menos un insumo";
     if (detalles.some((item) => Number(item.cantidad || 0) <= 0)) {
       nuevosErrores.detalles = "Todas las cantidades deben ser mayores a cero";
@@ -460,6 +525,7 @@ export default function SalidasInsumosNuevaPage() {
       setErrores(nuevosErrores);
       setToastType("danger");
       setToastMessage("Revisa los campos obligatorios");
+      enfocarPrimerError(nuevosErrores);
       return;
     }
 
@@ -501,6 +567,7 @@ export default function SalidasInsumosNuevaPage() {
       setToastMessage(error.message || "No se pudo registrar la salida");
       if (error.errors) {
         setErrores(error.errors);
+        enfocarPrimerError(error.errors);
       }
     } finally {
       setCargando(false);
@@ -534,33 +601,51 @@ export default function SalidasInsumosNuevaPage() {
           <div className="card-body">
             <div className="row g-3">
               <div className="col-md-4">
-                <label className="form-label fw-semibold">Tipo de salida *</label>
+                <label
+                  className={`form-label fw-semibold ${errores.tipoSalida ? "text-danger" : ""}`}
+                  htmlFor="tipoSalida"
+                >
+                  Tipo de salida *
+                </label>
                 <select
+                  id="tipoSalida"
+                  ref={tipoSalidaRef}
                   name="tipoSalida"
                   className={`form-select ${errores.tipoSalida ? "is-invalid" : ""}`}
                   value={formData.tipoSalida}
                   onChange={handleFormChange}
+                  aria-invalid={Boolean(errores.tipoSalida)}
+                  aria-describedby={errores.tipoSalida ? "tipoSalida-error" : undefined}
                 >
                   <option value="DIRECTA">Directa</option>
                   <option value="INDIRECTA">Indirecta</option>
                 </select>
-                <div className="invalid-feedback">{errores.tipoSalida}</div>
+                <div id="tipoSalida-error" className="invalid-feedback">{errores.tipoSalida}</div>
                 <div className="form-text">
                   Directa: para una orden de producción. Indirecta: consumo interno de la empresa.
                 </div>
               </div>
               {salidaDirecta ? (
                 <div className="col-md-4">
-                  <label className="form-label fw-semibold">Orden de producción *</label>
+                  <label
+                    className={`form-label fw-semibold ${errores.ordenProduccion ? "text-danger" : ""}`}
+                    htmlFor="ordenProduccion"
+                  >
+                    Orden de producción *
+                  </label>
                   <input
+                    id="ordenProduccion"
+                    ref={ordenProduccionRef}
                     type="text"
                     name="ordenProduccion"
                     className={`form-control ${errores.ordenProduccion ? "is-invalid" : ""}`}
                     value={formData.ordenProduccion}
                     onChange={handleFormChange}
                     placeholder="OP-001"
+                    aria-invalid={Boolean(errores.ordenProduccion)}
+                    aria-describedby={errores.ordenProduccion ? "ordenProduccion-error" : undefined}
                   />
-                  <div className="invalid-feedback">{errores.ordenProduccion}</div>
+                  <div id="ordenProduccion-error" className="invalid-feedback">{errores.ordenProduccion}</div>
                 </div>
               ) : (
                 <div className="col-md-4 d-flex align-items-end">
@@ -581,25 +666,43 @@ export default function SalidasInsumosNuevaPage() {
                 />
               </div>
               <div className="col-md-12">
-                <label className="form-label fw-semibold">Persona responsable / receptora *</label>
+                <label
+                  className={`form-label fw-semibold ${errores.responsable ? "text-danger" : ""}`}
+                  htmlFor="responsable"
+                >
+                  Persona responsable / receptora *
+                </label>
                 <input
+                  id="responsable"
+                  ref={responsableRef}
                   type="text"
                   name="responsable"
                   className={`form-control ${errores.responsable ? "is-invalid" : ""}`}
                   value={formData.responsable}
                   onChange={handleFormChange}
                   placeholder="Nombre de la persona que recibe el insumo"
+                  aria-invalid={Boolean(errores.responsable)}
+                  aria-describedby={errores.responsable ? "responsable-error" : undefined}
                 />
-                <div className="invalid-feedback">{errores.responsable}</div>
+                <div id="responsable-error" className="invalid-feedback">{errores.responsable}</div>
               </div>
               <div className="col-md-6">
-                <label className="form-label fw-semibold">Area</label>
+                <label
+                  className={`form-label fw-semibold ${errores.area ? "text-danger" : ""}`}
+                  htmlFor="area"
+                >
+                  Área *
+                </label>
                 <div className="input-group">
                   <select
+                    id="area"
+                    ref={areaRef}
                     name="area"
-                    className="form-select"
+                    className={`form-select ${errores.area ? "is-invalid" : ""}`}
                     value={formData.area}
                     onChange={handleFormChange}
+                    aria-invalid={Boolean(errores.area)}
+                    aria-describedby={errores.area ? "area-error" : "area-help"}
                   >
                     <option value="">Seleccionar area...</option>
                     {areasTrabajo.map((area) => (
@@ -618,7 +721,12 @@ export default function SalidasInsumosNuevaPage() {
                     <i className="bi bi-plus-lg"></i>
                   </button>
                 </div>
-                <div className="form-text">
+                {errores.area && (
+                  <div id="area-error" className="text-danger small mt-1" role="alert">
+                    {errores.area}
+                  </div>
+                )}
+                <div id="area-help" className="form-text">
                   Selecciona un area existente o crea una nueva con el boton +.
                 </div>
               </div>
@@ -637,9 +745,9 @@ export default function SalidasInsumosNuevaPage() {
           </div>
         </div>
 
-        <div className="card shadow-sm border-0">
+        <div className={`card shadow-sm ${errores.detalles ? "border border-danger" : "border-0"}`}>
           <div className="card-header bg-white py-3">
-            <h5 className="mb-0 text-secondary">
+            <h5 className={`mb-0 ${errores.detalles ? "text-danger" : "text-secondary"}`}>
               <i className="bi bi-list-check me-2"></i>Insumos de salida
             </h5>
           </div>
@@ -665,10 +773,15 @@ export default function SalidasInsumosNuevaPage() {
                             type="text"
                             inputMode="decimal"
                             pattern="[0-9]*[.]?[0-9]*"
-                            className="form-control form-control-sm text-end"
+                            className={`form-control form-control-sm text-end ${
+                              errores.detalles && Number(item.cantidad || 0) <= 0 ? "is-invalid" : ""
+                            }`}
                             value={item.cantidad}
                             placeholder="0.00"
                             onChange={(e) => actualizarCantidadDetalle(item.id, e.target.value)}
+                            data-cantidad-detalle-invalida={
+                              errores.detalles && Number(item.cantidad || 0) <= 0 ? "true" : undefined
+                            }
                           />
                         </td>
                         <td>{item.unidad}</td>
@@ -698,7 +811,14 @@ export default function SalidasInsumosNuevaPage() {
             <div className="bg-light rounded p-3">
               <div className="row g-2 align-items-end">
                 <div className="col-md-8">
-                  <label className="form-label fw-semibold small">Insumo</label>
+                  <label
+                    className={`form-label fw-semibold small ${
+                      errores.detalles || errores.insumoBusqueda ? "text-danger" : ""
+                    }`}
+                    htmlFor="busquedaInsumo"
+                  >
+                    Insumo *
+                  </label>
                   <div
                     className="position-relative"
                     ref={buscadorInsumoRef}
@@ -709,12 +829,24 @@ export default function SalidasInsumosNuevaPage() {
                     }}
                   >
                     <input
+                      id="busquedaInsumo"
+                      ref={buscadorInsumoInputRef}
                       type="search"
-                      className="form-control"
+                      className={`form-control ${
+                        errores.detalles || errores.insumoBusqueda ? "is-invalid" : ""
+                      }`}
                       value={busquedaInsumo}
                       onChange={(e) => {
                         setBusquedaInsumo(e.target.value);
                         actualizarSugerencias(e.target.value);
+                        if (errores.detalles || errores.insumoBusqueda) {
+                          setErrores((prev) => {
+                            const copia = { ...prev };
+                            delete copia.detalles;
+                            delete copia.insumoBusqueda;
+                            return copia;
+                          });
+                        }
                       }}
                       onFocus={(e) => actualizarSugerencias(e.target.value)}
                       onClick={(e) => actualizarSugerencias(e.target.value)}
@@ -722,6 +854,10 @@ export default function SalidasInsumosNuevaPage() {
                       placeholder="Escribe el nombre o escanea el código y presiona Enter"
                       autoFocus
                       autoComplete="off"
+                      aria-invalid={Boolean(errores.detalles || errores.insumoBusqueda)}
+                      aria-describedby={
+                        errores.detalles || errores.insumoBusqueda ? "insumo-error" : undefined
+                      }
                     />
                     {sugerenciasInsumo.length > 0 && (
                       <div
@@ -746,18 +882,35 @@ export default function SalidasInsumosNuevaPage() {
                       </div>
                     )}
                   </div>
+                  {(errores.detalles || errores.insumoBusqueda) && (
+                    <div id="insumo-error" className="text-danger small mt-1" role="alert">
+                      {errores.insumoBusqueda || errores.detalles}
+                    </div>
+                  )}
                 </div>
                 <div className="col-md-2">
-                  <label className="form-label fw-semibold small">Cantidad</label>
+                  <label
+                    className={`form-label fw-semibold small ${errores.cantidadEntrada ? "text-danger" : ""}`}
+                    htmlFor="cantidadEntrada"
+                  >
+                    Cantidad *
+                  </label>
                   <input
+                    id="cantidadEntrada"
+                    ref={cantidadEntradaRef}
                     type="text"
                     inputMode="decimal"
                     pattern="[0-9]*[.]?[0-9]*"
-                    className="form-control"
+                    className={`form-control ${errores.cantidadEntrada ? "is-invalid" : ""}`}
                     value={cantidadEntrada}
                     placeholder="0.00"
                     onChange={(e) => handleCantidadEntradaChange(e.target.value)}
+                    aria-invalid={Boolean(errores.cantidadEntrada)}
+                    aria-describedby={errores.cantidadEntrada ? "cantidadEntrada-error" : undefined}
                   />
+                  <div id="cantidadEntrada-error" className="invalid-feedback">
+                    {errores.cantidadEntrada}
+                  </div>
                 </div>
                 <div className="col-md-2">
                   <button type="button" className="btn btn-success w-100" onClick={agregarDetalle} disabled={actualizandoStock}>
@@ -767,7 +920,6 @@ export default function SalidasInsumosNuevaPage() {
               </div>
             </div>
 
-            {errores.detalles && <div className="text-danger small mt-2">{errores.detalles}</div>}
             <div className="d-flex justify-content-between align-items-center mt-3">
               <small className="text-muted">
                 Total de piezas a salir: <strong>{totalCantidad.toFixed(2)}</strong>
