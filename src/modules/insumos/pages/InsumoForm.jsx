@@ -1,12 +1,23 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { obtenerInsumoPorId, crearInsumo, actualizarInsumo, eliminarInsumo, obtenerTiposInsumo } from "../services/insumos.js";
+import {
+  obtenerInsumoPorId,
+  crearInsumo,
+  actualizarInsumo,
+  eliminarInsumo,
+  obtenerTiposInsumo,
+  ajustarStock
+} from "../services/insumos.js";
 import { obtenerUnidadesMedida, crearUnidadMedida } from "../../unidades-medida/services/unidadMedidas.js";
 import { getUser } from "../../auth/services/authService.js";
 import Toast from "../../../components/ui/Toast.jsx";
 import { Ean13BarcodeSvg } from "../components/barcode/Ean13Barcode.jsx";
 import { obtenerBitsEan13 } from "../components/barcode/ean13Utils.js";
-import { puedeGestionarCatalogoInsumos, puedeGestionarCostosInsumos } from "../utils/costosPermisos.js";
+import {
+  puedeAjustarStockManual,
+  puedeGestionarCatalogoInsumos,
+  puedeGestionarCostosInsumos
+} from "../utils/costosPermisos.js";
 import "./InsumoForm.css";
 
 export default function InsumoForm({ 
@@ -14,6 +25,7 @@ export default function InsumoForm({
   insumo,       // para el modal
   onSave,       // para el modal
   onCancel,     // para el modal
+  onStockAdjusted,
   errores: erroresExternos = {}  // para el modal
 }) {
   const [toastMessage, setToastMessage] = useState("");
@@ -29,6 +41,9 @@ export default function InsumoForm({
     tipo: ""
   });
   const [erroresUnidadRapida, setErroresUnidadRapida] = useState({});
+  const [ajusteStock, setAjusteStock] = useState(null);
+  const [guardandoAjuste, setGuardandoAjuste] = useState(false);
+  const [erroresAjuste, setErroresAjuste] = useState({});
   const barcodePreviewRef = useRef(null);
   
   const navigate = useNavigate();
@@ -38,6 +53,7 @@ export default function InsumoForm({
   const usuarioActual = getUser();
   const puedeGestionarCostos = puedeGestionarCostosInsumos(usuarioActual);
   const puedeGestionarInsumos = puedeGestionarCatalogoInsumos(usuarioActual);
+  const puedeAjustarStock = puedeAjustarStockManual(usuarioActual);
 
   const [formData, setFormData] = useState({
     codigoBarras: "",
@@ -291,6 +307,75 @@ export default function InsumoForm({
     } catch (error) {
       setToastType("danger");
       setToastMessage(error.message || "No se pudo eliminar el insumo");
+    }
+  };
+
+  const abrirAjusteStock = () => {
+    setErroresAjuste({});
+    setAjusteStock({
+      nuevoStock: String(formData.stockActual ?? 0),
+      motivo: ""
+    });
+  };
+
+  const cerrarAjusteStock = () => {
+    if (!guardandoAjuste) {
+      setAjusteStock(null);
+      setErroresAjuste({});
+    }
+  };
+
+  const confirmarAjusteStock = async (event) => {
+    event.preventDefault();
+    if (!ajusteStock || !esEdicion) return;
+
+    const stockAnterior = Number(formData.stockActual ?? 0);
+    const stockNuevo = Number(ajusteStock.nuevoStock);
+    const motivo = ajusteStock.motivo.trim();
+    const siguientesErrores = {};
+
+    if (!Number.isFinite(stockNuevo) || stockNuevo < 0) {
+      siguientesErrores.nuevoStock = "Ingresa una cantidad válida, igual o mayor a cero.";
+    } else if (stockNuevo === stockAnterior) {
+      siguientesErrores.nuevoStock = "La nueva cantidad debe ser diferente al stock actual.";
+    }
+    if (!motivo) {
+      siguientesErrores.motivo = "Escribe el motivo del ajuste.";
+    }
+
+    if (Object.keys(siguientesErrores).length > 0) {
+      setErroresAjuste(siguientesErrores);
+      return;
+    }
+
+    const diferencia = stockNuevo - stockAnterior;
+    const tipo = diferencia > 0 ? "ENTRADA" : "SALIDA";
+    const confirmado = window.confirm(
+      `El stock cambiará de ${stockAnterior.toFixed(2)} a ${stockNuevo.toFixed(2)}. ` +
+      `El movimiento quedará registrado en Kardex con el motivo: "${motivo}". ¿Confirmas el ajuste?`
+    );
+    if (!confirmado) return;
+
+    try {
+      setGuardandoAjuste(true);
+      const respuesta = await ajustarStock(
+        insumo?.id || insumoId,
+        Math.abs(diferencia),
+        tipo,
+        motivo
+      );
+      const stockActualizado = respuesta?.stockActual ?? stockNuevo;
+      setFormData((prev) => ({ ...prev, stockActual: stockActualizado }));
+      setToastType("success");
+      setToastMessage("Stock actualizado y movimiento registrado en Kardex.");
+      setAjusteStock(null);
+      setErroresAjuste({});
+      await onStockAdjusted?.(respuesta);
+    } catch (error) {
+      setToastType("danger");
+      setToastMessage(error.message || "No se pudo actualizar el stock.");
+    } finally {
+      setGuardandoAjuste(false);
     }
   };
 
@@ -657,9 +742,21 @@ export default function InsumoForm({
                     onChange={handleChange}
                   />
                   {esEdicion ? (
-                    <small className="text-muted d-block mt-1">
-                      El stock se ajusta desde kardex o la acción de ajuste de inventario.
-                    </small>
+                    <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-2">
+                      <small className="text-muted">
+                        Todo ajuste queda registrado en Kardex.
+                      </small>
+                      {puedeAjustarStock && (
+                        <button
+                          type="button"
+                          className="btn btn-outline-primary btn-sm"
+                          onClick={abrirAjusteStock}
+                        >
+                          <i className="bi bi-arrow-left-right me-1"></i>
+                          Ajustar stock
+                        </button>
+                      )}
+                    </div>
                   ) : null}
                 </div>
 
@@ -802,6 +899,98 @@ export default function InsumoForm({
           </div>
         </div>
       </form>
+
+      {ajusteStock && (
+        <>
+          <div className="modal-backdrop fade show"></div>
+          <div
+            className="modal fade show d-block"
+            tabIndex="-1"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="ajusteStockTitulo"
+          >
+            <div className="modal-dialog modal-dialog-centered">
+              <form className="modal-content border-0 shadow-lg" onSubmit={confirmarAjusteStock} noValidate>
+                <div className="modal-header">
+                  <div>
+                    <h5 className="modal-title mb-1" id="ajusteStockTitulo">Ajustar stock</h5>
+                    <small className="text-muted">{formData.nombre}</small>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-close"
+                    aria-label="Cerrar"
+                    onClick={cerrarAjusteStock}
+                    disabled={guardandoAjuste}
+                  ></button>
+                </div>
+                <div className="modal-body">
+                  <div className="alert alert-light border d-flex align-items-center justify-content-between mb-3">
+                    <span className="text-muted">Stock actual</span>
+                    <strong>{Number(formData.stockActual ?? 0).toFixed(2)}</strong>
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="form-label fw-semibold" htmlFor="nuevoStockAjuste">
+                      Nueva cantidad *
+                    </label>
+                    <input
+                      id="nuevoStockAjuste"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className={`form-control ${erroresAjuste.nuevoStock ? "is-invalid" : ""}`}
+                      value={ajusteStock.nuevoStock}
+                      onChange={(event) => {
+                        setAjusteStock((actual) => ({ ...actual, nuevoStock: event.target.value }));
+                        setErroresAjuste((actual) => ({ ...actual, nuevoStock: "" }));
+                      }}
+                      placeholder="0.00"
+                      autoFocus
+                      required
+                    />
+                    <div className="invalid-feedback">{erroresAjuste.nuevoStock}</div>
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="form-label fw-semibold" htmlFor="motivoAjusteStock">
+                      Motivo del ajuste *
+                    </label>
+                    <textarea
+                      id="motivoAjusteStock"
+                      className={`form-control ${erroresAjuste.motivo ? "is-invalid" : ""}`}
+                      rows="3"
+                      maxLength="500"
+                      value={ajusteStock.motivo}
+                      onChange={(event) => {
+                        setAjusteStock((actual) => ({ ...actual, motivo: event.target.value }));
+                        setErroresAjuste((actual) => ({ ...actual, motivo: "" }));
+                      }}
+                      placeholder="Ej. Conteo físico de inventario"
+                      required
+                    />
+                    <div className="invalid-feedback">{erroresAjuste.motivo}</div>
+                  </div>
+
+                  <div className="small text-muted">
+                    <i className="bi bi-journal-check me-1"></i>
+                    Se guardarán en Kardex el usuario, la fecha, el stock anterior, el nuevo stock y el motivo.
+                  </div>
+                </div>
+                <div className="modal-footer">
+                  <button type="button" className="btn btn-light" onClick={cerrarAjusteStock} disabled={guardandoAjuste}>
+                    Cancelar
+                  </button>
+                  <button type="submit" className="btn btn-primary" disabled={guardandoAjuste}>
+                    {guardandoAjuste ? "Actualizando..." : "Revisar y confirmar"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

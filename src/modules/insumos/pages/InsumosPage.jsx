@@ -161,6 +161,12 @@ export default function InsumosPage() {
       setToastMessage("La cantidad del ajuste debe ser mayor a cero.");
       return;
     }
+    const motivo = ajusteStock.motivo.trim();
+    if (!motivo) {
+      setToastType("danger");
+      setToastMessage("Escribe el motivo del ajuste.");
+      return;
+    }
 
     const accion = ajusteStock.tipo === "SALIDA" ? "descontar" : "agregar";
     const confirmado = window.confirm(
@@ -174,7 +180,7 @@ export default function InsumosPage() {
         ajusteStock.insumo.id,
         cantidad,
         ajusteStock.tipo,
-        ajusteStock.motivo.trim() || "Ajuste manual confirmado"
+        motivo
       );
       setToastType("success");
       setToastMessage("Stock actualizado correctamente.");
@@ -529,7 +535,7 @@ export default function InsumosPage() {
                       />
                     </div>
                     <div className="col-12">
-                      <label className="form-label fw-semibold">Motivo</label>
+                      <label className="form-label fw-semibold">Motivo *</label>
                       <textarea
                         className="form-control"
                         rows="3"
@@ -537,6 +543,7 @@ export default function InsumosPage() {
                         value={ajusteStock.motivo}
                         onChange={(event) => setAjusteStock((actual) => ({ ...actual, motivo: event.target.value }))}
                         placeholder="Describe por qué se realiza el ajuste"
+                        required
                       />
                     </div>
                   </div>

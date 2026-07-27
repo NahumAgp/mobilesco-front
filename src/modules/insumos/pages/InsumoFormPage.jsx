@@ -46,7 +46,7 @@ export default function InsumoFormPage() {
       {/* FORMULARIO DE INSUMO */}
       <div className="card mb-4">
         <div className="card-body">
-          <InsumoForm insumoId={id} />
+          <InsumoForm insumoId={id} onStockAdjusted={cargarKardex} />
         </div>
       </div>
 
