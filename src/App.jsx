@@ -1,82 +1,78 @@
+import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes, useParams } from "react-router-dom";
 
 import AppLayout from "./layout/AppLayout";
-
-import Tablero from "./modules/tablero/pages/Tablero";
-import UnidadMedida from "./modules/unidades-medida/legacy/UnidadMedida.jsx";
-import NuevaCotizacion from "./modules/cotizaciones/pages/NuevaCotizacion.jsx";
-import Cotizacion from "./modules/cotizaciones/pages/Cotizaciones.jsx";
-
-import ProveedoresPage from "./modules/proveedores/pages/ProveedoresPage.jsx";
-import ProveedorFormPage from "./modules/proveedores/pages/ProveedorFormPage.jsx";
-
-import UnidadesMedidaPage from "./modules/unidades-medida/pages/UnidadMedidaPage.jsx";
-import UnidadMedidaFormPage from "./modules/unidades-medida/pages/UnidadMedidaFormPage.jsx";
-
-import Login from "./modules/auth/pages/Login.jsx";
-import Register from "./modules/auth/pages/Register.jsx";
-
-import EmpleadoFormPage from "./modules/empleados/pages/EmpleadoFormPage.jsx";
-import EmpleadosPage from "./modules/empleados/pages/EmpleadoPage.jsx";
-import AreasTrabajoPage from "./modules/areas-trabajo/pages/AreasTrabajoPage.jsx";
-
-import PerfilPage from "./modules/perfil/pages/PerfilPage.jsx";
-
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import RoleRoute from "./components/auth/RoleRoute";
-import FamiliasPage from "./modules/familias/pages/FamiliasPage.jsx";
-import FamiliaFormPage from "./modules/familias/pages/FamiliaFormPage.jsx";
-import SubfamiliasPage from "./modules/subfamilias/pages/SubfamiliasPage.jsx";
-import SubfamiliaFormPage from "./modules/subfamilias/pages/SubfamiliaFormPage.jsx";
 
-import LineaProductoFormPage from "./modules/lineas-producto/pages/LineaProductoFormPage.jsx";
-import LineaProductoPage from "./modules/lineas-producto/pages/LineaProductoPage.jsx";
+const Login = lazy(() => import("./modules/auth/pages/Login.jsx"));
+const Register = lazy(() => import("./modules/auth/pages/Register.jsx"));
+const Tablero = lazy(() => import("./modules/tablero/pages/Tablero"));
+const NotificacionesPage = lazy(() => import("./modules/notificaciones/pages/NotificacionesPage.jsx"));
+const UnidadMedida = lazy(() => import("./modules/unidades-medida/legacy/UnidadMedida.jsx"));
+const NuevaCotizacion = lazy(() => import("./modules/cotizaciones/pages/NuevaCotizacion.jsx"));
+const Cotizacion = lazy(() => import("./modules/cotizaciones/pages/Cotizaciones.jsx"));
+const ClientesPage = lazy(() => import("./modules/clientes/pages/ClientesPage.jsx"));
+const ClienteFormPage = lazy(() => import("./modules/clientes/pages/ClienteFormPage.jsx"));
+const EmpleadoFormPage = lazy(() => import("./modules/empleados/pages/EmpleadoFormPage.jsx"));
+const EmpleadosPage = lazy(() => import("./modules/empleados/pages/EmpleadoPage.jsx"));
+const AreasTrabajoPage = lazy(() => import("./modules/areas-trabajo/pages/AreasTrabajoPage.jsx"));
+const PerfilPage = lazy(() => import("./modules/perfil/pages/PerfilPage.jsx"));
+const UsuariosAccesoPage = lazy(() => import("./modules/usuarios/pages/UsuariosAccesoPage.jsx"));
+const ProveedoresPage = lazy(() => import("./modules/proveedores/pages/ProveedoresPage.jsx"));
+const ProveedorFormPage = lazy(() => import("./modules/proveedores/pages/ProveedorFormPage.jsx"));
+const UnidadesMedidaPage = lazy(() => import("./modules/unidades-medida/pages/UnidadMedidaPage.jsx"));
+const UnidadMedidaFormPage = lazy(() => import("./modules/unidades-medida/pages/UnidadMedidaFormPage.jsx"));
+const FamiliasPage = lazy(() => import("./modules/familias/pages/FamiliasPage.jsx"));
+const FamiliaFormPage = lazy(() => import("./modules/familias/pages/FamiliaFormPage.jsx"));
+const SubfamiliasPage = lazy(() => import("./modules/subfamilias/pages/SubfamiliasPage.jsx"));
+const SubfamiliaFormPage = lazy(() => import("./modules/subfamilias/pages/SubfamiliaFormPage.jsx"));
+const LineaProductoPage = lazy(() => import("./modules/lineas-producto/pages/LineaProductoPage.jsx"));
+const LineaProductoFormPage = lazy(() => import("./modules/lineas-producto/pages/LineaProductoFormPage.jsx"));
+const MaterialesPage = lazy(() => import("./modules/materiales/pages/MaterialesPage.jsx"));
+const MaterialFormPage = lazy(() => import("./modules/materiales/pages/MaterialFormPage.jsx"));
+const ModelosPage = lazy(() => import("./modules/modelos/pages/ModelosPage.jsx"));
+const ModelosFormPage = lazy(() => import("./modules/modelos/pages/ModelosFormPage.jsx"));
+const ColorPage = lazy(() => import("./modules/colores/pages/ColorPage.jsx"));
+const ColorFormPage = lazy(() => import("./modules/colores/pages/ColorFormPage.jsx"));
+const InsumosPage = lazy(() => import("./modules/insumos/pages/InsumosPage.jsx"));
+const InsumosCostosPage = lazy(() => import("./modules/insumos/pages/InsumosCostosPage.jsx"));
+const InsumosFormPage = lazy(() => import("./modules/insumos/pages/InsumoFormPage.jsx"));
+const TiposInsumoPage = lazy(() => import("./modules/insumos/pages/TiposInsumoPage.jsx"));
+const SalidasInsumosPage = lazy(() => import("./modules/salidas-insumos/pages/SalidasInsumosPage.jsx"));
+const SalidasInsumosNuevaPage = lazy(() => import("./modules/salidas-insumos/pages/SalidasInsumosNuevaPage.jsx"));
+const RequisicionesPage = lazy(() => import("./modules/almacen/requisiciones/pages/RequisicionesPage.jsx"));
+const RequisicionNuevaPage = lazy(() => import("./modules/almacen/requisiciones/pages/RequisicionNuevaPage.jsx"));
+const RequisicionDetallePage = lazy(() => import("./modules/almacen/requisiciones/pages/RequisicionDetallePage.jsx"));
+const EntradasPage = lazy(() => import("./modules/almacen/entradas/pages/EntradasPage.jsx"));
+const EntradaRecepcionPage = lazy(() => import("./modules/almacen/entradas/pages/EntradaRecepcionPage.jsx"));
+const CentrosTrabajoPage = lazy(() => import("./modules/centros-trabajo/pages/CentrosTrabajoPage.jsx"));
+const CentrosTrabajoFormPage = lazy(() => import("./modules/centros-trabajo/pages/CentroTrabajoFormPage.jsx"));
+const OperacionesPage = lazy(() => import("./modules/operaciones/pages/OperacionesPage.jsx"));
+const OperacionesFormPage = lazy(() => import("./modules/operaciones/pages/OperacionFormPage.jsx"));
+const CifPage = lazy(() => import("./modules/cif/pages/CifPage.jsx"));
+const CifFormPage = lazy(() => import("./modules/cif/pages/CifFormPage.jsx"));
+const ComprasPage = lazy(() => import("./modules/compras/pages/ComprasPage.jsx"));
+const ComprasFormPage = lazy(() => import("./modules/compras/pages/CompraFormPage.jsx"));
+const CuentasPorPagarPage = lazy(() => import("./modules/compras/pages/CuentasPorPagarPage.jsx"));
+const CuentaPorPagarDetallePage = lazy(() => import("./modules/compras/pages/CuentaPorPagarDetallePage.jsx"));
+const CompraDetallePage = lazy(() => import("./modules/compras/pages/CompraDetallePage.jsx"));
+const KardexPage = lazy(() => import("./modules/kardex/pages/KardexPage"));
+const ProductosCompletosPage = lazy(() => import("./modules/productos/pages/ProductosCompletos/ProductosCompletosPage.jsx"));
+const ProductoCatalogoPage = lazy(() => import("./modules/productos/pages/Productos/ProductoCatalogoPage.jsx"));
+const ProductosCalidadPage = lazy(() => import("./modules/productos/pages/Productos/ProductosCalidadPage.jsx"));
+const ProductoFormPage = lazy(() => import("./modules/productos/pages/Productos/ProductoFormPage.jsx"));
+const ProductoInsumosBOMPage = lazy(() => import("./modules/productos/pages/Productos/ProductoInsumosBOMPage.jsx"));
+const ProductoOperacionesBOMPage = lazy(() => import("./modules/productos/pages/Productos/ProductoOperacionesBOMPage.jsx"));
 
-import ModelosPage from "./modules/modelos/pages/ModelosPage.jsx";
-import ModelosFormPage from "./modules/modelos/pages/ModelosFormPage.jsx";
-import MaterialesPage from "./modules/materiales/pages/MaterialesPage.jsx";
-import MaterialFormPage from "./modules/materiales/pages/MaterialFormPage.jsx";
-import ColorPage from "./modules/colores/pages/ColorPage.jsx";
-import ColorFormPage from "./modules/colores/pages/ColorFormPage.jsx";
-
-import  InsumosPage from "./modules/insumos/pages/InsumosPage.jsx";
-import InsumosCostosPage from "./modules/insumos/pages/InsumosCostosPage.jsx";
-import  InsumosFormPage from "./modules/insumos/pages/InsumoFormPage.jsx";
-import TiposInsumoPage from "./modules/insumos/pages/TiposInsumoPage.jsx";
-import SalidasInsumosPage from "./modules/salidas-insumos/pages/SalidasInsumosPage.jsx";
-import SalidasInsumosNuevaPage from "./modules/salidas-insumos/pages/SalidasInsumosNuevaPage.jsx";
-import EntradasPage from "./modules/almacen/entradas/pages/EntradasPage.jsx";
-import EntradaRecepcionPage from "./modules/almacen/entradas/pages/EntradaRecepcionPage.jsx";
-import RequisicionesPage from "./modules/almacen/requisiciones/pages/RequisicionesPage.jsx";
-import RequisicionNuevaPage from "./modules/almacen/requisiciones/pages/RequisicionNuevaPage.jsx";
-import RequisicionDetallePage from "./modules/almacen/requisiciones/pages/RequisicionDetallePage.jsx";
-
-import CentrosTrabajoPage from "./modules/centros-trabajo/pages/CentrosTrabajoPage.jsx";
-import CentrosTrabajoFormPage from "./modules/centros-trabajo/pages/CentroTrabajoFormPage.jsx";
-
-import OperacionesPage from "./modules/operaciones/pages/OperacionesPage.jsx";
-import OperacionesFormPage from "./modules/operaciones/pages/OperacionFormPage.jsx";
-import CifPage from "./modules/cif/pages/CifPage.jsx";
-import CifFormPage from "./modules/cif/pages/CifFormPage.jsx";
-
-import ComprasPage from "./modules/compras/pages/ComprasPage.jsx";
-import ComprasFormPage from "./modules/compras/pages/CompraFormPage.jsx";
-import CuentasPorPagarPage from "./modules/compras/pages/CuentasPorPagarPage.jsx";
-import CuentaPorPagarDetallePage from "./modules/compras/pages/CuentaPorPagarDetallePage.jsx";
-
-import KardexPage from "./modules/kardex/pages/KardexPage"; 
-import CompraDetallePage from "./modules/compras/pages/CompraDetallePage.jsx";
-
-import ProductoFormPage from "./modules/productos/pages/Productos/ProductoFormPage.jsx";
-import ProductosCompletosPage from "./modules/productos/pages/ProductosCompletos/ProductosCompletosPage.jsx";
-import ProductoCatalogoPage from "./modules/productos/pages/Productos/ProductoCatalogoPage.jsx";
-import ProductosCalidadPage from "./modules/productos/pages/Productos/ProductosCalidadPage.jsx";
-import ProductoInsumosBOMPage from "./modules/productos/pages/Productos/ProductoInsumosBOMPage.jsx";
-import ProductoOperacionesBOMPage from "./modules/productos/pages/Productos/ProductoOperacionesBOMPage.jsx";
-import UsuariosAccesoPage from "./modules/usuarios/pages/UsuariosAccesoPage.jsx";
-import NotificacionesPage from "./modules/notificaciones/pages/NotificacionesPage.jsx";
-import ClientesPage from "./modules/clientes/pages/ClientesPage.jsx";
-import ClienteFormPage from "./modules/clientes/pages/ClienteFormPage.jsx";
+function RouteFallback() {
+  return (
+    <div className="d-flex justify-content-center align-items-center py-5" role="status" aria-live="polite">
+      <span className="spinner-border text-primary" aria-hidden="true" />
+      <span className="visually-hidden">Cargando página…</span>
+    </div>
+  );
+}
 
 function ProductoDetalleRedirect() {
   const { id } = useParams();
@@ -108,6 +104,7 @@ export default function App() {
 
   return (
 
+    <Suspense fallback={<RouteFallback />}>
     <Routes>
 
       {/* LOGIN */}
@@ -284,6 +281,7 @@ export default function App() {
       
 
     </Routes>
+    </Suspense>
 
   );
 

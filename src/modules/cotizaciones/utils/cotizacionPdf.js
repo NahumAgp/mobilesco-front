@@ -1,5 +1,3 @@
-import { jsPDF } from "jspdf";
-
 const moneda = (valor) =>
   new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(Number(valor || 0));
 
@@ -23,6 +21,7 @@ async function logoDataUrl() {
 }
 
 export async function crearPdfCotizacion(cotizacion) {
+  const { jsPDF } = await import("jspdf");
   const pdf = new jsPDF({ unit: "mm", format: "letter" });
   const verde = [21, 79, 67];
   try {
