@@ -24,6 +24,7 @@ import {
 } from "../../services/imagenes.js";
 import Toast from "../../../../components/ui/Toast.jsx";
 import SearchableSelect from "../../../../components/ui/SearchableSelect.jsx";
+import ClasificacionCatalogCreateModal from "./ClasificacionCatalogCreateModal.jsx";
 import { API_BASE_URL } from "../../../../config/apiConfig.js";
 import "./ProductoForm.css";
 
@@ -293,6 +294,7 @@ export default function ProductoForm({
   const [imagenes, setImagenes] = useState([]);
   const [imagenPrincipal, setImagenPrincipal] = useState(null);
   const [errorImagenes, setErrorImagenes] = useState("");
+  const [catalogoModal, setCatalogoModal] = useState(null);
 
   const [formData, setFormData] = useState({
     sku: "",
@@ -640,6 +642,51 @@ export default function ProductoForm({
       return { ...prev, [campo]: value };
     });
     setPreviewReclasificacion(null);
+  };
+
+  const handleCatalogoCreado = async ({ tipo, creado, nombre }) => {
+    const respuestaCreada = creado?.data || creado;
+    let lista = [];
+    if (tipo === "linea") {
+      lista = getLista(await obtenerLineasActivas());
+      setLineas(lista);
+    } else if (tipo === "familia") {
+      lista = getLista(await obtenerFamiliasActivas());
+      setFamilias(lista);
+    } else {
+      lista = getLista(await obtenerSubfamiliasActivas());
+      setSubfamilias(lista);
+    }
+
+    const registro = lista.find((item) => String(item.id) === String(respuestaCreada?.id))
+      || lista.find((item) => normalizarTexto(item.nombre) === normalizarTexto(nombre));
+    if (!registro) {
+      throw new Error("El registro se creó, pero no fue posible seleccionarlo automáticamente.");
+    }
+
+    if (tipo === "linea") {
+      setRutaSeleccionada({
+        lineaId: String(registro.id),
+        familiaId: "",
+        subfamiliaId: "",
+      });
+    } else if (tipo === "familia") {
+      setRutaSeleccionada((prev) => ({
+        ...prev,
+        familiaId: String(registro.id),
+        subfamiliaId: "",
+      }));
+    } else {
+      setRutaSeleccionada((prev) => ({
+        ...prev,
+        subfamiliaId: String(registro.id),
+      }));
+    }
+
+    setPreviewReclasificacion(null);
+    setCatalogoModal(null);
+    setToastType("success");
+    setToastMessage(`${tipo === "linea" ? "Línea" : tipo === "familia" ? "Familia" : "Subfamilia"} creada y seleccionada.`);
   };
 
   const guardarReclasificacion = async () => {
@@ -1082,6 +1129,17 @@ export default function ProductoForm({
                       placeholder="Seleccionar línea"
                       searchPlaceholder="Buscar línea..."
                       className="producto-clasificacion-select"
+                      actionNode={(
+                        <button
+                          type="button"
+                          className="producto-clasificacion-add"
+                          onClick={() => setCatalogoModal("linea")}
+                          aria-label="Crear línea"
+                          title="Crear línea"
+                        >
+                          <i className="bi bi-plus-lg"></i>
+                        </button>
+                      )}
                       renderOptionLabel={(linea) => (
                         <span className="producto-clasificacion-option">
                           <span className="producto-clasificacion-option-code">{linea.codigo || "L"}</span>
@@ -1100,6 +1158,18 @@ export default function ProductoForm({
                       placeholder="Seleccionar familia"
                       searchPlaceholder="Buscar familia..."
                       className="producto-clasificacion-select"
+                      actionNode={(
+                        <button
+                          type="button"
+                          className="producto-clasificacion-add"
+                          onClick={() => setCatalogoModal("familia")}
+                          disabled={!rutaSeleccionada.lineaId}
+                          aria-label="Crear familia"
+                          title={rutaSeleccionada.lineaId ? "Crear familia" : "Selecciona una línea primero"}
+                        >
+                          <i className="bi bi-plus-lg"></i>
+                        </button>
+                      )}
                       renderOptionLabel={(familia) => (
                         <span className="producto-clasificacion-option">
                           <span className="producto-clasificacion-option-code">{familia.codigo || "F"}</span>
@@ -1113,7 +1183,7 @@ export default function ProductoForm({
                         <button
                           type="button"
                           className="btn btn-link btn-sm p-0 ms-1 align-baseline"
-                          onClick={() => navigate(`/familias/nuevo?lineaId=${rutaSeleccionada.lineaId}`)}
+                          onClick={() => setCatalogoModal("familia")}
                         >
                           Crear familia
                         </button>
@@ -1126,7 +1196,7 @@ export default function ProductoForm({
                         <button
                           type="button"
                           className="btn btn-link btn-sm p-0 ms-1 align-baseline"
-                          onClick={() => navigate(`/familias/nuevo?lineaId=${rutaSeleccionada.lineaId}`)}
+                          onClick={() => setCatalogoModal("familia")}
                         >
                           crea una nueva
                         </button>.
@@ -1146,6 +1216,18 @@ export default function ProductoForm({
                       placeholder="Seleccionar subfamilia"
                       searchPlaceholder="Buscar subfamilia..."
                       className="producto-clasificacion-select"
+                      actionNode={(
+                        <button
+                          type="button"
+                          className="producto-clasificacion-add"
+                          onClick={() => setCatalogoModal("subfamilia")}
+                          disabled={!rutaSeleccionada.familiaId}
+                          aria-label="Crear subfamilia"
+                          title={rutaSeleccionada.familiaId ? "Crear subfamilia" : "Selecciona una familia primero"}
+                        >
+                          <i className="bi bi-plus-lg"></i>
+                        </button>
+                      )}
                       renderOptionLabel={(subfamilia) => (
                         <span className="producto-clasificacion-option">
                           <span className="producto-clasificacion-option-code">{subfamilia.codigo || "SF"}</span>
@@ -1159,7 +1241,7 @@ export default function ProductoForm({
                         <button
                           type="button"
                           className="btn btn-link btn-sm p-0 ms-1 align-baseline"
-                          onClick={() => navigate(`/subfamilias/nuevo?familiaId=${rutaSeleccionada.familiaId}`)}
+                          onClick={() => setCatalogoModal("subfamilia")}
                         >
                           Crear subfamilia
                         </button>
@@ -1172,7 +1254,7 @@ export default function ProductoForm({
                         <button
                           type="button"
                           className="btn btn-link btn-sm p-0 ms-1 align-baseline"
-                          onClick={() => navigate(`/subfamilias/nuevo?familiaId=${rutaSeleccionada.familiaId}`)}
+                          onClick={() => setCatalogoModal("subfamilia")}
                         >
                           crea una nueva
                         </button>.
@@ -1476,6 +1558,20 @@ export default function ProductoForm({
           </aside>
         </div>
       </form>
+
+      {catalogoModal && (
+        <ClasificacionCatalogCreateModal
+          tipo={catalogoModal}
+          lineaId={rutaSeleccionada.lineaId}
+          lineaNombre={lineas.find((item) =>
+            String(item.id) === String(rutaSeleccionada.lineaId))?.nombre || "Sin línea"}
+          familiaId={rutaSeleccionada.familiaId}
+          familiaNombre={familias.find((item) =>
+            String(item.id) === String(rutaSeleccionada.familiaId))?.nombre || "Sin familia"}
+          onClose={() => setCatalogoModal(null)}
+          onCreated={handleCatalogoCreado}
+        />
+      )}
     </div>
   );
 }
