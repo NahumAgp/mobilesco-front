@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import CatalogPagination from "../../../components/ui/CatalogPagination.jsx";
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
@@ -45,7 +45,7 @@ export default function AreasTrabajoPage() {
     obtenerCodigoSugeridoAreaTrabajo
   );
 
-  const cargarAreas = async (pagina = page) => {
+  const cargarAreas = useCallback(async (pagina = page) => {
     try {
       setLoading(true);
       const data = await obtenerAreasTrabajo({
@@ -67,11 +67,11 @@ export default function AreasTrabajoPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [busqueda, page, soloActivas]);
 
   useEffect(() => {
     cargarAreas(page);
-  }, [page, busqueda, soloActivas]);
+  }, [cargarAreas, page]);
 
   const totalPages = pageInfo.totalPages || 0;
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   activarSubfamilia,
   desactivarSubfamilia,
@@ -36,18 +36,20 @@ const normalizarPageInfo = (data, fallbackPage = 0) => {
 };
 
 export function useSubfamilias(params = {}) {
+  const { activo, busqueda, direction, familiaId, page, sortBy } = params;
   const [subfamilias, setSubfamilias] = useState([]);
   const [pageInfo, setPageInfo] = useState(PAGE_INFO_DEFAULT);
   const [loadingLista, setLoadingLista] = useState(false);
   const [error, setError] = useState("");
 
-  const cargar = async () => {
+  const cargar = useCallback(async () => {
     try {
       setLoadingLista(true);
       setError("");
-      const data = await obtenerSubfamilias(params);
+      const filtros = { activo, busqueda, direction, familiaId, page, sortBy };
+      const data = await obtenerSubfamilias(filtros);
       setSubfamilias(data?.content || (Array.isArray(data) ? data : []));
-      setPageInfo(normalizarPageInfo(data, params.page ?? 0));
+      setPageInfo(normalizarPageInfo(data, page ?? 0));
     } catch (err) {
       setError(err.message || "No se pudieron cargar las subfamilias");
       setSubfamilias([]);
@@ -55,11 +57,11 @@ export function useSubfamilias(params = {}) {
     } finally {
       setLoadingLista(false);
     }
-  };
+  }, [activo, busqueda, direction, familiaId, page, sortBy]);
 
   useEffect(() => {
     cargar();
-  }, [params.activo, params.busqueda, params.direction, params.familiaId, params.page, params.sortBy]);
+  }, [cargar]);
 
   const cambiarEstadoSubfamilia = async (id, activo) => {
     if (activo) {

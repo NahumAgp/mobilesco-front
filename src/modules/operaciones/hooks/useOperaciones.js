@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   obtenerOperaciones,
   eliminarOperacion as eliminarService
@@ -12,17 +12,18 @@ const PAGE_INFO_DEFAULT = {
 };
 
 export function useOperaciones(params = {}) {
+  const { page, size, busqueda, activo, centroTrabajo } = params;
   const [operaciones, setOperaciones] = useState([]);
   const [pageInfo, setPageInfo] = useState(PAGE_INFO_DEFAULT);
   const [loadingLista, setLoadingLista] = useState(false);
   const [error, setError] = useState("");
 
-  async function cargar(overrides = {}) {
+  const cargar = useCallback(async (overrides = {}) => {
     try {
       setLoadingLista(true);
       setError("");
 
-      const filtros = { ...params, ...overrides };
+      const filtros = { page, size, busqueda, activo, centroTrabajo, ...overrides };
       const data = await obtenerOperaciones(filtros);
 
       if (data?.content) {
@@ -47,11 +48,11 @@ export function useOperaciones(params = {}) {
     } finally {
       setLoadingLista(false);
     }
-  }
+  }, [activo, busqueda, centroTrabajo, page, size]);
 
   useEffect(() => {
     cargar();
-  }, [params.page, params.size, params.busqueda, params.activo, params.centroTrabajo]);
+  }, [cargar]);
 
   async function eliminarOperacion(id) {
     await eliminarService(id);

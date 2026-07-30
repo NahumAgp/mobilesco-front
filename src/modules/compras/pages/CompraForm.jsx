@@ -7,7 +7,7 @@ import {
 } from "../services/compras.js";
 import { obtenerProveedores } from "../../proveedores/services/proveedores.js";
 import ProveedorModal from "../../proveedores/pages/ProveedorModal.jsx";
-import { buscarInsumos, crearInsumo } from "../../insumos/services/insumos.js";
+import { buscarInsumos } from "../../insumos/services/insumos.js";
 import InsumoForm from "../../insumos/pages/InsumoForm.jsx";
 import { obtenerUnidadesMedida } from "../../unidades-medida/services/unidadMedidas.js";
 import SearchableSelect from "../../../components/ui/SearchableSelect.jsx";
@@ -31,16 +31,8 @@ export default function CompraForm({
   const [cargandoInsumos, setCargandoInsumos] = useState(false);
   const [unidadesMedida, setUnidadesMedida] = useState([]);
   const [mostrarAltaRapida, setMostrarAltaRapida] = useState(false);
-  const [creandoInsumoRapido, setCreandoInsumoRapido] = useState(false);
-  const [erroresInsumoRapido, setErroresInsumoRapido] = useState({});
   const [detalleEnEdicionId, setDetalleEnEdicionId] = useState(null);
   const [detalleEdicionBackup, setDetalleEdicionBackup] = useState(null);
-  const [nuevoInsumoRapido, setNuevoInsumoRapido] = useState({
-    codigo: "",
-    nombre: "",
-    unidadMedidaId: "",
-    stockMinimo: 0
-  });
   
   const navigate = useNavigate();
   
@@ -297,11 +289,6 @@ export default function CompraForm({
   };
 
   const iniciarAltaRapida = () => {
-    const termino = busquedaInsumo.trim();
-    setNuevoInsumoRapido((prev) => ({
-      ...prev,
-      codigo: termino
-    }));
     setMostrarAltaRapida(true);
   };
 
@@ -316,77 +303,6 @@ export default function CompraForm({
     setMostrarAltaRapida(false);
     setToastType("success");
     setToastMessage("Insumo creado y seleccionado para la compra");
-  };
-
-  const cambiarInsumoRapido = (campo, valor) => {
-    setNuevoInsumoRapido((prev) => ({
-      ...prev,
-      [campo]: campo === "stockMinimo" ? (parseFloat(valor) || 0) : valor
-    }));
-
-    if (erroresInsumoRapido[campo]) {
-      setErroresInsumoRapido((prev) => {
-        const copia = { ...prev };
-        delete copia[campo];
-        return copia;
-      });
-    }
-  };
-
-  const crearInsumoRapido = async () => {
-    const errores = {};
-    if (!nuevoInsumoRapido.codigo.trim()) errores.codigo = "El código es obligatorio";
-    if (!nuevoInsumoRapido.nombre.trim()) errores.nombre = "El nombre es obligatorio";
-    if (!nuevoInsumoRapido.unidadMedidaId) errores.unidadMedidaId = "Selecciona una unidad";
-
-    if (Object.keys(errores).length > 0) {
-      setErroresInsumoRapido(errores);
-      setToastType("danger");
-      setToastMessage("Completa los campos mínimos para crear el insumo");
-      return;
-    }
-
-    try {
-      setCreandoInsumoRapido(true);
-      const creado = await crearInsumo({
-        codigo: nuevoInsumoRapido.codigo.trim(),
-        nombre: nuevoInsumoRapido.nombre.trim(),
-        unidadMedidaId: Number(nuevoInsumoRapido.unidadMedidaId),
-        stockMinimo: Number(nuevoInsumoRapido.stockMinimo || 0),
-        stockActual: 0,
-        descripcion: null,
-        ubicacion: null,
-        fila: null,
-        columna: null
-      });
-
-      const unidad = unidadesMedida.find((um) => String(um.id) === String(nuevoInsumoRapido.unidadMedidaId));
-      const insumoNormalizado = {
-        ...creado,
-        unidadMedida: creado.unidadMedida || unidad || null
-      };
-
-      setInsumosBuscados((prev) => [insumoNormalizado, ...prev]);
-      seleccionarInsumo(insumoNormalizado);
-      setNuevoInsumoRapido({
-        codigo: "",
-        nombre: "",
-        unidadMedidaId: "",
-        stockMinimo: 0
-      });
-      setErroresInsumoRapido({});
-      setMostrarAltaRapida(false);
-      setToastType("success");
-      setToastMessage("Insumo creado y seleccionado para la compra");
-    } catch (error) {
-      if (error.errors) {
-        setErroresInsumoRapido(error.errors);
-      }
-      setToastType("danger");
-      setToastMessage(error.message || "Error al crear el insumo");
-    } finally {
-      setCreandoInsumoRapido(false);
-    }
   };
 
   const prepararDetalle = (detalleBase) => recalcularDetalle(detalleBase);
@@ -1023,20 +939,6 @@ export default function CompraForm({
                     />
                   </div>
 
-                  {false && (
-                    <div className="col-12 col-xl-2">
-                      <small className="text-muted d-block">
-                        <strong>UC:</strong> {nuevoDetalle.insumoSeleccionado.unidadMedida?.simbolo || '?'}
-                        {nuevoDetalle.requiereConversion && (
-                          <span className="d-block text-warning">
-                            <i className="bi bi-exclamation-triangle me-1"></i>
-                            Requiere conversión
-                          </span>
-                        )}
-                      </small>
-                    </div>
-                  )}
-
                   <div className="col-auto" style={{ width: "120px" }}>
                     <button
                       type="button"
@@ -1061,88 +963,6 @@ export default function CompraForm({
                     >
                       Crear ahora
                     </button>
-                  </div>
-                )}
-
-                {false && (
-                  <div className="border rounded p-3 mt-3 bg-white">
-                    <div className="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
-                      <div>
-                        <div className="fw-semibold">Alta rápida de insumo</div>
-                        <small className="text-muted">Crea el insumo sin salir de la compra.</small>
-                      </div>
-                      <button
-                        type="button"
-                        className="btn btn-outline-secondary btn-sm"
-                        onClick={() => {
-                          setMostrarAltaRapida(false);
-                          setErroresInsumoRapido({});
-                        }}
-                      >
-                        Cerrar
-                      </button>
-                    </div>
-
-                    <div className="row g-3">
-                      <div className="col-md-4">
-                        <label className="form-label fw-semibold small">Código *</label>
-                        <input
-                          type="text"
-                          className={"form-control form-control-sm " + (erroresInsumoRapido.codigo ? "is-invalid" : "")}
-                          value={nuevoInsumoRapido.codigo}
-                          onChange={(e) => cambiarInsumoRapido("codigo", e.target.value)}
-                        />
-                        <div className="invalid-feedback">{erroresInsumoRapido.codigo}</div>
-                      </div>
-                      <div className="col-md-5">
-                        <label className="form-label fw-semibold small">Nombre *</label>
-                        <input
-                          type="text"
-                          className={"form-control form-control-sm " + (erroresInsumoRapido.nombre ? "is-invalid" : "")}
-                          value={nuevoInsumoRapido.nombre}
-                          onChange={(e) => cambiarInsumoRapido("nombre", e.target.value)}
-                          placeholder="Ej: Tornillo, tubo, tela..."
-                        />
-                        <div className="invalid-feedback">{erroresInsumoRapido.nombre}</div>
-                      </div>
-                      <div className="col-md-3">
-                        <label className="form-label fw-semibold small">Unidad *</label>
-                        <select
-                          className={"form-select form-select-sm " + (erroresInsumoRapido.unidadMedidaId ? "is-invalid" : "")}
-                          value={nuevoInsumoRapido.unidadMedidaId}
-                          onChange={(e) => cambiarInsumoRapido("unidadMedidaId", e.target.value)}
-                        >
-                          <option value="">Selecciona...</option>
-                          {unidadesMedida.map((um) => (
-                            <option key={um.id} value={um.id}>
-                              {um.simbolo} - {um.nombre}
-                            </option>
-                          ))}
-                        </select>
-                        <div className="invalid-feedback">{erroresInsumoRapido.unidadMedidaId}</div>
-                      </div>
-                      <div className="col-md-3">
-                        <label className="form-label fw-semibold small">Stock mínimo</label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          className="form-control form-control-sm"
-                          value={nuevoInsumoRapido.stockMinimo}
-                          onChange={(e) => cambiarInsumoRapido("stockMinimo", e.target.value)}
-                        />
-                      </div>
-                      <div className="col-12 d-flex justify-content-end">
-                        <button
-                          type="button"
-                          className="btn btn-success btn-sm"
-                          onClick={crearInsumoRapido}
-                          disabled={creandoInsumoRapido}
-                        >
-                          {creandoInsumoRapido ? "Creando..." : "Crear y usar"}
-                        </button>
-                      </div>
-                    </div>
                   </div>
                 )}
 

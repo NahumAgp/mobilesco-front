@@ -13,9 +13,6 @@ import "./ModelosPage.css";
 
 const PAGE_SIZE = 10;
 
-const getFamiliaId = (modelo = {}) =>
-  modelo.familiaId || modelo.familia?.id || modelo.familia_id || "";
-
 const getLineaNombre = (modelo = {}) =>
   modelo.lineaNombre || modelo.linea?.nombre || modelo.familia?.lineaNombre || modelo.familia?.linea?.nombre || "";
 

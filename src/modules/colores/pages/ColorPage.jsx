@@ -54,7 +54,8 @@ export default function ColorPage() {
   const paginaActual = totalPages > 0 ? Math.min(page, totalPages - 1) : 0;
   useEffect(() => {
     if (totalPages > 0 && page >= totalPages) {
-      setPage(totalPages - 1);
+      const timer = window.setTimeout(() => setPage(totalPages - 1), 0);
+      return () => window.clearTimeout(timer);
     }
   }, [page, totalPages]);
 

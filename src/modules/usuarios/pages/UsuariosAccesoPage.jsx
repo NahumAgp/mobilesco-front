@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import CatalogPagination from "../../../components/ui/CatalogPagination.jsx";
 import {
@@ -144,7 +144,7 @@ export default function UsuariosAccesoPage() {
     }
   }, [moduloExpandido, modulosPermisos]);
 
-  const cargarDatos = async () => {
+  const cargarDatos = useCallback(async () => {
     setLoading(true);
     setError("");
 
@@ -190,11 +190,11 @@ export default function UsuariosAccesoPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [busquedaRoles, pageRoles, pageUsuarios]);
 
   useEffect(() => {
     cargarDatos();
-  }, [pageRoles, busquedaRoles, pageUsuarios]);
+  }, [cargarDatos]);
 
   const showSuccess = (message) => {
     setSuccess(message);

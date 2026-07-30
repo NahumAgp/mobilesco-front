@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { colorGateway } from "../services/colorGateway.js";
 
 const PAGE_INFO_DEFAULT = {
@@ -9,17 +9,18 @@ const PAGE_INFO_DEFAULT = {
 };
 
 export function useColor(params = {}) {
+  const { page, size, busqueda, activo } = params;
   const [colores, setColores] = useState([]);
   const [pageInfo, setPageInfo] = useState(PAGE_INFO_DEFAULT);
   const [loadingLista, setLoadingLista] = useState(false);
   const [error, setError] = useState("");
 
-  async function cargar(overrides = {}) {
+  const cargar = useCallback(async (overrides = {}) => {
     try {
       setLoadingLista(true);
       setError("");
 
-      const filtros = { ...params, ...overrides };
+      const filtros = { page, size, busqueda, activo, ...overrides };
       const data = await colorGateway.obtenerColores(filtros);
       const lista = data?.content || data || [];
       setColores(Array.isArray(lista) ? lista : []);
@@ -36,11 +37,11 @@ export function useColor(params = {}) {
     } finally {
       setLoadingLista(false);
     }
-  }
+  }, [activo, busqueda, page, size]);
 
   useEffect(() => {
     cargar();
-  }, [params.page, params.size, params.busqueda, params.activo]);
+  }, [cargar]);
 
   async function eliminarColor(id) {
     await colorGateway.eliminarColor(id);

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   activarEmpleado,
   desactivarEmpleado,
@@ -14,24 +14,21 @@ const PAGE_INFO_DEFAULT = {
 };
 
 export function useEmpleado(params = {}) {
+  const { page, size, busqueda, activo } = params;
 
   const [empleados, setEmpleados] = useState([]);
   const [pageInfo, setPageInfo] = useState(PAGE_INFO_DEFAULT);
   const [loadingLista, setLoadingLista] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    cargarEmpleados();
-  }, [params.page, params.size, params.busqueda, params.activo]);
-
-  const cargarEmpleados = async (overrides = {}) => {
+  const cargarEmpleados = useCallback(async (overrides = {}) => {
 
     try {
 
       setLoadingLista(true);
       setError(null);
 
-      const filtros = { ...params, ...overrides };
+      const filtros = { page, size, busqueda, activo, ...overrides };
       const data = await obtenerEmpleados(filtros);
 
       const lista = data?.content || data || [];
@@ -55,7 +52,11 @@ export function useEmpleado(params = {}) {
 
     }
 
-  };
+  }, [activo, busqueda, page, size]);
+
+  useEffect(() => {
+    cargarEmpleados();
+  }, [cargarEmpleados]);
 
   const eliminarEmpleadoHook = async (id) => {
 

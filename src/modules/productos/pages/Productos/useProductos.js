@@ -13,6 +13,7 @@ const PAGE_INFO_DEFAULT = {
 };
 
 export function useProductos(params = {}) {
+  const { activo, busqueda, direction, modeloId, page, size, sortBy } = params;
   const [productos, setProductos] = useState([]);
   const [pageInfo, setPageInfo] = useState(PAGE_INFO_DEFAULT);
   const [loadingLista, setLoadingLista] = useState(false);
@@ -23,13 +24,14 @@ export function useProductos(params = {}) {
       setLoadingLista(true);
       setError("");
 
-      const data = await obtenerProductos(params);
+      const filtros = { activo, busqueda, direction, modeloId, page, size, sortBy };
+      const data = await obtenerProductos(filtros);
 
       if (Array.isArray(data?.content)) {
         setProductos(data.content);
         setPageInfo({
-          page: data.page ?? params.page ?? 0,
-          size: data.size ?? params.size ?? 10,
+          page: data.page ?? page ?? 0,
+          size: data.size ?? size ?? 10,
           totalElements: data.totalElements ?? 0,
           totalPages: data.totalPages ?? 0
         });
@@ -52,7 +54,7 @@ export function useProductos(params = {}) {
     } finally {
       setLoadingLista(false);
     }
-  }, [params.activo, params.busqueda, params.direction, params.modeloId, params.page, params.size, params.sortBy]);
+  }, [activo, busqueda, direction, modeloId, page, size, sortBy]);
 
   useEffect(() => {
     cargar();

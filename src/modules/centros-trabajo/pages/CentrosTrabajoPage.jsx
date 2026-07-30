@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useCentrosTrabajo } from "../hooks/useCentrosTrabajo";
@@ -59,10 +59,6 @@ export default function CentrosTrabajoPage() {
     }
   };
 
-  useEffect(() => {
-    setPage(0);
-  }, [busqueda, filtroEstatus, soloActivos]);
-
   const totalPages = Math.max(pageInfo.totalPages || 0, 1);
   const safePage = Math.min(page, totalPages - 1);
   
@@ -109,7 +105,10 @@ export default function CentrosTrabajoPage() {
                 className="form-control"
                 placeholder="Buscar por código, nombre o descripción..."
                 value={busqueda}
-                onChange={(e) => setBusqueda(e.target.value)}
+                onChange={(e) => {
+                  setBusqueda(e.target.value);
+                  setPage(0);
+                }}
               />
             </div>
 
@@ -117,7 +116,10 @@ export default function CentrosTrabajoPage() {
               <select
                 className="form-select"
                 value={filtroEstatus}
-                onChange={(e) => setFiltroEstatus(e.target.value)}
+                onChange={(e) => {
+                  setFiltroEstatus(e.target.value);
+                  setPage(0);
+                }}
               >
                 <option value="TODOS">Todos</option>
                 <option value="ACTIVO">Activos</option>
@@ -131,7 +133,10 @@ export default function CentrosTrabajoPage() {
                   className="form-check-input"
                   type="checkbox"
                   checked={soloActivos}
-                  onChange={() => setSoloActivos(!soloActivos)}
+                  onChange={() => {
+                    setSoloActivos(!soloActivos);
+                    setPage(0);
+                  }}
                 />
                 <label className="form-check-label">
                   Solo activos
@@ -147,6 +152,7 @@ export default function CentrosTrabajoPage() {
                   setBusqueda("");
                   setFiltroEstatus("TODOS");
                   setSoloActivos(false);
+                  setPage(0);
                 }}
                 title="Limpiar filtros"
               >

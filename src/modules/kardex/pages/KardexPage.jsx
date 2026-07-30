@@ -16,6 +16,24 @@ const PAGE_INFO_DEFAULT = {
   totalPages: 0
 };
 
+function obtenerNombreProveedorCompra(compra) {
+  if (!compra) return "";
+  if (compra.proveedorRazonSocial) return compra.proveedorRazonSocial;
+  if (compra.proveedorNombreCompleto) return compra.proveedorNombreCompleto;
+  return [compra.proveedorNombre, compra.proveedorApellidoPaterno, compra.proveedorApellidoMaterno]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function obtenerCantidadEsperadaCompra(compra, insumoId) {
+  const detalle = compra?.detalles?.find((item) => String(item.insumoId) === String(insumoId));
+  if (!detalle) return null;
+
+  const cantidad = Number(detalle.cantidad || 0);
+  const factorConversion = Number(detalle.factorConversion || 1);
+  return cantidad * factorConversion;
+}
+
 export default function KardexPage() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -30,7 +48,6 @@ export default function KardexPage() {
   const [costoPromedio, setCostoPromedio] = useState(0);
   const [page, setPage] = useState(0);
   const [pageInfo, setPageInfo] = useState(PAGE_INFO_DEFAULT);
-  const [consultaRealizada, setConsultaRealizada] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   
@@ -43,16 +60,7 @@ export default function KardexPage() {
   );
   const [usarFiltroFechas, setUsarFiltroFechas] = useState(false);
 
-  const obtenerNombreProveedorCompra = (compra) => {
-    if (!compra) return "";
-    if (compra.proveedorRazonSocial) return compra.proveedorRazonSocial;
-    if (compra.proveedorNombreCompleto) return compra.proveedorNombreCompleto;
-    return [compra.proveedorNombre, compra.proveedorApellidoPaterno, compra.proveedorApellidoMaterno]
-      .filter(Boolean)
-      .join(" ");
-  };
-
-  const completarDatosCompras = async (movimientosBase) => {
+  const completarDatosCompras = useCallback(async (movimientosBase) => {
     const compraIds = [...new Set(
       (movimientosBase || [])
         .map((movimiento) => movimiento.compraId)
@@ -81,21 +89,24 @@ export default function KardexPage() {
       proveedorNombre: movimiento.proveedorNombre || obtenerNombreProveedorCompra(comprasPorId[String(movimiento.compraId)]) || "",
       cantidadEsperadaCompra: obtenerCantidadEsperadaCompra(comprasPorId[String(movimiento.compraId)], movimiento.insumoId)
     }));
-  };
+  }, []);
 
-  const obtenerCantidadEsperadaCompra = (compra, insumoId) => {
-    const detalle = compra?.detalles?.find((item) => String(item.insumoId) === String(insumoId));
-    if (!detalle) return null;
-
-    const cantidad = Number(detalle.cantidad || 0);
-    const factorConversion = Number(detalle.factorConversion || 1);
-    return cantidad * factorConversion;
-  };
+  const cargarInsumos = useCallback(async () => {
+    try {
+      const data = await obtenerInsumos();
+      const lista = data.content || data || [];
+      setInsumos(lista);
+    } catch (error) {
+      console.error("Error cargando insumos:", error);
+      setToastType("danger");
+      setToastMessage("Error al cargar insumos");
+    }
+  }, []);
 
   // Cargar insumos al montar
   useEffect(() => {
     cargarInsumos();
-  }, []);
+  }, [cargarInsumos]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -105,27 +116,6 @@ export default function KardexPage() {
       setInsumoSeleccionado(insumoIdParam);
     }
   }, [location.search]);
-
-  const cargarInsumos = async () => {
-    try {
-      const data = await obtenerInsumos();
-      const lista = data.content || data || [];
-      setInsumos(lista);
-
-      const params = new URLSearchParams(location.search);
-      const insumoIdParam = params.get("insumoId");
-      if (insumoIdParam) {
-        const existe = lista.some((insumo) => String(insumo.id) === String(insumoIdParam));
-        if (existe) {
-          setInsumoSeleccionado(insumoIdParam);
-        }
-      }
-    } catch (error) {
-      console.error("Error cargando insumos:", error);
-      setToastType("danger");
-      setToastMessage("Error al cargar insumos");
-    }
-  };
 
   const handleConsultar = useCallback(async ({ mostrarAviso = true, pageOverride = 0 } = {}) => {
     if (!insumoSeleccionado) {
@@ -171,8 +161,6 @@ export default function KardexPage() {
         totalElements: data.totalElements ?? 0,
         totalPages: data.totalPages ?? 0
       } : PAGE_INFO_DEFAULT);
-      setConsultaRealizada(true);
-      
       // Obtener costo promedio
       const promedio = await obtenerCostoPromedio(insumoSeleccionado);
       setCostoPromedio(promedio);
@@ -185,12 +173,11 @@ export default function KardexPage() {
     } finally {
       setLoading(false);
     }
-  }, [fechaFin, fechaInicio, insumoSeleccionado, usarFiltroFechas]);
+  }, [completarDatosCompras, fechaFin, fechaInicio, insumoSeleccionado, usarFiltroFechas]);
 
   useEffect(() => {
     setPage(0);
     setPageInfo(PAGE_INFO_DEFAULT);
-    setConsultaRealizada(false);
   }, [fechaFin, fechaInicio, insumoSeleccionado, usarFiltroFechas]);
 
   useEffect(() => {

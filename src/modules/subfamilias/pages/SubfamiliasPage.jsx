@@ -62,7 +62,8 @@ export default function SubfamiliasPage() {
 
   useEffect(() => {
     if (!loadingLista && totalPages > 0 && page >= totalPages) {
-      setPage(totalPages - 1);
+      const timer = window.setTimeout(() => setPage(totalPages - 1), 0);
+      return () => window.clearTimeout(timer);
     }
   }, [loadingLista, page, totalPages]);
 

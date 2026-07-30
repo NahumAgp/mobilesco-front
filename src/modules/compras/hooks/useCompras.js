@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   obtenerCompras,
   eliminarCompra as eliminarService,
@@ -42,30 +42,32 @@ function normalizarPageInfo(data, fallbackPage = 0, fallbackSize = 10) {
 }
 
 export function useCompras(params = {}) {
+  const { busqueda, estado, fechaFin, fechaInicio, page, proveedor, size } = params;
   const [compras, setCompras] = useState([]);
   const [pageInfo, setPageInfo] = useState(PAGE_INFO_DEFAULT);
   const [loadingLista, setLoadingLista] = useState(false);
   const [error, setError] = useState("");
 
-  async function cargar() {
+  const cargar = useCallback(async () => {
     try {
       setLoadingLista(true);
       setError("");
 
-      const data = await obtenerCompras(params);
+      const filtros = { busqueda, estado, fechaFin, fechaInicio, page, proveedor, size };
+      const data = await obtenerCompras(filtros);
       setCompras(data?.content || (Array.isArray(data) ? data : []));
-      setPageInfo(normalizarPageInfo(data, params.page ?? 0, params.size ?? 10));
+      setPageInfo(normalizarPageInfo(data, page ?? 0, size ?? 10));
     } catch (error) {
       console.error("Error cargando compras:", error);
       setError("Error cargando compras: " + (error.message || "Error desconocido"));
     } finally {
       setLoadingLista(false);
     }
-  }
+  }, [busqueda, estado, fechaFin, fechaInicio, page, proveedor, size]);
 
   useEffect(() => {
     cargar();
-  }, [params.busqueda, params.estado, params.fechaFin, params.fechaInicio, params.page, params.proveedor, params.size]);
+  }, [cargar]);
 
   async function eliminarCompra(id) {
     await eliminarService(id);

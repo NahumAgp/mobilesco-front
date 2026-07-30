@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
 import CatalogPagination from "../../../components/ui/CatalogPagination.jsx";
@@ -86,7 +86,7 @@ export default function CifPage() {
     }, 2200);
   };
 
-  const cargarDatos = async (pagina = page) => {
+  const cargarDatos = useCallback(async (pagina = page) => {
     try {
       setLoading(true);
       const activo = filtroEstado === "TODOS" ? undefined : filtroEstado === "ACTIVO";
@@ -121,11 +121,11 @@ export default function CifPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [busqueda, filtroEstado, page]);
 
   useEffect(() => {
     cargarDatos(page);
-  }, [page, busqueda, filtroEstado]);
+  }, [cargarDatos, page]);
 
   useEffect(() => {
     if (!location.state?.enfocarConfiguracion) return;

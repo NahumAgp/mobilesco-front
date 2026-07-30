@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
@@ -38,7 +38,7 @@ export default function CuentaPorPagarDetallePage() {
     observaciones: ""
   });
 
-  const cargar = async () => {
+  const cargar = useCallback(async () => {
     try {
       setLoading(true);
       const data = await obtenerCuentaPorPagarPorId(id);
@@ -49,11 +49,11 @@ export default function CuentaPorPagarDetallePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
     cargar();
-  }, [id]);
+  }, [cargar]);
 
   const saldo = Number(cuenta?.saldoPendiente || 0);
   const puedePagar = cuenta && saldo > 0 && cuenta.estado !== "CANCELADA";

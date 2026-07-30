@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useCompras } from "../hooks/useCompras";
@@ -73,10 +73,6 @@ export default function ComprasPage() {
   // Obtener proveedores únicos para el filtro
   const proveedoresUnicos = [...new Set(compras.map(c => c.proveedorRazonSocial).filter(Boolean))];
 
-  useEffect(() => {
-    setPage(0);
-  }, [busqueda, filtroEstado, filtroProveedor, fechaInicio, fechaFin]);
-
   const totalPages = Math.max(pageInfo.totalPages || 0, 1);
   const safePage = Math.min(page, totalPages - 1);
 
@@ -121,7 +117,10 @@ export default function ComprasPage() {
                 className="form-control"
                 placeholder="Buscar por folio, metodo de pago o proveedor..."
                 value={busqueda}
-                onChange={(e) => setBusqueda(e.target.value)}
+                onChange={(e) => {
+                  setBusqueda(e.target.value);
+                  setPage(0);
+                }}
               />
             </div>
 
@@ -129,7 +128,10 @@ export default function ComprasPage() {
               <select
                 className="form-select"
                 value={filtroEstado}
-                onChange={(e) => setFiltroEstado(e.target.value)}
+                onChange={(e) => {
+                  setFiltroEstado(e.target.value);
+                  setPage(0);
+                }}
               >
                 <option value="TODOS">Todos los estados</option>
                 <option value="PENDIENTE">Pendientes</option>
@@ -143,7 +145,10 @@ export default function ComprasPage() {
               <select
                 className="form-select"
                 value={filtroProveedor}
-                onChange={(e) => setFiltroProveedor(e.target.value)}
+                onChange={(e) => {
+                  setFiltroProveedor(e.target.value);
+                  setPage(0);
+                }}
               >
                 <option value="">Todos los proveedores</option>
                 {proveedoresUnicos.map(prov => (
@@ -157,7 +162,10 @@ export default function ComprasPage() {
                 type="date"
                 className="form-control"
                 value={fechaInicio}
-                onChange={(e) => setFechaInicio(e.target.value)}
+                onChange={(e) => {
+                  setFechaInicio(e.target.value);
+                  setPage(0);
+                }}
                 placeholder="Fecha inicio"
               />
             </div>
@@ -167,7 +175,10 @@ export default function ComprasPage() {
                 type="date"
                 className="form-control"
                 value={fechaFin}
-                onChange={(e) => setFechaFin(e.target.value)}
+                onChange={(e) => {
+                  setFechaFin(e.target.value);
+                  setPage(0);
+                }}
                 placeholder="Fecha fin"
               />
             </div>
@@ -181,6 +192,7 @@ export default function ComprasPage() {
                   setFiltroProveedor("");
                   setFechaInicio("");
                   setFechaFin("");
+                  setPage(0);
                 }}
               >
                 <i className="bi bi-eraser"></i>

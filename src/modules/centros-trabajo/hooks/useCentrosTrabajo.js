@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   obtenerCentrosTrabajo,
   eliminarCentroTrabajo as eliminarService
@@ -40,30 +40,32 @@ function normalizarPageInfo(data, fallbackPage = 0, fallbackSize = 12) {
 }
 
 export function useCentrosTrabajo(params = {}) {
+  const { busqueda, estatus, page, size, soloActivos } = params;
   const [centrosTrabajo, setCentrosTrabajo] = useState([]);
   const [pageInfo, setPageInfo] = useState(PAGE_INFO_DEFAULT);
   const [loadingLista, setLoadingLista] = useState(false);
   const [error, setError] = useState("");
 
-  async function cargar() {
+  const cargar = useCallback(async () => {
     try {
       setLoadingLista(true);
       setError("");
 
-      const data = await obtenerCentrosTrabajo(params);
+      const filtros = { busqueda, estatus, page, size, soloActivos };
+      const data = await obtenerCentrosTrabajo(filtros);
       setCentrosTrabajo(data?.content || (Array.isArray(data) ? data : []));
-      setPageInfo(normalizarPageInfo(data, params.page ?? 0, params.size ?? 12));
+      setPageInfo(normalizarPageInfo(data, page ?? 0, size ?? 12));
     } catch (error) {
       console.error("Error cargando centros de trabajo:", error);
       setError("Error cargando centros de trabajo: " + (error.message || "Error desconocido"));
     } finally {
       setLoadingLista(false);
     }
-  }
+  }, [busqueda, estatus, page, size, soloActivos]);
 
   useEffect(() => {
     cargar();
-  }, [params.busqueda, params.estatus, params.page, params.size, params.soloActivos]);
+  }, [cargar]);
 
   async function eliminarCentroTrabajo(id) {
     await eliminarService(id);
