@@ -46,9 +46,12 @@ export default function SearchableSelect({
 
   const filteredOptions = useMemo(() => {
     const termino = query.toLowerCase().trim();
-    if (!termino) return options;
+    const etiquetaSeleccionada = selectedOption
+      ? String(getOptionLabel(selectedOption)).toLowerCase().trim()
+      : "";
+    if (!termino || termino === etiquetaSeleccionada) return options;
     return options.filter((option) => getOptionSearchText(option).includes(termino));
-  }, [options, query, getOptionSearchText]);
+  }, [options, query, selectedOption, getOptionLabel, getOptionSearchText]);
 
   const handleSelect = (option) => {
     const optionValue = getOptionValue(option);

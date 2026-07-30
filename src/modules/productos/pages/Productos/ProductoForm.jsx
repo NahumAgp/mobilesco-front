@@ -23,6 +23,7 @@ import {
   eliminarImagen,
 } from "../../services/imagenes.js";
 import Toast from "../../../../components/ui/Toast.jsx";
+import SearchableSelect from "../../../../components/ui/SearchableSelect.jsx";
 import { API_BASE_URL } from "../../../../config/apiConfig.js";
 import "./ProductoForm.css";
 
@@ -280,6 +281,12 @@ export default function ProductoForm({
     familiaId: "",
     subfamiliaId: "",
   });
+  const [atributosOriginales, setAtributosOriginales] = useState({
+    modeloId: "",
+    nivelId: "",
+    materialId: "",
+    colorId: "",
+  });
   const [previewReclasificacion, setPreviewReclasificacion] = useState(null);
   const [cargandoReclasificacion, setCargandoReclasificacion] = useState(false);
   const [guardandoReclasificacion, setGuardandoReclasificacion] = useState(false);
@@ -328,6 +335,13 @@ export default function ProductoForm({
     && (rutaSeleccionada.lineaId !== rutaOriginal.lineaId
       || rutaSeleccionada.familiaId !== rutaOriginal.familiaId
       || rutaSeleccionada.subfamiliaId !== rutaOriginal.subfamiliaId);
+  const atributosCambio = esEdicion && (
+    String(formData.modeloId) !== String(atributosOriginales.modeloId)
+    || String(formData.nivelId) !== String(atributosOriginales.nivelId)
+    || String(formData.materialId) !== String(atributosOriginales.materialId)
+    || String(formData.colorId) !== String(atributosOriginales.colorId)
+  );
+  const hayCambiosClasificacion = clasificacionCambio || atributosCambio;
   const cambiosSkuPreview = useMemo(() => {
     const cambios = [...(previewReclasificacion?.cambiosSku || [])];
     cambios.sort((a, b) => {
@@ -420,7 +434,9 @@ export default function ProductoForm({
       const subfamiliaValida = rutaSeleccionada.subfamiliaId === "sin-subfamilia"
         || Boolean(rutaSeleccionada.subfamiliaId);
       const completa = rutaSeleccionada.lineaId && rutaSeleccionada.familiaId && subfamiliaValida;
-      if (!esEdicion || !idProducto || !clasificacionCambio || !completa) {
+      const atributosCompletos = formData.modeloId && formData.nivelId
+        && formData.materialId && formData.colorId;
+      if (!esEdicion || !idProducto || !hayCambiosClasificacion || !completa || !atributosCompletos) {
         setPreviewReclasificacion(null);
         return;
       }
@@ -433,6 +449,10 @@ export default function ProductoForm({
           subfamiliaId: rutaSeleccionada.subfamiliaId === "sin-subfamilia"
             ? null
             : Number(rutaSeleccionada.subfamiliaId),
+          modeloId: Number(formData.modeloId),
+          nivelId: Number(formData.nivelId),
+          materialId: Number(formData.materialId),
+          colorId: Number(formData.colorId),
         });
         if (vigente) setPreviewReclasificacion(preview);
       } catch (error) {
@@ -454,10 +474,14 @@ export default function ProductoForm({
   }, [
     esEdicion,
     idProducto,
-    clasificacionCambio,
+    hayCambiosClasificacion,
     rutaSeleccionada.lineaId,
     rutaSeleccionada.familiaId,
     rutaSeleccionada.subfamiliaId,
+    formData.modeloId,
+    formData.nivelId,
+    formData.materialId,
+    formData.colorId,
   ]);
 
   const recargarImagenes = useCallback(async (productoActualId = idProducto, dataBase = null) => {
@@ -507,6 +531,12 @@ export default function ProductoForm({
           colorId: producto.id_color || producto.colorId || "",
           activo: producto.activo ?? true,
         });
+        setAtributosOriginales({
+          modeloId: producto.id_modelo || producto.modeloId || "",
+          nivelId: producto.id_nivel || producto.nivelId || "",
+          materialId: producto.id_material || producto.materialId || "",
+          colorId: producto.id_color || producto.colorId || "",
+        });
         return;
       }
 
@@ -530,6 +560,12 @@ export default function ProductoForm({
             materialId: data.id_material || data.materialId || "",
             colorId: data.id_color || data.colorId || "",
             activo: data.activo ?? true,
+          });
+          setAtributosOriginales({
+            modeloId: data.id_modelo || data.modeloId || data.id_producto_base || data.productoBaseId || "",
+            nivelId: data.id_nivel || data.nivelId || "",
+            materialId: data.id_material || data.materialId || "",
+            colorId: data.id_color || data.colorId || "",
           });
           await recargarImagenes(productoId, data);
         } catch (error) {
@@ -607,7 +643,7 @@ export default function ProductoForm({
   };
 
   const guardarReclasificacion = async () => {
-    if (!clasificacionCambio || !previewReclasificacion?.permitido) return;
+    if (!hayCambiosClasificacion || !previewReclasificacion?.permitido) return;
     try {
       setGuardandoReclasificacion(true);
       const respuesta = await aplicarReclasificacion(idProducto, {
@@ -616,6 +652,10 @@ export default function ProductoForm({
         subfamiliaId: rutaSeleccionada.subfamiliaId === "sin-subfamilia"
           ? null
           : Number(rutaSeleccionada.subfamiliaId),
+        modeloId: Number(formData.modeloId),
+        nivelId: Number(formData.nivelId),
+        materialId: Number(formData.materialId),
+        colorId: Number(formData.colorId),
       });
       const skuActual = respuesta?.cambiosSku?.find((item) =>
         String(item.productoId) === String(idProducto))?.skuNuevo;
@@ -634,6 +674,12 @@ export default function ProductoForm({
               String(item.id) === rutaSeleccionada.subfamiliaId)?.nombre || null,
           }
         : modelo));
+      setAtributosOriginales({
+        modeloId: formData.modeloId,
+        nivelId: formData.nivelId,
+        materialId: formData.materialId,
+        colorId: formData.colorId,
+      });
       setToastType("success");
       setToastMessage(`Clasificación actualizada. Se recalcularon ${respuesta.variantesAfectadas} SKU(s) sin modificar existencias.`);
     } catch (error) {
@@ -1028,31 +1074,39 @@ export default function ProductoForm({
               {esEdicion ? (
                 <>
                   <div className="col-md-4">
-                    <label className="form-label fw-semibold">Línea <span className="text-danger">*</span></label>
-                    <select
-                      className="form-select border-soft"
+                    <SearchableSelect
+                      label={<>Línea <span className="text-danger">*</span></>}
                       value={rutaSeleccionada.lineaId}
-                      onChange={(event) => handleRutaChange("lineaId", event.target.value)}
-                    >
-                      <option value="">Seleccionar línea...</option>
-                      {lineas.map((linea) => (
-                        <option key={linea.id} value={linea.id}>{linea.nombre}</option>
-                      ))}
-                    </select>
+                      options={lineas}
+                      onChange={(value) => handleRutaChange("lineaId", String(value || ""))}
+                      placeholder="Seleccionar línea"
+                      searchPlaceholder="Buscar línea..."
+                      className="producto-clasificacion-select"
+                      renderOptionLabel={(linea) => (
+                        <span className="producto-clasificacion-option">
+                          <span className="producto-clasificacion-option-code">{linea.codigo || "L"}</span>
+                          <span>{linea.nombre}</span>
+                        </span>
+                      )}
+                    />
                   </div>
                   <div className="col-md-4">
-                    <label className="form-label fw-semibold">Familia <span className="text-danger">*</span></label>
-                    <select
-                      className="form-select border-soft"
+                    <SearchableSelect
+                      label={<>Familia <span className="text-danger">*</span></>}
                       value={rutaSeleccionada.familiaId}
-                      onChange={(event) => handleRutaChange("familiaId", event.target.value)}
+                      options={familiasClasificacion}
+                      onChange={(value) => handleRutaChange("familiaId", String(value || ""))}
                       disabled={!rutaSeleccionada.lineaId}
-                    >
-                      <option value="">Seleccionar familia...</option>
-                      {familiasClasificacion.map((familia) => (
-                        <option key={familia.id} value={familia.id}>{familia.nombre}</option>
-                      ))}
-                    </select>
+                      placeholder="Seleccionar familia"
+                      searchPlaceholder="Buscar familia..."
+                      className="producto-clasificacion-select"
+                      renderOptionLabel={(familia) => (
+                        <span className="producto-clasificacion-option">
+                          <span className="producto-clasificacion-option-code">{familia.codigo || "F"}</span>
+                          <span>{familia.nombre}</span>
+                        </span>
+                      )}
+                    />
                     {rutaSeleccionada.lineaId && !familiasClasificacion.length && (
                       <div className="small text-danger mt-1">
                         Esta línea no tiene familias.
@@ -1080,19 +1134,25 @@ export default function ProductoForm({
                     )}
                   </div>
                   <div className="col-md-4">
-                    <label className="form-label fw-semibold">Subfamilia <span className="text-danger">*</span></label>
-                    <select
-                      className="form-select border-soft"
+                    <SearchableSelect
+                      label={<>Subfamilia <span className="text-danger">*</span></>}
                       value={rutaSeleccionada.subfamiliaId}
-                      onChange={(event) => handleRutaChange("subfamiliaId", event.target.value)}
+                      options={[
+                        { id: "sin-subfamilia", codigo: "—", nombre: "Sin subfamilia" },
+                        ...subfamiliasClasificacion,
+                      ]}
+                      onChange={(value) => handleRutaChange("subfamiliaId", String(value || ""))}
                       disabled={!rutaSeleccionada.familiaId}
-                    >
-                      <option value="">Seleccionar subfamilia...</option>
-                      <option value="sin-subfamilia">Sin subfamilia</option>
-                      {subfamiliasClasificacion.map((subfamilia) => (
-                        <option key={subfamilia.id} value={subfamilia.id}>{subfamilia.nombre}</option>
-                      ))}
-                    </select>
+                      placeholder="Seleccionar subfamilia"
+                      searchPlaceholder="Buscar subfamilia..."
+                      className="producto-clasificacion-select"
+                      renderOptionLabel={(subfamilia) => (
+                        <span className="producto-clasificacion-option">
+                          <span className="producto-clasificacion-option-code">{subfamilia.codigo || "SF"}</span>
+                          <span>{subfamilia.nombre}</span>
+                        </span>
+                      )}
+                    />
                     {rutaSeleccionada.familiaId && !subfamiliasClasificacion.length && (
                       <div className="small text-warning mt-1">
                         Esta familia no tiene subfamilias.
@@ -1121,24 +1181,76 @@ export default function ProductoForm({
                   </div>
 
                   <div className="col-12">
-                    <div className="alert alert-light border mb-0">
-                      <div className="fw-semibold mb-2">Datos que se conservarán sin cambios</div>
-                      <div className="row g-2 small">
-                        <div className="col-md-3"><strong>Modelo:</strong> [{modeloSeleccionado?.codigo}] {modeloSeleccionado?.nombre}</div>
-                        <div className="col-md-3"><strong>Categoría:</strong> {niveles.find((item) => String(item.id) === String(formData.nivelId))?.nombre || "—"}</div>
-                        <div className="col-md-3"><strong>Material:</strong> {materiales.find((item) => String(item.id) === String(formData.materialId))?.nombre || "—"}</div>
-                        <div className="col-md-3"><strong>Color:</strong> {colores.find((item) => String(item.id) === String(formData.colorId))?.nombre || "—"}</div>
+                    <div className="producto-atributos-card">
+                      <div className="producto-atributos-heading">
+                        <div>
+                          <div className="fw-semibold">Datos del producto</div>
+                          <div className="small text-muted">Estos cambios afectan solo a este producto y actualizan su SKU.</div>
+                        </div>
+                        <i className="bi bi-box-seam"></i>
+                      </div>
+                      <div className="row g-3">
+                        <div className="col-md-6 col-xl-3">
+                          <SearchableSelect
+                            label={<>Modelo <span className="text-danger">*</span></>}
+                            value={formData.modeloId}
+                            options={modelos}
+                            onChange={(value) => handleChange({ target: { name: "modeloId", value: String(value || ""), type: "select-one" } })}
+                            placeholder="Seleccionar modelo"
+                            searchPlaceholder="Buscar modelo..."
+                            className="producto-clasificacion-select"
+                            getOptionLabel={(modelo) => `[${modelo.codigo}] ${modelo.nombre}`}
+                          />
+                        </div>
+                        <div className="col-md-6 col-xl-3">
+                          <SearchableSelect
+                            label={<>Categoría <span className="text-danger">*</span></>}
+                            value={formData.nivelId}
+                            options={niveles}
+                            onChange={(value) => handleChange({ target: { name: "nivelId", value: String(value || ""), type: "select-one" } })}
+                            placeholder="Seleccionar categoría"
+                            searchPlaceholder="Buscar categoría..."
+                            disabled={!formData.modeloId}
+                            className="producto-clasificacion-select"
+                            getOptionLabel={(nivel) => `[${nivel.codigo}] ${nivel.nombre}`}
+                          />
+                        </div>
+                        <div className="col-md-6 col-xl-3">
+                          <SearchableSelect
+                            label={<>Material <span className="text-danger">*</span></>}
+                            value={formData.materialId}
+                            options={materiales}
+                            onChange={(value) => handleChange({ target: { name: "materialId", value: String(value || ""), type: "select-one" } })}
+                            placeholder="Seleccionar material"
+                            searchPlaceholder="Buscar material..."
+                            className="producto-clasificacion-select"
+                            getOptionLabel={(material) => `[${material.codigo}] ${material.nombre}`}
+                          />
+                        </div>
+                        <div className="col-md-6 col-xl-3">
+                          <SearchableSelect
+                            label={<>Color <span className="text-danger">*</span></>}
+                            value={formData.colorId}
+                            options={colores}
+                            onChange={(value) => handleChange({ target: { name: "colorId", value: String(value || ""), type: "select-one" } })}
+                            placeholder="Seleccionar color"
+                            searchPlaceholder="Buscar color..."
+                            className="producto-clasificacion-select"
+                            getOptionLabel={(color) => `[${color.codigo}] ${color.nombre}`}
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
 
+                {hayCambiosClasificacion && (
                 <div className="col-12">
                   <div className="producto-reclasificacion p-3 border rounded-3">
                     <div className="d-flex flex-wrap justify-content-between gap-2">
                       <div>
-                        <div className="fw-semibold">Vista previa de reclasificación</div>
+                        <div className="fw-semibold">Vista previa de cambios</div>
                         <div className="small text-muted">
-                          Se conserva el mismo modelo y sus variantes. Solo cambia la ruta y se recalculan los SKU; las existencias no se modifican.
+                          Confirma la nueva clasificación y los datos del producto antes de guardar. Las existencias no se modifican.
                         </div>
                       </div>
                       <span className="badge text-bg-light border text-dark">
@@ -1149,16 +1261,13 @@ export default function ProductoForm({
                     {cargandoReclasificacion && (
                       <div className="small text-muted mt-2">Calculando SKU y revisando historial...</div>
                     )}
-                    {!clasificacionCambio && (
-                      <div className="small text-muted mt-2">Selecciona una nueva línea, familia o subfamilia para validar el cambio.</div>
-                    )}
                     {!cargandoReclasificacion && previewReclasificacion && (
                       <div className={`alert ${previewReclasificacion.permitido ? "alert-info" : "alert-danger"} mt-3 mb-0 py-2`}>
                         {previewReclasificacion.permitido ? (
                           <>
                             <div className="small text-muted">{previewReclasificacion.rutaDestino}</div>
                             <div className="small fw-semibold mb-1">
-                              Se recalcularán {previewReclasificacion.variantesAfectadas} variante(s) del mismo modelo.
+                              Se recalcularán {previewReclasificacion.variantesAfectadas} SKU(s).
                             </div>
                             {cambiosSkuPreview.map((cambio) => (
                               <div className="text-break" key={cambio.productoId}>
@@ -1183,6 +1292,7 @@ export default function ProductoForm({
                     )}
                   </div>
                 </div>
+                )}
                 </>
               ) : (
                 <>
@@ -1227,10 +1337,10 @@ export default function ProductoForm({
                   type="button"
                   className="btn producto-form-primary"
                   onClick={guardarReclasificacion}
-                  disabled={guardandoReclasificacion || cargandoReclasificacion || !clasificacionCambio || !previewReclasificacion?.permitido}
+                  disabled={guardandoReclasificacion || cargandoReclasificacion || !hayCambiosClasificacion || !previewReclasificacion?.permitido}
                 >
                   <i className="bi bi-save me-2"></i>
-                  {guardandoReclasificacion ? "Guardando..." : "Guardar clasificación y recalcular SKU"}
+                  {guardandoReclasificacion ? "Guardando..." : "Guardar"}
                 </button>
               ) : (
                 <button type="submit" className="btn producto-form-primary">
