@@ -15,6 +15,7 @@ import { API_BASE_URL } from "../../../config/apiConfig";
 
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
+import ProtectedImage from "../../../components/ui/ProtectedImage.jsx";
 import "./EmpleadoPage.css";
 
 const ROLES_GESTION_EMPLEADOS = ["ADMIN", "DIRECTOR_GENERAL", "SUBDIRECCION_ADMINISTRATIVA"];
@@ -501,7 +502,7 @@ export default function EmpleadoFormPage() {
               <div className="empleado-photo-panel mb-4">
                 <div className="empleado-form-avatar">
                   {fotoPreview ? (
-                    <img
+                    <ProtectedImage
                       src={fotoPreview}
                       alt={`${formData.nombre || "Empleado"} ${formData.apellidoPaterno || ""}`.trim()}
                     />

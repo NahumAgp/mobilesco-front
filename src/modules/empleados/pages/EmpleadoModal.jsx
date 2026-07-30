@@ -1,5 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
+import ProtectedImage from "../../../components/ui/ProtectedImage";
 
 export default function EmpleadoModal({ empleado, onClose, onEditar }) {
   if (!empleado) return null;
@@ -23,7 +24,7 @@ export default function EmpleadoModal({ empleado, onClose, onEditar }) {
               {/* Foto */}
               <div className="col-md-4 text-center mb-3">
                 {empleado.fotoUrl ? (
-                  <img 
+                  <ProtectedImage
                     src={empleado.fotoUrl} 
                     alt="foto"
                     className="img-fluid rounded-circle"

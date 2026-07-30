@@ -110,7 +110,10 @@ async function request(endpoint, options = {}, retry = true) {
       }
     }
 
-    const responseClone = options.responseType === "blob" ? response.clone() : null;
+    if (response.ok && options.responseType === "blob") {
+      return await response.blob();
+    }
+
     const text = await response.text();
 
     let data = null;
@@ -135,10 +138,6 @@ async function request(endpoint, options = {}, retry = true) {
         requestError.status = data.status || response.status;
       }
       throw requestError;
-    }
-
-    if (responseClone) {
-      return await responseClone.blob();
     }
 
     return data;

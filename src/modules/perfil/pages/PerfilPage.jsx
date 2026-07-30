@@ -3,6 +3,7 @@ import { getCurrentUser } from "../../auth/services/authService";
 import "./PerfilPage.css";
 import { eliminarFotoPerfil, subirFotoPerfil } from "../../empleados/services/empleados";
 import { API_BASE_URL } from "../../../config/apiConfig";
+import ProtectedImage from "../../../components/ui/ProtectedImage";
 
 export default function PerfilPage() {
 
@@ -101,7 +102,7 @@ export default function PerfilPage() {
 
   {perfil?.fotoUrl ? (
 
-    <img
+    <ProtectedImage
       src={`${API_BASE_URL}${perfil.fotoUrl}`}
       className="perfil-avatar"
       alt="perfil"

@@ -2,6 +2,7 @@ import React from "react";
 import { API_BASE_URL } from "../../../config/apiConfig";
 import CatalogRowActions from "../../../components/ui/CatalogRowActions";
 import CatalogStatusBadge from "../../../components/ui/CatalogStatusBadge";
+import ProtectedImage from "../../../components/ui/ProtectedImage";
 
 function getFotoSrc(empleado) {
   if (!empleado?.fotoUrl) {
@@ -62,7 +63,7 @@ export default function EmpleadosTable({ data, onEditar, onCambiarEstado }) {
                   >
                     <td>
                       {fotoSrc ? (
-                        <img
+                        <ProtectedImage
                           src={fotoSrc}
                           alt={`${e.nombre || "Empleado"} ${e.apellidoPaterno || ""}`.trim()}
                           className="empleados-avatar"

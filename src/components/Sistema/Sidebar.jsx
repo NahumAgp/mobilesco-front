@@ -4,6 +4,7 @@ import { logout, getUser, hasPermission } from "../../modules/auth/services/auth
 import { useState, useRef, useEffect } from "react";
 import { API_BASE_URL } from "../../config/apiConfig";
 import { contarNotificacionesNoLeidas } from "../../modules/notificaciones/services/notificaciones";
+import ProtectedImage from "../ui/ProtectedImage";
 
 function LinkItem({ to, label, icon, sub = false, onClick }) {
   return (
@@ -231,7 +232,7 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
         >
           <div className="sidebar-profile-avatar">
             {mostrarFoto ? (
-              <img src={foto} alt="perfil" onError={() => setFailedFoto(foto)} />
+              <ProtectedImage src={foto} alt="perfil" onError={() => setFailedFoto(foto)} />
             ) : (
               <span>{iniciales}</span>
             )}
