@@ -507,7 +507,10 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
           .map((item) => ({ ref: item.ref, codigo: item.codigo, nombre: item.nombre, descripcion: item.descripcion, hex: item.hex })),
         variantes: variantesNuevas.map((variante) => ({
           clientRef: String(variante.id),
-          nombre: `${modelo?.nombre || "Modelo"} ${variante?.categoriaNombre || ""} ${variante?.materialNombre || ""} ${variante?.colorNombre || ""}`.trim().replace(/\s+/g, " "),
+          nombre: `${modelo?.nombre || "Modelo"} ${variante?.categoriaNombre || ""} ${variante?.materialNombre || ""} ${variante?.colorNombre || ""}`
+            .trim()
+            .replace(/\s+/g, " ")
+            .toLocaleUpperCase("es-MX"),
           descripcion: modelo?.descripcion?.trim() || "",
           descripcionCorta: variante.descripcionCorta?.trim() || modelo?.descripcionCorta?.trim() || null,
           pesoVolumetrico: toOptionalNumber(variante.pesoVolumetrico),
