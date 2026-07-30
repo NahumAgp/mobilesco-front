@@ -15,18 +15,22 @@ function LinkItem({ to, label, icon, sub = false, onClick }) {
   );
 }
 
-export default function Sidebar({ isOpen, toggleSidebar }) {
+export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
   const navigate = useNavigate();
   const [user, setUser] = useState(getUser());
   const [failedFoto, setFailedFoto] = useState(null);
   const [openMenu, setOpenMenu] = useState(false);
   const [openSubmenu, setOpenSubmenu] = useState(null);
   const [notificacionesNoLeidas, setNotificacionesNoLeidas] = useState(0);
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia("(max-width: 768px)").matches);
   const menuRef = useRef(null);
 
   const handleNavigation = () => {
     setOpenSubmenu(null);
     setOpenMenu(false);
+    if (isMobile && isOpen) {
+      closeSidebar();
+    }
   };
 
   const toggleSubmenu = (submenu) => {
@@ -88,6 +92,14 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
   };
 
   useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 768px)");
+    const updateMobile = () => setIsMobile(mediaQuery.matches);
+
+    mediaQuery.addEventListener("change", updateMobile);
+    return () => mediaQuery.removeEventListener("change", updateMobile);
+  }, []);
+
+  useEffect(() => {
     const updateUser = () => {
       setUser(getUser());
       setFailedFoto(null);
@@ -128,7 +140,13 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
   }, []);
 
   return (
-    <aside className={`app-sidebar ${isOpen ? "" : "app-sidebar--compact"}`}>
+    <aside
+      id="app-sidebar"
+      className={`app-sidebar ${isOpen ? "" : "app-sidebar--compact"}`}
+      aria-label="Navegación principal"
+      aria-hidden={isMobile && !isOpen ? "true" : undefined}
+      inert={isMobile && !isOpen}
+    >
 
       {/* MARCA */}
       <div className="sidebar-brand">

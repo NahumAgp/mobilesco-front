@@ -72,7 +72,7 @@ export default function ClientesPage() {
   };
 
   return (
-    <div className="container-fluid py-4">
+    <div className="container-fluid py-4 mobile-module-page clientes-page">
       <div className="d-flex justify-content-between align-items-start gap-3 mb-4 flex-wrap">
         <div>
           <h2 className="mb-1">Clientes</h2>
@@ -126,7 +126,12 @@ export default function ClientesPage() {
       {error ? <div className="alert alert-danger">{error}</div> : null}
 
       <div className="card border-0 shadow-sm">
-        <div className="table-responsive">
+        <div
+          className="table-responsive mobile-table-region clientes-table-scroll"
+          role="region"
+          aria-label="Tabla de clientes. Desliza horizontalmente para ver todas las columnas."
+          tabIndex="0"
+        >
           <table className="table table-hover align-middle mb-0">
             <thead className="table-light">
               <tr>

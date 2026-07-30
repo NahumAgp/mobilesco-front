@@ -342,8 +342,92 @@
   .app-sidebar,
   .app-sidebar:hover,
   .app-sidebar:focus-within {
+    z-index: 1050;
     width: min(86vw, var(--sidebar-expanded-width));
     padding: 18px;
+    transform: translateX(0);
+    transition:
+      transform 0.22s ease,
+      width 0.22s ease,
+      padding 0.22s ease,
+      box-shadow 0.22s ease;
+  }
+
+  .app-sidebar.app-sidebar--compact,
+  .app-sidebar.app-sidebar--compact:hover,
+  .app-sidebar.app-sidebar--compact:focus-within {
+    width: min(86vw, var(--sidebar-expanded-width));
+    padding: 18px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    transform: translateX(-105%);
+    box-shadow: none;
+  }
+
+  .app-sidebar--compact .sidebar-brand {
+    justify-content: flex-start;
+    padding: 6px 8px 20px;
+  }
+
+  .app-sidebar--compact .sidebar-brand-name,
+  .app-sidebar--compact .sidebar-profile-text {
+    display: block;
+  }
+
+  .app-sidebar--compact .sidebar-menu-list {
+    align-items: stretch;
+  }
+
+  .app-sidebar--compact .sidebar-link,
+  .app-sidebar--compact .sidebar-parent {
+    justify-content: flex-start;
+    min-height: 44px;
+    padding: 11px 14px;
+    gap: 12px;
+    overflow: hidden;
+    font-size: 14px;
+  }
+
+  .app-sidebar--compact .sidebar-parent-content {
+    position: static;
+    justify-content: flex-start;
+    width: auto;
+    gap: 12px;
+  }
+
+  .app-sidebar--compact .sidebar-parent-content span {
+    display: block;
+  }
+
+  .app-sidebar--compact .sidebar-chevron {
+    position: static;
+    width: auto;
+    margin-left: auto;
+    font-size: 0.8rem;
+    transform: none;
+  }
+
+  .app-sidebar--compact .sidebar-submenu.show {
+    position: static;
+    width: auto;
+    max-height: none;
+    padding: 0 0 0 24px;
+    margin: 5px 0 4px;
+    border: 0;
+    box-shadow: none;
+    background: transparent;
+  }
+
+  .app-sidebar--compact .sidebar-profile {
+    padding: 12px;
+  }
+
+  .app-sidebar--compact .sidebar-profile-button {
+    justify-content: flex-start;
+  }
+
+  .app-sidebar--compact .sidebar-collapse-button {
+    display: none;
   }
 }
 
@@ -472,4 +556,103 @@
 .app-sidebar--compact .sidebar-submenu .sidebar-link {
   justify-content: flex-start;
   font-size: 13px;
+}
+
+/* Mobile is an off-canvas drawer, never the desktop compact rail. */
+@media (max-width: 768px) {
+  .app-sidebar,
+  .app-sidebar:hover,
+  .app-sidebar:focus-within {
+    z-index: 1050;
+    width: min(86vw, var(--sidebar-expanded-width));
+    padding: 18px;
+    transform: translateX(0);
+  }
+
+  .app-sidebar.app-sidebar--compact,
+  .app-sidebar.app-sidebar--compact:hover,
+  .app-sidebar.app-sidebar--compact:focus-within {
+    width: min(86vw, var(--sidebar-expanded-width));
+    padding: 18px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    transform: translateX(-105%);
+    box-shadow: none;
+  }
+
+  .app-sidebar--compact .sidebar-brand {
+    justify-content: flex-start;
+    padding: 6px 8px 20px;
+  }
+
+  .app-sidebar--compact .sidebar-brand-name,
+  .app-sidebar--compact .sidebar-profile-text {
+    display: block;
+  }
+
+  .app-sidebar--compact .sidebar-menu-list {
+    align-items: stretch;
+  }
+
+  .app-sidebar--compact .sidebar-link,
+  .app-sidebar--compact .sidebar-parent {
+    justify-content: flex-start;
+    min-height: 44px;
+    padding: 11px 14px;
+    gap: 12px;
+    overflow: hidden;
+    font-size: 14px;
+  }
+
+  .app-sidebar--compact .sidebar-parent-content {
+    position: static;
+    justify-content: flex-start;
+    width: auto;
+    gap: 12px;
+  }
+
+  .app-sidebar--compact .sidebar-parent-content span {
+    display: block;
+  }
+
+  .app-sidebar--compact .sidebar-chevron {
+    position: static;
+    width: auto;
+    min-width: 0;
+    margin-left: auto;
+    font-size: 0.8rem;
+    transform: none;
+  }
+
+  .app-sidebar--compact .sidebar-submenu.show {
+    position: static;
+    width: auto;
+    max-height: none;
+    padding: 0 0 0 24px;
+    margin: 5px 0 4px;
+    border: 0;
+    box-shadow: none;
+    background: transparent;
+  }
+
+  .app-sidebar--compact .sidebar-submenu .sidebar-link {
+    justify-content: flex-start;
+    font-size: 13px;
+  }
+
+  .app-sidebar--compact .sidebar-profile {
+    padding: 12px;
+  }
+
+  .app-sidebar--compact .sidebar-profile-button {
+    justify-content: flex-start;
+  }
+
+  .app-sidebar--compact .sidebar-user-menu {
+    display: none;
+  }
+
+  .app-sidebar--compact .sidebar-collapse-button {
+    display: none;
+  }
 }

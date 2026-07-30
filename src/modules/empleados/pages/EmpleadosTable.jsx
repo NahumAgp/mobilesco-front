@@ -27,7 +27,12 @@ export default function EmpleadosTable({ data, onEditar, onCambiarEstado }) {
   return (
 
     <div className="card shadow-sm border-0 catalog-table-card empleados-table-card">
-      <div className="table-responsive catalog-table-scroll">
+      <div
+        className="table-responsive catalog-table-scroll mobile-table-region empleados-table-scroll"
+        role="region"
+        aria-label="Tabla de empleados. Desliza horizontalmente para ver todas las columnas."
+        tabIndex="0"
+      >
         <table className="table table-hover align-middle mb-0">
           <thead className="table-light catalog-table-head empleados-table-head">
             <tr>

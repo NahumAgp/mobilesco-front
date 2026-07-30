@@ -32,13 +32,12 @@ export default function ComprasTable({
   };
 
   return (
-    <div className="card">
+    <div className="card compras-table-card">
       <div
-        className="table-responsive"
-        style={{
-          height: "calc(100vh - 400px)",
-          overflowY: "auto"
-        }}
+        className="table-responsive mobile-table-region compras-table-scroll"
+        role="region"
+        aria-label="Tabla de compras. Desliza horizontalmente para ver todas las columnas."
+        tabIndex="0"
       >
         <table className="table table-hover mb-0">
           <thead

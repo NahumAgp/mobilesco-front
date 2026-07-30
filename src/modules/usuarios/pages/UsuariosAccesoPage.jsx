@@ -367,7 +367,7 @@ export default function UsuariosAccesoPage() {
     : "Sin roles para mostrar";
 
   return (
-    <div className="container-xxl py-4">
+    <div className="container-xxl py-4 mobile-module-page usuarios-page">
       <div className="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
         <div>
           <h1 className="h3 mb-1">Usuarios, roles y permisos</h1>
@@ -413,7 +413,12 @@ export default function UsuariosAccesoPage() {
           {activeTab === "usuarios" && (
             <div className="row g-4">
               <div className="col-12">
-                <div className="table-responsive">
+                <div
+                  className="table-responsive mobile-table-region usuarios-table-scroll"
+                  role="region"
+                  aria-label="Tabla de usuarios. Desliza horizontalmente para ver todas las columnas."
+                  tabIndex="0"
+                >
                   <table className="table align-middle">
                     <thead>
                       <tr>
@@ -640,7 +645,12 @@ export default function UsuariosAccesoPage() {
               ) : (
                 <div className="roles-page-shell">
                   <div className="card shadow-sm border-0 roles-table-card">
-                    <div className="table-responsive roles-table-scroll">
+                    <div
+                      className="table-responsive roles-table-scroll mobile-table-region"
+                      role="region"
+                      aria-label="Tabla de roles. Desliza horizontalmente para ver todas las columnas."
+                      tabIndex="0"
+                    >
                       <table className="table table-hover align-middle mb-0">
                         <thead className="table-light roles-table-head">
                           <tr>

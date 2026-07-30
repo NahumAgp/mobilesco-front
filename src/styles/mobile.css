@@ -1,0 +1,177 @@
+/* Shared small-screen behavior for the main ERP work areas. */
+.dashboard-page {
+  padding: 1.5rem;
+}
+
+.mobile-table-region {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ms-brand-300) var(--ms-surface-2);
+}
+
+.mobile-table-region:focus-visible {
+  outline: 3px solid rgba(84, 134, 116, 0.32);
+  outline-offset: -3px;
+}
+
+.mobile-table-region::-webkit-scrollbar {
+  height: 10px;
+}
+
+.mobile-table-region::-webkit-scrollbar-track {
+  background: var(--ms-surface-2);
+}
+
+.mobile-table-region::-webkit-scrollbar-thumb {
+  border: 2px solid var(--ms-surface-2);
+  border-radius: 999px;
+  background: var(--ms-brand-300);
+}
+
+.compras-table-scroll {
+  max-height: calc(100vh - 400px);
+  overflow-y: auto;
+}
+
+@media (max-width: 768px) {
+  .dashboard-page,
+  .mobile-module-page.container-fluid,
+  .mobile-module-page.container-xxl {
+    padding: 0 !important;
+  }
+
+  .dashboard-header {
+    align-items: stretch !important;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .dashboard-primary-action {
+    width: 100%;
+  }
+
+  .dashboard-page .card-body {
+    padding: 1rem;
+  }
+
+  .dashboard-page .row {
+    --bs-gutter-x: 0.75rem;
+  }
+
+  .dashboard-page .col-6 .card-body {
+    padding: 0.85rem;
+  }
+
+  .dashboard-page .col-6 h3 {
+    font-size: 1.35rem;
+  }
+
+  .dashboard-quote-row {
+    align-items: flex-start !important;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .dashboard-quote-row > :first-child {
+    width: 100%;
+  }
+
+  .dashboard-quote-row > .badge {
+    margin-left: auto;
+  }
+
+  .content-wrapper .btn,
+  .content-wrapper .form-control,
+  .content-wrapper .form-select,
+  .content-wrapper .input-group-text {
+    min-height: 44px;
+  }
+
+  .content-wrapper .form-check-input {
+    width: 1.35rem;
+    height: 1.35rem;
+  }
+
+  .content-wrapper .form-check {
+    min-height: 44px;
+  }
+
+  .content-wrapper .card {
+    max-width: 100%;
+  }
+
+  .mobile-table-region {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .proveedores-table-scroll table {
+    min-width: 1120px;
+  }
+
+  .compras-table-scroll {
+    max-height: min(60vh, 520px);
+  }
+
+  .compras-table-scroll table {
+    min-width: 850px;
+  }
+
+  .clientes-table-scroll table {
+    min-width: 960px;
+  }
+
+  .empleados-table-scroll table {
+    min-width: 980px;
+  }
+
+  .usuarios-table-scroll table {
+    min-width: 820px;
+  }
+
+  .roles-table-scroll table {
+    min-width: 760px;
+  }
+
+  .catalog-row-actions .btn,
+  .compras-table-card .btn-group .btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .catalog-pagination-panel {
+    align-items: stretch;
+    justify-content: center;
+  }
+
+  .catalog-pagination-panel nav {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .catalog-pagination-panel .pagination {
+    width: max-content;
+    min-width: 100%;
+    flex-wrap: nowrap !important;
+  }
+
+  .catalog-pagination-panel .page-link {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 420px) {
+  .dashboard-page .col-6 {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-sidebar,
+  .main-content,
+  .mobile-menu-button {
+    transition: none !important;
+  }
+}

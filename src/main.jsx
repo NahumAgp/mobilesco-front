@@ -50,6 +50,7 @@ import "bootstrap/dist/js/bootstrap.bundle.min.js";
 import './styles/tokens.css'
 import './index.css'
 import './styles/catalog.css'
+import './styles/mobile.css'
 import App from './App.jsx'
 
 ReactDOM.createRoot(document.getElementById("root")).render(
