@@ -8,23 +8,31 @@ export { API_BASE_URL };
 let isRefreshing = false;
 let refreshPromise = null;
 
+function getCookie(name) {
+  const prefix = `${encodeURIComponent(name)}=`;
+  const match = document.cookie
+    .split(";")
+    .map((cookie) => cookie.trim())
+    .find((cookie) => cookie.startsWith(prefix));
+  return match ? decodeURIComponent(match.slice(prefix.length)) : null;
+}
+
 // ============================
 // 🔁 REFRESH TOKEN REQUEST
 // ============================
 async function refreshTokenRequest() {
 
   const refreshToken = localStorage.getItem("refreshToken");
-
-  if (!refreshToken) {
-    throw new Error("No refresh token");
-  }
+  const csrfToken = getCookie("XSRF-TOKEN");
 
   const res = await fetch(`${API_BASE_URL}${API_PATHS.AUTH_REFRESH}`, {
     method: "POST",
+    credentials: "include",
     headers: {
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
+      ...(csrfToken ? { "X-CSRF-TOKEN": csrfToken } : {})
     },
-    body: JSON.stringify({ refreshToken })
+    body: refreshToken ? JSON.stringify({ refreshToken }) : undefined
   });
 
   if (!res.ok) {
@@ -35,7 +43,11 @@ async function refreshTokenRequest() {
 
   // 🔥 IMPORTANTE: actualizar ambos tokens (ROTACIÓN)
   localStorage.setItem("token", data.accessToken);
-  localStorage.setItem("refreshToken", data.refreshToken);
+  if (data.refreshToken) {
+    localStorage.setItem("refreshToken", data.refreshToken);
+  } else {
+    localStorage.removeItem("refreshToken");
+  }
 
   return data.accessToken;
 }
@@ -63,6 +75,7 @@ async function request(endpoint, options = {}, retry = true) {
 
   const config = {
     ...options,
+    credentials: "include",
     headers
   };
 
@@ -103,7 +116,9 @@ async function request(endpoint, options = {}, retry = true) {
         isRefreshing = false;
 
         // 💥 logout automático si falla refresh
-        localStorage.clear();
+        localStorage.removeItem("token");
+        localStorage.removeItem("refreshToken");
+        localStorage.removeItem("user");
         window.location.href = "/login";
 
         throw err;

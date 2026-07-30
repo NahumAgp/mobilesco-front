@@ -24,7 +24,11 @@ export async function login(credentials) {
 
   // 🔥 GUARDAR TOKENS AQUÍ (IMPORTANTE)
   localStorage.setItem("token", data.accessToken);
-  localStorage.setItem("refreshToken", data.refreshToken);
+  if (data.refreshToken) {
+    localStorage.setItem("refreshToken", data.refreshToken);
+  } else {
+    localStorage.removeItem("refreshToken");
+  }
 
   return data;
 }
@@ -139,19 +143,20 @@ export function approvePendingUser(id) {
 export async function logout() {
 
   const refreshToken = localStorage.getItem("refreshToken");
+  const csrfToken = document.cookie
+    .split(";")
+    .map((cookie) => cookie.trim())
+    .find((cookie) => cookie.startsWith("XSRF-TOKEN="))
+    ?.slice("XSRF-TOKEN=".length);
 
   try {
-
-    if (refreshToken) {
-
-      await request(API_PATHS.AUTH_LOGOUT, {
-        method: "POST",
-        body: JSON.stringify({
-          refreshToken
-        })
-      });
-
-    }
+    await request(API_PATHS.AUTH_LOGOUT, {
+      method: "POST",
+      headers: csrfToken
+        ? { "X-CSRF-TOKEN": decodeURIComponent(csrfToken) }
+        : {},
+      body: refreshToken ? JSON.stringify({ refreshToken }) : undefined
+    });
 
   } catch (error) {
 
