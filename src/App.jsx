@@ -126,7 +126,7 @@ export default function App() {
         }
       >
 
-        <Route path="/tablero" element={<Tablero />} />
+        <Route path="/tablero" element={withPermission(<Tablero />, "VIEW_DASHBOARD")} />
         <Route path="/notificaciones" element={<NotificacionesPage />} />
 
 

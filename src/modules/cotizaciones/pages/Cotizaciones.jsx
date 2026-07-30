@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Download, Eye, MessageCircle, Plus, Search } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { listarCotizaciones, obtenerCotizacion } from "../services/cotizaciones";
 import { descargarPdfCotizacion, compartirCotizacionWhatsApp } from "../utils/cotizacionPdf";
 import "./cotizaciones.css";
@@ -13,12 +13,14 @@ const moneda = (value) => new Intl.NumberFormat("es-MX", { style: "currency", cu
 
 export default function Cotizaciones() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [items, setItems] = useState([]);
   const [busqueda, setBusqueda] = useState("");
   const [estado, setEstado] = useState("");
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
   const [detalle, setDetalle] = useState(null);
+  const cotizacionInicial = searchParams.get("cotizacion");
 
   useEffect(() => {
     const timer = setTimeout(async () => {
@@ -35,6 +37,13 @@ export default function Cotizaciones() {
     }, 300);
     return () => clearTimeout(timer);
   }, [busqueda, estado]);
+
+  useEffect(() => {
+    if (!cotizacionInicial) return;
+    obtenerCotizacion(cotizacionInicial)
+      .then(setDetalle)
+      .catch((e) => setError(e.message));
+  }, [cotizacionInicial]);
 
   const cargarDetalle = async (id) => setDetalle(await obtenerCotizacion(id));
   const conCotizacion = async (id, accion) => accion(await obtenerCotizacion(id));

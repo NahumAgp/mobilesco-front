@@ -60,6 +60,7 @@ export const API_PATHS = {
   UNIDADES_MEDIDA: `${API_VERSION}/unidades-medida`,
   CLIENTES: `${API_VERSION}/clientes`,
   COTIZACIONES: `${API_VERSION}/cotizaciones`,
+  TABLERO: `${API_VERSION}/tablero`,
 
   // Catalogo publico (sin autenticacion; lo consume la web publica)
   PUBLIC_CATALOGO: `${API_VERSION}/public/catalogo`,
