@@ -25,7 +25,7 @@ export default function CatalogPagination({
   currentCount = 0,
   itemLabel = "registros",
   summary,
-  ariaLabel = "Paginacion",
+  ariaLabel = "Paginación",
   onPageChange,
   className = ""
 }) {
@@ -107,7 +107,7 @@ export default function CatalogPagination({
               onClick={() => goToPage(safeTotalPages - 1)}
               disabled={isLast}
             >
-              Ultima
+              Última
             </button>
           </li>
         </ul>

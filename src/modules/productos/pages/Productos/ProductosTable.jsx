@@ -1,5 +1,6 @@
 import CatalogRowActions from "../../../../components/ui/CatalogRowActions.jsx";
 import CatalogStatusBadge from "../../../../components/ui/CatalogStatusBadge.jsx";
+import CatalogTable, { CatalogEmptyState } from "../../../../components/ui/CatalogTable.jsx";
 
 export default function ProductosTable({
   data,
@@ -9,8 +10,7 @@ export default function ProductosTable({
   canEliminarDefinitivo = false
 }) {
   return (
-    <div className="card shadow-sm border-0 catalog-table-card productos-table-card">
-      <div className="table-responsive catalog-table-scroll productos-table-scroll">
+    <CatalogTable className="productos-table-card" scrollClassName="productos-table-scroll">
         <table className="table table-hover align-middle mb-0">
           <thead className="table-light catalog-table-head productos-table-head">
             <tr>
@@ -72,7 +72,7 @@ export default function ProductosTable({
                           item={producto}
                           active={producto.activo}
                           onEdit={onEditar}
-                          onToggle={(productoActual) => onDesactivar(productoActual.id)}
+                          onToggle={onDesactivar}
                           toggleDisabled={!producto.activo}
                           toggleTitle={producto.activo ? "Desactivar" : "Producto inactivo"}
                           group={false}
@@ -91,17 +91,15 @@ export default function ProductosTable({
                 </tr>
               ))
             ) : (
-              <tr>
-                <td colSpan="12" className="text-center text-muted py-5">
-                  <i className="bi bi-box fs-1 d-block mb-3 text-secondary"></i>
-                  <span className="fs-5">No hay productos registrados</span>
-                  <p className="text-secondary mt-2">Comienza creando un nuevo producto</p>
-                </td>
-              </tr>
+              <CatalogEmptyState
+                colSpan={12}
+                icon="bi-box"
+                title="No hay productos registrados"
+                description="Ajusta los filtros o crea un nuevo producto."
+              />
             )}
           </tbody>
         </table>
-      </div>
-    </div>
+    </CatalogTable>
   );
 }

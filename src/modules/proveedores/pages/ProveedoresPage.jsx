@@ -6,6 +6,8 @@ import { useProveedores } from "../hooks/useProveedores";
 import ProveedoresTable from "../components/ProveedoresTable.jsx";
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
 import CatalogPagination from "../../../components/ui/CatalogPagination.jsx";
+import CatalogFilters from "../../../components/ui/CatalogFilters.jsx";
+import ConfirmationDialog from "../../../components/ui/ConfirmationDialog.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
 import {
   exportarProveedoresExcel
@@ -23,6 +25,8 @@ export default function ProveedoresPage() {
   const [soloActivos, setSoloActivos] = useState(false);
   const [page, setPage] = useState(0);
   const [tiposInsumo, setTiposInsumo] = useState([]);
+  const [proveedorPorCambiar, setProveedorPorCambiar] = useState(null);
+  const [cambiandoEstado, setCambiandoEstado] = useState(false);
 
   const activoFiltro = useMemo(() => (soloActivos ? true : undefined), [soloActivos]);
   const busquedaGeneral = busqueda.trim() || undefined;
@@ -60,19 +64,23 @@ export default function ProveedoresPage() {
   };
 
   const manejarCambioEstado = async (proveedor) => {
-    const nuevoEstado = !proveedor.activo;
-    const confirmacion = window.confirm(
-      nuevoEstado ? "Activar este proveedor?" : "Desactivar este proveedor?"
-    );
-    if (!confirmacion) return;
+    setProveedorPorCambiar(proveedor);
+  };
 
+  const confirmarCambioEstado = async () => {
+    if (!proveedorPorCambiar) return;
+    const nuevoEstado = !proveedorPorCambiar.activo;
     try {
-      await cambiarEstadoProveedor(proveedor, nuevoEstado);
+      setCambiandoEstado(true);
+      await cambiarEstadoProveedor(proveedorPorCambiar, nuevoEstado);
       setToastType("success");
       setToastMessage(nuevoEstado ? "Proveedor activado correctamente" : "Proveedor desactivado correctamente");
+      setProveedorPorCambiar(null);
     } catch {
       setToastType("danger");
       setToastMessage("Error al cambiar el estado del proveedor");
+    } finally {
+      setCambiandoEstado(false);
     }
   };
 
@@ -124,9 +132,20 @@ export default function ProveedoresPage() {
         type={toastType}
         onClose={() => setToastMessage("")}
       />
+      <ConfirmationDialog
+        open={Boolean(proveedorPorCambiar)}
+        title={proveedorPorCambiar?.activo ? "Desactivar proveedor" : "Activar proveedor"}
+        message={`¿Deseas ${proveedorPorCambiar?.activo ? "desactivar" : "activar"} a “${proveedorPorCambiar?.razonSocial || proveedorPorCambiar?.nombre || ""}”?`}
+        confirmLabel={proveedorPorCambiar?.activo ? "Desactivar proveedor" : "Activar proveedor"}
+        variant={proveedorPorCambiar?.activo ? "danger" : "primary"}
+        loading={cambiandoEstado}
+        onCancel={() => setProveedorPorCambiar(null)}
+        onConfirm={confirmarCambioEstado}
+      />
 
       <PageHeader
-        title="Directorio de Proveedores"
+        eyebrow="Abastecimiento"
+        title="Directorio de proveedores"
         subtitle="Base de datos centralizada de proveedores"
         actions={
           <div className="d-flex gap-2">
@@ -134,13 +153,13 @@ export default function ProveedoresPage() {
               className="btn btn-outline-success"
               onClick={exportarExcel}
             >
-              Exportar Excel
+              Exportar a Excel
             </button>
             <button
               className="btn btn-success"
               onClick={() => navigate("/proveedores/nuevo")}
             >
-              Nuevo Proveedor
+              Nuevo proveedor
             </button>
           </div>
         }
@@ -148,7 +167,7 @@ export default function ProveedoresPage() {
 
       {loadingLista && (
         <div className="alert alert-info">
-          Cargando proveedores...
+          Cargando proveedores…
         </div>
       )}
 
@@ -158,21 +177,31 @@ export default function ProveedoresPage() {
         </div>
       )}
 
-      <div className="card mb-3">
-        <div className="card-body">
-          <div className="row g-2 align-items-center">
+      <CatalogFilters
+        onClear={() => {
+          setBusqueda("");
+          setTipoInsumo("");
+          setSoloActivos(false);
+          setPage(0);
+        }}
+        clearDisabled={!busqueda && !tipoInsumo && !soloActivos}
+      >
             <div className="col-md-4">
+              <label className="form-label" htmlFor="proveedores-busqueda">Búsqueda</label>
               <input
+                id="proveedores-busqueda"
                 type="text"
                 className="form-control"
-                placeholder="Buscar por razón social, contacto, RFC, correo o teléfono..."
+                placeholder="Razón social, contacto, RFC, correo o teléfono"
                 value={busqueda}
                 onChange={cambiarBusqueda}
               />
             </div>
 
             <div className="col-md-3">
+              <label className="form-label" htmlFor="proveedores-tipo">Tipo de insumo</label>
               <select
+                id="proveedores-tipo"
                 className="form-select"
                 value={tipoInsumo}
                 onChange={cambiarTipoInsumo}
@@ -186,7 +215,7 @@ export default function ProveedoresPage() {
               </select>
             </div>
 
-            <div className="col-md-3">
+            <div className="col-md-3 pb-2">
               <div className="form-check form-switch d-flex align-items-center gap-2">
                 <input
                   className="form-check-input"
@@ -200,9 +229,7 @@ export default function ProveedoresPage() {
                 </label>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
+      </CatalogFilters>
 
       <ProveedoresTable
         data={proveedores}
@@ -217,7 +244,7 @@ export default function ProveedoresPage() {
         pageSize={PAGE_SIZE}
         currentCount={proveedores.length}
         itemLabel="proveedores"
-        ariaLabel="Paginacion de proveedores"
+        ariaLabel="Paginación de proveedores"
         onPageChange={setPage}
       />
     </>

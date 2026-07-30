@@ -5,6 +5,8 @@ import { useOperaciones } from "../hooks/useOperaciones";
 import OperacionesTable from "./OperacionesTable.jsx";
 
 import CatalogPagination from "../../../components/ui/CatalogPagination.jsx";
+import CatalogFilters from "../../../components/ui/CatalogFilters.jsx";
+import ConfirmationDialog from "../../../components/ui/ConfirmationDialog.jsx";
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
 
@@ -20,6 +22,8 @@ export default function OperacionesPage() {
   const [soloActivos, setSoloActivos] = useState(false);
   const [filtroCentroTrabajo, setFiltroCentroTrabajo] = useState("");
   const [page, setPage] = useState(0);
+  const [operacionPorEliminar, setOperacionPorEliminar] = useState(null);
+  const [eliminando, setEliminando] = useState(false);
   const activo = filtroEstatus === "TODOS" && !soloActivos
     ? undefined
     : filtroEstatus === "INACTIVO"
@@ -60,17 +64,19 @@ export default function OperacionesPage() {
     navigate(`/operaciones/${operacion.id}`);
   };
 
-  const manejarEliminar = async (id) => {
-    const confirmacion = window.confirm("Seguro que deseas eliminar esta operacion?");
-    if (!confirmacion) return;
-
+  const confirmarEliminacion = async () => {
+    if (!operacionPorEliminar) return;
     try {
-      await eliminarOperacion(id);
+      setEliminando(true);
+      await eliminarOperacion(operacionPorEliminar.id);
       setToastType("success");
-      setToastMessage("Operacion eliminada correctamente");
+      setToastMessage("Operación eliminada correctamente");
+      setOperacionPorEliminar(null);
     } catch {
       setToastType("danger");
-      setToastMessage("Error al eliminar operacion");
+      setToastMessage("Error al eliminar la operación");
+    } finally {
+      setEliminando(false);
     }
   };
 
@@ -86,23 +92,33 @@ export default function OperacionesPage() {
         type={toastType}
         onClose={() => setToastMessage("")}
       />
+      <ConfirmationDialog
+        open={Boolean(operacionPorEliminar)}
+        title="Eliminar operación"
+        message={`¿Deseas eliminar la operación “${operacionPorEliminar?.nombre || ""}”? Esta acción no se puede deshacer.`}
+        confirmLabel="Eliminar operación"
+        loading={eliminando}
+        onCancel={() => setOperacionPorEliminar(null)}
+        onConfirm={confirmarEliminacion}
+      />
 
       <PageHeader
         title="Operaciones"
-        subtitle="Catalogo de operaciones de fabricacion (Mano de Obra Directa)"
+        eyebrow="Producción"
+        subtitle="Catálogo de operaciones de fabricación (mano de obra directa)"
         actions={
           <button
             className="btn btn-success"
             onClick={() => navigate("/operaciones/nuevo")}
           >
-            Nueva Operacion
+            Nueva operación
           </button>
         }
       />
 
       {loadingLista && (
         <div className="alert alert-info">
-          Cargando operaciones...
+          Cargando operaciones…
         </div>
       )}
 
@@ -112,21 +128,32 @@ export default function OperacionesPage() {
         </div>
       )}
 
-      <div className="card mb-3">
-        <div className="card-body">
-          <div className="row g-2 align-items-center">
+      <CatalogFilters
+        onClear={() => {
+          setBusqueda("");
+          setFiltroEstatus("TODOS");
+          setFiltroCentroTrabajo("");
+          setSoloActivos(false);
+          setPage(0);
+        }}
+        clearDisabled={!busqueda && filtroEstatus === "TODOS" && !filtroCentroTrabajo && !soloActivos}
+      >
             <div className="col-md-3">
+              <label className="form-label" htmlFor="operaciones-busqueda">Búsqueda</label>
               <input
+                id="operaciones-busqueda"
                 type="text"
                 className="form-control"
-                placeholder="Buscar por codigo, nombre o descripcion..."
+                placeholder="Código, nombre o descripción"
                 value={busqueda}
                 onChange={(event) => resetPage(() => setBusqueda(event.target.value))}
               />
             </div>
 
             <div className="col-md-2">
+              <label className="form-label" htmlFor="operaciones-estado">Estado</label>
               <select
+                id="operaciones-estado"
                 className="form-select"
                 value={filtroEstatus}
                 onChange={(event) => resetPage(() => setFiltroEstatus(event.target.value))}
@@ -138,7 +165,9 @@ export default function OperacionesPage() {
             </div>
 
             <div className="col-md-2">
+              <label className="form-label" htmlFor="operaciones-centro">Centro de trabajo</label>
               <select
+                id="operaciones-centro"
                 className="form-select"
                 value={filtroCentroTrabajo}
                 onChange={(event) => resetPage(() => setFiltroCentroTrabajo(event.target.value))}
@@ -150,7 +179,7 @@ export default function OperacionesPage() {
               </select>
             </div>
 
-            <div className="col-md-2 d-flex align-items-center">
+            <div className="col-md-2 d-flex align-items-center pb-2">
               <div className="form-check form-switch">
                 <input
                   className="form-check-input"
@@ -163,14 +192,12 @@ export default function OperacionesPage() {
                 </label>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
+      </CatalogFilters>
 
       <OperacionesTable
         data={operaciones}
         onEditar={abrirEditar}
-        onEliminar={manejarEliminar}
+        onEliminar={setOperacionPorEliminar}
       />
 
       {totalElements > 0 && (
@@ -181,7 +208,7 @@ export default function OperacionesPage() {
           pageSize={PAGE_SIZE}
           currentCount={operaciones.length}
           itemLabel="operaciones"
-          ariaLabel="Paginacion de operaciones"
+          ariaLabel="Paginación de operaciones"
           onPageChange={setPage}
           className="mt-3"
         />

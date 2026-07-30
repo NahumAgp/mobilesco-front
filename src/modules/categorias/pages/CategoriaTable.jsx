@@ -1,19 +1,19 @@
 import CatalogRowActions from "../../../components/ui/CatalogRowActions";
 import CatalogStatusBadge from "../../../components/ui/CatalogStatusBadge";
+import CatalogTable, { CatalogEmptyState } from "../../../components/ui/CatalogTable.jsx";
 
 export default function CategoriaTable({ data, onEditar, onCambiarEstado }) {
   return (
-    <div className="card shadow-sm border-0 catalog-table-card categorias-table-card">
-      <div className="table-responsive catalog-table-scroll categorias-table-scroll">
+    <CatalogTable className="categorias-table-card" scrollClassName="categorias-table-scroll">
         <table className="table table-hover align-middle mb-0">
           <thead className="table-light catalog-table-head categorias-table-head">
             <tr>
               <th>ID</th>
-              <th>Codigo</th>
+              <th>Código</th>
               <th>Nombre</th>
-              <th>Descripcion</th>
+              <th>Descripción</th>
               <th>Estado</th>
-              <th>Fecha de Creacion</th>
+              <th>Fecha de creación</th>
               <th>Acciones</th>
             </tr>
           </thead>
@@ -61,17 +61,15 @@ export default function CategoriaTable({ data, onEditar, onCambiarEstado }) {
                 </tr>
               ))
             ) : (
-              <tr>
-                <td colSpan="7" className="text-center text-muted py-5">
-                  <i className="bi bi-folder fs-1 d-block mb-3 text-secondary"></i>
-                  <span className="fs-5">No hay categorias registradas</span>
-                  <p className="text-secondary mt-2">Comienza creando una nueva categoria</p>
-                </td>
-              </tr>
+              <CatalogEmptyState
+                colSpan={7}
+                icon="bi-folder"
+                title="No hay categorías registradas"
+                description="Ajusta los filtros o crea una nueva categoría."
+              />
             )}
           </tbody>
         </table>
-      </div>
-    </div>
+    </CatalogTable>
   );
 }

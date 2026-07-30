@@ -1,17 +1,17 @@
 import CatalogRowActions from "../../../components/ui/CatalogRowActions";
 import CatalogStatusBadge from "../../../components/ui/CatalogStatusBadge";
+import CatalogTable, { CatalogEmptyState } from "../../../components/ui/CatalogTable.jsx";
 
 export default function ColorTable({ data, onEditar, onCambiarEstado }) {
   return (
-    <div className="card shadow-sm border-0 catalog-table-card colores-table-card">
-      <div className="table-responsive catalog-table-scroll colores-table-scroll">
+    <CatalogTable className="colores-table-card" scrollClassName="colores-table-scroll">
         <table className="table table-hover align-middle mb-0">
           <thead className="table-light catalog-table-head colores-table-head">
             <tr>
               <th>ID</th>
-              <th>Codigo</th>
+              <th>Código</th>
               <th>Nombre</th>
-              <th>Descripcion</th>
+              <th>Descripción</th>
               <th>Hex</th>
               <th>Muestra</th>
               <th>Estado</th>
@@ -62,16 +62,15 @@ export default function ColorTable({ data, onEditar, onCambiarEstado }) {
                 </tr>
               ))
             ) : (
-              <tr>
-                <td colSpan="8" className="text-center text-muted py-5">
-                  <i className="bi bi-palette fs-1 d-block mb-3 text-secondary"></i>
-                  <span className="fs-5">No hay colores registrados</span>
-                </td>
-              </tr>
+              <CatalogEmptyState
+                colSpan={8}
+                icon="bi-palette"
+                title="No hay colores registrados"
+                description="Ajusta la búsqueda o crea un nuevo color."
+              />
             )}
           </tbody>
         </table>
-      </div>
-    </div>
+    </CatalogTable>
   );
 }

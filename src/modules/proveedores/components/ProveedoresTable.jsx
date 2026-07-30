@@ -1,27 +1,22 @@
 import CatalogRowActions from "../../../components/ui/CatalogRowActions";
 import CatalogStatusBadge from "../../../components/ui/CatalogStatusBadge";
+import CatalogTable, { CatalogEmptyState } from "../../../components/ui/CatalogTable.jsx";
 
 export default function ProveedoresTable({ data, onEditar, onCambiarEstado }) {
   return (
-    <div className="card shadow-sm border-0 catalog-table-card proveedores-table-card">
-      <div
-        className="table-responsive catalog-table-scroll proveedores-table-scroll mobile-table-region"
-        role="region"
-        aria-label="Tabla de proveedores. Desliza horizontalmente para ver todas las columnas."
-        tabIndex="0"
-      >
+    <CatalogTable className="proveedores-table-card" scrollClassName="proveedores-table-scroll">
         <table className="table table-hover align-middle mb-0">
           <thead className="table-light catalog-table-head proveedores-table-head">
             <tr>
               <th>ID</th>
-              <th>Razon social</th>
+              <th>Razón social</th>
               <th>Contacto</th>
               <th>Tipo de insumo</th>
               <th>Correo</th>
-              <th>Telefono</th>
+              <th>Teléfono</th>
               <th>Estado</th>
               <th>Fecha de registro</th>
-              <th>Ultimo contacto</th>
+              <th>Último contacto</th>
               <th>Acciones</th>
             </tr>
           </thead>
@@ -71,19 +66,15 @@ export default function ProveedoresTable({ data, onEditar, onCambiarEstado }) {
                 </tr>
               ))
             ) : (
-              <tr>
-                <td colSpan="10" className="text-center text-muted py-5">
-                  <i className="bi bi-truck fs-1 d-block mb-3 text-secondary"></i>
-                  <span className="fs-5 d-block">No hay proveedores registrados</span>
-                  <p className="text-secondary mt-2 mb-0">
-                    Comienza creando un nuevo proveedor
-                  </p>
-                </td>
-              </tr>
+              <CatalogEmptyState
+                colSpan={10}
+                icon="bi-truck"
+                title="No hay proveedores registrados"
+                description="Ajusta los filtros o crea un nuevo proveedor."
+              />
             )}
           </tbody>
         </table>
-      </div>
-    </div>
+    </CatalogTable>
   );
 }

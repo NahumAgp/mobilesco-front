@@ -1,11 +1,15 @@
 .page-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 18px;
+  align-items: flex-end;
+  gap: 24px;
+  margin-bottom: 20px;
 }
 
-/* Eyebrow opcional (kicker sobre el titulo) */
+.page-header-copy {
+  min-width: 0;
+}
+
 .page-eyebrow {
   display: inline-block;
   margin: 0 0 4px;
@@ -20,8 +24,8 @@
 .page-title {
   margin: 0;
   font-family: var(--ms-font-serif);
-  font-size: 34px;
-  font-weight: 600;
+  font-size: var(--ms-fs-title);
+  font-weight: 700;
   letter-spacing: -0.01em;
   color: var(--ms-ink-900);
 }
@@ -30,6 +34,7 @@
   margin: 6px 0 0;
   font-family: var(--ms-font-sans);
   color: var(--ms-ink-500);
+  font-size: var(--ms-fs-secondary);
 }
 
 .header-actions {
@@ -39,24 +44,16 @@
   gap: 12px;
 }
 
-@media (max-width: 576px) {
+@media (max-width: 768px) {
   .page-header {
     align-items: stretch;
     flex-direction: column;
-    gap: 16px;
-  }
-
-  .page-title {
-    font-size: clamp(1.75rem, 9vw, 2.15rem);
-    line-height: 1.08;
+    gap: 14px;
   }
 
   .header-actions,
   .header-actions > div {
+    justify-content: flex-start;
     width: 100%;
-  }
-
-  .header-actions .btn {
-    flex: 1 1 100%;
   }
 }

@@ -29,6 +29,30 @@
   box-shadow: var(--ms-sh-md);
 }
 
+.catalog-filters-card.card {
+  margin-bottom: 18px;
+  border-radius: var(--ms-r-lg);
+}
+
+.catalog-filters-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.catalog-filters-title {
+  margin: 0;
+  font-size: var(--ms-fs-label);
+}
+
+.catalog-filters-description {
+  margin: 4px 0 0;
+  color: var(--ms-ink-500);
+  font-size: var(--ms-fs-secondary);
+}
+
 .catalog-table-card.card,
 .catalog-empty-card.card {
   padding: 0;
@@ -130,6 +154,39 @@
   white-space: nowrap;
 }
 
+.catalog-empty-state {
+  display: flex;
+  min-height: 220px;
+  padding: 32px 20px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--ms-ink-700);
+}
+
+.catalog-empty-state strong {
+  font-size: var(--ms-fs-subhead-sm);
+}
+
+.catalog-empty-state p {
+  margin: 6px 0 0;
+  color: var(--ms-ink-500);
+}
+
+.catalog-empty-icon {
+  display: inline-flex;
+  width: 52px;
+  height: 52px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+  border-radius: var(--ms-r-md);
+  background: var(--ms-brand-100);
+  color: var(--ms-brand-700);
+  font-size: 1.4rem;
+}
+
 /* ---------- Botones de marca (rect. redondeado) ---------- */
 .catalog-brand-primary {
   display: inline-flex;
@@ -226,6 +283,65 @@
   box-shadow: 0 0 0 0.2rem rgba(84, 134, 116, 0.2) !important;
 }
 
+/* ---------- Confirmaciones ---------- */
+.catalog-confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1080;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(22, 24, 23, 0.42);
+  backdrop-filter: blur(2px);
+}
+
+.catalog-confirm-dialog {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 16px;
+  width: min(100%, 480px);
+  padding: 24px;
+  border: 1px solid var(--ms-line-soft);
+  border-radius: var(--ms-r-lg);
+  background: var(--ms-surface);
+  box-shadow: var(--ms-sh-lg);
+}
+
+.catalog-confirm-icon {
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--ms-r-md);
+  background: var(--ms-inf-bg);
+  color: var(--ms-inf-tx);
+  font-size: 1.25rem;
+}
+
+.catalog-confirm-icon--danger {
+  background: var(--ms-dng-bg);
+  color: var(--ms-dng-tx);
+}
+
+.catalog-confirm-content h2 {
+  margin: 1px 0 8px;
+  font-size: var(--ms-fs-subhead-sm);
+}
+
+.catalog-confirm-content p {
+  margin: 0;
+  color: var(--ms-ink-500);
+}
+
+.catalog-confirm-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 6px;
+}
+
 @media (max-width: 576px) {
   .catalog-pagination-panel {
     padding: 12px 14px;
@@ -238,6 +354,16 @@
   .catalog-brand-primary,
   .catalog-brand-outline,
   .catalog-brand-danger {
+    width: 100%;
+  }
+
+  .catalog-filters-heading,
+  .catalog-confirm-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .catalog-confirm-actions .btn {
     width: 100%;
   }
 }

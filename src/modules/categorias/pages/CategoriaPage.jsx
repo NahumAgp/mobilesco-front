@@ -7,6 +7,7 @@ import { categoriaGateway } from "../services/categoriaGateway.js";
 import CategoriaTable from "./CategoriaTable.jsx";
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
 import CatalogPagination from "../../../components/ui/CatalogPagination.jsx";
+import CatalogFilters from "../../../components/ui/CatalogFilters.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
 import "./CategoriaPage.css";
 
@@ -105,8 +106,9 @@ export default function CategoriaPage() {
       <Toast message={toastMessage} type={toastType} onClose={() => setToastMessage("")} />
 
       <PageHeader
-        title="Categorias"
-        subtitle="Catalogo de categorias de productos"
+        eyebrow="Catálogos"
+        title="Categorías"
+        subtitle="Catálogo de categorías de productos"
         actions={
           <div className="d-flex gap-2">
             <button
@@ -115,41 +117,50 @@ export default function CategoriaPage() {
               disabled={exportandoExcel}
             >
               <i className="bi bi-file-earmark-excel me-1"></i>
-              {exportandoExcel ? "Generando..." : "Reporte Excel"}
+              {exportandoExcel ? "Generando…" : "Exportar a Excel"}
             </button>
             <button className="btn categorias-brand-primary" onClick={() => navigate("/categorias/nuevo")}>
-              Nueva Categoria
+              Nueva categoría
             </button>
           </div>
         }
       />
 
-      {loadingLista && <div className="alert alert-info">Cargando categorias...</div>}
+      {loadingLista && <div className="alert alert-info">Cargando categorías…</div>}
 
       {error && <div className="alert alert-danger">{error}</div>}
 
-      <div className="card mb-3 categorias-filters-card">
-        <div className="card-body">
-          <div className="row g-2 align-items-center">
+      <CatalogFilters
+        className="categorias-filters-card"
+        onClear={() => {
+          setBusqueda("");
+          setFiltroEstatus("TODOS");
+          setSoloActivos(false);
+        }}
+        clearDisabled={!busqueda && filtroEstatus === "TODOS" && !soloActivos}
+      >
             <div className="col-md-6">
+              <label className="form-label" htmlFor="categorias-busqueda">Búsqueda</label>
               <input
+                id="categorias-busqueda"
                 type="text"
                 className="form-control"
-                placeholder="Buscar por codigo, nombre o descripcion..."
+                placeholder="Código, nombre o descripción"
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
               />
             </div>
 
-            <div className="col-md-2">
-              <select className="form-select" value={filtroEstatus} onChange={(e) => setFiltroEstatus(e.target.value)}>
+            <div className="col-md-3">
+              <label className="form-label" htmlFor="categorias-estado">Estado</label>
+              <select id="categorias-estado" className="form-select" value={filtroEstatus} onChange={(e) => setFiltroEstatus(e.target.value)}>
                 <option value="TODOS">Todos</option>
                 <option value="ACTIVO">Activos</option>
                 <option value="INACTIVO">Inactivos</option>
               </select>
             </div>
 
-            <div className="col-md-2 d-flex align-items-center">
+            <div className="col-md-3 d-flex align-items-center pb-2">
               <div className="form-check form-switch">
                 <input
                   className="form-check-input"
@@ -160,9 +171,7 @@ export default function CategoriaPage() {
                 <label className="form-check-label">Solo activos</label>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
+      </CatalogFilters>
 
       <CategoriaTable
         data={categorias}
@@ -177,8 +186,8 @@ export default function CategoriaPage() {
           totalElements={totalElements}
           pageSize={PAGE_SIZE}
           currentCount={categorias.length}
-          itemLabel="categorias"
-          ariaLabel="Paginacion de categorias"
+          itemLabel="categorías"
+          ariaLabel="Paginación de categorías"
           onPageChange={setPage}
           className="categorias-pagination-panel"
         />
