@@ -113,6 +113,20 @@ export function actualizarInsumoDeProducto(productoId, insumoId, data) {
   });
 }
 
+export function previsualizarReclasificacion(id, clasificacion) {
+  return request(`${API_PATHS.PRODUCTOS}/${id}/reclasificacion/preview`, {
+    method: "POST",
+    body: JSON.stringify(clasificacion),
+  });
+}
+
+export function aplicarReclasificacion(id, clasificacion) {
+  return request(`${API_PATHS.PRODUCTOS}/${id}/reclasificacion`, {
+    method: "PUT",
+    body: JSON.stringify(clasificacion),
+  });
+}
+
 export function aplicarCantidadesInsumosMismoNivel(productoId, insumos) {
   return request(`${API_PATHS.PRODUCTOS}/${productoId}/insumos/aplicar-mismo-nivel`, {
     method: "PUT",

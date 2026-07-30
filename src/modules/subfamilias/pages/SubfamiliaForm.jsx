@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import SearchableSelect from "../../../components/ui/SearchableSelect.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
@@ -27,7 +27,9 @@ const getFamiliaLabel = (familia = {}) => {
 
 export default function SubfamiliaForm({ subfamiliaId }) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const esEdicion = Boolean(subfamiliaId);
+  const familiaInicialId = !esEdicion ? searchParams.get("familiaId") || "" : "";
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
   const [erroresBackend, setErroresBackend] = useState({});
@@ -40,7 +42,7 @@ export default function SubfamiliaForm({ subfamiliaId }) {
     codigo: "",
     nombre: "",
     descripcion: "",
-    familiaId: "",
+    familiaId: familiaInicialId,
     activo: true
   });
 

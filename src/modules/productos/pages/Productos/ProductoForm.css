@@ -762,3 +762,13 @@
       0 14px 28px rgba(217, 91, 63, 0.12);
   }
 }
+.producto-reclasificacion {
+  background: #f8faf9;
+  border-color: #d8e3de !important;
+}
+
+.producto-reclasificacion .alert-info {
+  background: #eef8f4;
+  border-color: #badbce;
+  color: #174d3a;
+}

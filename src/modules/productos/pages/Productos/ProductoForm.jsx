@@ -1,8 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { obtenerProductoPorId, crearProducto, actualizarProducto } from "../../services/productos.js";
+import {
+  obtenerProductoPorId,
+  crearProducto,
+  actualizarProducto,
+  previsualizarReclasificacion,
+  aplicarReclasificacion,
+} from "../../services/productos.js";
 import { obtenerModelos } from "../../../modelos/services/modelos.js";
+import { obtenerLineasActivas } from "../../../lineas-producto/services/lineaProducto.js";
+import { obtenerFamiliasActivas } from "../../../familias/services/familias.js";
+import { obtenerSubfamiliasActivas } from "../../../subfamilias/services/subfamilias.js";
 import { obtenerNiveles } from "../../services/niveles.js";
 import { obtenerColores } from "../../../colores/services/color.js";
 import { obtenerMaterialesActivos } from "../../../materiales/services/materiales.js";
@@ -20,6 +29,19 @@ import "./ProductoForm.css";
 const getLista = (respuesta) => {
   if (Array.isArray(respuesta)) return respuesta;
   return respuesta?.content || respuesta?.data || respuesta?.items || [];
+};
+
+const normalizarTexto = (valor) =>
+  String(valor || "").trim().toLocaleLowerCase("es-MX");
+
+const encontrarEquivalente = (lista, actual) => {
+  if (!actual) return null;
+  const codigo = normalizarTexto(actual.codigo);
+  const nombre = normalizarTexto(actual.nombre);
+  return lista.find((item) =>
+    (codigo && normalizarTexto(item.codigo) === codigo)
+    || (nombre && normalizarTexto(item.nombre) === nombre)
+  ) || null;
 };
 
 const toPreviewUrl = (url) => {
@@ -45,13 +67,6 @@ const getArchivoNombre = (url) => {
   const partes = url.split("/");
   return decodeURIComponent(partes[partes.length - 1] || "Imagen");
 };
-
-const getRutaClasificacionModelo = (modelo) => [
-  modelo?.lineaNombre || modelo?.linea?.nombre,
-  modelo?.familiaNombre || modelo?.familia?.nombre,
-  modelo?.subfamiliaNombre || modelo?.subfamilia?.nombre || "Sin subfamilia",
-  modelo?.nombre
-].filter(Boolean);
 
 const esImagenPrincipal = (imagen) => Boolean(imagen?.esPrincipal || imagen?.principal);
 
@@ -254,9 +269,20 @@ export default function ProductoForm({
   const [imagenDestinoId, setImagenDestinoId] = useState("");
 
   const [modelos, setModelos] = useState([]);
+  const [lineas, setLineas] = useState([]);
+  const [familias, setFamilias] = useState([]);
+  const [subfamilias, setSubfamilias] = useState([]);
   const [niveles, setNiveles] = useState([]);
   const [materiales, setMateriales] = useState([]);
   const [colores, setColores] = useState([]);
+  const [rutaSeleccionada, setRutaSeleccionada] = useState({
+    lineaId: "",
+    familiaId: "",
+    subfamiliaId: "",
+  });
+  const [previewReclasificacion, setPreviewReclasificacion] = useState(null);
+  const [cargandoReclasificacion, setCargandoReclasificacion] = useState(false);
+  const [guardandoReclasificacion, setGuardandoReclasificacion] = useState(false);
   const [imagenes, setImagenes] = useState([]);
   const [imagenPrincipal, setImagenPrincipal] = useState(null);
   const [errorImagenes, setErrorImagenes] = useState("");
@@ -283,6 +309,34 @@ export default function ProductoForm({
     () => modelos.find((modelo) => String(modelo.id) === String(formData.modeloId)) || null,
     [formData.modeloId, modelos]
   );
+  const familiasClasificacion = useMemo(
+    () => familias.filter((familia) =>
+      String(familia.lineaId || familia.linea?.id || "") === String(rutaSeleccionada.lineaId)),
+    [familias, rutaSeleccionada.lineaId]
+  );
+  const subfamiliasClasificacion = useMemo(
+    () => subfamilias.filter((subfamilia) =>
+      String(subfamilia.familiaId || subfamilia.familia?.id || "") === String(rutaSeleccionada.familiaId)),
+    [subfamilias, rutaSeleccionada.familiaId]
+  );
+  const rutaOriginal = useMemo(() => ({
+    lineaId: String(modeloSeleccionado?.lineaId || ""),
+    familiaId: String(modeloSeleccionado?.familiaId || ""),
+    subfamiliaId: modeloSeleccionado?.subfamiliaId ? String(modeloSeleccionado.subfamiliaId) : "sin-subfamilia",
+  }), [modeloSeleccionado]);
+  const clasificacionCambio = esEdicion && Boolean(modeloSeleccionado)
+    && (rutaSeleccionada.lineaId !== rutaOriginal.lineaId
+      || rutaSeleccionada.familiaId !== rutaOriginal.familiaId
+      || rutaSeleccionada.subfamiliaId !== rutaOriginal.subfamiliaId);
+  const cambiosSkuPreview = useMemo(() => {
+    const cambios = [...(previewReclasificacion?.cambiosSku || [])];
+    cambios.sort((a, b) => {
+      if (String(a.productoId) === String(idProducto)) return -1;
+      if (String(b.productoId) === String(idProducto)) return 1;
+      return String(a.skuAnterior || "").localeCompare(String(b.skuAnterior || ""));
+    });
+    return cambios.slice(0, 8);
+  }, [previewReclasificacion, idProducto]);
 
   useEffect(() => {
     setFormData((prev) => {
@@ -296,23 +350,24 @@ export default function ProductoForm({
         : { ...prev, pesoVolumetrico: calculado };
     });
   }, [formData.alto, formData.ancho, formData.fondo]);
-  const rutaClasificacion = useMemo(
-    () => getRutaClasificacionModelo(modeloSeleccionado),
-    [modeloSeleccionado]
-  );
-
   useEffect(() => {
     const cargarCatalogos = async () => {
       try {
-        const [modelosData, materialesData, coloresData] = await Promise.all([
+        const [modelosData, materialesData, coloresData, lineasData, familiasData, subfamiliasData] = await Promise.all([
           obtenerModelos(),
           obtenerMaterialesActivos(),
           obtenerColores(),
+          obtenerLineasActivas(),
+          obtenerFamiliasActivas(),
+          obtenerSubfamiliasActivas(),
         ]);
 
         setModelos(getLista(modelosData));
         setMateriales(getLista(materialesData));
         setColores(getLista(coloresData));
+        setLineas(getLista(lineasData));
+        setFamilias(getLista(familiasData));
+        setSubfamilias(getLista(subfamiliasData));
       } catch (error) {
         console.error("Error cargando catalogos:", error);
       }
@@ -346,6 +401,64 @@ export default function ProductoForm({
 
     cargarNivelesModelo();
   }, [formData.modeloId]);
+
+  useEffect(() => {
+    if (!modeloSeleccionado) return;
+    setRutaSeleccionada({
+      lineaId: String(modeloSeleccionado.lineaId || ""),
+      familiaId: String(modeloSeleccionado.familiaId || ""),
+      subfamiliaId: modeloSeleccionado.subfamiliaId
+        ? String(modeloSeleccionado.subfamiliaId)
+        : "sin-subfamilia",
+    });
+  }, [modeloSeleccionado]);
+
+  useEffect(() => {
+    let vigente = true;
+
+    const cargarPreview = async () => {
+      const subfamiliaValida = rutaSeleccionada.subfamiliaId === "sin-subfamilia"
+        || Boolean(rutaSeleccionada.subfamiliaId);
+      const completa = rutaSeleccionada.lineaId && rutaSeleccionada.familiaId && subfamiliaValida;
+      if (!esEdicion || !idProducto || !clasificacionCambio || !completa) {
+        setPreviewReclasificacion(null);
+        return;
+      }
+
+      try {
+        setCargandoReclasificacion(true);
+        const preview = await previsualizarReclasificacion(idProducto, {
+          lineaId: Number(rutaSeleccionada.lineaId),
+          familiaId: Number(rutaSeleccionada.familiaId),
+          subfamiliaId: rutaSeleccionada.subfamiliaId === "sin-subfamilia"
+            ? null
+            : Number(rutaSeleccionada.subfamiliaId),
+        });
+        if (vigente) setPreviewReclasificacion(preview);
+      } catch (error) {
+        if (!vigente) return;
+        setPreviewReclasificacion({
+          permitido: false,
+          motivoBloqueo: error.message || "No se pudo validar la reclasificación.",
+          cambiosSku: [],
+        });
+      } finally {
+        if (vigente) setCargandoReclasificacion(false);
+      }
+    };
+
+    cargarPreview();
+    return () => {
+      vigente = false;
+    };
+  }, [
+    esEdicion,
+    idProducto,
+    clasificacionCambio,
+    rutaSeleccionada.lineaId,
+    rutaSeleccionada.familiaId,
+    rutaSeleccionada.subfamiliaId,
+  ]);
 
   const recargarImagenes = useCallback(async (productoActualId = idProducto, dataBase = null) => {
     if (!productoActualId) return;
@@ -444,6 +557,90 @@ export default function ProductoForm({
         delete copia[name];
         return copia;
       });
+    }
+  };
+
+  const handleRutaChange = (campo, value) => {
+    setRutaSeleccionada((prev) => {
+      if (campo === "lineaId") {
+        const familiaActual = familias.find((item) => String(item.id) === String(prev.familiaId))
+          || familias.find((item) => String(item.id) === rutaOriginal.familiaId);
+        const familiasDestino = familias.filter((item) =>
+          String(item.lineaId || item.linea?.id || "") === String(value));
+        const familiaEquivalente = encontrarEquivalente(familiasDestino, familiaActual);
+        if (!familiaEquivalente) {
+          return { lineaId: value, familiaId: "", subfamiliaId: "" };
+        }
+
+        const subfamiliaActual = subfamilias.find((item) => String(item.id) === String(prev.subfamiliaId))
+          || subfamilias.find((item) => String(item.id) === rutaOriginal.subfamiliaId);
+        const subfamiliasDestino = subfamilias.filter((item) =>
+          String(item.familiaId || item.familia?.id || "") === String(familiaEquivalente.id));
+        const subfamiliaEquivalente = encontrarEquivalente(subfamiliasDestino, subfamiliaActual);
+        return {
+          lineaId: value,
+          familiaId: String(familiaEquivalente.id),
+          subfamiliaId: subfamiliaEquivalente
+            ? String(subfamiliaEquivalente.id)
+            : (prev.subfamiliaId === "sin-subfamilia" ? "sin-subfamilia" : ""),
+        };
+      }
+
+      if (campo === "familiaId") {
+        const subfamiliaActual = subfamilias.find((item) => String(item.id) === String(prev.subfamiliaId))
+          || subfamilias.find((item) => String(item.id) === rutaOriginal.subfamiliaId);
+        const subfamiliasDestino = subfamilias.filter((item) =>
+          String(item.familiaId || item.familia?.id || "") === String(value));
+        const subfamiliaEquivalente = encontrarEquivalente(subfamiliasDestino, subfamiliaActual);
+        return {
+          ...prev,
+          familiaId: value,
+          subfamiliaId: subfamiliaEquivalente
+            ? String(subfamiliaEquivalente.id)
+            : (prev.subfamiliaId === "sin-subfamilia" ? "sin-subfamilia" : ""),
+        };
+      }
+
+      return { ...prev, [campo]: value };
+    });
+    setPreviewReclasificacion(null);
+  };
+
+  const guardarReclasificacion = async () => {
+    if (!clasificacionCambio || !previewReclasificacion?.permitido) return;
+    try {
+      setGuardandoReclasificacion(true);
+      const respuesta = await aplicarReclasificacion(idProducto, {
+        lineaId: Number(rutaSeleccionada.lineaId),
+        familiaId: Number(rutaSeleccionada.familiaId),
+        subfamiliaId: rutaSeleccionada.subfamiliaId === "sin-subfamilia"
+          ? null
+          : Number(rutaSeleccionada.subfamiliaId),
+      });
+      const skuActual = respuesta?.cambiosSku?.find((item) =>
+        String(item.productoId) === String(idProducto))?.skuNuevo;
+      if (skuActual) setFormData((prev) => ({ ...prev, sku: skuActual }));
+      setModelos((prev) => prev.map((modelo) => String(modelo.id) === String(formData.modeloId)
+        ? {
+            ...modelo,
+            lineaId: Number(rutaSeleccionada.lineaId),
+            lineaNombre: lineas.find((item) => String(item.id) === rutaSeleccionada.lineaId)?.nombre,
+            familiaId: Number(rutaSeleccionada.familiaId),
+            familiaNombre: familias.find((item) => String(item.id) === rutaSeleccionada.familiaId)?.nombre,
+            subfamiliaId: rutaSeleccionada.subfamiliaId === "sin-subfamilia"
+              ? null
+              : Number(rutaSeleccionada.subfamiliaId),
+            subfamiliaNombre: subfamilias.find((item) =>
+              String(item.id) === rutaSeleccionada.subfamiliaId)?.nombre || null,
+          }
+        : modelo));
+      setToastType("success");
+      setToastMessage(`Clasificación actualizada. Se recalcularon ${respuesta.variantesAfectadas} SKU(s) sin modificar existencias.`);
+    } catch (error) {
+      setToastType("danger");
+      setToastMessage(error.message || "No se pudo actualizar la clasificación.");
+    } finally {
+      setGuardandoReclasificacion(false);
     }
   };
 
@@ -636,11 +833,10 @@ export default function ProductoForm({
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.sku || !formData.nombre || !formData.modeloId || !formData.nivelId || !formData.materialId || !formData.colorId) {
-      alert("Completa los campos obligatorios: SKU, Nombre, Producto Base, Nivel, Material y Color");
+    if (!formData.nombre || !formData.modeloId || !formData.nivelId || !formData.materialId || !formData.colorId) {
+      alert("Completa los campos obligatorios: Nombre, Modelo, Categoría, Material y Color");
       return;
     }
-
     const dataToSend = {
       sku: formData.sku.trim(),
       nombre: formData.nombre.trim(),
@@ -668,6 +864,9 @@ export default function ProductoForm({
       const respuesta = esEdicion
         ? await actualizarProducto(idProducto, dataToSend)
         : await crearProducto(dataToSend);
+      if (respuesta?.sku) {
+        setFormData((prev) => ({ ...prev, sku: respuesta.sku }));
+      }
 
       if (esModal) {
         onSave(respuesta);
@@ -721,8 +920,8 @@ export default function ProductoForm({
             <div className="row g-3">
               <div className="col-md-4">
                 <label className="form-label fw-semibold">SKU <span className="text-danger">*</span></label>
-                <input type="text" name="sku" className={inputClass("sku")} value={formData.sku} onChange={handleChange} placeholder="Ej: ESF-01-CX" />
-                <small className="text-muted">Codigo unico del producto</small>
+                <input type="text" name="sku" className={inputClass("sku")} value={formData.sku} readOnly placeholder="Se genera con la clasificación" />
+                <small className="text-muted">Se calcula automáticamente con línea, familia, subfamilia, modelo, categoría, material y color</small>
               </div>
               <div className="col-md-8">
                 <label className="form-label fw-semibold">Nombre <span className="text-danger">*</span></label>
@@ -826,72 +1025,219 @@ export default function ProductoForm({
 
               <ProductoAccordionSection id={`producto-clasificacion-${accordionId}`} title="Clasificacion" icon="bi bi-tags">
             <div className="row g-3">
-              <div className="col-md-12">
-                <label className="form-label fw-semibold">Producto Base <span className="text-danger">*</span></label>
-                <select name="modeloId" className={selectClass("modeloId")} value={formData.modeloId} onChange={handleChange}>
-                  <option value="">Seleccionar producto base...</option>
-                  {modelos.map((modelo) => (
-                    <option key={modelo.id} value={modelo.id}>
-                      {getRutaClasificacionModelo(modelo).map((parte, index) => `${index ? " / " : ""}${parte}`).join("")} [{modelo.codigo}]
-                    </option>
-                  ))}
-                </select>
-                <small className="text-muted">Producto base al que pertenece este producto</small>
-                {modeloSeleccionado && (
-                  <div className="alert alert-light border mt-3 mb-0 py-2 px-3">
-                    <div className="small text-muted mb-1">Ruta de clasificación</div>
-                    <div className="d-flex flex-wrap align-items-center gap-2">
-                      {rutaClasificacion.map((parte, index) => (
-                        <span key={`${parte}-${index}`} className="d-flex align-items-center gap-2">
-                          {index > 0 && <i className="bi bi-chevron-right text-muted"></i>}
-                          <span className={`badge ${index === 2 && parte === "Sin subfamilia" ? "text-bg-secondary" : "text-bg-light border text-dark"}`}>{parte}</span>
-                        </span>
+              {esEdicion ? (
+                <>
+                  <div className="col-md-4">
+                    <label className="form-label fw-semibold">Línea <span className="text-danger">*</span></label>
+                    <select
+                      className="form-select border-soft"
+                      value={rutaSeleccionada.lineaId}
+                      onChange={(event) => handleRutaChange("lineaId", event.target.value)}
+                    >
+                      <option value="">Seleccionar línea...</option>
+                      {lineas.map((linea) => (
+                        <option key={linea.id} value={linea.id}>{linea.nombre}</option>
                       ))}
-                    </div>
-                    <div className="row g-2 mt-1 small">
-                      <div className="col-md-4"><strong>Línea:</strong> {modeloSeleccionado.lineaNombre || "No asignada"}</div>
-                      <div className="col-md-4"><strong>Familia:</strong> {modeloSeleccionado.familiaNombre || "No asignada"}</div>
-                      <div className="col-md-4"><strong>Subfamilia:</strong> {modeloSeleccionado.subfamiliaNombre || "Sin subfamilia"}</div>
+                    </select>
+                  </div>
+                  <div className="col-md-4">
+                    <label className="form-label fw-semibold">Familia <span className="text-danger">*</span></label>
+                    <select
+                      className="form-select border-soft"
+                      value={rutaSeleccionada.familiaId}
+                      onChange={(event) => handleRutaChange("familiaId", event.target.value)}
+                      disabled={!rutaSeleccionada.lineaId}
+                    >
+                      <option value="">Seleccionar familia...</option>
+                      {familiasClasificacion.map((familia) => (
+                        <option key={familia.id} value={familia.id}>{familia.nombre}</option>
+                      ))}
+                    </select>
+                    {rutaSeleccionada.lineaId && !familiasClasificacion.length && (
+                      <div className="small text-danger mt-1">
+                        Esta línea no tiene familias.
+                        <button
+                          type="button"
+                          className="btn btn-link btn-sm p-0 ms-1 align-baseline"
+                          onClick={() => navigate(`/familias/nuevo?lineaId=${rutaSeleccionada.lineaId}`)}
+                        >
+                          Crear familia
+                        </button>
+                        <span className="text-muted"> o selecciona otra línea.</span>
+                      </div>
+                    )}
+                    {rutaSeleccionada.lineaId && familiasClasificacion.length > 0 && !rutaSeleccionada.familiaId && (
+                      <div className="small text-warning mt-1">
+                        La familia anterior no existe en esta línea. Selecciona una de destino o
+                        <button
+                          type="button"
+                          className="btn btn-link btn-sm p-0 ms-1 align-baseline"
+                          onClick={() => navigate(`/familias/nuevo?lineaId=${rutaSeleccionada.lineaId}`)}
+                        >
+                          crea una nueva
+                        </button>.
+                      </div>
+                    )}
+                  </div>
+                  <div className="col-md-4">
+                    <label className="form-label fw-semibold">Subfamilia <span className="text-danger">*</span></label>
+                    <select
+                      className="form-select border-soft"
+                      value={rutaSeleccionada.subfamiliaId}
+                      onChange={(event) => handleRutaChange("subfamiliaId", event.target.value)}
+                      disabled={!rutaSeleccionada.familiaId}
+                    >
+                      <option value="">Seleccionar subfamilia...</option>
+                      <option value="sin-subfamilia">Sin subfamilia</option>
+                      {subfamiliasClasificacion.map((subfamilia) => (
+                        <option key={subfamilia.id} value={subfamilia.id}>{subfamilia.nombre}</option>
+                      ))}
+                    </select>
+                    {rutaSeleccionada.familiaId && !subfamiliasClasificacion.length && (
+                      <div className="small text-warning mt-1">
+                        Esta familia no tiene subfamilias.
+                        <button
+                          type="button"
+                          className="btn btn-link btn-sm p-0 ms-1 align-baseline"
+                          onClick={() => navigate(`/subfamilias/nuevo?familiaId=${rutaSeleccionada.familiaId}`)}
+                        >
+                          Crear subfamilia
+                        </button>
+                        <span className="text-muted"> o elige “Sin subfamilia”.</span>
+                      </div>
+                    )}
+                    {rutaSeleccionada.familiaId && subfamiliasClasificacion.length > 0 && !rutaSeleccionada.subfamiliaId && (
+                      <div className="small text-warning mt-1">
+                        La subfamilia anterior no existe aquí. Selecciona una de destino o
+                        <button
+                          type="button"
+                          className="btn btn-link btn-sm p-0 ms-1 align-baseline"
+                          onClick={() => navigate(`/subfamilias/nuevo?familiaId=${rutaSeleccionada.familiaId}`)}
+                        >
+                          crea una nueva
+                        </button>.
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="col-12">
+                    <div className="alert alert-light border mb-0">
+                      <div className="fw-semibold mb-2">Datos que se conservarán sin cambios</div>
+                      <div className="row g-2 small">
+                        <div className="col-md-3"><strong>Modelo:</strong> [{modeloSeleccionado?.codigo}] {modeloSeleccionado?.nombre}</div>
+                        <div className="col-md-3"><strong>Categoría:</strong> {niveles.find((item) => String(item.id) === String(formData.nivelId))?.nombre || "—"}</div>
+                        <div className="col-md-3"><strong>Material:</strong> {materiales.find((item) => String(item.id) === String(formData.materialId))?.nombre || "—"}</div>
+                        <div className="col-md-3"><strong>Color:</strong> {colores.find((item) => String(item.id) === String(formData.colorId))?.nombre || "—"}</div>
+                      </div>
                     </div>
                   </div>
-                )}
-              </div>
-              <div className="col-md-6">
-                <label className="form-label fw-semibold">Categoria del modelo <span className="text-danger">*</span></label>
-                <select name="nivelId" className={selectClass("nivelId")} value={formData.nivelId} onChange={handleChange}>
-                  <option value="">{formData.modeloId ? "Seleccionar categoria..." : "Primero selecciona un modelo..."}</option>
-                  {niveles.map((nivel) => (
-                    <option key={nivel.id} value={nivel.id}>[{nivel.codigo}] {nivel.nombre}</option>
-                  ))}
-                </select>
-                <small className="text-muted">Solo se muestran categorias propias del modelo</small>
-              </div>
-              <div className="col-md-6">
-                <label className="form-label fw-semibold">Material <span className="text-danger">*</span></label>
-                <select name="materialId" className={selectClass("materialId")} value={formData.materialId} onChange={handleChange}>
-                  <option value="">Seleccionar material...</option>
-                  {materiales.map((material) => (
-                    <option key={material.id} value={material.id}>[{material.codigo}] {material.nombre}</option>
-                  ))}
-                </select>
-                <small className="text-muted">Ej: Natural, Formaica, Laminado</small>
-              </div>
-              <div className="col-md-6">
-                <label className="form-label fw-semibold">Color <span className="text-danger">*</span></label>
-                <select name="colorId" className={selectClass("colorId")} value={formData.colorId} onChange={handleChange}>
-                  <option value="">Seleccionar color...</option>
-                  {colores.map((color) => (
-                    <option key={color.id} value={color.id}>[{color.codigo}] {color.nombre}</option>
-                  ))}
-                </select>
-                <small className="text-muted">Color del producto si aplica</small>
-              </div>
+
+                <div className="col-12">
+                  <div className="producto-reclasificacion p-3 border rounded-3">
+                    <div className="d-flex flex-wrap justify-content-between gap-2">
+                      <div>
+                        <div className="fw-semibold">Vista previa de reclasificación</div>
+                        <div className="small text-muted">
+                          Se conserva el mismo modelo y sus variantes. Solo cambia la ruta y se recalculan los SKU; las existencias no se modifican.
+                        </div>
+                      </div>
+                      <span className="badge text-bg-light border text-dark">
+                        <i className="bi bi-shield-check me-1"></i>
+                        Validación comercial
+                      </span>
+                    </div>
+                    {cargandoReclasificacion && (
+                      <div className="small text-muted mt-2">Calculando SKU y revisando historial...</div>
+                    )}
+                    {!clasificacionCambio && (
+                      <div className="small text-muted mt-2">Selecciona una nueva línea, familia o subfamilia para validar el cambio.</div>
+                    )}
+                    {!cargandoReclasificacion && previewReclasificacion && (
+                      <div className={`alert ${previewReclasificacion.permitido ? "alert-info" : "alert-danger"} mt-3 mb-0 py-2`}>
+                        {previewReclasificacion.permitido ? (
+                          <>
+                            <div className="small text-muted">{previewReclasificacion.rutaDestino}</div>
+                            <div className="small fw-semibold mb-1">
+                              Se recalcularán {previewReclasificacion.variantesAfectadas} variante(s) del mismo modelo.
+                            </div>
+                            {cambiosSkuPreview.map((cambio) => (
+                              <div className="text-break" key={cambio.productoId}>
+                                <span className="text-muted">{cambio.skuAnterior}</span>
+                                <i className="bi bi-arrow-right mx-2"></i>
+                                <strong>{cambio.skuNuevo}</strong>
+                              </div>
+                            ))}
+                            {(previewReclasificacion.cambiosSku || []).length > cambiosSkuPreview.length && (
+                              <div className="small text-muted mt-1">
+                                Y {(previewReclasificacion.cambiosSku || []).length - cambiosSkuPreview.length} variante(s) más.
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <div className="fw-semibold">No se puede guardar esta clasificación.</div>
+                            <div className="small">{previewReclasificacion.motivoBloqueo}</div>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                </>
+              ) : (
+                <>
+                  <div className="col-md-6">
+                    <label className="form-label fw-semibold">Producto base <span className="text-danger">*</span></label>
+                    <select name="modeloId" className={selectClass("modeloId")} value={formData.modeloId} onChange={handleChange}>
+                      <option value="">Seleccionar producto base...</option>
+                      {modelos.map((modelo) => (
+                        <option key={modelo.id} value={modelo.id}>
+                          {modelo.lineaNombre} / {modelo.familiaNombre} / {modelo.subfamiliaNombre || "Sin subfamilia"} / {modelo.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="col-md-6">
+                    <label className="form-label fw-semibold">Categoría <span className="text-danger">*</span></label>
+                    <select name="nivelId" className={selectClass("nivelId")} value={formData.nivelId} onChange={handleChange}>
+                      <option value="">Seleccionar categoría...</option>
+                      {niveles.map((nivel) => <option key={nivel.id} value={nivel.id}>[{nivel.codigo}] {nivel.nombre}</option>)}
+                    </select>
+                  </div>
+                  <div className="col-md-6">
+                    <label className="form-label fw-semibold">Material <span className="text-danger">*</span></label>
+                    <select name="materialId" className={selectClass("materialId")} value={formData.materialId} onChange={handleChange}>
+                      <option value="">Seleccionar material...</option>
+                      {materiales.map((material) => <option key={material.id} value={material.id}>[{material.codigo}] {material.nombre}</option>)}
+                    </select>
+                  </div>
+                  <div className="col-md-6">
+                    <label className="form-label fw-semibold">Color <span className="text-danger">*</span></label>
+                    <select name="colorId" className={selectClass("colorId")} value={formData.colorId} onChange={handleChange}>
+                      <option value="">Seleccionar color...</option>
+                      {colores.map((color) => <option key={color.id} value={color.id}>[{color.codigo}] {color.nombre}</option>)}
+                    </select>
+                  </div>
+                </>
+              )}
             </div>
             <SectionFooter>
-              <button type="submit" className="btn producto-form-primary">
-                <i className="bi bi-save me-2"></i>
-                Guardar clasificacion
-              </button>
+              {esEdicion ? (
+                <button
+                  type="button"
+                  className="btn producto-form-primary"
+                  onClick={guardarReclasificacion}
+                  disabled={guardandoReclasificacion || cargandoReclasificacion || !clasificacionCambio || !previewReclasificacion?.permitido}
+                >
+                  <i className="bi bi-save me-2"></i>
+                  {guardandoReclasificacion ? "Guardando..." : "Guardar clasificación y recalcular SKU"}
+                </button>
+              ) : (
+                <button type="submit" className="btn producto-form-primary">
+                  <i className="bi bi-save me-2"></i>
+                  Guardar clasificación
+                </button>
+              )}
             </SectionFooter>
               </ProductoAccordionSection>
 

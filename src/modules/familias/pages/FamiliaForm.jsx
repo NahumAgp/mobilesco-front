@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { familiaGateway } from "../services/familiaGateway.js";
 import { lineaProductoGateway } from "../../lineas-producto/services/lineaProductoGateway.js";
@@ -10,7 +10,9 @@ import { useGeneratedCatalogCode } from "../../../hooks/useGeneratedCatalogCode.
 
 export default function FamiliaForm({ familiaId }) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const esEdicion = Boolean(familiaId);
+  const lineaInicialId = !esEdicion ? searchParams.get("lineaId") || "" : "";
   const [erroresBackend, setErroresBackend] = useState({});
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
@@ -19,7 +21,7 @@ export default function FamiliaForm({ familiaId }) {
     codigo: "",
     nombre: "",
     descripcion: "",
-    lineaId: "",
+    lineaId: lineaInicialId,
     activo: true
   });
   const [lineas, setLineas] = useState([]);
