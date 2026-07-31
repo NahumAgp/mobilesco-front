@@ -1,5 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
-import { AlertCircle, ArrowRight, FileText, PackageSearch, Plus, RefreshCw } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowRight,
+  Boxes,
+  ClipboardList,
+  CreditCard,
+  FileText,
+  PackageCheck,
+  PackageSearch,
+  Plus,
+  RefreshCw,
+  ShoppingCart,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { getUser, hasPermission } from "../../auth/services/authService";
 import { obtenerResumenTablero } from "../services/tablero";
@@ -52,6 +64,9 @@ export default function Tablero() {
   const user = getUser();
   const puedeVerCotizaciones = hasPermission(user, "VIEW_QUOTES");
   const puedeVerInventario = hasPermission(user, "VIEW_INVENTORY");
+  const puedeVerCompras = hasPermission(user, "VIEW_PURCHASES");
+  const puedeVerProductos = hasPermission(user, "VIEW_PRODUCTS");
+  const puedeVerRequisiciones = hasPermission(user, "VIEW_WAREHOUSE_REQUISITIONS");
   const [periodo, setPeriodo] = useState("MES");
   const [resumen, setResumen] = useState(null);
   const [cargando, setCargando] = useState(true);
@@ -105,6 +120,54 @@ export default function Tablero() {
       color: "secondary",
     },
   ] : [];
+  const operacion = resumen?.indicadoresOperativos;
+  const indicadoresOperativos = operacion ? [
+    {
+      titulo: "Stock bajo",
+      valor: operacion.insumosStockBajo,
+      nota: "Insumos en mínimo o por debajo",
+      icono: PackageSearch,
+      ruta: "/insumos?stockBajo=true",
+      permitido: puedeVerInventario,
+      tono: operacion.insumosStockBajo > 0 ? "danger" : "success",
+    },
+    {
+      titulo: "Requisiciones por atender",
+      valor: operacion.requisicionesPendientes,
+      nota: "Enviadas o en revisión",
+      icono: ClipboardList,
+      ruta: "/almacen/requisiciones",
+      permitido: puedeVerRequisiciones,
+      tono: "warning",
+    },
+    {
+      titulo: "Compras por recibir",
+      valor: operacion.comprasPendientesRecepcion,
+      nota: "Pendientes o recibidas parcialmente",
+      icono: ShoppingCart,
+      ruta: "/compras",
+      permitido: puedeVerCompras,
+      tono: "primary",
+    },
+    {
+      titulo: "Cuentas pendientes",
+      valor: operacion.cuentasPorPagarPendientes,
+      nota: `${moneda(operacion.saldoPorPagar)} por pagar`,
+      icono: CreditCard,
+      ruta: "/compras/cuentas-por-pagar",
+      permitido: puedeVerCompras,
+      tono: "danger",
+    },
+    {
+      titulo: "Productos activos",
+      valor: operacion.productosActivos,
+      nota: "Productos disponibles en catálogo",
+      icono: Boxes,
+      ruta: "/productos",
+      permitido: puedeVerProductos,
+      tono: "success",
+    },
+  ] : [];
 
   return (
     <div className="tab-page">
@@ -146,6 +209,38 @@ export default function Tablero() {
                 <small>{stat.nota}</small>
               </article>
             ))}
+          </section>
+
+          <section className={`tab-operations ${cargando ? "tab-refreshing" : ""}`} aria-labelledby="tab-operacion-title">
+            <div className="tab-section-heading">
+              <div>
+                <span>Operación en tiempo real</span>
+                <h2 id="tab-operacion-title">Indicadores de los módulos del ERP</h2>
+              </div>
+              <PackageCheck size={24} aria-hidden="true" />
+            </div>
+            <div className="tab-operation-grid">
+              {indicadoresOperativos.map((indicador) => {
+                const Icono = indicador.icono;
+                return (
+                  <button
+                    type="button"
+                    className={`tab-operation-card tab-operation-${indicador.tono}`}
+                    key={indicador.titulo}
+                    disabled={!indicador.permitido}
+                    onClick={() => navigate(indicador.ruta)}
+                  >
+                    <span className="tab-operation-icon"><Icono size={20} /></span>
+                    <span className="tab-operation-copy">
+                      <small>{indicador.titulo}</small>
+                      <strong>{indicador.valor}</strong>
+                      <em>{indicador.nota}</em>
+                    </span>
+                    {indicador.permitido && <ArrowRight className="tab-operation-arrow" size={17} />}
+                  </button>
+                );
+              })}
+            </div>
           </section>
 
           <div className={`tab-content ${cargando ? "tab-refreshing" : ""}`}>

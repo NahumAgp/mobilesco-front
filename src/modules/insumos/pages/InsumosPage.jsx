@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { useInsumos } from "../hooks/useInsumos";
 import { exportarInsumosExcel } from "../services/insumos.js";
@@ -37,6 +37,7 @@ function construirRangoPaginas(totalPages, currentPage) {
 
 export default function InsumosPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const user = getUser();
   const puedeGestionarInsumos = puedeGestionarCatalogoInsumos(user);
   const puedeGestionarCostos = puedeGestionarCostosInsumos(user);
@@ -49,7 +50,7 @@ export default function InsumosPage() {
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstatus, setFiltroEstatus] = useState("TODOS");
   const [soloActivos, setSoloActivos] = useState(false);
-  const [filtroStockBajo, setFiltroStockBajo] = useState(false);
+  const [filtroStockBajo, setFiltroStockBajo] = useState(searchParams.get("stockBajo") === "true");
   const [sortField, setSortField] = useState("nombre");
   const [sortDirection, setSortDirection] = useState("asc");
   const [exportandoExcel, setExportandoExcel] = useState(false);
