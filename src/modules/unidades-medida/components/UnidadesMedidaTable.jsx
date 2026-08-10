@@ -20,6 +20,8 @@ export default function UnidadesMedidaTable({
   data,
   onEditar,
   onEliminar,
+  canEdit,
+  canDelete,
   sortField,
   sortDirection,
   onSort
@@ -93,20 +95,20 @@ export default function UnidadesMedidaTable({
                 <td className="text-muted">{unidad.fechaRegistro || "-"}</td>
 
                 <td className="text-end unidades-actions">
-                  <button
+                  {canEdit && <button
                     className="btn btn-sm unidades-brand-outline me-2"
                     onClick={() => onEditar(unidad)}
                   >
                     <i className="bi bi-pencil-square me-1"></i>
                     Editar
-                  </button>
-                  <button
+                  </button>}
+                  {canDelete && <button
                     className="btn btn-sm unidades-brand-danger"
                     onClick={() => onEliminar(unidad.id)}
                   >
                     <i className="bi bi-trash me-1"></i>
                     Eliminar
-                  </button>
+                  </button>}
                 </td>
               </tr>
             ))

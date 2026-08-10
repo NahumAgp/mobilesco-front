@@ -3,15 +3,14 @@ import { useCallback, useEffect, useState } from "react";
 import { obtenerCompraPorId } from "../services/compras.js";
 import Card from "../../../components/ui/Card.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
-import { getUser } from "../../auth/services/authService.js";
-
-const ROLES_GESTION_COMPRAS = ["ADMIN", "SUPER_ADMIN", "DIRECTOR_GENERAL", "SUBDIRECCION_ADMINISTRATIVA", "JEFE_ALMACEN"];
+import { getUser, hasPermission } from "../../auth/services/authService.js";
 
 export default function CompraDetallePage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const user = getUser();
-  const puedeGestionarCompra = user?.roles?.some((rol) => ROLES_GESTION_COMPRAS.includes(rol));
+  const puedeGestionarCompra = hasPermission(user, "ACTION_PURCHASES_EDIT")
+    || hasPermission(user, "ACTION_PURCHASES_RECEIVE");
   const [compra, setCompra] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");

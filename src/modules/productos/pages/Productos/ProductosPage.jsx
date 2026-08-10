@@ -6,7 +6,7 @@ import CatalogFilters from "../../../../components/ui/CatalogFilters.jsx";
 import CatalogPagination from "../../../../components/ui/CatalogPagination.jsx";
 import ConfirmationDialog from "../../../../components/ui/ConfirmationDialog.jsx";
 import Toast from "../../../../components/ui/Toast.jsx";
-import { getUser } from "../../../auth/services/authService.js";
+import { getUser, hasPermission } from "../../../auth/services/authService.js";
 import ProductosTable from "./ProductosTable.jsx";
 import { useProductos } from "./useProductos";
 
@@ -35,9 +35,8 @@ export default function ProductosPage() {
   });
 
   const user = getUser();
-  const puedeEliminarDefinitivo = user?.roles?.some((rol) =>
-    ["ADMIN", "SUPER_ADMIN", "DIRECTOR_GENERAL"].includes(rol)
-  );
+  const puedeCrearProducto = hasPermission(user, "ACTION_PRODUCTS_CREATE");
+  const puedeEliminarDefinitivo = hasPermission(user, "ACTION_PRODUCTS_DELETE");
   const totalElements = pageInfo.totalElements || 0;
   const totalPages = pageInfo.totalPages || 0;
   const paginaActual = totalPages > 0 ? Math.min(page, totalPages - 1) : 0;
@@ -81,7 +80,7 @@ export default function ProductosPage() {
         title="Productos"
         subtitle="Catálogo de productos terminados"
         actions={
-          <button className="btn btn-success" onClick={() => navigate("/productos/nuevo")}>
+          puedeCrearProducto && <button className="btn btn-success" onClick={() => navigate("/productos/nuevo")}>
             <i className="bi bi-plus-circle me-2" aria-hidden="true"></i>
             Nuevo producto
           </button>

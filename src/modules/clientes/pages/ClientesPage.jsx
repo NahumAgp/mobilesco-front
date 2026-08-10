@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 import CatalogRowActions from "../../../components/ui/CatalogRowActions";
 import CatalogStatusBadge from "../../../components/ui/CatalogStatusBadge";
+import { getUser, hasPermission } from "../../auth/services/authService";
 import {
   cambiarEstatusCliente,
   obtenerClasificacionesCliente,
@@ -17,6 +18,7 @@ const estadoInicial = {
 
 export default function ClientesPage() {
   const navigate = useNavigate();
+  const puedeCrear = hasPermission(getUser(), "ACTION_CUSTOMERS_CREATE");
   const [filtros, setFiltros] = useState(estadoInicial);
   const [page, setPage] = useState(0);
   const [resultado, setResultado] = useState({ content: [], totalPages: 0, totalElements: 0 });
@@ -80,10 +82,10 @@ export default function ClientesPage() {
             Catálogo comercial preparado para cotizaciones y ventas.
           </p>
         </div>
-        <button className="btn btn-primary" onClick={() => navigate("/clientes/nuevo")}>
+        {puedeCrear && <button className="btn btn-primary" onClick={() => navigate("/clientes/nuevo")}>
           <i className="bi bi-person-plus me-2"></i>
           Nuevo cliente
-        </button>
+        </button>}
       </div>
 
       <div className="card border-0 shadow-sm mb-4">

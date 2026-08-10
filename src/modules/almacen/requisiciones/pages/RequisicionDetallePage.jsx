@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import { getUser } from "../../../auth/services/authService";
+import { getUser, hasPermission } from "../../../auth/services/authService";
 import { cambiarEstadoRequisicion, obtenerRequisicion } from "../services/requisiciones";
 
 const estadoClase = {
@@ -15,8 +15,7 @@ const estadoClase = {
 export default function RequisicionDetallePage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const roles = getUser()?.roles || [];
-  const puedeResolver = roles.some((rol) => ["ADMIN", "SUPER_ADMIN", "DIRECTOR_GENERAL", "SUBDIRECCION_ADMINISTRATIVA"].includes(rol));
+  const puedeResolver = hasPermission(getUser(), "ACTION_WAREHOUSE_REQUISITIONS_RESOLVE");
   const [requisicion, setRequisicion] = useState(null);
   const [comentario, setComentario] = useState("");
   const [cargando, setCargando] = useState(true);

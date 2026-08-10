@@ -7,7 +7,10 @@ import {
 
 describe('permisos de inventario', () => {
   it('separa catálogo, costos y ajustes para un perfil de almacén', () => {
-    const user = { roles: ['ALMACEN'], permisos: [] };
+    const user = {
+      roles: ['ALMACEN'],
+      permisos: ['ACTION_INVENTORY_CREATE', 'ACTION_STOCK_ADJUSTMENTS']
+    };
     expect(puedeGestionarCatalogoInsumos(user)).toBe(true);
     expect(puedeAjustarStockManual(user)).toBe(true);
     expect(puedeGestionarCostosInsumos(user)).toBe(false);

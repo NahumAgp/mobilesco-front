@@ -2,10 +2,9 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
-import { getUser } from "../../auth/services/authService";
+import { getUser, hasPermission } from "../../auth/services/authService";
 import { actualizarConceptoCif, crearConceptoCif, obtenerConceptoCif } from "../services/cif";
 
-const ROLES_GESTION_CIF = ["ADMIN", "SUPER_ADMIN", "SUBDIRECCION_ADMINISTRATIVA"];
 const FORM_INICIAL = {
   nombre: "",
   descripcion: "",
@@ -31,7 +30,7 @@ export default function CifFormPage() {
   const navigate = useNavigate();
   const esEdicion = Boolean(id);
   const user = getUser();
-  const puedeGestionar = user?.roles?.some((rol) => ROLES_GESTION_CIF.includes(rol));
+  const puedeGestionar = hasPermission(user, esEdicion ? "ACTION_CIF_EDIT" : "ACTION_CIF_CREATE");
   const [form, setForm] = useState(FORM_INICIAL);
   const [loading, setLoading] = useState(esEdicion);
   const [guardando, setGuardando] = useState(false);

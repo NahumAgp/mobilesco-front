@@ -9,11 +9,13 @@ import CatalogFilters from "../../../components/ui/CatalogFilters.jsx";
 import ConfirmationDialog from "../../../components/ui/ConfirmationDialog.jsx";
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
+import { getUser, hasPermission } from "../../auth/services/authService";
 
 const PAGE_SIZE = 10;
 
 export default function OperacionesPage() {
   const navigate = useNavigate();
+  const canCreate = hasPermission(getUser(), "ACTION_OPERATIONS_CREATE");
 
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
@@ -107,7 +109,7 @@ export default function OperacionesPage() {
         eyebrow="Producción"
         subtitle="Catálogo de operaciones de fabricación (mano de obra directa)"
         actions={
-          <button
+          canCreate && <button
             className="btn btn-success"
             onClick={() => navigate("/operaciones/nuevo")}
           >

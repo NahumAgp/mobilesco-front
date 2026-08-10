@@ -9,12 +9,15 @@ import { materialGateway } from "../services/materialGateway.js";
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
 import CatalogPagination from "../../../components/ui/CatalogPagination.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
+import { getUser, hasPermission } from "../../auth/services/authService";
 import "./MaterialesPage.css";
 
 const PAGE_SIZE = 10;
 
 export default function MaterialesPage() {
   const navigate = useNavigate();
+  const canCreate = hasPermission(getUser(), "ACTION_MATERIALS_CREATE");
+  const canExport = hasPermission(getUser(), "ACTION_MATERIALS_EXPORT");
 
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
@@ -143,20 +146,20 @@ export default function MaterialesPage() {
         subtitle="Catálogo de materiales e insumos"
         actions={
           <div className="materiales-header-actions">
-            <button
+            {canExport && <button
               className="btn btn-outline-success me-2"
               onClick={exportarExcel}
               disabled={exportandoExcel}
             >
               <i className="bi bi-file-earmark-excel me-1"></i>
               {exportandoExcel ? "Generando..." : "Reporte Excel"}
-            </button>
-            <button
+            </button>}
+            {canCreate && <button
               className="btn materiales-brand-primary"
               onClick={() => navigate("/materiales/nuevo")}
             >
               Nuevo Material
-            </button>
+            </button>}
           </div>
         }
       />

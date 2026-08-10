@@ -7,12 +7,14 @@ import { colorGateway } from "../services/colorGateway.js";
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
 import CatalogPagination from "../../../components/ui/CatalogPagination.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
+import { getUser, hasPermission } from "../../auth/services/authService";
 import "./ColorPage.css";
 
 const PAGE_SIZE = 10;
 
 export default function ColorPage() {
   const navigate = useNavigate();
+  const canCreate = hasPermission(getUser(), "ACTION_COLORS_CREATE");
 
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
@@ -72,7 +74,7 @@ export default function ColorPage() {
         title="Colores"
         subtitle="Catalogo de colores"
         actions={
-          <button className="btn colores-brand-primary" onClick={() => navigate("/colores/nuevo")}>
+          canCreate && <button className="btn colores-brand-primary" onClick={() => navigate("/colores/nuevo")}>
             Nuevo Color
           </button>
         }

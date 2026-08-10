@@ -9,12 +9,15 @@ import FamiliasTable from "./FamiliasTable";
 import PageHeader from "../../../components/Sistema/PageHeader";
 import CatalogPagination from "../../../components/ui/CatalogPagination";
 import Toast from "../../../components/ui/Toast";
+import { getUser, hasPermission } from "../../auth/services/authService";
 import "./FamiliasPage.css";
 
 const PAGE_SIZE = 10;
 
 export default function FamiliasPage() {
   const navigate = useNavigate();
+  const canCreate = hasPermission(getUser(), "ACTION_FAMILIES_CREATE");
+  const canExport = hasPermission(getUser(), "ACTION_FAMILIES_EXPORT");
 
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
@@ -180,20 +183,20 @@ export default function FamiliasPage() {
         subtitle="Administración paginada de familias de productos"
         actions={
           <div className="familias-header-actions">
-            <button
+            {canExport && <button
               className="btn btn-outline-success me-2"
               onClick={exportarExcel}
               disabled={exportandoExcel}
             >
               <i className="bi bi-file-earmark-excel me-1"></i>
               {exportandoExcel ? "Generando..." : "Reporte Excel"}
-            </button>
-            <button
+            </button>}
+            {canCreate && <button
               className="btn familias-brand-primary"
               onClick={() => navigate("/familias/nuevo")}
             >
               Nueva familia
-            </button>
+            </button>}
           </div>
         }
       />

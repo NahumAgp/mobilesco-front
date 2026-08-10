@@ -50,6 +50,9 @@ const CentrosTrabajoPage = lazy(() => import("./modules/centros-trabajo/pages/Ce
 const CentrosTrabajoFormPage = lazy(() => import("./modules/centros-trabajo/pages/CentroTrabajoFormPage.jsx"));
 const OperacionesPage = lazy(() => import("./modules/operaciones/pages/OperacionesPage.jsx"));
 const OperacionesFormPage = lazy(() => import("./modules/operaciones/pages/OperacionFormPage.jsx"));
+const OrdenesProduccionPage = lazy(() => import("./modules/ordenes-produccion/pages/OrdenesProduccionPage.jsx"));
+const OrdenProduccionFormPage = lazy(() => import("./modules/ordenes-produccion/pages/OrdenProduccionFormPage.jsx"));
+const OrdenProduccionDetallePage = lazy(() => import("./modules/ordenes-produccion/pages/OrdenProduccionDetallePage.jsx"));
 const CifPage = lazy(() => import("./modules/cif/pages/CifPage.jsx"));
 const CifFormPage = lazy(() => import("./modules/cif/pages/CifFormPage.jsx"));
 const ComprasPage = lazy(() => import("./modules/compras/pages/ComprasPage.jsx"));
@@ -79,25 +82,9 @@ function ProductoDetalleRedirect() {
   return <Navigate to={id ? `/productos/${id}` : "/productos"} replace />;
 }
 
-const ROLES_GESTION_COMPRAS = ["ADMIN", "SUPER_ADMIN", "DIRECTOR_GENERAL", "SUBDIRECCION_ADMINISTRATIVA", "JEFE_ALMACEN"];
-const ROLES_GESTION_INSUMOS = ["ADMIN", "SUPER_ADMIN", "DIRECTOR_GENERAL", "SUBDIRECCION_ADMINISTRATIVA", "JEFE_ALMACEN", "ALMACEN"];
-const ROLES_GESTION_SALIDAS = ["ADMIN", "SUPER_ADMIN", "DIRECTOR_GENERAL", "SUBDIRECCION_ADMINISTRATIVA", "JEFE_ALMACEN", "ALMACEN"];
-
 export default function App() {
   const withPermission = (element, permission) => (
     <RoleRoute permission={permission}>
-      {element}
-    </RoleRoute>
-  );
-
-  const withRoles = (element, allowedRoles) => (
-    <RoleRoute allowedRoles={allowedRoles}>
-      {element}
-    </RoleRoute>
-  );
-
-  const withPermissionOrRoles = (element, permission, allowedRoles) => (
-    <RoleRoute permission={permission} allowedRoles={allowedRoles}>
       {element}
     </RoleRoute>
   );
@@ -133,18 +120,18 @@ export default function App() {
         <Route path="/nuevaCotizacion" element={<Navigate to="/cotizaciones/nueva" replace />} />
 
         <Route path="/cotizaciones" element={withPermission(<Cotizacion />, "VIEW_QUOTES")} />
-        <Route path="/cotizaciones/nueva" element={withPermission(<NuevaCotizacion />, "VIEW_QUOTES")} />
+        <Route path="/cotizaciones/nueva" element={withPermission(<NuevaCotizacion />, ["VIEW_QUOTES", "ACTION_QUOTES_CREATE"])} />
 
         {/* CLIENTES */}
         <Route path="/clientes" element={withPermission(<ClientesPage />, "VIEW_CUSTOMERS")} />
-        <Route path="/clientes/nuevo" element={withPermission(<ClienteFormPage />, "VIEW_CUSTOMERS")} />
-        <Route path="/clientes/:id" element={withPermission(<ClienteFormPage />, "VIEW_CUSTOMERS")} />
+        <Route path="/clientes/nuevo" element={withPermission(<ClienteFormPage />, ["VIEW_CUSTOMERS", "ACTION_CUSTOMERS_CREATE"])} />
+        <Route path="/clientes/:id" element={withPermission(<ClienteFormPage />, ["VIEW_CUSTOMERS", "ACTION_CUSTOMERS_EDIT"])} />
 
         {/* EMPLEADOS */}
-        <Route path="/empleados/nuevo" element={withPermission(<EmpleadoFormPage />, "VIEW_EMPLOYEES")} />
-        <Route path="/empleados/:id" element={withPermission(<EmpleadoFormPage />, "VIEW_EMPLOYEES")} />
+        <Route path="/empleados/nuevo" element={withPermission(<EmpleadoFormPage />, ["VIEW_EMPLOYEES", "ACTION_EMPLOYEES_CREATE"])} />
+        <Route path="/empleados/:id" element={withPermission(<EmpleadoFormPage />, ["VIEW_EMPLOYEES", "ACTION_EMPLOYEES_EDIT"])} />
         <Route path="/empleados" element={withPermission(<EmpleadosPage />, "VIEW_EMPLOYEES")} />
-        <Route path="/areas-trabajo" element={withPermission(<AreasTrabajoPage />, "VIEW_EMPLOYEES")} />
+        <Route path="/areas-trabajo" element={withPermission(<AreasTrabajoPage />, "VIEW_WORK_AREAS")} />
 
         <Route path="/perfil" element={<PerfilPage />} />
 
@@ -152,7 +139,6 @@ export default function App() {
           path="/usuarios/accesos"
           element={
             <RoleRoute
-              allowedRoles={["ADMIN", "DIRECTOR_GENERAL", "SUBDIRECCION_ADMINISTRATIVA"]}
               permission="VIEW_USERS"
             >
               <UsuariosAccesoPage />
@@ -162,62 +148,62 @@ export default function App() {
 
         {/* PROVEEDORES */}
         <Route path="/proveedores" element={withPermission(<ProveedoresPage />, "VIEW_SUPPLIERS")} />
-        <Route path="/proveedores/nuevo" element={withPermission(<ProveedorFormPage />, "VIEW_SUPPLIERS")} />
-        <Route path="/proveedores/:id" element={withPermission(<ProveedorFormPage />, "VIEW_SUPPLIERS")} />
+        <Route path="/proveedores/nuevo" element={withPermission(<ProveedorFormPage />, ["VIEW_SUPPLIERS", "ACTION_SUPPLIERS_CREATE"])} />
+        <Route path="/proveedores/:id" element={withPermission(<ProveedorFormPage />, ["VIEW_SUPPLIERS", "ACTION_SUPPLIERS_EDIT"])} />
 
         {/* UNIDADES DE MEDIDA */}
-        <Route path="/unidades-medida" element={withPermission(<UnidadesMedidaPage />, "VIEW_INVENTORY")} />
-        <Route path="/unidades-medida/nuevo" element={withPermission(<UnidadMedidaFormPage />, "VIEW_INVENTORY")} />
-        <Route path="/unidades-medida/:id" element={withPermission(<UnidadMedidaFormPage />, "VIEW_INVENTORY")} />
+        <Route path="/unidades-medida" element={withPermission(<UnidadesMedidaPage />, "VIEW_MEASURE_UNITS")} />
+        <Route path="/unidades-medida/nuevo" element={withPermission(<UnidadMedidaFormPage />, ["VIEW_MEASURE_UNITS", "ACTION_MEASURE_UNITS_CREATE"])} />
+        <Route path="/unidades-medida/:id" element={withPermission(<UnidadMedidaFormPage />, ["VIEW_MEASURE_UNITS", "ACTION_MEASURE_UNITS_EDIT"])} />
 
         {/* FAMILIAS */}
-        <Route path="/familias" element={withPermission(<FamiliasPage />, "VIEW_PRODUCTS")} />
-        <Route path="/familias/nuevo" element={withPermission(<FamiliaFormPage />, "VIEW_PRODUCTS")} />
-        <Route path="/familias/:id" element={withPermission(<FamiliaFormPage />, "VIEW_PRODUCTS")} />
+        <Route path="/familias" element={withPermission(<FamiliasPage />, "VIEW_FAMILIES")} />
+        <Route path="/familias/nuevo" element={withPermission(<FamiliaFormPage />, ["VIEW_FAMILIES", "ACTION_FAMILIES_CREATE"])} />
+        <Route path="/familias/:id" element={withPermission(<FamiliaFormPage />, ["VIEW_FAMILIES", "ACTION_FAMILIES_EDIT"])} />
 
         {/* SUBFAMILIAS */}
-        <Route path="/subfamilias" element={withPermission(<SubfamiliasPage />, "VIEW_PRODUCTS")} />
-        <Route path="/subfamilias/nuevo" element={withPermission(<SubfamiliaFormPage />, "VIEW_PRODUCTS")} />
-        <Route path="/subfamilias/:id" element={withPermission(<SubfamiliaFormPage />, "VIEW_PRODUCTS")} />
+        <Route path="/subfamilias" element={withPermission(<SubfamiliasPage />, "VIEW_SUBFAMILIES")} />
+        <Route path="/subfamilias/nuevo" element={withPermission(<SubfamiliaFormPage />, ["VIEW_SUBFAMILIES", "ACTION_SUBFAMILIES_CREATE"])} />
+        <Route path="/subfamilias/:id" element={withPermission(<SubfamiliaFormPage />, ["VIEW_SUBFAMILIES", "ACTION_SUBFAMILIES_EDIT"])} />
 
         {/* LINEA - PRODUCTO */}
-        <Route path="/lineas-producto" element={withPermission(<LineaProductoPage />, "VIEW_PRODUCTS")} />
-        <Route path="/lineas-producto/nuevo" element={withPermission(<LineaProductoFormPage />, "VIEW_PRODUCTS")} />
-        <Route path="/lineas-producto/:id" element={withPermission(<LineaProductoFormPage />, "VIEW_PRODUCTS")} />
+        <Route path="/lineas-producto" element={withPermission(<LineaProductoPage />, "VIEW_PRODUCT_LINES")} />
+        <Route path="/lineas-producto/nuevo" element={withPermission(<LineaProductoFormPage />, ["VIEW_PRODUCT_LINES", "ACTION_PRODUCT_LINES_CREATE"])} />
+        <Route path="/lineas-producto/:id" element={withPermission(<LineaProductoFormPage />, ["VIEW_PRODUCT_LINES", "ACTION_PRODUCT_LINES_EDIT"])} />
 
         <Route path="/categorias/*" element={<Navigate to="/modelos" replace />} />
 
         {/* MATERIALES */}
-        <Route path="/materiales" element={withPermission(<MaterialesPage />, "VIEW_PRODUCTS")} />
-        <Route path="/materiales/nuevo" element={withPermission(<MaterialFormPage />, "VIEW_PRODUCTS")} />
-        <Route path="/materiales/:id" element={withPermission(<MaterialFormPage />, "VIEW_PRODUCTS")} />
+        <Route path="/materiales" element={withPermission(<MaterialesPage />, "VIEW_MATERIALS")} />
+        <Route path="/materiales/nuevo" element={withPermission(<MaterialFormPage />, ["VIEW_MATERIALS", "ACTION_MATERIALS_CREATE"])} />
+        <Route path="/materiales/:id" element={withPermission(<MaterialFormPage />, ["VIEW_MATERIALS", "ACTION_MATERIALS_EDIT"])} />
 
         {/* MODELOS */}
-        <Route path="/modelos" element={withPermission(<ModelosPage />, "VIEW_PRODUCTS")} />
-        <Route path="/modelos/nuevo" element={withPermission(<ModelosFormPage />, "VIEW_PRODUCTS")} />
-        <Route path="/modelos/:id" element={withPermission(<ModelosFormPage />, "VIEW_PRODUCTS")} />
+        <Route path="/modelos" element={withPermission(<ModelosPage />, "VIEW_MODELS")} />
+        <Route path="/modelos/nuevo" element={withPermission(<ModelosFormPage />, ["VIEW_MODELS", "ACTION_MODELS_CREATE"])} />
+        <Route path="/modelos/:id" element={withPermission(<ModelosFormPage />, ["VIEW_MODELS", "ACTION_MODELS_EDIT"])} />
 
         {/* COLORES */}
-        <Route path="/colores" element={withPermission(<ColorPage />, "VIEW_PRODUCTS")} />
-        <Route path="/colores/nuevo" element={withPermission(<ColorFormPage />, "VIEW_PRODUCTS")} />
-        <Route path="/colores/:id" element={withPermission(<ColorFormPage />, "VIEW_PRODUCTS")} />
+        <Route path="/colores" element={withPermission(<ColorPage />, "VIEW_COLORS")} />
+        <Route path="/colores/nuevo" element={withPermission(<ColorFormPage />, ["VIEW_COLORS", "ACTION_COLORS_CREATE"])} />
+        <Route path="/colores/:id" element={withPermission(<ColorFormPage />, ["VIEW_COLORS", "ACTION_COLORS_EDIT"])} />
 
         {/* Inusmos */}
         <Route path="/insumos" element={withPermission(<InsumosPage />, "VIEW_INVENTORY")} />
-        <Route path="/insumos/tipos" element={withPermission(<TiposInsumoPage />, "VIEW_INVENTORY")} />
-        <Route path="/insumos/costos" element={withPermission(<InsumosCostosPage />, "ACTION_INSUMOS_COSTS")} />
-        <Route path="/insumos/nuevo" element={withRoles(<InsumosFormPage />, ROLES_GESTION_INSUMOS)} />
-        <Route path="/insumos/:id" element={withRoles(<InsumosFormPage />, ROLES_GESTION_INSUMOS)} />
-        <Route path="/salidas-insumos" element={withPermission(<SalidasInsumosPage />, "VIEW_INVENTORY")} />
-        <Route path="/salidas-insumos/nueva" element={withRoles(<SalidasInsumosNuevaPage />, ROLES_GESTION_SALIDAS)} />
-        <Route path="/almacen/requisiciones" element={withPermissionOrRoles(<RequisicionesPage />, "VIEW_WAREHOUSE_REQUISITIONS", ["JEFE_ALMACEN"])} />
-        <Route path="/almacen/requisiciones/nueva" element={withRoles(<RequisicionNuevaPage />, ["ADMIN", "SUPER_ADMIN", "DIRECTOR_GENERAL", "JEFE_ALMACEN"])} />
-        <Route path="/almacen/requisiciones/:id" element={withPermissionOrRoles(<RequisicionDetallePage />, "VIEW_WAREHOUSE_REQUISITIONS", ["JEFE_ALMACEN"])} />
+        <Route path="/insumos/tipos" element={withPermission(<TiposInsumoPage />, "VIEW_INPUT_TYPES")} />
+        <Route path="/insumos/costos" element={withPermission(<InsumosCostosPage />, ["VIEW_INVENTORY", "ACTION_INSUMOS_COSTS"])} />
+        <Route path="/insumos/nuevo" element={withPermission(<InsumosFormPage />, ["VIEW_INVENTORY", "ACTION_INVENTORY_CREATE"])} />
+        <Route path="/insumos/:id" element={withPermission(<InsumosFormPage />, ["VIEW_INVENTORY", "ACTION_INVENTORY_EDIT"])} />
+        <Route path="/salidas-insumos" element={withPermission(<SalidasInsumosPage />, "VIEW_INVENTORY_OUTPUTS")} />
+        <Route path="/salidas-insumos/nueva" element={withPermission(<SalidasInsumosNuevaPage />, ["VIEW_INVENTORY_OUTPUTS", "ACTION_INVENTORY_OUTPUTS_CREATE"])} />
+        <Route path="/almacen/requisiciones" element={withPermission(<RequisicionesPage />, "VIEW_WAREHOUSE_REQUISITIONS")} />
+        <Route path="/almacen/requisiciones/nueva" element={withPermission(<RequisicionNuevaPage />, ["VIEW_WAREHOUSE_REQUISITIONS", "ACTION_WAREHOUSE_REQUISITIONS_CREATE"])} />
+        <Route path="/almacen/requisiciones/:id" element={withPermission(<RequisicionDetallePage />, "VIEW_WAREHOUSE_REQUISITIONS")} />
         <Route
           path="/almacen/entradas"
           element={
             <RoleRoute
-              allowedRoles={ROLES_GESTION_COMPRAS}
+              permission="VIEW_WAREHOUSE_RECEIPTS"
             >
               <EntradasPage />
             </RoleRoute>
@@ -227,7 +213,7 @@ export default function App() {
           path="/almacen/entradas/:id"
           element={
             <RoleRoute
-              allowedRoles={ROLES_GESTION_COMPRAS}
+              permission={["VIEW_WAREHOUSE_RECEIPTS", "ACTION_WAREHOUSE_RECEIPTS_RECEIVE"]}
             >
               <EntradaRecepcionPage />
             </RoleRoute>
@@ -236,23 +222,27 @@ export default function App() {
 
          {/* Centros de Trabajo */}
         <Route path="/centros-trabajo" element={withPermission(<CentrosTrabajoPage />, "VIEW_WORK_CENTERS")} />
-        <Route path="/centros-trabajo/nuevo" element={withPermission(<CentrosTrabajoFormPage />, "VIEW_WORK_CENTERS")} />
-        <Route path="/centros-trabajo/:id" element={withPermission(<CentrosTrabajoFormPage />, "VIEW_WORK_CENTERS")} />
+        <Route path="/centros-trabajo/nuevo" element={withPermission(<CentrosTrabajoFormPage />, ["VIEW_WORK_CENTERS", "ACTION_WORK_CENTERS_CREATE"])} />
+        <Route path="/centros-trabajo/:id" element={withPermission(<CentrosTrabajoFormPage />, ["VIEW_WORK_CENTERS", "ACTION_WORK_CENTERS_EDIT"])} />
 
         {/* Operaciones */}
         <Route path="/operaciones" element={withPermission(<OperacionesPage />, "VIEW_OPERATIONS")} />
-        <Route path="/operaciones/nuevo" element={withPermission(<OperacionesFormPage />, "VIEW_OPERATIONS")} />
-        <Route path="/operaciones/:id" element={withPermission(<OperacionesFormPage />, "VIEW_OPERATIONS")} />
+        <Route path="/operaciones/nuevo" element={withPermission(<OperacionesFormPage />, ["VIEW_OPERATIONS", "ACTION_OPERATIONS_CREATE"])} />
+        <Route path="/operaciones/:id" element={withPermission(<OperacionesFormPage />, ["VIEW_OPERATIONS", "ACTION_OPERATIONS_EDIT"])} />
+        <Route path="/ordenes-produccion" element={withPermission(<OrdenesProduccionPage />, "VIEW_PRODUCTION_ORDERS")} />
+        <Route path="/ordenes-produccion/nueva" element={withPermission(<OrdenProduccionFormPage />, ["VIEW_PRODUCTION_ORDERS", "ACTION_PRODUCTION_ORDERS_CREATE"])} />
+        <Route path="/ordenes-produccion/:id/editar" element={withPermission(<OrdenProduccionFormPage />, ["VIEW_PRODUCTION_ORDERS", "ACTION_PRODUCTION_ORDERS_EDIT"])} />
+        <Route path="/ordenes-produccion/:id" element={withPermission(<OrdenProduccionDetallePage />, "VIEW_PRODUCTION_ORDERS")} />
         <Route path="/cif" element={withPermission(<CifPage />, "VIEW_CIF")} />
-        <Route path="/cif/nuevo" element={withPermission(<CifFormPage />, "VIEW_CIF")} />
-        <Route path="/cif/:id" element={withPermission(<CifFormPage />, "VIEW_CIF")} />
+        <Route path="/cif/nuevo" element={withPermission(<CifFormPage />, ["VIEW_CIF", "ACTION_CIF_CREATE"])} />
+        <Route path="/cif/:id" element={withPermission(<CifFormPage />, ["VIEW_CIF", "ACTION_CIF_EDIT"])} />
 
          {/* Compras */}
         <Route path="/compras" element={withPermission(<ComprasPage />, "VIEW_PURCHASES")} />
-        <Route path="/compras/cuentas-por-pagar" element={withPermission(<CuentasPorPagarPage />, "VIEW_PURCHASES")} />
-        <Route path="/compras/cuentas-por-pagar/:id" element={withPermission(<CuentaPorPagarDetallePage />, "VIEW_PURCHASES")} />
-        <Route path="/compras/nueva" element={withRoles(<ComprasFormPage />, ROLES_GESTION_COMPRAS)} />
-        <Route path="/compras/:id" element={withRoles(<ComprasFormPage />, ROLES_GESTION_COMPRAS)} />
+        <Route path="/compras/cuentas-por-pagar" element={withPermission(<CuentasPorPagarPage />, "VIEW_ACCOUNTS_PAYABLE")} />
+        <Route path="/compras/cuentas-por-pagar/:id" element={withPermission(<CuentaPorPagarDetallePage />, ["VIEW_ACCOUNTS_PAYABLE", "ACTION_ACCOUNTS_PAYABLE_EDIT"])} />
+        <Route path="/compras/nueva" element={withPermission(<ComprasFormPage />, ["VIEW_PURCHASES", "ACTION_PURCHASES_CREATE"])} />
+        <Route path="/compras/:id" element={withPermission(<ComprasFormPage />, ["VIEW_PURCHASES", "ACTION_PURCHASES_EDIT"])} />
         <Route path="/compras/:id/ver" element={withPermission(<CompraDetallePage />, "VIEW_PURCHASES")} />
 
          {/*Kardex */}
@@ -263,12 +253,12 @@ export default function App() {
         <Route path="/productos" element={withPermission(<ProductosCompletosPage />, "VIEW_PRODUCTS")} />
         <Route path="/productos/catalogo" element={withPermission(<ProductoCatalogoPage />, "VIEW_PRODUCT_CATALOG")} />
         <Route path="/productos/catalogo/:id" element={withPermission(<ProductoCatalogoPage />, "VIEW_PRODUCT_CATALOG")} />
-        <Route path="/productos/calidad" element={withPermission(<ProductosCalidadPage />, "VIEW_PRODUCTS")} />
-        <Route path="/productos/nuevo" element={withPermission(<ProductosCompletosPage iniciarCreacion />, "VIEW_PRODUCTS")} />
-        <Route path="/productos/:id" element={withPermission(<ProductoFormPage />, "VIEW_PRODUCTS")} />
+        <Route path="/productos/calidad" element={withPermission(<ProductosCalidadPage />, "VIEW_PRODUCT_QUALITY")} />
+        <Route path="/productos/nuevo" element={withPermission(<ProductosCompletosPage iniciarCreacion />, ["VIEW_PRODUCTS", "ACTION_PRODUCTS_CREATE"])} />
+        <Route path="/productos/:id" element={withPermission(<ProductoFormPage />, ["VIEW_PRODUCTS", "ACTION_PRODUCTS_EDIT"])} />
         <Route path="/productos/:id/ver" element={withPermission(<ProductoDetalleRedirect />, "VIEW_PRODUCTS")} />
-        <Route path="/productos/:id/bom/insumos" element={withPermission(<ProductoInsumosBOMPage />, "VIEW_PRODUCTS")} />
-        <Route path="/productos/:id/bom/operaciones" element={withPermission(<ProductoOperacionesBOMPage />, "VIEW_PRODUCTS")} />
+        <Route path="/productos/:id/bom/insumos" element={withPermission(<ProductoInsumosBOMPage />, ["VIEW_PRODUCTS", "ACTION_PRODUCTS_BOM"])} />
+        <Route path="/productos/:id/bom/operaciones" element={withPermission(<ProductoOperacionesBOMPage />, ["VIEW_PRODUCTS", "ACTION_PRODUCTS_BOM"])} />
 
         <Route path="/productos-completos" element={<Navigate to="/productos" replace />} />
         <Route path="/prueba/productos" element={<Navigate to="/productos" replace />} />

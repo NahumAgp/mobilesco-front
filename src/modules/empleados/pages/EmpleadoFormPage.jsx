@@ -10,7 +10,7 @@ import {
   eliminarFotoEmpleado
 } from "../services/empleados";
 import { obtenerAreasTrabajo } from "../../areas-trabajo/services/areasTrabajo.js";
-import { createInvitation, getAvailableRoles, getCurrentUser, getUser } from "../../auth/services/authService";
+import { createInvitation, getAvailableRoles, getCurrentUser, getUser, hasPermission } from "../../auth/services/authService";
 import { API_BASE_URL } from "../../../config/apiConfig";
 
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
@@ -18,7 +18,6 @@ import Toast from "../../../components/ui/Toast.jsx";
 import ProtectedImage from "../../../components/ui/ProtectedImage.jsx";
 import "./EmpleadoPage.css";
 
-const ROLES_GESTION_EMPLEADOS = ["ADMIN", "DIRECTOR_GENERAL", "SUBDIRECCION_ADMINISTRATIVA"];
 const ROLES_BLOQUEADOS_INVITACION = ["ADMIN", "SUPER_ADMIN"];
 
 function construirFotoSrc(fotoUrl) {
@@ -40,8 +39,10 @@ export default function EmpleadoFormPage() {
   const isEditing = !!id;
   const currentUser = getUser();
   const esMiPerfil = isEditing && String(currentUser?.idEmpleado || "") === String(id);
-  const puedeGestionarEmpleados = currentUser?.roles?.some((rol) => ROLES_GESTION_EMPLEADOS.includes(rol));
-  const puedeEliminarEmpleado = isEditing && puedeGestionarEmpleados && !esMiPerfil;
+  const puedeGestionarEmpleados = hasPermission(currentUser, "ACTION_EMPLOYEES_EDIT");
+  const puedeEliminarEmpleado = isEditing && hasPermission(currentUser, "ACTION_EMPLOYEES_STATUS") && !esMiPerfil;
+  const puedeGestionarFoto = hasPermission(currentUser, "ACTION_EMPLOYEES_PHOTO");
+  const puedeCrearInvitacion = hasPermission(currentUser, "ACTION_INVITATIONS_CREATE");
 
   const [fotoUrl, setFotoUrl] = useState("");
 
@@ -358,7 +359,7 @@ export default function EmpleadoFormPage() {
   };
 
   const abrirAcceso = async () => {
-    if (!isEditing || !puedeGestionarEmpleados) return;
+    if (!isEditing || !puedeCrearInvitacion) return;
 
     setMostrandoAcceso(true);
     setTokenInvitacion("");
@@ -498,7 +499,7 @@ export default function EmpleadoFormPage() {
 
           <div className="card-body p-4 p-md-5">
 
-            {isEditing && puedeGestionarEmpleados && (
+            {isEditing && puedeGestionarFoto && (
               <div className="empleado-photo-panel mb-4">
                 <div className="empleado-form-avatar">
                   {fotoPreview ? (
@@ -552,7 +553,7 @@ export default function EmpleadoFormPage() {
               </div>
             )}
 
-            {isEditing && puedeGestionarEmpleados && (
+            {isEditing && puedeCrearInvitacion && (
               <div className="border rounded-3 p-3 mb-4 bg-light-subtle">
                 <div className="d-flex flex-wrap justify-content-between align-items-center gap-2">
                   <div>

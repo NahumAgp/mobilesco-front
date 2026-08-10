@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import ProductoForm from "./ProductoForm.jsx"; 
 import ProductoCostosPanel from "./ProductoCostosPanel.jsx";
 import { eliminarProductoDefinitivo } from "../../services/productos.js";
-import { getUser } from "../../../auth/services/authService.js";
+import { getUser, hasPermission } from "../../../auth/services/authService.js";
 import "./ProductoForm.css";
 
 export default function ProductoFormPage() {
@@ -11,9 +11,7 @@ export default function ProductoFormPage() {
   const navigate = useNavigate();
   const esEdicion = Boolean(id);
   const user = getUser();
-  const puedeEliminarDefinitivo = user?.roles?.some((rol) =>
-    ["ADMIN", "SUPER_ADMIN", "DIRECTOR_GENERAL"].includes(rol)
-  );
+  const puedeEliminarDefinitivo = hasPermission(user, "ACTION_PRODUCTS_DELETE");
 
   const manejarEliminarDefinitivo = async () => {
     if (!esEdicion || !puedeEliminarDefinitivo) return;

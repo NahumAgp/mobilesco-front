@@ -68,7 +68,7 @@ export default function RequisicionNuevaPage() {
       codigo: insumo.codigo,
       nombre: insumo.nombre,
       unidadSimbolo: insumo.unidadSimbolo,
-      stockActual: insumo.stockActual,
+      stockActual: insumo.stockDisponible ?? insumo.stockActual,
       stockMinimo: insumo.stockMinimo,
       cantidadSolicitada: Math.max(Number(insumo.cantidadSugerida || 1), 0.01),
       origenSugerencia,
@@ -83,7 +83,7 @@ export default function RequisicionNuevaPage() {
       codigo: creado.codigoBarras || creado.codigo || "",
       nombre: creado.nombre,
       unidadSimbolo: creado.unidadMedida?.simbolo || "",
-      stockActual: Number(creado.stockActual || 0),
+      stockActual: Number(creado.stockDisponible ?? creado.stockActual ?? 0),
       stockMinimo: creado.stockMinimo === null || creado.stockMinimo === undefined
         ? null
         : Number(creado.stockMinimo),

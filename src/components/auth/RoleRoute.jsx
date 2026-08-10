@@ -1,5 +1,6 @@
 import { Navigate } from "react-router-dom";
 import { getUser, hasPermission, isAuthenticated } from "../../modules/auth/services/authService";
+import AccessDenied from "./AccessDenied";
 
 function hasAllowedRole(user, allowedRoles = []) {
   if (!allowedRoles.length) {
@@ -18,13 +19,14 @@ export default function RoleRoute({ children, allowedRoles = [], permission }) {
   const user = getUser();
 
   const roleAllowed = hasAllowedRole(user, allowedRoles);
-  const permissionAllowed = hasPermission(user, permission);
+  const requiredPermissions = Array.isArray(permission) ? permission : permission ? [permission] : [];
+  const permissionAllowed = requiredPermissions.every((code) => hasPermission(user, code));
   const canEnter = permission && allowedRoles.length
     ? roleAllowed || permissionAllowed
     : roleAllowed && permissionAllowed;
 
   if (!canEnter) {
-    return <Navigate to="/tablero" replace />;
+    return <AccessDenied />;
   }
 
   return children;

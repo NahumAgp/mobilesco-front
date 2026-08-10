@@ -11,7 +11,7 @@ import {
   obtenerPreviewTipoInsumo,
   obtenerTiposInsumo
 } from "../../insumos/services/tiposInsumo.js";
-import { getUser } from "../../auth/services/authService";
+import { getUser, hasPermission } from "../../auth/services/authService";
 import Toast from "../../../components/ui/Toast.jsx";
 
 const emptyForm = {
@@ -39,7 +39,6 @@ const emptyTipoPreview = {
   disponible: false,
   mensaje: "Escribe un nombre para generar un codigo de 1 a 3 letras"
 };
-const ROLES_ELIMINAR_PROVEEDOR = ["ADMIN", "SUPER_ADMIN", "DIRECTOR_GENERAL", "SUBDIRECCION_ADMINISTRATIVA"];
 
 export default function ProveedorForm({
   proveedorId,
@@ -63,8 +62,7 @@ export default function ProveedorForm({
   const navigate = useNavigate();
   const currentUser = getUser();
   const esEdicion = Boolean(proveedorId || proveedorProp?.id);
-  const puedeEliminarProveedor =
-    esEdicion && currentUser?.roles?.some((rol) => ROLES_ELIMINAR_PROVEEDOR.includes(rol));
+  const puedeEliminarProveedor = esEdicion && hasPermission(currentUser, "ACTION_SUPPLIERS_DELETE");
 
   const [formData, setFormData] = useState(emptyForm);
 

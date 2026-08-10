@@ -7,12 +7,16 @@ import CentrosTrabajoTable from "./CentrosTrabajoTable.jsx";
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
 import CatalogPagination from "../../../components/ui/CatalogPagination.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
+import { getUser, hasPermission } from "../../auth/services/authService";
 
 const PAGE_SIZE = 12;
 
 export default function CentrosTrabajoPage() {
 
   const navigate = useNavigate();
+  const canCreate = hasPermission(getUser(), "ACTION_WORK_CENTERS_CREATE");
+  const canEdit = hasPermission(getUser(), "ACTION_WORK_CENTERS_EDIT");
+  const canDelete = hasPermission(getUser(), "ACTION_WORK_CENTERS_DELETE");
 
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
@@ -74,7 +78,7 @@ export default function CentrosTrabajoPage() {
         title="Centros de Trabajo"
         subtitle="Catálogo de máquinas y estaciones de trabajo"
         actions={
-          <button
+          canCreate && <button
             className="btn btn-success"
             onClick={() => navigate("/centros-trabajo/nuevo")}
           >
@@ -169,6 +173,8 @@ export default function CentrosTrabajoPage() {
         data={centrosTrabajo}
         onEditar={abrirEditar}
         onEliminar={manejarEliminar}
+        canEdit={canEdit}
+        canDelete={canDelete}
       />
 
       <CatalogPagination

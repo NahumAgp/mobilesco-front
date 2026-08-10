@@ -6,6 +6,7 @@ import { exportarUnidadesMedidaExcel } from "../services/unidadMedidas.js";
 import UnidadesMedidaTable from "../components/UnidadesMedidaTable.jsx";
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
+import { getUser, hasPermission } from "../../auth/services/authService";
 import "./UnidadMedidaPage.css";
 
 const PAGE_SIZE = 10;
@@ -31,6 +32,10 @@ function construirRangoPaginas(totalPages, currentPage) {
 
 export default function UnidadesMedidaPage() {
   const navigate = useNavigate();
+  const canCreate = hasPermission(getUser(), "ACTION_MEASURE_UNITS_CREATE");
+  const canExport = hasPermission(getUser(), "ACTION_MEASURE_UNITS_EXPORT");
+  const canEdit = hasPermission(getUser(), "ACTION_MEASURE_UNITS_EDIT");
+  const canDelete = hasPermission(getUser(), "ACTION_MEASURE_UNITS_DELETE");
 
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
@@ -178,20 +183,20 @@ export default function UnidadesMedidaPage() {
         subtitle="Administracion paginada de unidades para productos e insumos"
         actions={
           <div className="unidades-header-actions">
-            <button
+            {canExport && <button
               className="btn btn-outline-success me-2"
               onClick={exportarExcel}
               disabled={exportandoExcel}
             >
               <i className="bi bi-file-earmark-excel me-1"></i>
               {exportandoExcel ? "Generando..." : "Reporte Excel"}
-            </button>
-            <button
+            </button>}
+            {canCreate && <button
               className="btn unidades-brand-primary"
               onClick={() => navigate("/unidades-medida/nuevo")}
             >
               Nueva unidad
-            </button>
+            </button>}
           </div>
         }
       />
@@ -278,6 +283,8 @@ export default function UnidadesMedidaPage() {
               data={unidadesMedida}
               onEditar={abrirEditar}
               onEliminar={manejarEliminar}
+              canEdit={canEdit}
+              canDelete={canDelete}
               sortField={sortField}
               sortDirection={sortDirection}
               onSort={manejarOrden}

@@ -2,11 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import Toast from "../../../components/ui/Toast.jsx";
-import { getUser } from "../../auth/services/authService.js";
+import { getUser, hasPermission } from "../../auth/services/authService.js";
 import { eliminarSalidaInsumo, obtenerSalidasInsumos } from "../services/salidasInsumos.js";
 
-const ROLES_GESTION_INVENTARIO = ["ADMIN", "SUPER_ADMIN", "DIRECTOR_GENERAL", "SUBDIRECCION_ADMINISTRATIVA", "JEFE_ALMACEN", "ALMACEN"];
-const ROLES_ELIMINAR_SALIDAS = ["ADMIN", "SUPER_ADMIN", "DIRECTOR_GENERAL", "SUBDIRECCION_ADMINISTRATIVA", "JEFE_ALMACEN"];
 const PAGE_SIZE = 10;
 const PAGE_INFO_DEFAULT = {
   page: 0,
@@ -39,8 +37,8 @@ function etiquetaOrdenSalida(salida) {
 export default function SalidasInsumosPage() {
   const navigate = useNavigate();
   const user = getUser();
-  const puedeRegistrarSalida = user?.roles?.some((rol) => ROLES_GESTION_INVENTARIO.includes(rol));
-  const puedeEliminarSalida = user?.roles?.some((rol) => ROLES_ELIMINAR_SALIDAS.includes(rol));
+  const puedeRegistrarSalida = hasPermission(user, "ACTION_INVENTORY_OUTPUTS_CREATE");
+  const puedeEliminarSalida = hasPermission(user, "ACTION_INVENTORY_OUTPUTS_DELETE");
 
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");

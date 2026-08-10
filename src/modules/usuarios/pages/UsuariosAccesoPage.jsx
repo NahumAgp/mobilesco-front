@@ -9,7 +9,10 @@ import {
   getAvailableRoles,
   getPermissions,
   getRolesConfig,
-  updateRole
+  updateRole,
+  updateAccessUser,
+  getUser,
+  hasPermission
 } from "../../auth/services/authService";
 
 import "./UsuariosAccesoPage.css";
@@ -96,6 +99,15 @@ export default function UsuariosAccesoPage() {
   const [mostrarNuevoRol, setMostrarNuevoRol] = useState(false);
   const [rolSeleccionadoId, setRolSeleccionadoId] = useState(null);
   const [moduloExpandido, setModuloExpandido] = useState("");
+  const [usuarioSeleccionado, setUsuarioSeleccionado] = useState(null);
+  const [accesoUsuario, setAccesoUsuario] = useState({ roles: [], permisosDirectos: [], enabled: true, locked: false });
+  const currentUser = useMemo(() => getUser(), []);
+  const canManageUserRoles = hasPermission(currentUser, "ACTION_USER_ROLES");
+  const canManageDirectPermissions = hasPermission(currentUser, "ACTION_USER_PERMISSIONS");
+  const canManageUserStatus = hasPermission(currentUser, "ACTION_USERS_STATUS");
+  const canCreateRoles = hasPermission(currentUser, "ACTION_ROLES_CREATE");
+  const canEditRoles = hasPermission(currentUser, "ACTION_ROLES_PERMISSIONS");
+  const canCreateInvitations = hasPermission(currentUser, "ACTION_INVITATIONS_CREATE");
 
   const permisosPorModulo = useMemo(() => groupPermissionsByModule(permisos), [permisos]);
 
@@ -239,6 +251,47 @@ export default function UsuariosAccesoPage() {
     }
   };
 
+  const handleEditarAccesos = (usuario) => {
+    setUsuarioSeleccionado(usuario);
+    setAccesoUsuario({
+      roles: [...(usuario.roles || [])],
+      permisosDirectos: [...(usuario.permisosDirectos || [])],
+      enabled: Boolean(usuario.enabled),
+      locked: Boolean(usuario.locked)
+    });
+    setModuloExpandido(modulosPermisos[0]?.[0] || "");
+  };
+
+  const handleGuardarAccesos = async () => {
+    if (!usuarioSeleccionado) return;
+    setLoading(true);
+    try {
+      const payload = {};
+      if (canManageUserRoles) payload.roles = accesoUsuario.roles;
+      if (canManageDirectPermissions) payload.permisosDirectos = accesoUsuario.permisosDirectos;
+      if (canManageUserStatus) {
+        payload.enabled = accesoUsuario.enabled;
+        payload.locked = accesoUsuario.locked;
+      }
+      const actualizado = await updateAccessUser(usuarioSeleccionado.idUsuario, payload);
+      if (actualizado?.correo && actualizado.correo === (currentUser?.correo || currentUser?.email)) {
+        localStorage.setItem("user", JSON.stringify({
+          ...currentUser,
+          roles: actualizado.roles,
+          permisos: actualizado.permisosEfectivos
+        }));
+        window.dispatchEvent(new Event("userUpdated"));
+      }
+      setUsuarioSeleccionado(null);
+      await cargarDatos();
+      showSuccess("Roles y permisos del usuario actualizados correctamente.");
+    } catch (err) {
+      showError(err, "No se pudieron actualizar los accesos del usuario.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleGuardarRol = async (rol) => {
     setLoading(true);
     try {
@@ -299,7 +352,7 @@ export default function UsuariosAccesoPage() {
     );
   };
 
-  const renderPermissionGroups = (selectedCodes, onToggle) => (
+  const renderPermissionGroups = (selectedCodes, onToggle, options = {}) => (
     <div className="accordion roles-permissions-accordion" id="rolesPermissionsAccordion">
       {modulosPermisos.map(([modulo, items], index) => {
         const isOpen = moduloExpandido ? moduloExpandido === modulo : index === 0;
@@ -322,17 +375,26 @@ export default function UsuariosAccesoPage() {
             <div className={`accordion-collapse collapse ${isOpen ? "show" : ""}`}>
               <div className="accordion-body">
                 <div className="roles-permissions-grid">
-                  {items.map((permiso) => (
-                    <label key={permiso.code} className="form-check roles-permission-item">
+                  {items.map((permiso) => {
+                    const inherited = (options.inheritedCodes || []).includes(permiso.code)
+                      && !(selectedCodes || []).includes(permiso.code);
+                    const disabled = Boolean(options.disabled || inherited);
+                    return (
+                    <label key={permiso.code} className={`form-check roles-permission-item ${disabled ? "opacity-75" : ""}`}>
                       <input
                         className="form-check-input"
                         type="checkbox"
-                        checked={(selectedCodes || []).includes(permiso.code)}
+                        checked={(selectedCodes || []).includes(permiso.code) || inherited}
                         onChange={() => onToggle(permiso.code)}
+                        disabled={disabled}
                       />
-                      <span className="form-check-label">{permiso.nombre}</span>
+                      <span className="form-check-label">
+                        {permiso.nombre}
+                        {permiso.tipo === "VIEW" && <span className="badge text-bg-info ms-2">Vista</span>}
+                        {inherited && <span className="badge text-bg-secondary ms-2">Heredado</span>}
+                      </span>
                     </label>
-                  ))}
+                  )})}
                 </div>
               </div>
             </div>
@@ -366,6 +428,29 @@ export default function UsuariosAccesoPage() {
     ? `Mostrando ${rolesPagina.length} de ${totalRolesFiltrados} roles`
     : "Sin roles para mostrar";
 
+  const resumenCambiosAcceso = (() => {
+    if (!usuarioSeleccionado) return [];
+    const rolesAnteriores = usuarioSeleccionado.roles || [];
+    const permisosAnteriores = usuarioSeleccionado.permisosDirectos || [];
+    const cambios = [];
+    const rolesAgregados = accesoUsuario.roles.filter((rol) => !rolesAnteriores.includes(rol));
+    const rolesRetirados = rolesAnteriores.filter((rol) => !accesoUsuario.roles.includes(rol));
+    const permisosAgregados = accesoUsuario.permisosDirectos.filter((code) => !permisosAnteriores.includes(code));
+    const permisosRetirados = permisosAnteriores.filter((code) => !accesoUsuario.permisosDirectos.includes(code));
+
+    if (rolesAgregados.length) cambios.push(`Agregar roles: ${rolesAgregados.join(", ")}`);
+    if (rolesRetirados.length) cambios.push(`Quitar roles: ${rolesRetirados.join(", ")}`);
+    if (permisosAgregados.length) cambios.push(`Agregar ${permisosAgregados.length} permisos directos`);
+    if (permisosRetirados.length) cambios.push(`Quitar ${permisosRetirados.length} permisos directos`);
+    if (accesoUsuario.enabled !== Boolean(usuarioSeleccionado.enabled)) {
+      cambios.push(accesoUsuario.enabled ? "Activar cuenta" : "Desactivar cuenta");
+    }
+    if (accesoUsuario.locked !== Boolean(usuarioSeleccionado.locked)) {
+      cambios.push(accesoUsuario.locked ? "Bloquear cuenta" : "Desbloquear cuenta");
+    }
+    return cambios;
+  })();
+
   return (
     <div className="container-xxl py-4 mobile-module-page usuarios-page">
       <div className="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
@@ -378,10 +463,10 @@ export default function UsuariosAccesoPage() {
             <i className="bi bi-arrow-clockwise me-2"></i>
             Actualizar
           </button>
-          <button type="button" className="btn btn-success" onClick={openNuevoRol}>
+          {canCreateRoles && <button type="button" className="btn btn-success" onClick={openNuevoRol}>
             <i className="bi bi-plus-lg me-2"></i>
             Nuevo rol
-          </button>
+          </button>}
         </div>
       </div>
 
@@ -393,8 +478,8 @@ export default function UsuariosAccesoPage() {
           {[
             ["usuarios", "Usuarios", "bi-people"],
             ["roles", "Roles y permisos", "bi-shield-lock"],
-            ["invitaciones", "Invitaciones", "bi-send"]
-          ].map(([key, label, icon]) => (
+            canCreateInvitations ? ["invitaciones", "Invitaciones", "bi-send"] : null
+          ].filter(Boolean).map(([key, label, icon]) => (
             <button
               key={key}
               type="button"
@@ -412,6 +497,81 @@ export default function UsuariosAccesoPage() {
         <div className="card-body">
           {activeTab === "usuarios" && (
             <div className="row g-4">
+              {usuarioSeleccionado && (
+                <div className="col-12">
+                  <div className="card border-success access-user-editor">
+                    <div className="card-body">
+                      <div className="d-flex flex-wrap justify-content-between gap-3 mb-3">
+                        <div>
+                          <h2 className="h5 mb-1">Editar accesos de {getUserFullName(usuarioSeleccionado)}</h2>
+                          <div className="text-muted small">{usuarioSeleccionado.correo}</div>
+                        </div>
+                        <button type="button" className="btn-close" aria-label="Cerrar" onClick={() => setUsuarioSeleccionado(null)} />
+                      </div>
+
+                      <div className="mb-4">
+                        <div className="fw-semibold mb-2">Roles asignados</div>
+                        <div className="d-flex flex-wrap gap-3">
+                          {roles.map((rol) => (
+                            <label className="form-check" key={rol}>
+                              <input
+                                className="form-check-input"
+                                type="checkbox"
+                                checked={accesoUsuario.roles.includes(rol)}
+                                disabled={!canManageUserRoles}
+                                onChange={() => setAccesoUsuario((prev) => ({ ...prev, roles: toggleValue(prev.roles, rol) }))}
+                              />
+                              <span className="form-check-label">{rol}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      {canManageUserStatus && (
+                        <div className="d-flex flex-wrap gap-4 mb-4 border rounded p-3 bg-light">
+                          <label className="form-check form-switch mb-0">
+                            <input className="form-check-input" type="checkbox" checked={accesoUsuario.enabled} onChange={(event) => setAccesoUsuario((prev) => ({ ...prev, enabled: event.target.checked }))} />
+                            <span className="form-check-label">Cuenta activa</span>
+                          </label>
+                          <label className="form-check form-switch mb-0">
+                            <input className="form-check-input" type="checkbox" checked={accesoUsuario.locked} onChange={(event) => setAccesoUsuario((prev) => ({ ...prev, locked: event.target.checked }))} />
+                            <span className="form-check-label">Cuenta bloqueada</span>
+                          </label>
+                        </div>
+                      )}
+
+                      <div className="d-flex flex-wrap justify-content-between gap-2 mb-2">
+                        <div>
+                          <div className="fw-semibold">Permisos directos adicionales</div>
+                          <div className="text-muted small">Los permisos heredados se retiran cambiando los roles del usuario.</div>
+                        </div>
+                        <span className="badge text-bg-light border">
+                          {(usuarioSeleccionado.permisosEfectivos || []).length} permisos efectivos
+                        </span>
+                      </div>
+                      {renderPermissionGroups(
+                        accesoUsuario.permisosDirectos,
+                        (code) => setAccesoUsuario((prev) => ({ ...prev, permisosDirectos: toggleValue(prev.permisosDirectos, code) })),
+                        { inheritedCodes: usuarioSeleccionado.permisosHeredados || [], disabled: !canManageDirectPermissions }
+                      )}
+                      <div className={`alert mt-3 mb-0 ${resumenCambiosAcceso.length ? "alert-warning" : "alert-light border"}`}>
+                        <div className="fw-semibold mb-1">Resumen antes de guardar</div>
+                        {resumenCambiosAcceso.length ? (
+                          <ul className="mb-0 ps-3">
+                            {resumenCambiosAcceso.map((cambio) => <li key={cambio}>{cambio}</li>)}
+                          </ul>
+                        ) : (
+                          <span className="text-muted">Todavia no hay cambios.</span>
+                        )}
+                      </div>
+                      <div className="d-flex justify-content-end gap-2 mt-3">
+                        <button type="button" className="btn btn-outline-secondary" onClick={() => setUsuarioSeleccionado(null)}>Cancelar</button>
+                        <button type="button" className="btn btn-success" disabled={loading || accesoUsuario.roles.length === 0} onClick={handleGuardarAccesos}>Guardar accesos</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="col-12">
                 <div
                   className="table-responsive mobile-table-region usuarios-table-scroll"
@@ -445,14 +605,24 @@ export default function UsuariosAccesoPage() {
                             </span>
                           </td>
                           <td className="text-end">
-                            <button
+                            <div className="d-flex justify-content-end gap-2">
+                            {(canManageUserRoles || canManageDirectPermissions) && <button
+                              type="button"
+                              className="btn btn-sm btn-outline-success"
+                              onClick={() => handleEditarAccesos(usuario)}
+                              disabled={loading}
+                            >
+                              Editar accesos
+                            </button>}
+                            {canManageUserStatus && <button
                               type="button"
                               className="btn btn-sm btn-outline-danger"
                               onClick={() => handleDesactivarUsuario(usuario)}
                               disabled={!usuario.enabled || loading}
                             >
                               Desactivar
-                            </button>
+                            </button>}
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -500,7 +670,7 @@ export default function UsuariosAccesoPage() {
                         type="button"
                         className="btn btn-success"
                         onClick={() => handleGuardarRol(rolSeleccionado)}
-                        disabled={loading}
+                        disabled={loading || !canEditRoles || ["ADMIN", "DIRECTOR_GENERAL"].includes(rolSeleccionado.name)}
                       >
                         Guardar permisos
                       </button>
@@ -537,8 +707,12 @@ export default function UsuariosAccesoPage() {
                       </span>
                     </div>
 
+                    {["ADMIN", "DIRECTOR_GENERAL"].includes(rolSeleccionado.name) && (
+                      <div className="alert alert-info">Este rol conserva automáticamente todos los permisos actuales y futuros.</div>
+                    )}
                     {renderPermissionGroups(rolSeleccionado.permisos, (code) =>
-                      handleRolPermisoToggle(rolSeleccionado.id, code)
+                      handleRolPermisoToggle(rolSeleccionado.id, code),
+                      { disabled: !canEditRoles || ["ADMIN", "DIRECTOR_GENERAL"].includes(rolSeleccionado.name) }
                     )}
                   </div>
                 </div>

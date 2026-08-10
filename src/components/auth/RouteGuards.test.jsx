@@ -50,7 +50,7 @@ describe('guardas de rutas', () => {
     expect(screen.getByText('Compras')).toBeInTheDocument();
   });
 
-  it('redirige al tablero cuando faltan rol y permiso', () => {
+  it('muestra acceso denegado cuando faltan rol y permiso', () => {
     auth.isAuthenticated.mockReturnValue(true);
     auth.getUser.mockReturnValue({ roles: ['VENTAS'] });
     auth.hasPermission.mockReturnValue(false);
@@ -59,6 +59,18 @@ describe('guardas de rutas', () => {
         <div>Compras</div>
       </RoleRoute>
     );
-    expect(screen.getByText('Tablero')).toBeInTheDocument();
+    expect(screen.getByText('Sin permiso para esta vista')).toBeInTheDocument();
+  });
+
+  it('exige todos los permisos cuando la ruta recibe una lista', () => {
+    auth.isAuthenticated.mockReturnValue(true);
+    auth.getUser.mockReturnValue({ roles: ['VENTAS'] });
+    auth.hasPermission.mockImplementation((_user, code) => code === 'VIEW_QUOTES');
+    renderRoute(
+      <RoleRoute permission={['VIEW_QUOTES', 'ACTION_QUOTES_CREATE']}>
+        <div>Nueva cotización</div>
+      </RoleRoute>
+    );
+    expect(screen.getByText('Sin permiso para esta vista')).toBeInTheDocument();
   });
 });

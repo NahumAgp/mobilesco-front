@@ -8,6 +8,7 @@ import { obtenerFamiliasActivas } from "../../familias/services/familias.js";
 import { useSubfamilias } from "../hooks/useSubfamilias.js";
 import SubfamiliasTable from "./SubfamiliasTable.jsx";
 import "../../familias/pages/FamiliasPage.css";
+import { getUser, hasPermission } from "../../auth/services/authService";
 
 const PAGE_SIZE = 10;
 
@@ -24,6 +25,7 @@ const getFamiliaLabel = (familia = {}) =>
 
 export default function SubfamiliasPage() {
   const navigate = useNavigate();
+  const canCreate = hasPermission(getUser(), "ACTION_SUBFAMILIES_CREATE");
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
   const [page, setPage] = useState(0);
@@ -97,7 +99,7 @@ export default function SubfamiliasPage() {
         title="Catálogo de Subfamilias"
         subtitle="Clasificación intermedia entre familia y modelo"
         actions={
-          <button className="btn familias-brand-primary" onClick={() => navigate("/subfamilias/nuevo")}>
+          canCreate && <button className="btn familias-brand-primary" onClick={() => navigate("/subfamilias/nuevo")}>
             Nueva subfamilia
           </button>
         }

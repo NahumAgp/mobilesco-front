@@ -1,4 +1,4 @@
-export default function CentrosTrabajoTable({ data, onEditar, onEliminar }) {
+export default function CentrosTrabajoTable({ data, onEditar, onEliminar, canEdit, canDelete }) {
   return (
     <div className="card border-0 shadow-sm">
       <div className="table-responsive">
@@ -31,8 +31,8 @@ export default function CentrosTrabajoTable({ data, onEditar, onEliminar }) {
               data.map((centro) => (
                 <tr
                   key={centro.id}
-                  style={{ cursor: "pointer" }}
-                  onClick={() => onEditar(centro)}
+                  style={{ cursor: canEdit ? "pointer" : "default" }}
+                  onClick={() => canEdit && onEditar(centro)}
                 >
                   <td>{centro.id}</td>
                   <td>
@@ -83,7 +83,7 @@ export default function CentrosTrabajoTable({ data, onEditar, onEliminar }) {
                     </span>
                   </td>
                   <td>
-                    <button
+                    {canEdit && <button
                       className="btn btn-sm btn-outline-primary me-1"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -92,8 +92,8 @@ export default function CentrosTrabajoTable({ data, onEditar, onEliminar }) {
                     >
                       <i className="bi bi-pencil me-1"></i>
                       Editar
-                    </button>
-                    <button
+                    </button>}
+                    {canDelete && <button
                       className="btn btn-sm btn-outline-danger"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -102,7 +102,7 @@ export default function CentrosTrabajoTable({ data, onEditar, onEliminar }) {
                     >
                       <i className="bi bi-trash me-1"></i>
                       Eliminar
-                    </button>
+                    </button>}
                   </td>
                 </tr>
               ))

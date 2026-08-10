@@ -63,8 +63,8 @@ export default function EmpleadosTable({ data, onEditar, onCambiarEstado }) {
                   <tr
                     key={e.id}
                     className="catalog-table-row empleados-table-row"
-                    onClick={() => onEditar?.(e)}
-                    role="button"
+                    onClick={onEditar ? () => onEditar(e) : undefined}
+                    role={onEditar ? "button" : undefined}
                   >
                     <td>
                       {fotoSrc ? (

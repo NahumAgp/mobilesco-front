@@ -8,24 +8,14 @@ import CatalogFilters from "../../../components/ui/CatalogFilters.jsx";
 import CatalogPagination from "../../../components/ui/CatalogPagination.jsx";
 import ConfirmationDialog from "../../../components/ui/ConfirmationDialog.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
-import { getUser } from "../../auth/services/authService.js";
-
-const ROLES_GESTION_COMPRAS = [
-  "ADMIN",
-  "SUPER_ADMIN",
-  "DIRECTOR_GENERAL",
-  "SUBDIRECCION_ADMINISTRATIVA",
-  "JEFE_ALMACEN"
-];
+import { getUser, hasPermission } from "../../auth/services/authService.js";
 const PAGE_SIZE = 10;
 
 export default function ComprasPage() {
   const navigate = useNavigate();
   const user = getUser();
-  const puedeGestionarCompra = user?.roles?.some((rol) => ROLES_GESTION_COMPRAS.includes(rol));
-  const puedeEliminarCompra = user?.roles?.some((rol) =>
-    ["ADMIN", "SUPER_ADMIN", "DIRECTOR_GENERAL"].includes(rol)
-  );
+  const puedeGestionarCompra = hasPermission(user, "ACTION_PURCHASES_CREATE");
+  const puedeEliminarCompra = hasPermission(user, "ACTION_PURCHASES_DELETE");
 
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");

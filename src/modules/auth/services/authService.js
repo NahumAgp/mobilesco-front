@@ -109,7 +109,7 @@ export function hasPermission(user, permission) {
   }
 
   const roles = user?.roles || [];
-  if (roles.some((role) => role === "ADMIN" || role === "SUPER_ADMIN")) {
+  if (roles.includes("ADMIN")) {
     return true;
   }
 

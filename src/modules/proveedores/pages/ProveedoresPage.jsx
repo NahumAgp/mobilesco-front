@@ -13,9 +13,13 @@ import {
   exportarProveedoresExcel
 } from "../services/proveedores.js";
 import { obtenerTiposInsumo } from "../../insumos/services/tiposInsumo.js";
+import { getUser, hasPermission } from "../../auth/services/authService.js";
 
 export default function ProveedoresPage() {
   const navigate = useNavigate();
+  const user = getUser();
+  const puedeCrear = hasPermission(user, "ACTION_SUPPLIERS_CREATE");
+  const puedeExportar = hasPermission(user, "ACTION_SUPPLIERS_EXPORT");
   const PAGE_SIZE = 10;
 
   const [toastMessage, setToastMessage] = useState("");
@@ -149,18 +153,18 @@ export default function ProveedoresPage() {
         subtitle="Base de datos centralizada de proveedores"
         actions={
           <div className="d-flex gap-2">
-            <button
+            {puedeExportar && <button
               className="btn btn-outline-success"
               onClick={exportarExcel}
             >
               Exportar a Excel
-            </button>
-            <button
+            </button>}
+            {puedeCrear && <button
               className="btn btn-success"
               onClick={() => navigate("/proveedores/nuevo")}
             >
               Nuevo proveedor
-            </button>
+            </button>}
           </div>
         }
       />

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { getUser } from "../../../auth/services/authService";
+import { getUser, hasPermission } from "../../../auth/services/authService";
 import { obtenerRequisiciones } from "../services/requisiciones";
 
 const estadoClase = {
@@ -14,8 +14,7 @@ const estadoClase = {
 
 export default function RequisicionesPage() {
   const navigate = useNavigate();
-  const roles = getUser()?.roles || [];
-  const puedeCrear = roles.some((rol) => ["ADMIN", "SUPER_ADMIN", "DIRECTOR_GENERAL", "JEFE_ALMACEN"].includes(rol));
+  const puedeCrear = hasPermission(getUser(), "ACTION_WAREHOUSE_REQUISITIONS_CREATE");
   const [filtros, setFiltros] = useState({ busqueda: "", estado: "" });
   const [page, setPage] = useState(0);
   const [resultado, setResultado] = useState({ content: [], totalElements: 0, totalPages: 0 });

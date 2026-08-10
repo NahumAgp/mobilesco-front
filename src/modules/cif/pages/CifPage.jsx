@@ -4,7 +4,7 @@ import PageHeader from "../../../components/Sistema/PageHeader.jsx";
 import CatalogPagination from "../../../components/ui/CatalogPagination.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
 import CifConfiguracionWarning from "../components/CifConfiguracionWarning.jsx";
-import { getUser } from "../../auth/services/authService";
+import { getUser, hasPermission } from "../../auth/services/authService";
 import {
   actualizarConfiguracionCif,
   cambiarEstadoConceptoCif,
@@ -14,7 +14,6 @@ import {
 } from "../services/cif";
 import "../../productos/pages/Productos/ProductoForm.css";
 
-const ROLES_GESTION_CIF = ["ADMIN", "SUPER_ADMIN", "SUBDIRECCION_ADMINISTRATIVA"];
 const PAGE_SIZE = 10;
 const PAGE_INFO_DEFAULT = {
   page: 0,
@@ -53,7 +52,7 @@ export default function CifPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const user = getUser();
-  const puedeGestionar = user?.roles?.some((rol) => ROLES_GESTION_CIF.includes(rol));
+  const puedeGestionar = ["ACTION_CIF_CREATE", "ACTION_CIF_EDIT", "ACTION_CIF_STATUS"].some((code) => hasPermission(user, code));
   const [conceptos, setConceptos] = useState([]);
   const [pageInfo, setPageInfo] = useState(PAGE_INFO_DEFAULT);
   const [configuracion, setConfiguracion] = useState(null);

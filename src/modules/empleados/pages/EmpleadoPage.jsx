@@ -6,11 +6,10 @@ import EmpleadosTable from "./EmpleadosTable";
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
 import CatalogPagination from "../../../components/ui/CatalogPagination.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
-import { getUser } from "../../auth/services/authService";
+import { getUser, hasPermission } from "../../auth/services/authService";
 import "./EmpleadoPage.css";
 
 const PAGE_SIZE = 10;
-const ROLES_GESTION_EMPLEADOS = ["ADMIN", "DIRECTOR_GENERAL", "SUBDIRECCION_ADMINISTRATIVA"];
 
 export default function EmpleadoPage() {
   const navigate = useNavigate();
@@ -22,7 +21,9 @@ export default function EmpleadoPage() {
   const [soloActivos, setSoloActivos] = useState(false);
   const [page, setPage] = useState(0);
   const currentUser = getUser();
-  const puedeGestionarEmpleados = currentUser?.roles?.some((rol) => ROLES_GESTION_EMPLEADOS.includes(rol));
+  const puedeEditarEmpleado = hasPermission(currentUser, "ACTION_EMPLOYEES_EDIT");
+  const puedeCambiarEstadoEmpleado = hasPermission(currentUser, "ACTION_EMPLOYEES_STATUS");
+  const puedeCrearEmpleado = hasPermission(currentUser, "ACTION_EMPLOYEES_CREATE");
   const activo = filtroEstatus === "TODOS" && !soloActivos
     ? undefined
     : filtroEstatus === "INACTIVO"
@@ -97,7 +98,7 @@ export default function EmpleadoPage() {
       <PageHeader
         title="Catalogo de Empleados"
         subtitle="Administracion de empleados y colaboradores"
-        actions={puedeGestionarEmpleados ? (
+        actions={puedeCrearEmpleado ? (
           <div className="d-flex flex-wrap gap-2">
             <button
               className="btn empleados-brand-primary"
@@ -190,8 +191,8 @@ export default function EmpleadoPage() {
           ) : (
             <EmpleadosTable
               data={empleados}
-              onEditar={abrirEditar}
-              onCambiarEstado={manejarCambioEstado}
+              onEditar={puedeEditarEmpleado ? abrirEditar : undefined}
+              onCambiarEstado={puedeCambiarEstadoEmpleado ? manejarCambioEstado : undefined}
             />
           )}
 

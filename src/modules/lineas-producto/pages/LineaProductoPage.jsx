@@ -8,12 +8,15 @@ import LineaProductoTable from "./LineaProductoTable.jsx";
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
 import CatalogPagination from "../../../components/ui/CatalogPagination.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
+import { getUser, hasPermission } from "../../auth/services/authService";
 import "./LineaProductoPage.css";
 
 const PAGE_SIZE = 10;
 
 export default function LineaProductoPage() {
   const navigate = useNavigate();
+  const canCreate = hasPermission(getUser(), "ACTION_PRODUCT_LINES_CREATE");
+  const canExport = hasPermission(getUser(), "ACTION_PRODUCT_LINES_EXPORT");
 
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
@@ -139,20 +142,20 @@ export default function LineaProductoPage() {
         subtitle="Catalogo de lineas"
         actions={
           <div className="lineas-header-actions">
-            <button
+            {canExport && <button
               className="btn lineas-brand-outline me-2"
               onClick={exportarExcel}
               disabled={exportandoExcel}
             >
               <i className="bi bi-file-earmark-excel me-1"></i>
               {exportandoExcel ? "Generando..." : "Reporte Excel"}
-            </button>
-            <button
+            </button>}
+            {canCreate && <button
               className="btn lineas-brand-primary"
               onClick={() => navigate("/lineas-producto/nuevo")}
             >
               Nueva linea
-            </button>
+            </button>}
           </div>
         }
       />
