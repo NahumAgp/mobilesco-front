@@ -12,6 +12,8 @@ import ProductosListadoTable from "./components/ProductosListadoTable";
 import PageHeader from "../../../../components/Sistema/PageHeader";
 import CatalogPagination from "../../../../components/ui/CatalogPagination";
 import Toast from "../../../../components/ui/Toast";
+import { getUser, hasPermission } from "../../../auth/services/authService.js";
+import SkuRevalidationModal from "./components/SkuRevalidationModal.jsx";
 import "./ProductosCompletosPage.css";
 
 const PAGE_SIZE = 10;
@@ -136,6 +138,7 @@ const buscarIdEnCatalogo = (item, catalogoMapa, nivel = 0, visitados = new Set()
 
 export default function ProductosCompletosPage({ iniciarCreacion = false }) {
   const navigate = useNavigate();
+  const puedeCorregirSkus = hasPermission(getUser(), "ACTION_PRODUCTS_EDIT");
   const [modoCreacion, setModoCreacion] = useState(iniciarCreacion);
   const [productos, setProductos] = useState([]);
   const [pageInfo, setPageInfo] = useState(PAGE_INFO_DEFAULT);
@@ -156,6 +159,7 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
   const [sortField, setSortField] = useState("sku");
   const [sortDirection, setSortDirection] = useState("asc");
   const [exportandoExcel, setExportandoExcel] = useState(false);
+  const [mostrarValidacionSkus, setMostrarValidacionSkus] = useState(false);
 
   const cargarProductos = useCallback(async () => {
     // Limpiar cache legado del modulo cuando existia en modo local.
@@ -693,12 +697,26 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
               <i className="bi bi-file-earmark-excel me-1"></i>
               {exportandoExcel ? "Generando..." : "Reporte Excel"}
             </button>
+            <button
+              className="btn productos-brand-outline me-2"
+              onClick={() => setMostrarValidacionSkus(true)}
+            >
+              <i className="bi bi-upc-scan me-1"></i>
+              Validar códigos
+            </button>
             <button className="btn productos-brand-primary" onClick={() => setModoCreacion(true)}>
               <i className="bi bi-plus-circle me-2"></i>
               Nuevo Producto
             </button>
           </div>
         }
+      />
+
+      <SkuRevalidationModal
+        show={mostrarValidacionSkus}
+        puedeCorregir={puedeCorregirSkus}
+        onClose={() => setMostrarValidacionSkus(false)}
+        onCorrected={cargarProductos}
       />
 
       {loadingLista && <div className="alert alert-info">Cargando productos...</div>}

@@ -127,6 +127,16 @@ export function aplicarReclasificacion(id, clasificacion) {
   });
 }
 
+export function validarSkusProductos() {
+  return request(`${API_PATHS.PRODUCTOS}/skus/validacion`);
+}
+
+export function corregirSkusProductos() {
+  return request(`${API_PATHS.PRODUCTOS}/skus/revalidacion`, {
+    method: "PUT"
+  });
+}
+
 export function aplicarCantidadesInsumosMismoNivel(productoId, insumos) {
   return request(`${API_PATHS.PRODUCTOS}/${productoId}/insumos/aplicar-mismo-nivel`, {
     method: "PUT",
