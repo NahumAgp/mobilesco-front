@@ -99,7 +99,7 @@ export default function SalidasInsumosNuevaPage() {
     let valido = true;
     const detallesActualizados = detalles.map((item) => {
       const insumoActual = insumosActualizados.find((insumo) => String(insumo.id) === String(item.insumoId));
-      const stockBase = Number(insumoActual?.stockActual || 0);
+      const stockBase = Number(insumoActual?.stockDisponible ?? insumoActual?.stockActual ?? 0);
       const cantidad = Number(item.cantidad || 0);
       const stockDisponible = stockBase - cantidad;
       const stockDesactualizado = cantidad > stockBase;
@@ -369,7 +369,7 @@ export default function SalidasInsumosNuevaPage() {
       setActualizandoStock(false);
     }
 
-    const stockBase = Number(insumoActual.stockActual || 0);
+    const stockBase = Number(insumoActual.stockDisponible ?? insumoActual.stockActual ?? 0);
     const existente = detalles.find((item) => String(item.insumoId) === String(insumo.id));
     const cantidadAcumulada = Number(existente?.cantidad || 0) + cantidad;
     const stockDisponible = stockBase - cantidadAcumulada;

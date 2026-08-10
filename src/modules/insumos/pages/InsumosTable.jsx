@@ -22,6 +22,8 @@ const COLUMNAS = [
   { id: "ubicacion", label: "Ubicacion", sortField: "ubicacion", defaultWidth: 76 },
   { id: "unidad", label: "Unidad", defaultWidth: 70 },
   { id: "stockActual", label: "Stock actual", sortField: "stockActual", defaultWidth: 82 },
+  { id: "stockApartado", label: "Apartado", defaultWidth: 82 },
+  { id: "stockDisponible", label: "Disponible", defaultWidth: 82 },
   { id: "stockMinimo", label: "Stock minimo", sortField: "stockMinimo", defaultWidth: 82 },
   { id: "ultimoCosto", label: "Ultimo costo", defaultWidth: 86 },
   { id: "costoPromedio", label: "Costo promedio", defaultWidth: 92 },
@@ -141,8 +143,9 @@ export default function InsumosTable({
   );
 
   const getStockStatus = (insumo) => {
-    if (insumo.stockActual <= 0) return "agotado";
-    if (insumo.stockMinimo && insumo.stockActual <= insumo.stockMinimo) return "bajo";
+    const disponible = Number(insumo.stockDisponible ?? insumo.stockActual ?? 0);
+    if (disponible <= 0) return "agotado";
+    if (insumo.stockMinimo && disponible <= insumo.stockMinimo) return "bajo";
     return "normal";
   };
 
@@ -260,6 +263,12 @@ export default function InsumosTable({
                       </td>
                       <td className={`text-end insumos-stock-${stockStatus}`}>
                         {Number(insumo.stockActual || 0).toFixed(2)}
+                      </td>
+                      <td className="text-end text-warning fw-semibold">
+                        {Number(insumo.stockApartado || 0).toFixed(2)}
+                      </td>
+                      <td className="text-end text-success fw-semibold">
+                        {Number(insumo.stockDisponible ?? insumo.stockActual ?? 0).toFixed(2)}
                       </td>
                       <td className="text-end">
                         {insumo.stockMinimo !== null && insumo.stockMinimo !== undefined

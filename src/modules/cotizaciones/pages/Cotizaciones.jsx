@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
-import { Download, Eye, MessageCircle, Plus, Search } from "lucide-react";
+import { Download, Eye, Factory, MessageCircle, Plus, Search } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { listarCotizaciones, obtenerCotizacion } from "../services/cotizaciones";
 import { descargarPdfCotizacion, compartirCotizacionWhatsApp } from "../utils/cotizacionPdf";
 import "./cotizaciones.css";
+import { getUser, hasPermission } from "../../auth/services/authService";
+import { convertirCotizacion } from "../../ordenes-produccion/services/ordenesProduccion";
 
 const estados = {
   BORRADOR: "Borrador", PENDIENTE: "Pendiente", ENVIADA: "Enviada", ACEPTADA: "Aceptada",
@@ -13,6 +15,8 @@ const moneda = (value) => new Intl.NumberFormat("es-MX", { style: "currency", cu
 
 export default function Cotizaciones() {
   const navigate = useNavigate();
+  const puedeCrear = hasPermission(getUser(), "ACTION_QUOTES_CREATE");
+  const puedeCrearOrden = hasPermission(getUser(), "VIEW_PRODUCTION_ORDERS") && hasPermission(getUser(), "ACTION_PRODUCTION_ORDERS_CREATE");
   const [searchParams] = useSearchParams();
   const [items, setItems] = useState([]);
   const [busqueda, setBusqueda] = useState("");
@@ -47,12 +51,20 @@ export default function Cotizaciones() {
 
   const cargarDetalle = async (id) => setDetalle(await obtenerCotizacion(id));
   const conCotizacion = async (id, accion) => accion(await obtenerCotizacion(id));
+  const crearOrden = async (cotizacionId) => {
+    if (!window.confirm("Se creará una orden de producción en borrador y la cotización pasará a completada. ¿Continuar?")) return;
+    try {
+      setError("");
+      const orden = await convertirCotizacion(cotizacionId, {});
+      navigate(`/ordenes-produccion/${orden.id}`);
+    } catch (e) { setError(e.message || "No fue posible crear la orden de producción"); }
+  };
 
   return (
     <div className="cot-page">
       <header className="cot-header">
         <div><h1>Cotizaciones</h1><p>Consulta, da seguimiento y comparte propuestas comerciales.</p></div>
-        <button className="cot-primary cot-new-button" onClick={() => navigate("/cotizaciones/nueva")}><span className="cot-new-button-icon"><Plus size={20} /></span><span>Nueva cotización</span></button>
+        {puedeCrear && <button className="cot-primary cot-new-button" onClick={() => navigate("/cotizaciones/nueva")}><span className="cot-new-button-icon"><Plus size={20} /></span><span>Nueva cotización</span></button>}
       </header>
       <section className="cot-card cot-filters">
         <label className="cot-search"><Search size={18} /><input value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder="Buscar por folio o cliente..." /></label>
@@ -75,6 +87,7 @@ export default function Cotizaciones() {
                   <button title="Ver" onClick={() => cargarDetalle(item.id)}><Eye size={17} /></button>
                   <button title="Descargar PDF" onClick={() => conCotizacion(item.id, descargarPdfCotizacion)}><Download size={17} /></button>
                   <button title="Enviar por WhatsApp" onClick={() => conCotizacion(item.id, compartirCotizacionWhatsApp)}><MessageCircle size={17} /></button>
+                  {puedeCrearOrden && item.estado === "ACEPTADA" && <button title="Crear orden de producción" onClick={() => crearOrden(item.id)}><Factory size={17} /></button>}
                 </div></td>
               </tr>
             ))}
@@ -93,6 +106,7 @@ export default function Cotizaciones() {
           <div className="cot-modal-buttons">
             <button onClick={() => descargarPdfCotizacion(detalle)}><Download size={17} /> PDF</button>
             <button className="cot-primary" onClick={() => compartirCotizacionWhatsApp(detalle)}><MessageCircle size={17} /> WhatsApp</button>
+            {puedeCrearOrden && detalle.estado === "ACEPTADA" && <button className="cot-primary" onClick={() => crearOrden(detalle.id)}><Factory size={17} /> Crear orden</button>}
           </div>
         </article>
       </div>}
