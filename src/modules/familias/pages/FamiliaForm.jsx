@@ -1,12 +1,51 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { familiaGateway } from "../services/familiaGateway.js";
 import { lineaProductoGateway } from "../../lineas-producto/services/lineaProductoGateway.js";
-import { obtenerModelos } from "../../modelos/services/modelos";
+import { obtenerModelosPorFamilia } from "../../modelos/services/modelos";
+import { obtenerSubfamiliasPorFamilia } from "../../subfamilias/services/subfamilias.js";
 import Toast from "../../../components/ui/Toast.jsx";
 import SearchableSelect from "../../../components/ui/SearchableSelect.jsx";
 import { useGeneratedCatalogCode } from "../../../hooks/useGeneratedCatalogCode.js";
+import { agruparModelosPorSubfamilia } from "../utils/agruparModelosPorSubfamilia.js";
+
+function ModelosTable({ modelos }) {
+  return (
+    <div className="table-responsive">
+      <table className="table table-hover align-middle mb-0">
+        <thead className="table-light">
+          <tr>
+            <th>ID</th>
+            <th>Código</th>
+            <th>Nombre</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          {modelos.map((modelo) => (
+            <tr key={modelo.id}>
+              <td>{modelo.id}</td>
+              <td>{modelo.codigo || "-"}</td>
+              <td>{modelo.nombre || "-"}</td>
+              <td>
+                <span
+                  className={
+                    modelo.activo
+                      ? "badge bg-success-subtle text-success border border-success-subtle"
+                      : "badge bg-secondary-subtle text-secondary border border-secondary-subtle"
+                  }
+                >
+                  {modelo.activo ? "Activo" : "Inactivo"}
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 export default function FamiliaForm({ familiaId }) {
   const navigate = useNavigate();
@@ -25,9 +64,14 @@ export default function FamiliaForm({ familiaId }) {
     activo: true
   });
   const [lineas, setLineas] = useState([]);
+  const [subfamiliasFamilia, setSubfamiliasFamilia] = useState([]);
   const [modelosFamilia, setModelosFamilia] = useState([]);
-  const [cargandoModelos, setCargandoModelos] = useState(false);
-  const [errorModelos, setErrorModelos] = useState("");
+  const [cargandoClasificacion, setCargandoClasificacion] = useState(false);
+  const [errorClasificacion, setErrorClasificacion] = useState("");
+  const clasificacion = useMemo(
+    () => agruparModelosPorSubfamilia(subfamiliasFamilia, modelosFamilia),
+    [subfamiliasFamilia, modelosFamilia]
+  );
   const obtenerCodigoSugeridoPorLinea = useCallback(
     (nombre) => familiaGateway.obtenerCodigoSugerido(nombre, formData.lineaId),
     [formData.lineaId]
@@ -89,39 +133,35 @@ export default function FamiliaForm({ familiaId }) {
   }, [familiaId]);
 
   useEffect(() => {
-    const cargarModelos = async () => {
+    const cargarClasificacion = async () => {
       if (!familiaId) {
+        setSubfamiliasFamilia([]);
         setModelosFamilia([]);
         return;
       }
 
       try {
-        setCargandoModelos(true);
-        setErrorModelos("");
+        setCargandoClasificacion(true);
+        setErrorClasificacion("");
 
-        const data = await obtenerModelos();
-        const lista = Array.isArray(data)
-          ? data
-          : Array.isArray(data?.content)
-            ? data.content
-            : [];
+        const [subfamilias, modelos] = await Promise.all([
+          obtenerSubfamiliasPorFamilia(familiaId, undefined),
+          obtenerModelosPorFamilia(familiaId)
+        ]);
 
-        const filtrados = lista.filter((modelo) => {
-          const familiaModeloId = modelo.familiaId ?? modelo.familia?.id ?? modelo.familia_id ?? "";
-          return String(familiaModeloId) === String(familiaId);
-        });
-
-        setModelosFamilia(filtrados);
+        setSubfamiliasFamilia(Array.isArray(subfamilias) ? subfamilias : []);
+        setModelosFamilia(Array.isArray(modelos) ? modelos : []);
       } catch (error) {
         console.error(error);
+        setSubfamiliasFamilia([]);
         setModelosFamilia([]);
-        setErrorModelos("No se pudieron cargar los modelos de esta familia.");
+        setErrorClasificacion("No se pudieron cargar las subfamilias y modelos de esta familia.");
       } finally {
-        setCargandoModelos(false);
+        setCargandoClasificacion(false);
       }
     };
 
-    cargarModelos();
+    cargarClasificacion();
   }, [familiaId]);
 
   function handleChange(e) {
@@ -355,54 +395,82 @@ export default function FamiliaForm({ familiaId }) {
 
       {familiaId && (
         <div className="card mt-4">
-          <div className="card-header bg-white py-3 d-flex align-items-center justify-content-between">
-            <h5 className="mb-0">Modelos de esta familia</h5>
-            <span className="badge bg-success-subtle text-success border border-success-subtle">
-              {modelosFamilia.length} modelos
-            </span>
+          <div className="card-header bg-white py-3 d-flex flex-wrap gap-2 align-items-center justify-content-between">
+            <div>
+              <h5 className="mb-1">Subfamilias y modelos</h5>
+              <div className="small text-muted">Organización de productos dentro de esta familia</div>
+            </div>
+            <div className="d-flex gap-2">
+              <span className="badge bg-primary-subtle text-primary border border-primary-subtle">
+                {subfamiliasFamilia.length} subfamilias
+              </span>
+              <span className="badge bg-success-subtle text-success border border-success-subtle">
+                {modelosFamilia.length} modelos
+              </span>
+            </div>
           </div>
 
           <div className="card-body">
-            {cargandoModelos ? (
-              <div className="text-muted">Cargando modelos...</div>
-            ) : errorModelos ? (
-              <div className="alert alert-warning mb-0">{errorModelos}</div>
-            ) : modelosFamilia.length > 0 ? (
-              <div className="table-responsive">
-                <table className="table table-hover align-middle mb-0">
-                  <thead className="table-light">
-                    <tr>
-                      <th>ID</th>
-                      <th>Código</th>
-                      <th>Nombre</th>
-                      <th>Estado</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {modelosFamilia.map((modelo) => (
-                      <tr key={modelo.id}>
-                        <td>{modelo.id}</td>
-                        <td>{modelo.codigo || "-"}</td>
-                        <td>{modelo.nombre || "-"}</td>
-                        <td>
-                          <span
-                            className={
-                              modelo.activo
-                                ? "badge bg-success-subtle text-success border border-success-subtle"
-                                : "badge bg-secondary-subtle text-secondary border border-secondary-subtle"
-                            }
-                          >
-                            {modelo.activo ? "Activo" : "Inactivo"}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            {cargandoClasificacion ? (
+              <div className="text-muted">Cargando subfamilias y modelos...</div>
+            ) : errorClasificacion ? (
+              <div className="alert alert-warning mb-0">{errorClasificacion}</div>
+            ) : clasificacion.grupos.length > 0 || clasificacion.sinSubfamilia.length > 0 ? (
+              <div className="d-grid gap-3">
+                {clasificacion.grupos.map(({ subfamilia, modelos }) => (
+                  <section className="border rounded-3 overflow-hidden" key={subfamilia.id}>
+                    <div className="bg-light px-3 py-3 d-flex flex-wrap gap-2 align-items-center justify-content-between border-bottom">
+                      <div>
+                        <div className="fw-semibold">
+                          {subfamilia.codigo ? `${subfamilia.codigo} - ` : ""}{subfamilia.nombre || "Sin nombre"}
+                        </div>
+                        {subfamilia.descripcion && (
+                          <div className="small text-muted mt-1">{subfamilia.descripcion}</div>
+                        )}
+                      </div>
+                      <div className="d-flex align-items-center gap-2">
+                        <span
+                          className={
+                            subfamilia.activo
+                              ? "badge bg-success-subtle text-success border border-success-subtle"
+                              : "badge bg-secondary-subtle text-secondary border border-secondary-subtle"
+                          }
+                        >
+                          {subfamilia.activo ? "Activa" : "Inactiva"}
+                        </span>
+                        <span className="badge text-bg-light border">
+                          {modelos.length} {modelos.length === 1 ? "modelo" : "modelos"}
+                        </span>
+                      </div>
+                    </div>
+                    {modelos.length > 0 ? (
+                      <ModelosTable modelos={modelos} />
+                    ) : (
+                      <div className="px-3 py-3 text-muted small">
+                        Esta subfamilia todavía no tiene modelos asociados.
+                      </div>
+                    )}
+                  </section>
+                ))}
+
+                {clasificacion.sinSubfamilia.length > 0 && (
+                  <section className="border border-warning-subtle rounded-3 overflow-hidden">
+                    <div className="bg-warning-subtle px-3 py-3 d-flex flex-wrap gap-2 align-items-center justify-content-between border-bottom border-warning-subtle">
+                      <div>
+                        <div className="fw-semibold">Sin subfamilia</div>
+                        <div className="small text-muted mt-1">Modelos pendientes de clasificar</div>
+                      </div>
+                      <span className="badge text-bg-warning">
+                        {clasificacion.sinSubfamilia.length} pendientes
+                      </span>
+                    </div>
+                    <ModelosTable modelos={clasificacion.sinSubfamilia} />
+                  </section>
+                )}
               </div>
             ) : (
               <div className="text-muted">
-                Esta familia todavía no tiene modelos asociados.
+                Esta familia todavía no tiene subfamilias ni modelos asociados.
               </div>
             )}
           </div>
