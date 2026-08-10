@@ -1,14 +1,13 @@
 import { useState } from "react";
 
-import { getUser } from "../../auth/services/authService.js";
-import { puedeGestionarCatalogoInsumos } from "../utils/costosPermisos.js";
+import { getUser, hasPermission } from "../../auth/services/authService.js";
 import TiposInsumoManager from "../components/TiposInsumoManager.jsx";
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
 import "./InsumosPage.css";
 
 export default function TiposInsumoPage() {
-  const puedeGestionarInsumos = puedeGestionarCatalogoInsumos(getUser());
+  const user = getUser();
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
 
@@ -26,7 +25,9 @@ export default function TiposInsumoPage() {
       />
 
       <TiposInsumoManager
-        puedeGestionar={puedeGestionarInsumos}
+        puedeCrear={hasPermission(user, "ACTION_INPUT_TYPES_CREATE")}
+        puedeEditar={hasPermission(user, "ACTION_INPUT_TYPES_EDIT")}
+        puedeCambiarEstado={hasPermission(user, "ACTION_INPUT_TYPES_STATUS")}
         onFeedback={(message, type = "success") => {
           setToastType(type);
           setToastMessage(message);

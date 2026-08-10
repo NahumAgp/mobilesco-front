@@ -69,10 +69,13 @@ export function actualizarModelo(id, data) {
   });
 }
 
-export function obtenerCodigoSugerido(nombre, familiaId) {
+export function obtenerCodigoSugerido(nombre, familiaId, subfamiliaId) {
   const params = new URLSearchParams({ nombre });
   if (familiaId !== undefined && familiaId !== null && familiaId !== "") {
     params.set("familiaId", String(familiaId));
+  }
+  if (subfamiliaId !== undefined && subfamiliaId !== null && subfamiliaId !== "") {
+    params.set("subfamiliaId", String(subfamiliaId));
   }
   return request(`${API_PATHS.MODELOS}/codigo-sugerido?${params.toString()}`);
 }

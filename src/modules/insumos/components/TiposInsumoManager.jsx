@@ -10,6 +10,7 @@ import {
 } from "../services/tiposInsumo.js";
 
 const emptyForm = {
+  codigo: "",
   nombre: "",
   descripcion: ""
 };
@@ -28,7 +29,16 @@ const PAGE_INFO_DEFAULT = {
   totalPages: 0
 };
 
-export default function TiposInsumoManager({ puedeGestionar, onFeedback }) {
+export default function TiposInsumoManager({
+  puedeGestionar,
+  puedeCrear,
+  puedeEditar,
+  puedeCambiarEstado,
+  onFeedback
+}) {
+  const canCreate = puedeCrear ?? puedeGestionar ?? false;
+  const canEdit = puedeEditar ?? puedeGestionar ?? false;
+  const canChangeStatus = puedeCambiarEstado ?? puedeGestionar ?? false;
   const [tipos, setTipos] = useState([]);
   const [page, setPage] = useState(0);
   const [pageInfo, setPageInfo] = useState(PAGE_INFO_DEFAULT);
@@ -81,9 +91,9 @@ export default function TiposInsumoManager({ puedeGestionar, onFeedback }) {
   useEffect(() => {
     if (editingTipo) {
       setPreview({
-        codigo: editingTipo.codigo || "",
+        codigo: form.codigo || "",
         disponible: true,
-        mensaje: "El codigo actual se conserva para no romper relaciones existentes"
+        mensaje: "Puedes cambiarlo manualmente; usa de 1 a 3 letras o numeros"
       });
       setPreviewLoading(false);
       return undefined;
@@ -114,7 +124,7 @@ export default function TiposInsumoManager({ puedeGestionar, onFeedback }) {
     }, 300);
 
     return () => window.clearTimeout(timer);
-  }, [editingTipo, form.nombre]);
+  }, [editingTipo, form.codigo, form.nombre]);
 
   const resumen = useMemo(() => {
     const activos = tipos.filter((tipo) => tipo.activo).length;
@@ -150,6 +160,7 @@ export default function TiposInsumoManager({ puedeGestionar, onFeedback }) {
   const handleEdit = (tipo) => {
     setEditingTipo(tipo);
     setForm({
+      codigo: tipo.codigo || "",
       nombre: tipo.nombre || "",
       descripcion: tipo.descripcion || ""
     });
@@ -178,6 +189,7 @@ export default function TiposInsumoManager({ puedeGestionar, onFeedback }) {
     e.preventDefault();
 
     const nombre = form.nombre.trim();
+    const codigo = form.codigo.trim().toUpperCase();
     const descripcion = form.descripcion.trim();
     const nuevosErrores = {};
 
@@ -187,6 +199,10 @@ export default function TiposInsumoManager({ puedeGestionar, onFeedback }) {
 
     if (!editingTipo && !preview.disponible) {
       nuevosErrores.nombre = preview.mensaje || "Corrige el nombre antes de guardar";
+    }
+
+    if (editingTipo && !/^[A-Z0-9]{1,3}$/.test(codigo)) {
+      nuevosErrores.codigo = "Usa de 1 a 3 letras o numeros";
     }
 
     if (Object.keys(nuevosErrores).length > 0) {
@@ -202,6 +218,7 @@ export default function TiposInsumoManager({ puedeGestionar, onFeedback }) {
       };
 
       if (editingTipo) {
+        payload.codigo = codigo;
         await actualizarTipoInsumo(editingTipo.id, payload);
         emitirFeedback("Tipo de insumo actualizado correctamente");
       } else {
@@ -257,7 +274,7 @@ export default function TiposInsumoManager({ puedeGestionar, onFeedback }) {
                   </h4>
                   <p className="text-muted small mb-0">
                     {editingTipo
-                      ? "El codigo se mantiene estable aunque cambies el nombre."
+                      ? "Puedes reducir el codigo manualmente sin perder las relaciones existentes."
                       : "El codigo se genera con la inicial y, si hace falta, usa hasta 3 letras."}
                   </p>
                 </div>
@@ -273,7 +290,7 @@ export default function TiposInsumoManager({ puedeGestionar, onFeedback }) {
                 )}
               </div>
 
-              {puedeGestionar ? (
+              {(editingTipo ? canEdit : canCreate) ? (
                 <form onSubmit={handleSubmit} noValidate>
                   <div className="mb-3">
                     <label className="form-label fw-semibold">Nombre</label>
@@ -293,11 +310,18 @@ export default function TiposInsumoManager({ puedeGestionar, onFeedback }) {
                     <label className="form-label fw-semibold">Codigo</label>
                     <input
                       type="text"
-                      className="form-control"
-                      value={preview.codigo || ""}
-                      readOnly
+                      className={`form-control ${errores.codigo ? "is-invalid" : ""}`}
+                      value={editingTipo ? form.codigo : preview.codigo || ""}
+                      readOnly={!editingTipo}
+                      maxLength={editingTipo ? 3 : undefined}
+                      onChange={editingTipo
+                        ? (e) => handleChange("codigo", e.target.value.toUpperCase())
+                        : undefined}
                       placeholder={previewLoading ? "Generando..." : "Aun sin codigo"}
                     />
+                    {errores.codigo ? (
+                      <div className="invalid-feedback d-block">{errores.codigo}</div>
+                    ) : null}
                     <div
                       className={`form-text ${
                         previewLoading
@@ -385,16 +409,16 @@ export default function TiposInsumoManager({ puedeGestionar, onFeedback }) {
                             <CatalogStatusBadge active={tipo.activo} />
                           </td>
                           <td className="text-end">
-                            {puedeGestionar ? (
+                            {(canEdit || canChangeStatus) ? (
                               <div className="d-inline-flex gap-2 flex-wrap justify-content-end">
-                                <button
+                                {canEdit && <button
                                   type="button"
                                   className="btn btn-sm btn-outline-primary"
                                   onClick={() => handleEdit(tipo)}
                                 >
                                   Editar
-                                </button>
-                                <button
+                                </button>}
+                                {canChangeStatus && <button
                                   type="button"
                                   className={`btn btn-sm ${
                                     tipo.activo ? "btn-outline-secondary" : "btn-outline-success"
@@ -402,7 +426,7 @@ export default function TiposInsumoManager({ puedeGestionar, onFeedback }) {
                                   onClick={() => handleToggleEstado(tipo)}
                                 >
                                   {tipo.activo ? "Desactivar" : "Activar"}
-                                </button>
+                                </button>}
                               </div>
                             ) : (
                               <span className="text-muted small">Solo lectura</span>

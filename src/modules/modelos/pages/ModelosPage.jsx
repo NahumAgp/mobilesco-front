@@ -9,6 +9,7 @@ import ModelosTable from "./ModelosTable.jsx";
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
 import CatalogPagination from "../../../components/ui/CatalogPagination.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
+import { getUser, hasPermission } from "../../auth/services/authService";
 import "./ModelosPage.css";
 
 const PAGE_SIZE = 10;
@@ -24,6 +25,8 @@ const getFamiliaLabel = (modelo = {}) =>
 
 export default function ModelosPage() {
   const navigate = useNavigate();
+  const canCreate = hasPermission(getUser(), "ACTION_MODELS_CREATE");
+  const canExport = hasPermission(getUser(), "ACTION_MODELS_EXPORT");
 
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
@@ -189,20 +192,20 @@ export default function ModelosPage() {
         subtitle="Catalogo de modelos"
         actions={
           <div className="d-flex gap-2">
-            <button
+            {canExport && <button
               className="btn btn-outline-success"
               onClick={exportarExcel}
               disabled={exportandoExcel}
             >
               <i className="bi bi-file-earmark-excel me-1"></i>
               {exportandoExcel ? "Generando..." : "Reporte Excel"}
-            </button>
-            <button
+            </button>}
+            {canCreate && <button
               className="btn modelos-brand-primary"
               onClick={() => navigate("/modelos/nuevo")}
             >
               Nuevo Modelo
-            </button>
+            </button>}
           </div>
         }
       />

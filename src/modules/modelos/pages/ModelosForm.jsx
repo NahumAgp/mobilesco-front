@@ -313,14 +313,14 @@ export default function ModeloForm({
     subfamiliaId: "",
     activo: true
   });
-  const obtenerCodigoSugeridoPorFamilia = useCallback(
-    (nombre) => obtenerCodigoSugerido(nombre, formData.familiaId),
-    [formData.familiaId]
+  const obtenerCodigoSugeridoPorClasificacion = useCallback(
+    (nombre) => obtenerCodigoSugerido(nombre, formData.familiaId, formData.subfamiliaId),
+    [formData.familiaId, formData.subfamiliaId]
   );
   const { codigoGenerado, generandoCodigo } = useGeneratedCatalogCode(
     formData.nombre,
     !esEdicion && Boolean(formData.familiaId),
-    obtenerCodigoSugeridoPorFamilia
+    obtenerCodigoSugeridoPorClasificacion
   );
 
   useEffect(() => {
