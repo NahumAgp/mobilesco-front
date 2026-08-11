@@ -17,6 +17,25 @@ function getCookie(name) {
   return match ? decodeURIComponent(match.slice(prefix.length)) : null;
 }
 
+async function syncCurrentUserSnapshot(accessToken) {
+  const response = await fetch(`${API_BASE_URL}${API_PATHS.AUTH_ME}`, {
+    method: "GET",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${accessToken}`
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error("No se pudo sincronizar el usuario actual");
+  }
+
+  const user = await response.json();
+  localStorage.setItem("user", JSON.stringify(user));
+  window.dispatchEvent(new Event("userUpdated"));
+}
+
 // ============================
 // 🔁 REFRESH TOKEN REQUEST
 // ============================
@@ -47,6 +66,12 @@ async function refreshTokenRequest() {
     localStorage.setItem("refreshToken", data.refreshToken);
   } else {
     localStorage.removeItem("refreshToken");
+  }
+
+  try {
+    await syncCurrentUserSnapshot(data.accessToken);
+  } catch (error) {
+    console.warn("No se pudo actualizar el usuario local tras renovar la sesion:", error);
   }
 
   return data.accessToken;

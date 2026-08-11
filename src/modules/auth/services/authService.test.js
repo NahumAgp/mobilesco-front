@@ -8,7 +8,8 @@ import {
   getUser,
   hasPermission,
   isAuthenticated,
-  login
+  login,
+  syncCurrentUser
 } from './authService';
 
 describe('authService', () => {
@@ -55,5 +56,32 @@ describe('authService', () => {
     const user = { roles: ['ALMACEN'], permisos: ['VIEW_INVENTORY'] };
     expect(hasPermission(user, 'VIEW_INVENTORY')).toBe(true);
     expect(hasPermission(user, 'VIEW_PURCHASES')).toBe(false);
+  });
+
+  it('sincroniza y notifica un cambio del usuario con una sola peticion concurrente', async () => {
+    localStorage.setItem('token', 'access-prueba');
+    localStorage.setItem('user', JSON.stringify({ roles: ['EMPLOYEE'], permisos: [] }));
+    request.mockResolvedValue({
+      roles: ['JEFE_ALMACEN'],
+      permisos: ['VIEW_INVENTORY']
+    });
+    const userUpdated = vi.fn();
+    window.addEventListener('userUpdated', userUpdated);
+
+    const [first, second] = await Promise.all([
+      syncCurrentUser(),
+      syncCurrentUser()
+    ]);
+
+    expect(first).toEqual(second);
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(request).toHaveBeenCalledWith('/api/v1/auth/me');
+    expect(JSON.parse(localStorage.getItem('user'))).toMatchObject({
+      roles: ['JEFE_ALMACEN'],
+      permisos: ['VIEW_INVENTORY']
+    });
+    expect(userUpdated).toHaveBeenCalledTimes(1);
+
+    window.removeEventListener('userUpdated', userUpdated);
   });
 });

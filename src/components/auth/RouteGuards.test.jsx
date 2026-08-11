@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
 const auth = vi.hoisted(() => ({
@@ -72,5 +72,24 @@ describe('guardas de rutas', () => {
       </RoleRoute>
     );
     expect(screen.getByText('Sin permiso para esta vista')).toBeInTheDocument();
+  });
+
+  it('recalcula el acceso cuando cambia el usuario de la sesion activa', () => {
+    auth.isAuthenticated.mockReturnValue(true);
+    let currentUser = { roles: ['VENTAS'], permisos: [] };
+    auth.getUser.mockImplementation(() => currentUser);
+    auth.hasPermission.mockImplementation((user, code) => user?.permisos?.includes(code));
+
+    renderRoute(
+      <RoleRoute permission="VIEW_PURCHASES">
+        <div>Compras actualizadas</div>
+      </RoleRoute>
+    );
+    expect(screen.getByText('Sin permiso para esta vista')).toBeInTheDocument();
+
+    currentUser = { roles: ['VENTAS'], permisos: ['VIEW_PURCHASES'] };
+    act(() => window.dispatchEvent(new Event('userUpdated')));
+
+    expect(screen.getByText('Compras actualizadas')).toBeInTheDocument();
   });
 });

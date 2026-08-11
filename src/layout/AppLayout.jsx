@@ -1,11 +1,14 @@
 // src/layout/AppLayout.jsx
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from '../components/Sistema/Sidebar';
+import { syncCurrentUser } from '../modules/auth/services/authService';
 import './AppLayout.css';
 
 const AppLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [authRevision, setAuthRevision] = useState(0);
+  const outletContext = useMemo(() => ({ authRevision }), [authRevision]);
 
   const toggleSidebar = () => {
     setSidebarOpen((current) => !current);
@@ -20,6 +23,36 @@ const AppLayout = () => {
 
     document.addEventListener("keydown", closeOnEscape);
     return () => document.removeEventListener("keydown", closeOnEscape);
+  }, []);
+
+  useEffect(() => {
+    const handleUserUpdated = () => setAuthRevision((current) => current + 1);
+    window.addEventListener("userUpdated", handleUserUpdated);
+    return () => window.removeEventListener("userUpdated", handleUserUpdated);
+  }, []);
+
+  useEffect(() => {
+    const synchronize = () => {
+      syncCurrentUser().catch((error) => {
+        console.warn("No se pudo sincronizar la sesion activa:", error);
+      });
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        synchronize();
+      }
+    };
+
+    synchronize();
+    window.addEventListener("focus", synchronize);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    const intervalId = window.setInterval(synchronize, 60_000);
+
+    return () => {
+      window.removeEventListener("focus", synchronize);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.clearInterval(intervalId);
+    };
   }, []);
 
   return (
@@ -50,7 +83,7 @@ const AppLayout = () => {
       )}
       <main className="main-content">
         <div className="content-wrapper">
-          <Outlet />
+          <Outlet context={outletContext} />
         </div>
       </main>
     </div>

@@ -14,11 +14,19 @@ import {
   getUser,
   hasPermission
 } from "../../auth/services/authService";
+import {
+  buildAccessUserPatch,
+  collectEffectivePermissionCodes,
+  collectInheritedPermissionCodes,
+  ensurePermissionDependencies,
+  togglePermissionWithDependencies
+} from "../utils/accessPermissions";
 
 import "./UsuariosAccesoPage.css";
 
 const PAGE_SIZE_ROLES = 6;
 const PAGE_SIZE_USERS = 10;
+const FULL_ACCESS_ROLES = new Set(["ADMIN", "DIRECTOR_GENERAL", "SUBDIRECCION_ADMINISTRATIVA"]);
 const PAGE_INFO_ROLES_DEFAULT = {
   page: 0,
   size: PAGE_SIZE_ROLES,
@@ -83,6 +91,7 @@ export default function UsuariosAccesoPage() {
   const [activeTab, setActiveTab] = useState("usuarios");
   const [roles, setRoles] = useState([]);
   const [rolesConfig, setRolesConfig] = useState([]);
+  const [rolesCatalogo, setRolesCatalogo] = useState([]);
   const [permisos, setPermisos] = useState([]);
   const [usuarios, setUsuarios] = useState([]);
   const [invitacion, setInvitacion] = useState(initialInvitation);
@@ -101,7 +110,7 @@ export default function UsuariosAccesoPage() {
   const [moduloExpandido, setModuloExpandido] = useState("");
   const [usuarioSeleccionado, setUsuarioSeleccionado] = useState(null);
   const [accesoUsuario, setAccesoUsuario] = useState({ roles: [], permisosDirectos: [], enabled: true, locked: false });
-  const currentUser = useMemo(() => getUser(), []);
+  const [currentUser, setCurrentUser] = useState(() => getUser());
   const canManageUserRoles = hasPermission(currentUser, "ACTION_USER_ROLES");
   const canManageDirectPermissions = hasPermission(currentUser, "ACTION_USER_PERMISSIONS");
   const canManageUserStatus = hasPermission(currentUser, "ACTION_USERS_STATUS");
@@ -133,6 +142,26 @@ export default function UsuariosAccesoPage() {
     return rolesConfig.find((rol) => String(rol.id) === String(rolSeleccionadoId)) || null;
   }, [rolesConfig, rolSeleccionadoId]);
 
+  const permisosHeredadosBorrador = useMemo(
+    () => collectInheritedPermissionCodes(accesoUsuario.roles, rolesCatalogo),
+    [accesoUsuario.roles, rolesCatalogo]
+  );
+
+  const permisosEfectivosBorrador = useMemo(
+    () => collectEffectivePermissionCodes(
+      accesoUsuario.permisosDirectos,
+      permisosHeredadosBorrador,
+      permisos
+    ),
+    [accesoUsuario.permisosDirectos, permisos, permisosHeredadosBorrador]
+  );
+
+  useEffect(() => {
+    const handleUserUpdated = () => setCurrentUser(getUser());
+    window.addEventListener("userUpdated", handleUserUpdated);
+    return () => window.removeEventListener("userUpdated", handleUserUpdated);
+  }, []);
+
   useEffect(() => {
     if (totalPagesRoles > 0 && pageRoles >= totalPagesRoles) {
       setPageRoles(totalPagesRoles - 1);
@@ -161,7 +190,7 @@ export default function UsuariosAccesoPage() {
     setError("");
 
     try {
-      const [rolesResponse, rolesConfigResponse, permisosResponse, usuariosResponse] = await Promise.all([
+      const [rolesResponse, rolesConfigResponse, rolesCatalogoResponse, permisosResponse, usuariosResponse] = await Promise.all([
         getAvailableRoles(),
         getRolesConfig({
           page: pageRoles,
@@ -170,6 +199,7 @@ export default function UsuariosAccesoPage() {
           sortBy: "name",
           direction: "asc"
         }),
+        getRolesConfig(),
         getPermissions(),
         getAccessUsers({
           page: pageUsuarios,
@@ -181,6 +211,7 @@ export default function UsuariosAccesoPage() {
 
       setRoles(Array.isArray(rolesResponse) ? rolesResponse : []);
       setRolesConfig(Array.isArray(rolesConfigResponse?.content) ? rolesConfigResponse.content : Array.isArray(rolesConfigResponse) ? rolesConfigResponse : []);
+      setRolesCatalogo(Array.isArray(rolesCatalogoResponse) ? rolesCatalogoResponse : []);
       setPageInfoRoles(rolesConfigResponse?.content ? {
         page: rolesConfigResponse.page ?? pageRoles,
         size: rolesConfigResponse.size ?? PAGE_SIZE_ROLES,
@@ -264,15 +295,18 @@ export default function UsuariosAccesoPage() {
 
   const handleGuardarAccesos = async () => {
     if (!usuarioSeleccionado) return;
+    const payload = buildAccessUserPatch(accesoUsuario, usuarioSeleccionado, {
+      manageRoles: canManageUserRoles,
+      manageDirectPermissions: canManageDirectPermissions,
+      manageStatus: canManageUserStatus
+    });
+
+    if (Object.keys(payload).length === 0) {
+      return;
+    }
+
     setLoading(true);
     try {
-      const payload = {};
-      if (canManageUserRoles) payload.roles = accesoUsuario.roles;
-      if (canManageDirectPermissions) payload.permisosDirectos = accesoUsuario.permisosDirectos;
-      if (canManageUserStatus) {
-        payload.enabled = accesoUsuario.enabled;
-        payload.locked = accesoUsuario.locked;
-      }
       const actualizado = await updateAccessUser(usuarioSeleccionado.idUsuario, payload);
       if (actualizado?.correo && actualizado.correo === (currentUser?.correo || currentUser?.email)) {
         localStorage.setItem("user", JSON.stringify({
@@ -346,17 +380,58 @@ export default function UsuariosAccesoPage() {
     setRolesConfig((prev) =>
       prev.map((rol) =>
         rol.id === rolId
-          ? { ...rol, permisos: toggleValue(rol.permisos || [], permisoCode) }
+          ? {
+              ...rol,
+              permisos: togglePermissionWithDependencies(
+                rol.permisos || [],
+                permisoCode,
+                permisos
+              )
+            }
           : rol
       )
     );
+  };
+
+  const handleUsuarioRolToggle = (rol) => {
+    setAccesoUsuario((prev) => {
+      const nextRoles = toggleValue(prev.roles, rol);
+      const nextInherited = collectInheritedPermissionCodes(nextRoles, rolesCatalogo);
+      return {
+        ...prev,
+        roles: nextRoles,
+        permisosDirectos: ensurePermissionDependencies(
+          prev.permisosDirectos,
+          nextInherited,
+          permisos
+        )
+      };
+    });
+  };
+
+  const handleUsuarioPermisoToggle = (permisoCode) => {
+    setAccesoUsuario((prev) => {
+      const inherited = collectInheritedPermissionCodes(prev.roles, rolesCatalogo);
+      return {
+        ...prev,
+        permisosDirectos: togglePermissionWithDependencies(
+          prev.permisosDirectos,
+          permisoCode,
+          permisos,
+          inherited
+        )
+      };
+    });
   };
 
   const renderPermissionGroups = (selectedCodes, onToggle, options = {}) => (
     <div className="accordion roles-permissions-accordion" id="rolesPermissionsAccordion">
       {modulosPermisos.map(([modulo, items], index) => {
         const isOpen = moduloExpandido ? moduloExpandido === modulo : index === 0;
-        const selectedInModule = items.filter((item) => (selectedCodes || []).includes(item.code)).length;
+        const inheritedCodes = options.inheritedCodes || [];
+        const assignedCodes = new Set([...(selectedCodes || []), ...inheritedCodes]);
+        const effectiveCodes = new Set(options.effectiveCodes || [...assignedCodes]);
+        const selectedInModule = items.filter((item) => effectiveCodes.has(item.code)).length;
 
         return (
           <div className="accordion-item" key={modulo}>
@@ -376,15 +451,17 @@ export default function UsuariosAccesoPage() {
               <div className="accordion-body">
                 <div className="roles-permissions-grid">
                   {items.map((permiso) => {
-                    const inherited = (options.inheritedCodes || []).includes(permiso.code)
+                    const inherited = inheritedCodes.includes(permiso.code)
                       && !(selectedCodes || []).includes(permiso.code);
+                    const assigned = assignedCodes.has(permiso.code);
+                    const ineffective = assigned && !effectiveCodes.has(permiso.code);
                     const disabled = Boolean(options.disabled || inherited);
                     return (
                     <label key={permiso.code} className={`form-check roles-permission-item ${disabled ? "opacity-75" : ""}`}>
                       <input
                         className="form-check-input"
                         type="checkbox"
-                        checked={(selectedCodes || []).includes(permiso.code) || inherited}
+                        checked={assigned}
                         onChange={() => onToggle(permiso.code)}
                         disabled={disabled}
                       />
@@ -392,6 +469,11 @@ export default function UsuariosAccesoPage() {
                         {permiso.nombre}
                         {permiso.tipo === "VIEW" && <span className="badge text-bg-info ms-2">Vista</span>}
                         {inherited && <span className="badge text-bg-secondary ms-2">Heredado</span>}
+                        {ineffective && (
+                          <span className="badge text-bg-warning ms-2">
+                            Requiere {permiso.vistaRequerida}
+                          </span>
+                        )}
                       </span>
                     </label>
                   )})}
@@ -519,7 +601,7 @@ export default function UsuariosAccesoPage() {
                                 type="checkbox"
                                 checked={accesoUsuario.roles.includes(rol)}
                                 disabled={!canManageUserRoles}
-                                onChange={() => setAccesoUsuario((prev) => ({ ...prev, roles: toggleValue(prev.roles, rol) }))}
+                                onChange={() => handleUsuarioRolToggle(rol)}
                               />
                               <span className="form-check-label">{rol}</span>
                             </label>
@@ -546,13 +628,17 @@ export default function UsuariosAccesoPage() {
                           <div className="text-muted small">Los permisos heredados se retiran cambiando los roles del usuario.</div>
                         </div>
                         <span className="badge text-bg-light border">
-                          {(usuarioSeleccionado.permisosEfectivos || []).length} permisos efectivos
+                          {permisosEfectivosBorrador.length} permisos efectivos
                         </span>
                       </div>
                       {renderPermissionGroups(
                         accesoUsuario.permisosDirectos,
-                        (code) => setAccesoUsuario((prev) => ({ ...prev, permisosDirectos: toggleValue(prev.permisosDirectos, code) })),
-                        { inheritedCodes: usuarioSeleccionado.permisosHeredados || [], disabled: !canManageDirectPermissions }
+                        handleUsuarioPermisoToggle,
+                        {
+                          inheritedCodes: permisosHeredadosBorrador,
+                          effectiveCodes: permisosEfectivosBorrador,
+                          disabled: !canManageDirectPermissions
+                        }
                       )}
                       <div className={`alert mt-3 mb-0 ${resumenCambiosAcceso.length ? "alert-warning" : "alert-light border"}`}>
                         <div className="fw-semibold mb-1">Resumen antes de guardar</div>
@@ -566,7 +652,14 @@ export default function UsuariosAccesoPage() {
                       </div>
                       <div className="d-flex justify-content-end gap-2 mt-3">
                         <button type="button" className="btn btn-outline-secondary" onClick={() => setUsuarioSeleccionado(null)}>Cancelar</button>
-                        <button type="button" className="btn btn-success" disabled={loading || accesoUsuario.roles.length === 0} onClick={handleGuardarAccesos}>Guardar accesos</button>
+                        <button
+                          type="button"
+                          className="btn btn-success"
+                          disabled={loading || accesoUsuario.roles.length === 0 || resumenCambiosAcceso.length === 0}
+                          onClick={handleGuardarAccesos}
+                        >
+                          Guardar accesos
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -606,7 +699,7 @@ export default function UsuariosAccesoPage() {
                           </td>
                           <td className="text-end">
                             <div className="d-flex justify-content-end gap-2">
-                            {(canManageUserRoles || canManageDirectPermissions) && <button
+                            {(canManageUserRoles || canManageDirectPermissions || canManageUserStatus) && <button
                               type="button"
                               className="btn btn-sm btn-outline-success"
                               onClick={() => handleEditarAccesos(usuario)}
@@ -670,7 +763,7 @@ export default function UsuariosAccesoPage() {
                         type="button"
                         className="btn btn-success"
                         onClick={() => handleGuardarRol(rolSeleccionado)}
-                        disabled={loading || !canEditRoles || ["ADMIN", "DIRECTOR_GENERAL"].includes(rolSeleccionado.name)}
+                        disabled={loading || !canEditRoles || FULL_ACCESS_ROLES.has(rolSeleccionado.name)}
                       >
                         Guardar permisos
                       </button>
@@ -707,12 +800,20 @@ export default function UsuariosAccesoPage() {
                       </span>
                     </div>
 
-                    {["ADMIN", "DIRECTOR_GENERAL"].includes(rolSeleccionado.name) && (
+                    {FULL_ACCESS_ROLES.has(rolSeleccionado.name) && (
                       <div className="alert alert-info">Este rol conserva automáticamente todos los permisos actuales y futuros.</div>
                     )}
-                    {renderPermissionGroups(rolSeleccionado.permisos, (code) =>
-                      handleRolPermisoToggle(rolSeleccionado.id, code),
-                      { disabled: !canEditRoles || ["ADMIN", "DIRECTOR_GENERAL"].includes(rolSeleccionado.name) }
+                    {renderPermissionGroups(
+                      rolSeleccionado.permisos,
+                      (code) => handleRolPermisoToggle(rolSeleccionado.id, code),
+                      {
+                        effectiveCodes: collectEffectivePermissionCodes(
+                          rolSeleccionado.permisos,
+                          [],
+                          permisos
+                        ),
+                        disabled: !canEditRoles || FULL_ACCESS_ROLES.has(rolSeleccionado.name)
+                      }
                     )}
                   </div>
                 </div>

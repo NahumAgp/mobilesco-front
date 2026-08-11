@@ -50,6 +50,32 @@ export function getCurrentUser() {
   return request(API_PATHS.AUTH_ME);
 }
 
+let currentUserSyncPromise = null;
+
+export function syncCurrentUser() {
+  if (!isAuthenticated()) {
+    return Promise.resolve(null);
+  }
+
+  if (!currentUserSyncPromise) {
+    currentUserSyncPromise = getCurrentUser()
+      .then((user) => {
+        const nextSnapshot = JSON.stringify(user);
+        const previousSnapshot = localStorage.getItem("user");
+        localStorage.setItem("user", nextSnapshot);
+        if (previousSnapshot !== nextSnapshot) {
+          window.dispatchEvent(new Event("userUpdated"));
+        }
+        return user;
+      })
+      .finally(() => {
+        currentUserSyncPromise = null;
+      });
+  }
+
+  return currentUserSyncPromise;
+}
+
 // ============================
 // ROLES DISPONIBLES
 // ============================
