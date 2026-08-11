@@ -1,0 +1,51 @@
+.tab-analytics {
+  margin-bottom: 14px;
+  padding: 18px 20px;
+  border: 1px solid #dce7e3;
+  border-radius: 15px;
+  background: #fff;
+  box-shadow: 0 3px 16px rgba(24, 59, 48, 0.06);
+}
+
+.tab-analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.tab-analytics-card {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid #e1e8e5;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #fff 0%, #f7fbf9 100%);
+}
+
+.tab-analytics-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: #def1eb;
+  color: #17604f;
+}
+
+.tab-analytics-card div { display: grid; min-width: 0; }
+.tab-analytics-card small { color: #687570; font-size: 12px; }
+.tab-analytics-card strong {
+  overflow: hidden;
+  margin: 2px 0;
+  font-size: 24px;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tab-analytics-card em { color: #7b8582; font-size: 11px; font-style: normal; }
+
+@media (max-width: 800px) {
+  .tab-analytics-grid { grid-template-columns: 1fr; }
+}

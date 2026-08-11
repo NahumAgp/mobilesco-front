@@ -8,6 +8,9 @@ import {
   FileText,
   PackageCheck,
   PackageSearch,
+  ChartNoAxesCombined,
+  CircleDollarSign,
+  Gauge,
   Plus,
   RefreshCw,
   ShoppingCart,
@@ -16,6 +19,7 @@ import { useNavigate } from "react-router-dom";
 import { getUser, hasPermission } from "../../auth/services/authService";
 import { obtenerResumenTablero } from "../services/tablero";
 import "./tablero.css";
+import "./tablero-analytics.css";
 
 const PERIODOS = [
   ["MES", "Este mes"],
@@ -168,6 +172,27 @@ export default function Tablero() {
       tono: "success",
     },
   ] : [];
+  const inventario = resumen?.indicadoresInventario;
+  const indicadoresInventario = inventario ? [
+    {
+      titulo: "Valor total de inventario",
+      valor: moneda(inventario.valorTotalInventario),
+      nota: "Existencia × mejor costo disponible",
+      icono: CircleDollarSign,
+    },
+    {
+      titulo: "Consumo mensual",
+      valor: moneda(inventario.consumoMensual),
+      nota: "Salidas valorizadas del mes actual",
+      icono: ChartNoAxesCombined,
+    },
+    {
+      titulo: "Rotación mensual",
+      valor: `${Number(inventario.rotacionMensual || 0).toFixed(2)}x`,
+      nota: "Consumo mensual ÷ valor del inventario",
+      icono: Gauge,
+    },
+  ] : [];
 
   return (
     <div className="tab-page">
@@ -242,6 +267,29 @@ export default function Tablero() {
               })}
             </div>
           </section>
+
+          {puedeVerInventario && (
+            <section className={`tab-analytics ${cargando ? "tab-refreshing" : ""}`} aria-labelledby="tab-analytics-title">
+              <div className="tab-section-heading">
+                <div>
+                  <span>Analítica de inventario</span>
+                  <h2 id="tab-analytics-title">Indicadores calculados con movimientos reales</h2>
+                </div>
+                <ChartNoAxesCombined size={24} aria-hidden="true" />
+              </div>
+              <div className="tab-analytics-grid">
+                {indicadoresInventario.map((indicador) => {
+                  const Icono = indicador.icono;
+                  return (
+                    <article className="tab-analytics-card" key={indicador.titulo}>
+                      <span className="tab-analytics-icon"><Icono size={21} /></span>
+                      <div><small>{indicador.titulo}</small><strong>{indicador.valor}</strong><em>{indicador.nota}</em></div>
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+          )}
 
           <div className={`tab-content ${cargando ? "tab-refreshing" : ""}`}>
             <section className="tab-card tab-recent">

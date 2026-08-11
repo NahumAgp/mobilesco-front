@@ -214,8 +214,22 @@
 }
 
 .insumos-main-table {
-  min-width: 1315px;
+  min-width: 1393px;
 }
+
+.insumos-abc-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 32px;
+  height: 28px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.insumos-abc-a { background: #dff3e9; color: #176b48; border: 1px solid #a8d7c0; }
+.insumos-abc-b { background: #fff1cf; color: #805d08; border: 1px solid #ead18d; }
+.insumos-abc-c { background: #edf0f2; color: #59636a; border: 1px solid #d3d9dd; }
 
 .insumos-costos-table {
   min-width: 980px;

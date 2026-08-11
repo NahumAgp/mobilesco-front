@@ -19,6 +19,7 @@ const COLUMNAS = [
   { id: "codigo", label: "Codigo", defaultWidth: 118 },
   { id: "nombre", label: "Nombre", sortField: "nombre", defaultWidth: 320 },
   { id: "tipo", label: "Tipo", defaultWidth: 86 },
+  { id: "abc", label: "Clase ABC", defaultWidth: 78 },
   { id: "ubicacion", label: "Ubicacion", sortField: "ubicacion", defaultWidth: 76 },
   { id: "unidad", label: "Unidad", defaultWidth: 70 },
   { id: "stockActual", label: "Stock actual", sortField: "stockActual", defaultWidth: 82 },
@@ -253,6 +254,14 @@ export default function InsumosTable({
                         </span>
                       </td>
                       <td>
+                        <span
+                          className={`insumos-abc-badge insumos-abc-${String(insumo.clasificacionAbc || "C").toLowerCase()}`}
+                          title="Pareto 80/15/5 calculado por costo unitario × existencia"
+                        >
+                          {insumo.clasificacionAbc || "C"}
+                        </span>
+                      </td>
+                      <td>
                         {insumo.ubicacion || "-"}
                         {insumo.fila && insumo.columna ? ` (${insumo.fila}-${insumo.columna})` : ""}
                       </td>
@@ -322,7 +331,7 @@ export default function InsumosTable({
                 })
                 ) : (
                 <tr>
-                  <td colSpan="12" className="text-center text-muted py-5">
+                  <td colSpan={COLUMNAS.length} className="text-center text-muted py-5">
                     <i className="bi bi-boxes fs-1 d-block mb-3 text-secondary"></i>
                     <span className="fs-5 d-block">No hay insumos registrados</span>
                     <p className="text-secondary mt-2 mb-0">Comienza creando un nuevo insumo</p>
