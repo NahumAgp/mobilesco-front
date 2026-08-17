@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import SearchableSelect from "../../../components/ui/SearchableSelect.jsx";
 import InsumoForm from "../../insumos/pages/InsumoForm.jsx";
-import { obtenerInsumos } from "../../insumos/services/insumos.js";
+import { buscarInsumos, obtenerInsumos } from "../../insumos/services/insumos.js";
 import OperacionForm from "../../operaciones/pages/OperacionForm.jsx";
 import { obtenerOperacionesActivas } from "../../operaciones/services/operaciones.js";
 
@@ -13,6 +13,17 @@ const getLista = (respuesta) => {
 };
 
 const getId = (item) => item?.id ?? item?.insumoId ?? item?.operacionId ?? null;
+
+const mergePorId = (...listas) => {
+  const mapa = new Map();
+  listas.flat().forEach((item) => {
+    const id = getId(item);
+    if (id !== null && id !== undefined) {
+      mapa.set(String(id), item);
+    }
+  });
+  return Array.from(mapa.values());
+};
 
 function CatalogModal({ show, title, onClose, children }) {
   if (!show) return null;
@@ -41,10 +52,13 @@ export default function ModeloPlantillaProductivaFields({
   onOperacionesChange
 }) {
   const [catalogoInsumos, setCatalogoInsumos] = useState([]);
+  const [insumosBuscados, setInsumosBuscados] = useState([]);
+  const [busquedaInsumo, setBusquedaInsumo] = useState("");
   const [catalogoOperaciones, setCatalogoOperaciones] = useState([]);
   const [insumoSeleccionado, setInsumoSeleccionado] = useState("");
   const [operacionSeleccionada, setOperacionSeleccionada] = useState("");
   const [cargando, setCargando] = useState(true);
+  const [cargandoBusquedaInsumos, setCargandoBusquedaInsumos] = useState(false);
   const [mostrarInsumo, setMostrarInsumo] = useState(false);
   const [mostrarOperacion, setMostrarOperacion] = useState(false);
 
@@ -67,14 +81,55 @@ export default function ModeloPlantillaProductivaFields({
     };
   }, []);
 
+  useEffect(() => {
+    const termino = busquedaInsumo.trim();
+    if (!termino) {
+      setInsumosBuscados([]);
+      setCargandoBusquedaInsumos(false);
+      return undefined;
+    }
+
+    let cancelado = false;
+    const timer = window.setTimeout(async () => {
+      try {
+        setCargandoBusquedaInsumos(true);
+        const data = await buscarInsumos(termino, { soloActivos: true });
+        if (!cancelado) {
+          const lista = getLista(data);
+          setInsumosBuscados(lista);
+          setCatalogoInsumos((actual) => mergePorId(actual, lista));
+        }
+      } catch (error) {
+        if (!cancelado) {
+          console.error("Error buscando insumos:", error);
+          setInsumosBuscados([]);
+        }
+      } finally {
+        if (!cancelado) {
+          setCargandoBusquedaInsumos(false);
+        }
+      }
+    }, 250);
+
+    return () => {
+      cancelado = true;
+      window.clearTimeout(timer);
+    };
+  }, [busquedaInsumo]);
+
+  const catalogoInsumosDisponible = useMemo(
+    () => mergePorId(catalogoInsumos, insumosBuscados),
+    [catalogoInsumos, insumosBuscados]
+  );
+
   const insumosNormalizados = useMemo(
     () => insumos.map((item) => {
       if (typeof item === "number" || typeof item === "string") {
-        return catalogoInsumos.find((catalogo) => String(getId(catalogo)) === String(item)) || { id: item };
+        return catalogoInsumosDisponible.find((catalogo) => String(getId(catalogo)) === String(item)) || { id: item };
       }
       return item;
     }),
-    [catalogoInsumos, insumos]
+    [catalogoInsumosDisponible, insumos]
   );
 
   const operacionesNormalizadas = useMemo(
@@ -87,7 +142,7 @@ export default function ModeloPlantillaProductivaFields({
     [catalogoOperaciones, operaciones]
   );
 
-  const insumosDisponibles = catalogoInsumos.filter(
+  const insumosDisponibles = catalogoInsumosDisponible.filter(
     (item) => !insumosNormalizados.some((seleccionado) => String(getId(seleccionado)) === String(getId(item)))
   );
   const operacionesDisponibles = catalogoOperaciones.filter(
@@ -134,10 +189,12 @@ export default function ModeloPlantillaProductivaFields({
             value={insumoSeleccionado}
             options={insumosDisponibles}
             onChange={agregarInsumo}
+            onSearchChange={setBusquedaInsumo}
             closeOnSelect={false}
-            loading={cargando}
+            loading={cargando || cargandoBusquedaInsumos}
             placeholder={cargando ? "Cargando insumos..." : "Buscar y agregar insumo..."}
             searchPlaceholder="Busca por código, nombre o unidad..."
+            emptyText={busquedaInsumo.trim() ? "No se encontraron coincidencias" : "Escribe para buscar en todo el catálogo"}
             getOptionValue={getId}
             getOptionLabel={(item) => `${item.codigo ? `[${item.codigo}] ` : ""}${item.nombre || "-"}`}
             getOptionSearchText={(item) => [item.codigo, item.nombre, item.unidadMedida?.simbolo, item.unidadMedida]
