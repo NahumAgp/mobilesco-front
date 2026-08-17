@@ -5,9 +5,9 @@ import {
   crearInsumo,
   actualizarInsumo,
   eliminarInsumo,
-  obtenerTiposInsumo,
   ajustarStock
 } from "../services/insumos.js";
+import { obtenerTiposInsumo } from "../services/tiposInsumo.js";
 import { obtenerUnidadesMedida, crearUnidadMedida } from "../../unidades-medida/services/unidadMedidas.js";
 import { getUser } from "../../auth/services/authService.js";
 import Toast from "../../../components/ui/Toast.jsx";
@@ -91,8 +91,9 @@ export default function InsumoForm({
   useEffect(() => {
     const cargarTipos = async () => {
       try {
-        const data = await obtenerTiposInsumo();
-        setTiposInsumo(Array.isArray(data) ? data : []);
+        const data = await obtenerTiposInsumo({ soloActivos: true });
+        const lista = Array.isArray(data) ? data : data?.content || [];
+        setTiposInsumo(lista.filter(Boolean));
       } catch (error) {
         console.error("Error cargando tipos de insumo:", error);
       }
@@ -650,8 +651,8 @@ export default function InsumoForm({
                   >
                     <option value="">Selecciona un tipo...</option>
                     {tiposInsumo.map((tipo) => (
-                      <option key={tipo} value={tipo}>
-                        {tipo.replace(/_/g, " ")}
+                      <option key={tipo.id || tipo.codigo} value={tipo.codigo}>
+                        {tipo.nombre}
                       </option>
                     ))}
                   </select>
