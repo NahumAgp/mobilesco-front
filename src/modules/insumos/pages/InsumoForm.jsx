@@ -273,12 +273,8 @@ export default function InsumoForm({
       if (error.errors) {
         setErroresBackend(error.errors);
       } else {
-        if (esModal) {
-          console.error("Error en modal:", error);
-        } else {
-          setToastType("danger");
-          setToastMessage(error.message || "Error al guardar los datos");
-        }
+        setToastType("danger");
+        setToastMessage(error.message || "Error al guardar los datos");
       }
     }
   }
@@ -501,9 +497,7 @@ export default function InsumoForm({
 
   return (
     <div className={formShellClass}>
-      {!esModal && (
-        <Toast message={toastMessage} type={toastType} onClose={() => setToastMessage("")} />
-      )}
+      <Toast message={toastMessage} type={toastType} onClose={() => setToastMessage("")} />
 
       {!puedeGestionarInsumos && (
         <div className="alert alert-info">

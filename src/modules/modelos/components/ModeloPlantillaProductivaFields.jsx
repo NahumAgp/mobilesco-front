@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 
 import SearchableSelect from "../../../components/ui/SearchableSelect.jsx";
 import InsumoForm from "../../insumos/pages/InsumoForm.jsx";
@@ -27,7 +28,8 @@ const mergePorId = (...listas) => {
 
 function CatalogModal({ show, title, onClose, children }) {
   if (!show) return null;
-  return (
+
+  const modal = (
     <div
       className="modal fade show"
       style={{ display: "block", backgroundColor: "rgba(15, 23, 42, 0.55)", zIndex: 1120 }}
@@ -43,6 +45,8 @@ function CatalogModal({ show, title, onClose, children }) {
       </div>
     </div>
   );
+
+  return createPortal(modal, document.body);
 }
 
 export default function ModeloPlantillaProductivaFields({
