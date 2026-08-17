@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import SearchableSelect from "../../../components/ui/SearchableSelect.jsx";
 import InsumoForm from "../../insumos/pages/InsumoForm.jsx";
-import { buscarInsumos, obtenerInsumos } from "../../insumos/services/insumos.js";
+import { obtenerInsumos } from "../../insumos/services/insumos.js";
 import OperacionForm from "../../operaciones/pages/OperacionForm.jsx";
 import { obtenerOperacionesActivas } from "../../operaciones/services/operaciones.js";
 
@@ -93,7 +93,14 @@ export default function ModeloPlantillaProductivaFields({
     const timer = window.setTimeout(async () => {
       try {
         setCargandoBusquedaInsumos(true);
-        const data = await buscarInsumos(termino, { soloActivos: true });
+        const data = await obtenerInsumos({
+          activo: true,
+          busqueda: termino,
+          page: 0,
+          size: 100,
+          sortBy: "nombre",
+          direction: "asc"
+        });
         if (!cancelado) {
           const lista = getLista(data);
           setInsumosBuscados(lista);
@@ -193,7 +200,7 @@ export default function ModeloPlantillaProductivaFields({
             closeOnSelect={false}
             loading={cargando || cargandoBusquedaInsumos}
             placeholder={cargando ? "Cargando insumos..." : "Buscar y agregar insumo..."}
-            searchPlaceholder="Busca por código, nombre o unidad..."
+            searchPlaceholder="Busca en todo el catálogo por código, nombre o unidad..."
             emptyText={busquedaInsumo.trim() ? "No se encontraron coincidencias" : "Escribe para buscar en todo el catálogo"}
             getOptionValue={getId}
             getOptionLabel={(item) => `${item.codigo ? `[${item.codigo}] ` : ""}${item.nombre || "-"}`}
