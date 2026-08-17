@@ -13,6 +13,65 @@ import { obtenerUnidadesMedida } from "../../unidades-medida/services/unidadMedi
 import SearchableSelect from "../../../components/ui/SearchableSelect.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
 
+const ESTADOS_EDITABLES = new Set(["BORRADOR", "PENDIENTE"]);
+
+function normalizarDetalleCargado(detalle, index) {
+  const cantidad = Number(detalle?.cantidad || 0);
+  const precioUnitario = Number(detalle?.precioUnitario || 0);
+  const factorOriginal = Number(detalle?.factorConversion ?? 1);
+  const factorConversion = factorOriginal > 0 ? factorOriginal : 1;
+  const insumoId = detalle?.insumoId ?? detalle?.insumo?.id ?? "";
+  const unidadCompraId = detalle?.unidadCompraId ?? detalle?.unidadCompra?.id ?? "";
+  const unidadConsumoId = detalle?.unidadConsumoId ?? detalle?.unidadConsumo?.id ?? null;
+  const requiereConversion = Boolean(
+    factorConversion !== 1
+      || (unidadConsumoId && String(unidadCompraId) !== String(unidadConsumoId))
+  );
+
+  return {
+    ...detalle,
+    id: detalle?.id ?? `detalle-cargado-${insumoId || index}`,
+    insumoId,
+    insumoNombre: detalle?.insumoNombre || detalle?.insumo?.nombre || `Insumo #${insumoId}`,
+    cantidad,
+    precioUnitario,
+    unidadCompraId,
+    unidadCompraSimbolo: detalle?.unidadCompraSimbolo || detalle?.unidadCompra?.simbolo || "",
+    unidadCompraNombre: detalle?.unidadCompraNombre || detalle?.unidadCompra?.nombre || "",
+    unidadConsumoId,
+    unidadConsumoSimbolo: detalle?.unidadConsumoSimbolo || detalle?.unidadConsumo?.simbolo || "",
+    factorConversion,
+    requiereConversion,
+    cantidadEnUnidadConsumo: cantidad * factorConversion,
+    costoPorUnidadConsumo: Number(
+      detalle?.costoPorUnidadConsumo ?? precioUnitario / factorConversion
+    ),
+    subtotal: Number(detalle?.subtotal ?? cantidad * precioUnitario),
+    observaciones: detalle?.observaciones || ""
+  };
+}
+
+function normalizarCompraCargada(data) {
+  const detalles = (data?.detalles || []).map(normalizarDetalleCargado);
+  return {
+    formData: {
+      folio: data?.folio || "",
+      fechaCompra: data?.fechaCompra?.split("T")[0] || "",
+      fechaRecepcion: data?.fechaRecepcion?.split("T")[0] || "",
+      proveedorId: data?.proveedorId || "",
+      metodoPago: data?.metodoPago || "",
+      subtotal: Number(data?.subtotal || 0),
+      impuesto: Number(data?.impuesto || 0),
+      total: Number(data?.total || 0),
+      observaciones: data?.observaciones || "",
+      estado: data?.estado || "PENDIENTE",
+      activo: data?.activo ?? true,
+      detalles
+    },
+    detalles
+  };
+}
+
 export default function CompraForm({ 
   compraId,     // para la página
   compra,       // para el modal
@@ -38,7 +97,6 @@ export default function CompraForm({
   
   const esModal = Boolean(onSave);
   const esEdicion = Boolean(compraId) || Boolean(compra);
-  const soloLectura = esEdicion && compra?.estado !== 'PENDIENTE';
 
   const [formData, setFormData] = useState({
     folio: "",
@@ -56,6 +114,9 @@ export default function CompraForm({
   });
 
   const [detalles, setDetalles] = useState([]);
+  const [estadoCompraCargada, setEstadoCompraCargada] = useState(compra?.estado || null);
+  const [cargandoCompra, setCargandoCompra] = useState(Boolean(compraId && !compra));
+  const [errorCargaCompra, setErrorCargaCompra] = useState("");
   const [nuevoDetalle, setNuevoDetalle] = useState({
     insumoId: "",
     cantidad: "",
@@ -65,7 +126,13 @@ export default function CompraForm({
     requiereConversion: false,
     insumoSeleccionado: null
   });
-  const subtotalCalculado = detalles.reduce((sum, d) => sum + (d.subtotal || 0), 0);
+  const soloLectura = Boolean(
+    esEdicion
+      && !cargandoCompra
+      && estadoCompraCargada
+      && !ESTADOS_EDITABLES.has(String(estadoCompraCargada).toUpperCase())
+  );
+  const subtotalCalculado = detalles.reduce((sum, d) => sum + Number(d.subtotal || 0), 0);
   const totalCalculado = subtotalCalculado + (formData.impuesto || 0);
 
   const obtenerUnidadMedidaPorId = (unidadId) =>
@@ -133,46 +200,47 @@ export default function CompraForm({
 
   // Cargar datos de la compra si estamos editando
   useEffect(() => {
+    let active = true;
+
+    const aplicarCompra = (data) => {
+      if (!active) return;
+      const normalizada = normalizarCompraCargada(data);
+      setFormData(normalizada.formData);
+      setDetalles(normalizada.detalles);
+      setEstadoCompraCargada(normalizada.formData.estado);
+    };
+
     const cargar = async () => {
       if (esModal && compra) {
-        setFormData({
-          folio: compra.folio || "",
-          fechaCompra: compra.fechaCompra?.split('T')[0] || "",
-          fechaRecepcion: compra.fechaRecepcion?.split('T')[0] || "",
-          proveedorId: compra.proveedorId || "",
-          metodoPago: compra.metodoPago || "",
-          impuesto: compra.impuesto || 0,
-          observaciones: compra.observaciones || "",
-          estado: compra.estado || "PENDIENTE",
-          activo: compra.activo ?? true,
-          detalles: compra.detalles || []
-        });
-        setDetalles(compra.detalles || []);
+        aplicarCompra(compra);
+        setCargandoCompra(false);
+        setErrorCargaCompra("");
         return;
       }
 
       if (!esModal && compraId) {
         try {
+          setCargandoCompra(true);
+          setErrorCargaCompra("");
           const data = await obtenerCompraPorId(compraId);
-          setFormData({
-            folio: data.folio || "",
-            fechaCompra: data.fechaCompra?.split('T')[0] || "",
-            fechaRecepcion: data.fechaRecepcion?.split('T')[0] || "",
-            proveedorId: data.proveedorId || "",
-            metodoPago: data.metodoPago || "",
-            impuesto: data.impuesto || 0,
-            observaciones: data.observaciones || "",
-            estado: data.estado || "PENDIENTE",
-            activo: data.activo ?? true,
-            detalles: data.detalles || []
-          });
-          setDetalles(data.detalles || []);
+          aplicarCompra(data);
         } catch (error) {
           console.error("Error cargando:", error);
+          if (active) {
+            setErrorCargaCompra(error.message || "No fue posible cargar la compra.");
+          }
+        } finally {
+          if (active) setCargandoCompra(false);
         }
+      } else if (active) {
+        setCargandoCompra(false);
       }
     };
     cargar();
+
+    return () => {
+      active = false;
+    };
   }, [compraId, compra, esModal]);
 
   useEffect(() => {
@@ -350,6 +418,12 @@ export default function CompraForm({
     });
 
     setDetalles((prev) => [...prev, nuevoDetalleCompleto]);
+    setErroresBackend((prev) => {
+      if (!prev.detalles) return prev;
+      const next = { ...prev };
+      delete next.detalles;
+      return next;
+    });
     setNuevoDetalle({
       insumoId: "",
       cantidad: "",
@@ -389,10 +463,22 @@ export default function CompraForm({
         detalle.id === id ? recalcularDetalle(detalle, cambios) : detalle
       )
     );
+    setErroresBackend((prev) => {
+      if (!prev.detalles) return prev;
+      const next = { ...prev };
+      delete next.detalles;
+      return next;
+    });
   };
 
   function eliminarDetalle(id) {
     setDetalles((prev) => prev.filter((d) => d.id !== id));
+    setErroresBackend((prev) => {
+      if (!prev.detalles) return prev;
+      const next = { ...prev };
+      delete next.detalles;
+      return next;
+    });
     if (detalleEnEdicionId === id) {
       setDetalleEnEdicionId(null);
       setDetalleEdicionBackup(null);
@@ -412,16 +498,35 @@ export default function CompraForm({
       erroresValidacion.metodoPago = "Selecciona un metodo de pago";
     }
 
-    if (Object.keys(erroresValidacion).length > 0) {
-      setErroresBackend((prev) => ({
-        ...prev,
-        ...erroresValidacion
-      }));
-      return;
+    if (detalles.length === 0) {
+      erroresValidacion.detalles = "Agrega al menos un detalle a la compra";
+    } else {
+      const detalleSinDatos = detalles.find(
+        (detalle) => !detalle.insumoId || !detalle.unidadCompraId
+      );
+      const detalleCantidadInvalida = detalles.find(
+        (detalle) => Number(detalle.cantidad) <= 0
+      );
+      const detallePrecioInvalido = detalles.find(
+        (detalle) => Number(detalle.precioUnitario) <= 0
+      );
+      const detalleFactorInvalido = detalles.find(
+        (detalle) => Number(detalle.factorConversion || 1) <= 0
+      );
+
+      if (detalleSinDatos) {
+        erroresValidacion.detalles = "Todos los detalles necesitan insumo y unidad de compra";
+      } else if (detalleCantidadInvalida) {
+        erroresValidacion.detalles = `La cantidad de ${detalleCantidadInvalida.insumoNombre || "cada insumo"} debe ser mayor a cero`;
+      } else if (detallePrecioInvalido) {
+        erroresValidacion.detalles = `Asigna un precio mayor a cero a ${detallePrecioInvalido.insumoNombre || "cada insumo"}`;
+      } else if (detalleFactorInvalido) {
+        erroresValidacion.detalles = `El factor de conversión de ${detalleFactorInvalido.insumoNombre || "cada insumo"} debe ser mayor a cero`;
+      }
     }
 
-    if (detalles.length === 0) {
-      alert("Agrega al menos un detalle a la compra");
+    if (Object.keys(erroresValidacion).length > 0) {
+      setErroresBackend(erroresValidacion);
       return;
     }
 
@@ -429,20 +534,15 @@ export default function CompraForm({
       ...formData,
       subtotal: subtotalCalculado,
       total: totalCalculado,
-      detalles: detalles.map((detalle) => {
-        const detallePayload = { ...detalle };
-        delete detallePayload.id;
-        delete detallePayload.insumoNombre;
-        delete detallePayload.insumoSeleccionado;
-        delete detallePayload.unidadCompraSimbolo;
-        delete detallePayload.unidadCompraNombre;
-        delete detallePayload.unidadConsumoSimbolo;
-        delete detallePayload.unidadConsumoId;
-        delete detallePayload.cantidadEnUnidadConsumo;
-        delete detallePayload.costoPorUnidadConsumo;
-        delete detallePayload.requiereConversion;
-        return detallePayload;
-      })
+      detalles: detalles.map((detalle) => ({
+        insumoId: Number(detalle.insumoId),
+        unidadCompraId: Number(detalle.unidadCompraId),
+        cantidad: Number(detalle.cantidad),
+        factorConversion: Number(detalle.factorConversion || 1),
+        precioUnitario: Number(detalle.precioUnitario),
+        subtotal: Number(detalle.cantidad) * Number(detalle.precioUnitario),
+        observaciones: detalle.observaciones || ""
+      }))
     };
 
     try {
@@ -516,11 +616,29 @@ export default function CompraForm({
     );
   };
 
+  if (cargandoCompra) {
+    return (
+      <div className="d-flex flex-column align-items-center justify-content-center gap-2 py-5" role="status" aria-live="polite">
+        <span className="spinner-border text-primary" aria-hidden="true"></span>
+        <strong>Cargando compra…</strong>
+      </div>
+    );
+  }
+
+  if (errorCargaCompra) {
+    return (
+      <div className="alert alert-danger" role="alert">
+        <i className="bi bi-exclamation-circle me-2" aria-hidden="true"></i>
+        {errorCargaCompra}
+      </div>
+    );
+  }
+
   if (soloLectura) {
     return (
       <div className="alert alert-info">
         <i className="bi bi-info-circle me-2"></i>
-        Esta compra no puede ser editada porque ya está {compra?.estado.toLowerCase()}.
+        Esta compra no puede ser editada porque ya está {String(estadoCompraCargada).toLowerCase()}.
       </div>
     );
   }
@@ -550,8 +668,9 @@ export default function CompraForm({
               <div className="card-body">
                 <div className="row g-3">
                   <div className="col-md-4">
-                    <label className="form-label fw-semibold">Folio *</label>
+                    <label className="form-label fw-semibold" htmlFor="compra-folio">Folio *</label>
                     <input 
+                      id="compra-folio"
                       type="text" 
                       name="folio" 
                       className={inputClass("folio")} 
@@ -629,8 +748,9 @@ export default function CompraForm({
                   </div>
 
                   <div className="col-md-3">
-                    <label className="form-label fw-semibold">Metodo de pago *</label>
+                    <label className="form-label fw-semibold" htmlFor="compra-metodo-pago">Metodo de pago *</label>
                     <select
+                      id="compra-metodo-pago"
                       name="metodoPago"
                       className={selectClass("metodoPago")}
                       value={formData.metodoPago || ""}
@@ -675,6 +795,12 @@ export default function CompraForm({
                 </h5>
               </div>
               <div className="card-body">
+                {erroresBackend.detalles && (
+                  <div className="alert alert-danger py-2" role="alert">
+                    <i className="bi bi-exclamation-circle me-2" aria-hidden="true"></i>
+                    {erroresBackend.detalles}
+                  </div>
+                )}
                 <div className="table-responsive mb-3">
                   <table className="table table-sm align-middle">
                     <thead className="table-light">
@@ -716,6 +842,7 @@ export default function CompraForm({
                                   className="form-control form-control-sm text-end"
                                   value={detalle.cantidad}
                                   onChange={(e) => actualizarDetalle(detalle.id, { cantidad: Number(e.target.value) || 0 })}
+                                  aria-label={`Cantidad de ${detalle.insumoNombre}`}
                                 />
                               ) : (
                                 Number(detalle.cantidad || 0).toFixed(2)
@@ -726,6 +853,7 @@ export default function CompraForm({
                                 <select
                                   className="form-select form-select-sm"
                                   value={detalle.unidadCompraId}
+                                  aria-label={`Unidad de compra de ${detalle.insumoNombre}`}
                                   onChange={(e) => {
                                     const unidadCompraId = Number(e.target.value) || "";
                                     const unidadConsumoId = detalle.unidadConsumoId;
@@ -753,10 +881,11 @@ export default function CompraForm({
                                 <input
                                   type="number"
                                   step="0.01"
-                                  min="0"
+                                  min="0.01"
                                   className="form-control form-control-sm text-end"
                                   value={detalle.precioUnitario}
                                   onChange={(e) => actualizarDetalle(detalle.id, { precioUnitario: Number(e.target.value) || 0 })}
+                                  aria-label={`Precio unitario de ${detalle.insumoNombre}`}
                                 />
                               ) : (
                                 `$${Number(detalle.precioUnitario || 0).toFixed(2)}`
@@ -790,6 +919,7 @@ export default function CompraForm({
                                       type="button"
                                       className="btn btn-sm btn-success"
                                       onClick={guardarEdicionDetalle}
+                                      aria-label={`Guardar detalle de ${detalle.insumoNombre}`}
                                     >
                                       <i className="bi bi-check-lg"></i>
                                     </button>
@@ -797,6 +927,7 @@ export default function CompraForm({
                                       type="button"
                                       className="btn btn-sm btn-outline-secondary"
                                       onClick={cancelarEdicionDetalle}
+                                      aria-label={`Cancelar edición de ${detalle.insumoNombre}`}
                                     >
                                       <i className="bi bi-x-lg"></i>
                                     </button>
@@ -807,6 +938,7 @@ export default function CompraForm({
                                       type="button"
                                       className="btn btn-sm btn-outline-primary"
                                       onClick={() => iniciarEdicionDetalle(detalle)}
+                                      aria-label={`Editar detalle de ${detalle.insumoNombre}`}
                                     >
                                       <i className="bi bi-pencil"></i>
                                     </button>
@@ -814,6 +946,7 @@ export default function CompraForm({
                                       type="button"
                                       className="btn btn-sm btn-outline-danger"
                                       onClick={() => eliminarDetalle(detalle.id)}
+                                      aria-label={`Eliminar detalle de ${detalle.insumoNombre}`}
                                     >
                                       <i className="bi bi-trash"></i>
                                     </button>

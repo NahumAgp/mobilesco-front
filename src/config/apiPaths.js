@@ -47,7 +47,8 @@ export const API_PATHS = {
   CIF: `${API_VERSION}/cif`,
 
   // Compras
-   COMPRAS: `${API_VERSION}/compras`,
+  COMPRAS: `${API_VERSION}/compras`,
+  ABASTECIMIENTO: `${API_VERSION}/abastecimiento`,
   CUENTAS_POR_PAGAR: `${API_VERSION}/cuentas-por-pagar`,
   DETALLES_COMPRA: `${API_VERSION}/detalles-compra`,
   SALIDAS_INSUMOS: `${API_VERSION}/salidas-insumos`,

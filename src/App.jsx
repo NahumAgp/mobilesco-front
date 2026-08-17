@@ -56,6 +56,7 @@ const OrdenProduccionDetallePage = lazy(() => import("./modules/ordenes-producci
 const CifPage = lazy(() => import("./modules/cif/pages/CifPage.jsx"));
 const CifFormPage = lazy(() => import("./modules/cif/pages/CifFormPage.jsx"));
 const ComprasPage = lazy(() => import("./modules/compras/pages/ComprasPage.jsx"));
+const AbastecimientoAsistidoPage = lazy(() => import("./modules/compras/pages/AbastecimientoAsistidoPage.jsx"));
 const ComprasFormPage = lazy(() => import("./modules/compras/pages/CompraFormPage.jsx"));
 const CuentasPorPagarPage = lazy(() => import("./modules/compras/pages/CuentasPorPagarPage.jsx"));
 const CuentaPorPagarDetallePage = lazy(() => import("./modules/compras/pages/CuentaPorPagarDetallePage.jsx"));
@@ -239,6 +240,7 @@ export default function App() {
 
          {/* Compras */}
         <Route path="/compras" element={withPermission(<ComprasPage />, "VIEW_PURCHASES")} />
+        <Route path="/compras/abastecimiento" element={withPermission(<AbastecimientoAsistidoPage />, "VIEW_PURCHASES")} />
         <Route path="/compras/cuentas-por-pagar" element={withPermission(<CuentasPorPagarPage />, "VIEW_ACCOUNTS_PAYABLE")} />
         <Route path="/compras/cuentas-por-pagar/:id" element={withPermission(<CuentaPorPagarDetallePage />, ["VIEW_ACCOUNTS_PAYABLE", "ACTION_ACCOUNTS_PAYABLE_EDIT"])} />
         <Route path="/compras/nueva" element={withPermission(<ComprasFormPage />, ["VIEW_PURCHASES", "ACTION_PURCHASES_CREATE"])} />

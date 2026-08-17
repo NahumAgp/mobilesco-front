@@ -1,6 +1,7 @@
 import CatalogTable, { CatalogEmptyState } from "../../../components/ui/CatalogTable.jsx";
 
 const ESTADO_TONO = {
+  BORRADOR: "secondary",
   PENDIENTE: "warning",
   RECIBIDA_PARCIAL: "info",
   RECIBIDA: "success",
@@ -8,6 +9,7 @@ const ESTADO_TONO = {
 };
 
 const ESTADO_TEXTO = {
+  BORRADOR: "Borrador",
   PENDIENTE: "Pendiente",
   RECIBIDA_PARCIAL: "Recibida parcialmente",
   RECIBIDA: "Recibida",
@@ -30,7 +32,14 @@ const formatDate = (dateString) =>
       })
     : "-";
 
-export default function ComprasTable({ data, onVer, onEliminar, puedeEliminar = false }) {
+export default function ComprasTable({
+  data,
+  onVer,
+  onEliminar,
+  onConfirmar,
+  puedeEliminar = false,
+  puedeConfirmar = false
+}) {
   return (
     <CatalogTable>
       <table className="table table-hover align-middle mb-0">
@@ -77,6 +86,20 @@ export default function ComprasTable({ data, onVer, onEliminar, puedeEliminar = 
                   </td>
                   <td className="catalog-actions">
                     <div className="btn-group btn-group-sm" role="group">
+                      {compra.estado === "BORRADOR" && puedeConfirmar && (
+                        <button
+                          type="button"
+                          className="btn btn-success"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onConfirmar?.(compra);
+                          }}
+                          title="Confirmar borrador"
+                        >
+                          <i className="bi bi-check2-circle me-1" aria-hidden="true"></i>
+                          Confirmar
+                        </button>
+                      )}
                       <a
                         className="btn catalog-brand-outline"
                         href={`/compras/${compra.id}/ver`}
@@ -88,7 +111,7 @@ export default function ComprasTable({ data, onVer, onEliminar, puedeEliminar = 
                         <i className="bi bi-eye me-1" aria-hidden="true"></i>
                         Ver
                       </a>
-                      {compra.estado === "PENDIENTE" && puedeEliminar && (
+                      {["BORRADOR", "PENDIENTE"].includes(compra.estado) && puedeEliminar && (
                         <button
                           type="button"
                           className="btn catalog-brand-danger"

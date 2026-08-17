@@ -3,7 +3,8 @@ import {
   obtenerCompras,
   eliminarCompra as eliminarService,
   recibirCompra as recibirService,
-  cancelarCompra as cancelarService
+  cancelarCompra as cancelarService,
+  confirmarBorradorCompra as confirmarBorradorService
 } from "../services/compras.js";
 
 const PAGE_INFO_DEFAULT = {
@@ -86,6 +87,12 @@ export function useCompras(params = {}) {
     return response;
   }
 
+  async function confirmarBorrador(id) {
+    const response = await confirmarBorradorService(id);
+    await cargar();
+    return response;
+  }
+
   return {
     compras,
     pageInfo,
@@ -93,6 +100,7 @@ export function useCompras(params = {}) {
     error,
     eliminarCompra,
     recibirCompra,
-    cancelarCompra
+    cancelarCompra,
+    confirmarBorrador
   };
 }

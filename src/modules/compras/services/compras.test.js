@@ -5,6 +5,7 @@ vi.mock('../../../services/api', () => ({ default: request }));
 
 import {
   crearCompra,
+  confirmarBorradorCompra,
   obtenerCuentasPorPagar,
   registrarPagoCuentaPorPagar
 } from './compras';
@@ -19,6 +20,14 @@ describe('servicio de compras y cuentas por pagar', () => {
     expect(request).toHaveBeenCalledWith('/api/v1/compras', {
       method: 'POST',
       body: JSON.stringify(payload)
+    });
+  });
+
+  it('confirma una compra en borrador', async () => {
+    request.mockResolvedValue({ estado: 'PENDIENTE' });
+    await confirmarBorradorCompra(21);
+    expect(request).toHaveBeenCalledWith('/api/v1/compras/21/confirmar-borrador', {
+      method: 'POST'
     });
   });
 

@@ -63,6 +63,12 @@ export function crearCompra(data) {
   });
 }
 
+export function confirmarBorradorCompra(id) {
+  return request(`${API_PATHS.COMPRAS}/${id}/confirmar-borrador`, {
+    method: "POST",
+  });
+}
+
 export function actualizarCompra(id, data) {
   const url = `${API_PATHS.COMPRAS}/${id}`;
   console.log("🌐 PUT Compra - URL:", url, "Data:", data);

@@ -26,9 +26,11 @@ export default function ComprasPage() {
   const [fechaFin, setFechaFin] = useState("");
   const [page, setPage] = useState(0);
   const [compraPorEliminar, setCompraPorEliminar] = useState(null);
+  const [compraPorConfirmar, setCompraPorConfirmar] = useState(null);
   const [eliminando, setEliminando] = useState(false);
+  const [confirmando, setConfirmando] = useState(false);
 
-  const { compras, pageInfo, loadingLista, error, eliminarCompra } = useCompras({
+  const { compras, pageInfo, loadingLista, error, eliminarCompra, confirmarBorrador } = useCompras({
     page,
     size: PAGE_SIZE,
     busqueda,
@@ -63,6 +65,22 @@ export default function ComprasPage() {
     }
   };
 
+  const confirmarCompraBorrador = async () => {
+    if (!compraPorConfirmar) return;
+    try {
+      setConfirmando(true);
+      await confirmarBorrador(compraPorConfirmar.id);
+      setToastType("success");
+      setToastMessage("Borrador confirmado. La compra ahora está pendiente.");
+      setCompraPorConfirmar(null);
+    } catch (caughtError) {
+      setToastType("danger");
+      setToastMessage(caughtError.message || "Error al confirmar el borrador");
+    } finally {
+      setConfirmando(false);
+    }
+  };
+
   const limpiarFiltros = () => {
     setBusqueda("");
     setFiltroEstado("TODOS");
@@ -94,6 +112,16 @@ export default function ComprasPage() {
         onCancel={() => setCompraPorEliminar(null)}
         onConfirm={confirmarEliminacion}
       />
+      <ConfirmationDialog
+        open={Boolean(compraPorConfirmar)}
+        title="Confirmar compra en borrador"
+        message={`¿Deseas confirmar la compra “${compraPorConfirmar?.folio || ""}”? Se convertirá en una compra pendiente.`}
+        confirmLabel="Confirmar compra"
+        variant="primary"
+        loading={confirmando}
+        onCancel={() => setCompraPorConfirmar(null)}
+        onConfirm={confirmarCompraBorrador}
+      />
 
       <PageHeader
         eyebrow="Abastecimiento"
@@ -101,6 +129,13 @@ export default function ComprasPage() {
         subtitle="Gestión de compras de insumos"
         actions={
           <div className="d-flex flex-wrap gap-2">
+            <button
+              className="btn btn-outline-primary"
+              onClick={() => navigate("/compras/abastecimiento")}
+            >
+              <i className="bi bi-stars me-2" aria-hidden="true"></i>
+              Abastecimiento asistido
+            </button>
             <button
               className="btn btn-outline-primary"
               onClick={() => navigate("/compras/cuentas-por-pagar")}
@@ -142,6 +177,7 @@ export default function ComprasPage() {
             onChange={(event) => setFiltroEstado(event.target.value)}
           >
             <option value="TODOS">Todos los estados</option>
+            <option value="BORRADOR">Borradores</option>
             <option value="PENDIENTE">Pendientes</option>
             <option value="RECIBIDA_PARCIAL">Parciales</option>
             <option value="RECIBIDA">Recibidas</option>
@@ -188,7 +224,9 @@ export default function ComprasPage() {
         data={compras}
         onVer={abrirVer}
         onEliminar={setCompraPorEliminar}
+        onConfirmar={setCompraPorConfirmar}
         puedeEliminar={puedeEliminarCompra}
+        puedeConfirmar={puedeGestionarCompra}
       />
 
       <CatalogPagination

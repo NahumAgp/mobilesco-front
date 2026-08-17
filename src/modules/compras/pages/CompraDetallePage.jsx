@@ -9,8 +9,8 @@ export default function CompraDetallePage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const user = getUser();
-  const puedeGestionarCompra = hasPermission(user, "ACTION_PURCHASES_EDIT")
-    || hasPermission(user, "ACTION_PURCHASES_RECEIVE");
+  const puedeEditarCompra = hasPermission(user, "ACTION_PURCHASES_EDIT");
+  const puedeRecibirCompra = hasPermission(user, "ACTION_PURCHASES_RECEIVE");
   const [compra, setCompra] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -108,7 +108,7 @@ export default function CompraDetallePage() {
           </div>
         </div>
         <div>
-          {puedeGestionarCompra && (
+          {puedeRecibirCompra && ["PENDIENTE", "RECIBIDA_PARCIAL"].includes(compra.estado) && (
             <button
               className="btn btn-primary me-2"
               onClick={() => navigate(`/almacen/entradas/${id}`)}
@@ -117,7 +117,7 @@ export default function CompraDetallePage() {
               Ir a Entradas
             </button>
           )}
-          {puedeGestionarCompra && compra.estado === 'PENDIENTE' && (
+          {puedeEditarCompra && ["BORRADOR", "PENDIENTE"].includes(compra.estado) && (
             <button 
               className="btn btn-outline-primary me-2"
               onClick={() => navigate(`/compras/${id}`)}
@@ -182,7 +182,7 @@ export default function CompraDetallePage() {
         </div>
       </div>
 
-      {puedeGestionarCompra && (
+      {puedeRecibirCompra && ["PENDIENTE", "RECIBIDA_PARCIAL"].includes(compra.estado) && (
         <div className="alert alert-info d-flex align-items-center justify-content-between">
           <div>
             <strong>Recepción operativa:</strong> se gestiona desde Entradas para permitir recepción parcial y actualización de stock.
