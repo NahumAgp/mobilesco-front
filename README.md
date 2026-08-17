@@ -23,6 +23,8 @@ npm run build
 - El campo `Tipo de insumo` en proveedores consume el catalogo administrable del backend.
 - Desde el formulario de proveedor se puede crear rapidamente un tipo con el boton `+`.
 - El popup rapido solo pide el nombre y muestra un codigo sugerido en tiempo real.
+- La ficha permite registrar una calificacion opcional de proveedor entre 0 y 100, con hasta dos decimales.
+- El directorio distingue entre una calificacion real de `0.00` y un proveedor `Sin calificar`.
 
 ### Regla del codigo sugerido
 

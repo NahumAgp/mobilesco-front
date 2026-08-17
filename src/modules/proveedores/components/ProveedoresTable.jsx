@@ -1,6 +1,16 @@
 import CatalogRowActions from "../../../components/ui/CatalogRowActions";
 import CatalogStatusBadge from "../../../components/ui/CatalogStatusBadge";
 import CatalogTable, { CatalogEmptyState } from "../../../components/ui/CatalogTable.jsx";
+import ProveedorPrioridadBadge from "./ProveedorPrioridadBadge.jsx";
+
+function formatearCalificacion(value) {
+  if (value === null || value === undefined || value === "") {
+    return "Sin calificar";
+  }
+
+  const numero = Number(value);
+  return Number.isFinite(numero) ? `${numero.toFixed(2)} / 100` : "Sin calificar";
+}
 
 export default function ProveedoresTable({ data, onEditar, onCambiarEstado }) {
   return (
@@ -12,6 +22,7 @@ export default function ProveedoresTable({ data, onEditar, onCambiarEstado }) {
               <th>Razón social</th>
               <th>Contacto</th>
               <th>Tipo de insumo</th>
+              <th>Calificación</th>
               <th>Correo</th>
               <th>Teléfono</th>
               <th>Estado</th>
@@ -40,6 +51,14 @@ export default function ProveedoresTable({ data, onEditar, onCambiarEstado }) {
                       .join(" ") || "-"}
                   </td>
                   <td>{proveedor.tipoInsumoNombre || proveedor.tipoInsumo || "-"}</td>
+                  <td>
+                    <div className="d-flex flex-column align-items-start gap-1">
+                      <span className={proveedor.calificacionProveedor == null ? "text-muted" : "fw-semibold"}>
+                        {formatearCalificacion(proveedor.calificacionProveedor)}
+                      </span>
+                      <ProveedorPrioridadBadge calificacion={proveedor.calificacionProveedor} />
+                    </div>
+                  </td>
                   <td>{proveedor.correo || "-"}</td>
                   <td>{proveedor.telefono || "-"}</td>
                   <td>
@@ -67,7 +86,7 @@ export default function ProveedoresTable({ data, onEditar, onCambiarEstado }) {
               ))
             ) : (
               <CatalogEmptyState
-                colSpan={10}
+                colSpan={11}
                 icon="bi-truck"
                 title="No hay proveedores registrados"
                 description="Ajusta los filtros o crea un nuevo proveedor."

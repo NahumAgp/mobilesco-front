@@ -4,6 +4,7 @@ import {
   obtenerProveedorPorId,
   crearProveedor,
   actualizarProveedor,
+  actualizarCalificacionProveedor,
   eliminarProveedor
 } from "../services/proveedores.js";
 import {
@@ -13,6 +14,7 @@ import {
 } from "../../insumos/services/tiposInsumo.js";
 import { getUser, hasPermission } from "../../auth/services/authService";
 import Toast from "../../../components/ui/Toast.jsx";
+import ProveedorPrioridadBadge from "./ProveedorPrioridadBadge.jsx";
 
 const emptyForm = {
   razonSocial: "",
@@ -30,6 +32,7 @@ const emptyForm = {
   codigoPostal: "",
   telefono: "",
   correo: "",
+  calificacionProveedor: "",
   activo: true
 };
 
@@ -58,6 +61,7 @@ export default function ProveedorForm({
   const [guardandoTipo, setGuardandoTipo] = useState(false);
   const [errorTipoRapido, setErrorTipoRapido] = useState("");
   const [eliminandoProveedor, setEliminandoProveedor] = useState(false);
+  const [calificacionInicial, setCalificacionInicial] = useState(null);
 
   const navigate = useNavigate();
   const currentUser = getUser();
@@ -101,8 +105,10 @@ export default function ProveedorForm({
         setFormData({
           ...emptyForm,
           ...data,
-          tipoInsumo: data?.tipoInsumo || ""
+          tipoInsumo: data?.tipoInsumo || "",
+          calificacionProveedor: data?.calificacionProveedor ?? ""
         });
+        setCalificacionInicial(data?.calificacionProveedor ?? null);
       } catch (error) {
         console.error("Error cargando proveedor:", error);
       }
@@ -182,10 +188,43 @@ export default function ProveedorForm({
     activo: Boolean(formData.activo)
   });
 
+  const obtenerCalificacion = () => (
+    normalizeText(formData.calificacionProveedor) === ""
+      ? null
+      : Number(formData.calificacionProveedor)
+  );
+
   async function handleSubmit(e) {
     e.preventDefault();
 
     const payload = construirPayload();
+    const calificacionTexto = normalizeText(formData.calificacionProveedor);
+    const calificacionProveedor = obtenerCalificacion();
+
+    if (
+      calificacionProveedor !== null
+      && (!Number.isFinite(calificacionProveedor)
+        || calificacionProveedor < 0
+        || calificacionProveedor > 100)
+    ) {
+      setErroresBackend((prev) => ({
+        ...prev,
+        calificacionProveedor: "La calificación debe estar entre 0 y 100"
+      }));
+      setToastType("danger");
+      setToastMessage("Revisa el formulario antes de guardar.");
+      return;
+    }
+
+    if (calificacionTexto !== "" && !/^-?\d+(?:\.\d{1,2})?$/.test(calificacionTexto)) {
+      setErroresBackend((prev) => ({
+        ...prev,
+        calificacionProveedor: "La calificación admite máximo 2 decimales"
+      }));
+      setToastType("danger");
+      setToastMessage("Revisa el formulario antes de guardar.");
+      return;
+    }
 
     if (!payload.tipoInsumo) {
       setErroresBackend((prev) => ({
@@ -203,9 +242,16 @@ export default function ProveedorForm({
       let respuesta;
       if (esEdicion) {
         respuesta = await actualizarProveedor(proveedorId || proveedorProp?.id, payload);
+        if (calificacionProveedor !== calificacionInicial) {
+          respuesta = await actualizarCalificacionProveedor(
+            proveedorId || proveedorProp?.id,
+            calificacionProveedor
+          );
+          setCalificacionInicial(calificacionProveedor);
+        }
         setToastMessage("Proveedor actualizado con exito");
       } else {
-        respuesta = await crearProveedor(payload);
+        respuesta = await crearProveedor({ ...payload, calificacionProveedor });
         setToastMessage("Proveedor registrado con exito");
       }
 
@@ -463,6 +509,58 @@ export default function ProveedorForm({
                 <label className="form-label fw-semibold">C.P.</label>
                 <input type="text" name="codigoPostal" className={inputClass("codigoPostal")} value={formData.codigoPostal} onChange={handleChange} />
                 {renderFieldError("codigoPostal")}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="card shadow-sm border-0 mb-4">
+          <div className="card-header bg-white py-3">
+            <h5 className="mb-0 text-secondary">
+              <i className="bi bi-leaf me-2"></i>Evaluación de sostenibilidad
+            </h5>
+          </div>
+          <div className="card-body">
+            <div className="row g-3 align-items-start">
+              <div className="col-md-4">
+                <label className="form-label fw-semibold" htmlFor="calificacionProveedor">
+                  Calificación del proveedor
+                </label>
+                <div className="input-group">
+                  <input
+                    id="calificacionProveedor"
+                    type="number"
+                    name="calificacionProveedor"
+                    className={inputClass("calificacionProveedor")}
+                    value={formData.calificacionProveedor}
+                    onChange={handleChange}
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    placeholder="Sin calificar"
+                    aria-describedby="calificacionProveedorAyuda"
+                  />
+                  <span className="input-group-text">/ 100</span>
+                </div>
+                {renderFieldError("calificacionProveedor")}
+                <div
+                  className="d-flex align-items-center gap-2 mt-2"
+                  aria-live="polite"
+                  aria-atomic="true"
+                >
+                  <span className="text-muted small">Prioridad calculada:</span>
+                  <ProveedorPrioridadBadge calificacion={formData.calificacionProveedor} />
+                </div>
+              </div>
+              <div className="col-md-8">
+                <div id="calificacionProveedorAyuda" className="text-muted small pt-md-4">
+                  <p className="mb-1">
+                    Guarda aquí el resultado de tu algoritmo verde. Déjalo vacío mientras el proveedor aún no haya sido evaluado.
+                  </p>
+                  <p className="mb-0">
+                    La prioridad se calcula al instante: alta de 75 a 100, media de 50 a 74.99 y baja de 0 a 49.99.
+                  </p>
+                </div>
               </div>
             </div>
           </div>

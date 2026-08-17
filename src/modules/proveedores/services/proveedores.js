@@ -41,6 +41,13 @@ export function actualizarProveedor(id, data) {
   });
 }
 
+export function actualizarCalificacionProveedor(id, calificacionProveedor) {
+  return request(`${API_PATHS.PROVEEDORES}/${id}/calificacion`, {
+    method: "PATCH",
+    body: JSON.stringify({ calificacionProveedor }),
+  });
+}
+
 export function eliminarProveedor(id) {
   return request(`${API_PATHS.PROVEEDORES}/${id}`, {
     method: "DELETE",
