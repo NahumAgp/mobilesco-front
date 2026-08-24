@@ -163,6 +163,8 @@ const getMaterialesDelModelo = (modelo = {}) => {
   return [];
 };
 
+const getItemId = (item) => item?.id ?? item?.insumoId ?? item?.operacionId ?? item?.insumo_id ?? item?.operacion_id ?? null;
+
 const getCategoriasDelModelo = (modelo = {}) => {
   const candidatos = [
     modelo?.categorias,
@@ -180,7 +182,22 @@ const getCategoriasDelModelo = (modelo = {}) => {
         codigo: categoria?.codigo ?? "",
         nombre: categoria?.nombre ?? categoria?.categoriaNombre ?? categoria?.categoria?.nombre ?? "",
         descripcion: categoria?.descripcion ?? categoria?.categoria?.descripcion ?? "",
-        activo: categoria?.activo ?? true
+        activo: categoria?.activo ?? true,
+        insumos: Array.isArray(categoria?.insumos)
+          ? categoria.insumos.map((insumo) => ({
+              ...insumo,
+              id: getItemId(insumo),
+              cantidad: insumo?.cantidad ?? ""
+            }))
+          : [],
+        operaciones: Array.isArray(categoria?.operaciones)
+          ? categoria.operaciones.map((operacion) => ({
+              ...operacion,
+              id: getItemId(operacion),
+              cantidad: operacion?.cantidad ?? 1,
+              orden: operacion?.orden ?? 0
+            }))
+          : []
       }));
     }
   }
@@ -270,8 +287,6 @@ export default function ModeloForm({
   const [materialesCatalogo, setMaterialesCatalogo] = useState([]);
   const [materialesSeleccionados, setMaterialesSeleccionados] = useState([]);
   const [materialSeleccionadoId, setMaterialSeleccionadoId] = useState("");
-  const [insumosSeleccionados, setInsumosSeleccionados] = useState([]);
-  const [operacionesSeleccionadas, setOperacionesSeleccionadas] = useState([]);
   const [categoriasCatalogo, setCategoriasCatalogo] = useState([]);
   const [categoriasSeleccionadas, setCategoriasSeleccionadas] = useState([]);
   const [categoriaSeleccionadaId, setCategoriaSeleccionadaId] = useState("");
@@ -442,8 +457,6 @@ export default function ModeloForm({
           activo: modelo.activo ?? true
         });
         setMaterialesSeleccionados(getMaterialesDelModelo(modelo));
-        setInsumosSeleccionados(Array.isArray(modelo.insumos) ? modelo.insumos : []);
-        setOperacionesSeleccionadas(Array.isArray(modelo.operaciones) ? modelo.operaciones : []);
         setCategoriasSeleccionadas(getCategoriasDelModelo(modelo));
 
         await cargarImagenPrincipalModelo(modelo);
@@ -463,8 +476,6 @@ export default function ModeloForm({
             activo: data.activo ?? true
           });
           setMaterialesSeleccionados(getMaterialesDelModelo(data));
-          setInsumosSeleccionados(Array.isArray(data.insumos) ? data.insumos : []);
-          setOperacionesSeleccionadas(Array.isArray(data.operaciones) ? data.operaciones : []);
           setCategoriasSeleccionadas(getCategoriasDelModelo(data));
 
           await cargarImagenPrincipalModelo(data || modeloId);
@@ -633,7 +644,9 @@ export default function ModeloForm({
           codigo: "",
           nombre: categoriaCompleta.nombre || "",
           descripcion: categoriaCompleta.descripcion || "",
-          activo: categoriaCompleta.activo ?? true
+          activo: categoriaCompleta.activo ?? true,
+          insumos: [],
+          operaciones: []
         }
       ];
     });
@@ -830,12 +843,45 @@ export default function ModeloForm({
         nombre: categoria.nombre?.trim() || "",
         descripcion: categoria.descripcion?.trim() || "",
         activo: categoria.activo !== false,
-        orden: index + 1
+        orden: index + 1,
+        insumos: (categoria.insumos || [])
+          .map((insumo) => ({
+            id: Number(getItemId(insumo)),
+            cantidad: Number(insumo.cantidad)
+          }))
+          .filter((insumo) => Number.isFinite(insumo.id)),
+        operaciones: (categoria.operaciones || [])
+          .map((operacion, operacionIndex) => ({
+            id: Number(getItemId(operacion)),
+            cantidad: Number(operacion.cantidad ?? 1),
+            orden: operacionIndex + 1
+          }))
+          .filter((operacion) => Number.isFinite(operacion.id))
       }));
       if (!categorias.length || categorias.some((categoria) => !categoria.categoria_id)) {
         setErroresBackend((prev) => ({
           ...prev,
           categorias: "El modelo debe tener al menos una categoria seleccionada"
+        }));
+        return;
+      }
+      const categoriaConInsumoInvalido = categorias.find((categoria) =>
+        categoria.insumos.some((insumo) => !Number.isFinite(insumo.cantidad) || insumo.cantidad <= 0)
+      );
+      if (categoriaConInsumoInvalido) {
+        setErroresBackend((prev) => ({
+          ...prev,
+          categorias: "Cada insumo agregado a una categoria debe tener cantidad mayor a cero"
+        }));
+        return;
+      }
+      const categoriaConOperacionInvalida = categorias.find((categoria) =>
+        categoria.operaciones.some((operacion) => !Number.isFinite(operacion.cantidad) || operacion.cantidad < 1)
+      );
+      if (categoriaConOperacionInvalida) {
+        setErroresBackend((prev) => ({
+          ...prev,
+          categorias: "Cada operacion agregada a una categoria debe tener cantidad minima de 1"
         }));
         return;
       }
@@ -850,12 +896,6 @@ export default function ModeloForm({
         categorias: categorias.map((categoria) => Object.fromEntries(Object.entries(categoria).filter(([key]) => key !== "orden"))),
         materiales: materialesSeleccionados
           .map((material) => Number(material.id))
-          .filter((id) => Number.isFinite(id)),
-        insumos: insumosSeleccionados
-          .map((insumo) => Number(insumo?.id ?? insumo?.insumoId ?? insumo))
-          .filter((id) => Number.isFinite(id)),
-        operaciones: operacionesSeleccionadas
-          .map((operacion) => Number(operacion?.id ?? operacion?.operacionId ?? operacion))
           .filter((id) => Number.isFinite(id))
       };
       if (esEdicion) {
@@ -1060,13 +1100,6 @@ export default function ModeloForm({
                     />
                   </div>
 
-                  <ModeloPlantillaProductivaFields
-                    insumos={insumosSeleccionados}
-                    operaciones={operacionesSeleccionadas}
-                    onInsumosChange={setInsumosSeleccionados}
-                    onOperacionesChange={setOperacionesSeleccionadas}
-                  />
-
                   <div className="col-md-12">
                     <label className="form-label fw-semibold">Descripcion corta</label>
                     <input
@@ -1216,8 +1249,8 @@ export default function ModeloForm({
                       className="mb-3"
                     />
 
-                    {categoriasSeleccionadas.length > 0 ? (
-                      <div className="d-flex flex-wrap gap-2">
+                    {categoriasSeleccionadas.length > 0 && (
+                      <div className="d-flex flex-wrap gap-2 mb-3">
                         {categoriasSeleccionadas.map((categoria, index) => (
                           <span
                             key={categoria.id || categoria.categoriaId || index}
@@ -1239,11 +1272,13 @@ export default function ModeloForm({
                           </span>
                         ))}
                       </div>
-                    ) : (
-                      <div className="form-text text-muted">
-                        Aun no se ha asociado ninguna categoria al modelo.
-                      </div>
                     )}
+
+                    <ModeloPlantillaProductivaFields
+                      categorias={categoriasSeleccionadas}
+                      onCategoriasChange={setCategoriasSeleccionadas}
+                      error={erroresBackend.categorias}
+                    />
                   </div>
 
                   <div className="col-md-12">

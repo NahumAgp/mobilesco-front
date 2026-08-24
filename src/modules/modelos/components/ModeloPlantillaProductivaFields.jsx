@@ -13,7 +13,9 @@ const getLista = (respuesta) => {
   return [];
 };
 
-const getId = (item) => item?.id ?? item?.insumoId ?? item?.operacionId ?? null;
+const getId = (item) => item?.id ?? item?.insumoId ?? item?.operacionId ?? item?.insumo_id ?? item?.operacion_id ?? null;
+const getUnidad = (item) => item?.unidadMedida?.simbolo ?? item?.unidadMedida ?? item?.unidad_medida ?? "";
+const INSUMOS_CLIPBOARD_KEY = "mobilesco:modelos:insumosClipboard";
 
 const mergePorId = (...listas) => {
   const mapa = new Map();
@@ -26,10 +28,36 @@ const mergePorId = (...listas) => {
   return Array.from(mapa.values());
 };
 
+const getCategoriaKey = (categoria, index) =>
+  String(categoria?.categoriaId ?? categoria?.categoria_id ?? categoria?.id ?? `categoria-${index}`);
+
+const getInsumoKey = (item) => String(getId(item) ?? "");
+
+const normalizarInsumoParaCopiar = (item) => ({
+  id: getId(item),
+  codigo: item?.codigo ?? "",
+  nombre: item?.nombre ?? "",
+  unidadMedida: getUnidad(item),
+  cantidad: item?.cantidad ?? ""
+});
+
+const leerClipboardInsumos = () => {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const raw = window.localStorage.getItem(INSUMOS_CLIPBOARD_KEY);
+    const data = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(data)) return [];
+    return data.filter((item) => getId(item) !== null && getId(item) !== undefined);
+  } catch {
+    return [];
+  }
+};
+
 function CatalogModal({ show, title, onClose, children }) {
   if (!show) return null;
 
-  const modal = (
+  return createPortal(
     <div
       className="modal fade show"
       style={{ display: "block", backgroundColor: "rgba(15, 23, 42, 0.55)", zIndex: 1120 }}
@@ -43,33 +71,29 @@ function CatalogModal({ show, title, onClose, children }) {
           <div className="modal-body">{children}</div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
-
-  return createPortal(modal, document.body);
 }
 
-export default function ModeloPlantillaProductivaFields({
-  insumos = [],
-  operaciones = [],
-  onInsumosChange,
-  onOperacionesChange
-}) {
+export default function ModeloPlantillaProductivaFields({ categorias = [], onCategoriasChange, error }) {
   const [catalogoInsumos, setCatalogoInsumos] = useState([]);
   const [insumosBuscados, setInsumosBuscados] = useState([]);
   const [busquedaInsumo, setBusquedaInsumo] = useState("");
   const [catalogoOperaciones, setCatalogoOperaciones] = useState([]);
-  const [insumoSeleccionado, setInsumoSeleccionado] = useState("");
-  const [operacionSeleccionada, setOperacionSeleccionada] = useState("");
+  const [selecciones, setSelecciones] = useState({});
   const [cargando, setCargando] = useState(true);
   const [cargandoBusquedaInsumos, setCargandoBusquedaInsumos] = useState(false);
-  const [mostrarInsumo, setMostrarInsumo] = useState(false);
-  const [mostrarOperacion, setMostrarOperacion] = useState(false);
+  const [modalInsumoIndex, setModalInsumoIndex] = useState(null);
+  const [modalOperacionIndex, setModalOperacionIndex] = useState(null);
+  const [insumosSeleccionados, setInsumosSeleccionados] = useState({});
+  const [clipboardInsumos, setClipboardInsumos] = useState(() => leerClipboardInsumos());
+  const [mensajePegado, setMensajePegado] = useState({});
 
   useEffect(() => {
     let activo = true;
     Promise.all([
-      obtenerInsumos({ activo: true, page: 0, size: 500 }),
+      obtenerInsumos({ activo: true, page: 0, size: 100, sortBy: "nombre", direction: "asc" }),
       obtenerOperacionesActivas()
     ])
       .then(([insumosRespuesta, operacionesRespuesta]) => {
@@ -110,15 +134,13 @@ export default function ModeloPlantillaProductivaFields({
           setInsumosBuscados(lista);
           setCatalogoInsumos((actual) => mergePorId(actual, lista));
         }
-      } catch (error) {
+      } catch (errorBusqueda) {
         if (!cancelado) {
-          console.error("Error buscando insumos:", error);
+          console.error("Error buscando insumos:", errorBusqueda);
           setInsumosBuscados([]);
         }
       } finally {
-        if (!cancelado) {
-          setCargandoBusquedaInsumos(false);
-        }
+        if (!cancelado) setCargandoBusquedaInsumos(false);
       }
     }, 250);
 
@@ -133,177 +155,436 @@ export default function ModeloPlantillaProductivaFields({
     [catalogoInsumos, insumosBuscados]
   );
 
-  const insumosNormalizados = useMemo(
-    () => insumos.map((item) => {
-      if (typeof item === "number" || typeof item === "string") {
-        return catalogoInsumosDisponible.find((catalogo) => String(getId(catalogo)) === String(item)) || { id: item };
+  const actualizarCategoria = (index, updater) => {
+    onCategoriasChange?.(
+      categorias.map((categoria, actualIndex) => (actualIndex === index ? updater(categoria) : categoria))
+    );
+  };
+
+  const getSeleccionadosCategoria = (categoria, categoriaIndex) => {
+    const categoriaKey = getCategoriaKey(categoria, categoriaIndex);
+    return insumosSeleccionados[categoriaKey] || {};
+  };
+
+  const limpiarSeleccionCategoria = (categoria, categoriaIndex) => {
+    const categoriaKey = getCategoriaKey(categoria, categoriaIndex);
+    setInsumosSeleccionados((prev) => {
+      if (!prev[categoriaKey]) return prev;
+      const siguiente = { ...prev };
+      delete siguiente[categoriaKey];
+      return siguiente;
+    });
+  };
+
+  const toggleInsumoSeleccionado = (categoria, categoriaIndex, insumoId) => {
+    const categoriaKey = getCategoriaKey(categoria, categoriaIndex);
+    const insumoKey = String(insumoId);
+
+    setInsumosSeleccionados((prev) => {
+      const seleccionCategoria = { ...(prev[categoriaKey] || {}) };
+      if (seleccionCategoria[insumoKey]) {
+        delete seleccionCategoria[insumoKey];
+      } else {
+        seleccionCategoria[insumoKey] = true;
       }
-      return item;
-    }),
-    [catalogoInsumosDisponible, insumos]
-  );
 
-  const operacionesNormalizadas = useMemo(
-    () => operaciones.map((item) => {
-      if (typeof item === "number" || typeof item === "string") {
-        return catalogoOperaciones.find((catalogo) => String(getId(catalogo)) === String(item)) || { id: item };
-      }
-      return item;
-    }),
-    [catalogoOperaciones, operaciones]
-  );
-
-  const insumosDisponibles = catalogoInsumosDisponible.filter(
-    (item) => !insumosNormalizados.some((seleccionado) => String(getId(seleccionado)) === String(getId(item)))
-  );
-  const operacionesDisponibles = catalogoOperaciones.filter(
-    (item) => !operacionesNormalizadas.some((seleccionada) => String(getId(seleccionada)) === String(getId(item)))
-  );
-
-  const agregarInsumo = (id, opcion) => {
-    if (!id) return;
-    onInsumosChange?.([...insumosNormalizados, opcion || { id }]);
-    setInsumoSeleccionado("");
+      return {
+        ...prev,
+        [categoriaKey]: seleccionCategoria
+      };
+    });
   };
 
-  const agregarOperacion = (id, opcion) => {
-    if (!id) return;
-    onOperacionesChange?.([...operacionesNormalizadas, opcion || { id }]);
-    setOperacionSeleccionada("");
+  const toggleTodosInsumos = (categoria, categoriaIndex, insumos) => {
+    const categoriaKey = getCategoriaKey(categoria, categoriaIndex);
+    const seleccionCategoria = insumosSeleccionados[categoriaKey] || {};
+    const todosSeleccionados =
+      insumos.length > 0 && insumos.every((item) => seleccionCategoria[getInsumoKey(item)]);
+
+    setInsumosSeleccionados((prev) => ({
+      ...prev,
+      [categoriaKey]: todosSeleccionados
+        ? {}
+        : Object.fromEntries(insumos.map((item) => [getInsumoKey(item), true]).filter(([key]) => key))
+    }));
   };
 
-  const moverOperacion = (index, delta) => {
-    const destino = index + delta;
-    if (destino < 0 || destino >= operacionesNormalizadas.length) return;
-    const siguiente = [...operacionesNormalizadas];
-    [siguiente[index], siguiente[destino]] = [siguiente[destino], siguiente[index]];
-    onOperacionesChange?.(siguiente);
+  const copiarInsumosSeleccionados = (categoria, categoriaIndex) => {
+    const seleccionCategoria = getSeleccionadosCategoria(categoria, categoriaIndex);
+    const insumos = Array.isArray(categoria.insumos) ? categoria.insumos : [];
+    const copiados = insumos
+      .filter((item) => seleccionCategoria[getInsumoKey(item)])
+      .map(normalizarInsumoParaCopiar);
+
+    if (!copiados.length) return;
+
+    try {
+      window.localStorage.setItem(INSUMOS_CLIPBOARD_KEY, JSON.stringify(copiados));
+    } catch {
+      // Si el navegador bloquea localStorage, el portapapeles sigue vivo en memoria.
+    }
+
+    setClipboardInsumos(copiados);
+    setMensajePegado((prev) => ({
+      ...prev,
+      [getCategoriaKey(categoria, categoriaIndex)]: `${copiados.length} insumo${copiados.length === 1 ? "" : "s"} copiado${copiados.length === 1 ? "" : "s"}.`
+    }));
   };
+
+  const pegarInsumos = (categoriaIndex) => {
+    const copiados = clipboardInsumos.length ? clipboardInsumos : leerClipboardInsumos();
+    const categoriaActual = categorias[categoriaIndex];
+    const categoriaKey = getCategoriaKey(categoriaActual, categoriaIndex);
+
+    if (!copiados.length) return;
+
+    let agregados = 0;
+    actualizarCategoria(categoriaIndex, (categoria) => {
+      const actuales = Array.isArray(categoria.insumos) ? categoria.insumos : [];
+      const idsActuales = new Set(actuales.map((item) => String(getId(item))));
+      const nuevos = copiados
+        .filter((item) => !idsActuales.has(String(getId(item))))
+        .map((item) => ({
+          ...item,
+          id: getId(item),
+          cantidad: item.cantidad ?? ""
+        }));
+
+      agregados = nuevos.length;
+      if (!agregados) return categoria;
+
+      return {
+        ...categoria,
+        insumos: [...actuales, ...nuevos]
+      };
+    });
+
+    setClipboardInsumos(copiados);
+    setMensajePegado((prev) => ({
+      ...prev,
+      [categoriaKey]: agregados
+        ? `${agregados} insumo${agregados === 1 ? "" : "s"} pegado${agregados === 1 ? "" : "s"}.`
+        : "No se pego ningun insumo porque ya estaban en esta categoria."
+    }));
+
+    if (agregados) {
+      limpiarSeleccionCategoria(categoriaActual, categoriaIndex);
+    }
+  };
+
+  const agregarInsumo = (categoriaIndex, id, opcion) => {
+    if (categoriaIndex === null || categoriaIndex === undefined || !id) return;
+    const insumo = opcion || catalogoInsumosDisponible.find((item) => String(getId(item)) === String(id)) || { id };
+    actualizarCategoria(categoriaIndex, (categoria) => {
+      const actuales = Array.isArray(categoria.insumos) ? categoria.insumos : [];
+      if (actuales.some((item) => String(getId(item)) === String(getId(insumo)))) return categoria;
+      return {
+        ...categoria,
+        insumos: [...actuales, { ...insumo, id: getId(insumo), cantidad: insumo.cantidad ?? "" }]
+      };
+    });
+    setSelecciones((prev) => ({ ...prev, [`insumo-${categoriaIndex}`]: "" }));
+  };
+
+  const agregarOperacion = (categoriaIndex, id, opcion) => {
+    if (categoriaIndex === null || categoriaIndex === undefined || !id) return;
+    const operacion = opcion || catalogoOperaciones.find((item) => String(getId(item)) === String(id)) || { id };
+    actualizarCategoria(categoriaIndex, (categoria) => {
+      const actuales = Array.isArray(categoria.operaciones) ? categoria.operaciones : [];
+      if (actuales.some((item) => String(getId(item)) === String(getId(operacion)))) return categoria;
+      return {
+        ...categoria,
+        operaciones: [...actuales, { ...operacion, id: getId(operacion), cantidad: operacion.cantidad ?? 1 }]
+      };
+    });
+    setSelecciones((prev) => ({ ...prev, [`operacion-${categoriaIndex}`]: "" }));
+  };
+
+  const actualizarCantidadInsumo = (categoriaIndex, insumoId, cantidad) => {
+    actualizarCategoria(categoriaIndex, (categoria) => ({
+      ...categoria,
+      insumos: (categoria.insumos || []).map((item) =>
+        String(getId(item)) === String(insumoId) ? { ...item, cantidad } : item
+      )
+    }));
+  };
+
+  const actualizarCantidadOperacion = (categoriaIndex, operacionId, cantidad) => {
+    actualizarCategoria(categoriaIndex, (categoria) => ({
+      ...categoria,
+      operaciones: (categoria.operaciones || []).map((item) =>
+        String(getId(item)) === String(operacionId) ? { ...item, cantidad } : item
+      )
+    }));
+  };
+
+  const quitarInsumo = (categoriaIndex, insumoId) => {
+    const categoriaActual = categorias[categoriaIndex];
+    const categoriaKey = getCategoriaKey(categoriaActual, categoriaIndex);
+    const insumoKey = String(insumoId);
+    actualizarCategoria(categoriaIndex, (categoria) => ({
+      ...categoria,
+      insumos: (categoria.insumos || []).filter((item) => String(getId(item)) !== String(insumoId))
+    }));
+    setInsumosSeleccionados((prev) => {
+      if (!prev[categoriaKey]?.[insumoKey]) return prev;
+      const seleccionCategoria = { ...prev[categoriaKey] };
+      delete seleccionCategoria[insumoKey];
+      return {
+        ...prev,
+        [categoriaKey]: seleccionCategoria
+      };
+    });
+  };
+
+  const quitarOperacion = (categoriaIndex, operacionId) => {
+    actualizarCategoria(categoriaIndex, (categoria) => ({
+      ...categoria,
+      operaciones: (categoria.operaciones || []).filter((item) => String(getId(item)) !== String(operacionId))
+    }));
+  };
+
+  const moverOperacion = (categoriaIndex, operacionIndex, delta) => {
+    actualizarCategoria(categoriaIndex, (categoria) => {
+      const operaciones = [...(categoria.operaciones || [])];
+      const destino = operacionIndex + delta;
+      if (destino < 0 || destino >= operaciones.length) return categoria;
+      [operaciones[operacionIndex], operaciones[destino]] = [operaciones[destino], operaciones[operacionIndex]];
+      return { ...categoria, operaciones };
+    });
+  };
+
+  if (!categorias.length) {
+    return <div className="form-text text-muted">Aun no se ha asociado ninguna categoria al modelo.</div>;
+  }
 
   return (
     <>
-      <div className="col-12">
-        <div className="border-top pt-3">
-          <div className="d-flex justify-content-between align-items-start gap-3 mb-2">
-            <div>
-              <div className="fw-semibold">Plantilla de insumos</div>
-              <small className="text-muted">
-                Selecciona los insumos comunes. La cantidad se captura después en cada producto.
-              </small>
-            </div>
-            <button type="button" className="btn btn-outline-primary btn-sm" onClick={() => setMostrarInsumo(true)}>
-              <i className="bi bi-plus-lg me-1"></i>Nuevo insumo
-            </button>
-          </div>
-          <SearchableSelect
-            label=""
-            value={insumoSeleccionado}
-            options={insumosDisponibles}
-            onChange={agregarInsumo}
-            onSearchChange={setBusquedaInsumo}
-            closeOnSelect={false}
-            loading={cargando || cargandoBusquedaInsumos}
-            placeholder={cargando ? "Cargando insumos..." : "Buscar y agregar insumo..."}
-            searchPlaceholder="Busca en todo el catálogo por código, nombre o unidad..."
-            emptyText={busquedaInsumo.trim() ? "No se encontraron coincidencias" : "Escribe para buscar en todo el catálogo"}
-            getOptionValue={getId}
-            getOptionLabel={(item) => `${item.codigo ? `[${item.codigo}] ` : ""}${item.nombre || "-"}`}
-            getOptionSearchText={(item) => [item.codigo, item.nombre, item.unidadMedida?.simbolo, item.unidadMedida]
-              .filter(Boolean).join(" ").toLowerCase()}
-          />
-          <div className="d-flex flex-wrap gap-2 mt-2">
-            {insumosNormalizados.map((item) => (
-              <span key={getId(item)} className="badge rounded-pill text-bg-light border d-inline-flex align-items-center gap-2">
-                <span>{item.codigo ? `[${item.codigo}] ` : ""}{item.nombre || `Insumo ${getId(item)}`}</span>
-                <span className="text-warning">Cantidad pendiente</span>
-                <button
-                  type="button"
-                  className="btn btn-sm p-0 border-0 bg-transparent text-danger"
-                  onClick={() => onInsumosChange?.(insumosNormalizados.filter((actual) => String(getId(actual)) !== String(getId(item))))}
-                  aria-label={`Quitar ${item.nombre || "insumo"}`}
-                >
-                  <i className="bi bi-x-lg"></i>
-                </button>
-              </span>
-            ))}
-            {!insumosNormalizados.length && <span className="form-text">Aún no hay insumos en la plantilla.</span>}
-          </div>
-        </div>
-      </div>
+      {error && <div className="alert alert-warning py-2">{error}</div>}
 
-      <div className="col-12">
-        <div className="border-top pt-3">
-          <div className="d-flex justify-content-between align-items-start gap-3 mb-2">
-            <div>
-              <div className="fw-semibold">Plantilla de operaciones</div>
-              <small className="text-muted">
-                Define las operaciones comunes y su secuencia. La cantidad se completa por producto.
-              </small>
-            </div>
-            <button type="button" className="btn btn-outline-primary btn-sm" onClick={() => setMostrarOperacion(true)}>
-              <i className="bi bi-plus-lg me-1"></i>Nueva operación
-            </button>
-          </div>
-          <SearchableSelect
-            label=""
-            value={operacionSeleccionada}
-            options={operacionesDisponibles}
-            onChange={agregarOperacion}
-            closeOnSelect={false}
-            loading={cargando}
-            placeholder={cargando ? "Cargando operaciones..." : "Buscar y agregar operación..."}
-            searchPlaceholder="Busca por código, nombre o centro..."
-            getOptionValue={getId}
-            getOptionLabel={(item) => `${item.codigo ? `[${item.codigo}] ` : ""}${item.nombre || "-"}`}
-            getOptionSearchText={(item) => [item.codigo, item.nombre, item.centroTrabajoNombre]
-              .filter(Boolean).join(" ").toLowerCase()}
-          />
-          <div className="list-group list-group-flush mt-2">
-            {operacionesNormalizadas.map((item, index) => (
-              <div key={getId(item)} className="list-group-item px-0 d-flex align-items-center gap-2">
-                <span className="badge text-bg-secondary">{index + 1}</span>
-                <span className="flex-grow-1">
-                  {item.codigo ? `[${item.codigo}] ` : ""}{item.nombre || `Operación ${getId(item)}`}
-                </span>
-                <span className="badge text-bg-warning">Cantidad pendiente</span>
-                <button type="button" className="btn btn-sm btn-outline-secondary" disabled={index === 0} onClick={() => moverOperacion(index, -1)}>
-                  <i className="bi bi-arrow-up"></i>
-                </button>
-                <button type="button" className="btn btn-sm btn-outline-secondary" disabled={index === operacionesNormalizadas.length - 1} onClick={() => moverOperacion(index, 1)}>
-                  <i className="bi bi-arrow-down"></i>
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-outline-danger"
-                  onClick={() => onOperacionesChange?.(operacionesNormalizadas.filter((actual) => String(getId(actual)) !== String(getId(item))))}
-                >
-                  <i className="bi bi-x-lg"></i>
-                </button>
+      <div className="d-flex flex-column gap-3">
+        {categorias.map((categoria, categoriaIndex) => {
+          const insumos = Array.isArray(categoria.insumos) ? categoria.insumos : [];
+          const operaciones = Array.isArray(categoria.operaciones) ? categoria.operaciones : [];
+          const insumosDisponibles = catalogoInsumosDisponible.filter(
+            (item) => !insumos.some((seleccionado) => String(getId(seleccionado)) === String(getId(item)))
+          );
+          const operacionesDisponibles = catalogoOperaciones.filter(
+            (item) => !operaciones.some((seleccionada) => String(getId(seleccionada)) === String(getId(item)))
+          );
+          const categoriaKey = getCategoriaKey(categoria, categoriaIndex);
+          const seleccionInsumosCategoria = getSeleccionadosCategoria(categoria, categoriaIndex);
+          const totalSeleccionados = insumos.filter((item) => seleccionInsumosCategoria[getInsumoKey(item)]).length;
+          const todosInsumosSeleccionados =
+            insumos.length > 0 && insumos.every((item) => seleccionInsumosCategoria[getInsumoKey(item)]);
+
+          return (
+            <div
+              key={categoria.id || categoria.categoriaId || categoriaIndex}
+              className="border rounded-3 p-3"
+              role="region"
+              aria-label={`Categoria ${categoria.nombre || categoriaIndex + 1}`}
+            >
+              <div className="d-flex justify-content-between align-items-start gap-3 mb-3">
+                <div>
+                  <div className="fw-semibold">
+                    {categoria.codigo ? `[${categoria.codigo}] ` : `[${String(categoriaIndex + 1).padStart(2, "0")}] `}
+                    {categoria.nombre || "Categoria"}
+                  </div>
+                  {categoria.descripcion && <small className="text-muted">{categoria.descripcion}</small>}
+                </div>
               </div>
-            ))}
-            {!operacionesNormalizadas.length && <span className="form-text">Aún no hay operaciones en la plantilla.</span>}
-          </div>
-        </div>
+
+              <div className="row g-3">
+                <div className="col-12">
+                  <div className="d-flex justify-content-between align-items-center gap-2 mb-2 flex-wrap">
+                    <label className="form-label fw-semibold mb-0">Insumos de la categoria</label>
+                    <div className="d-flex align-items-center gap-2 flex-wrap">
+                      {totalSeleccionados > 0 && (
+                        <span className="badge text-bg-light border">{totalSeleccionados} seleccionados</span>
+                      )}
+                      <button
+                        type="button"
+                        className="btn btn-outline-secondary btn-sm"
+                        onClick={() => copiarInsumosSeleccionados(categoria, categoriaIndex)}
+                        disabled={!totalSeleccionados}
+                      >
+                        <i className="bi bi-clipboard me-1"></i>Copiar seleccionados
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-outline-secondary btn-sm"
+                        onClick={() => pegarInsumos(categoriaIndex)}
+                        disabled={!clipboardInsumos.length}
+                      >
+                        <i className="bi bi-clipboard-plus me-1"></i>Pegar
+                      </button>
+                      <button type="button" className="btn btn-outline-primary btn-sm" onClick={() => setModalInsumoIndex(categoriaIndex)}>
+                        <i className="bi bi-plus-lg me-1"></i>Nuevo insumo
+                      </button>
+                    </div>
+                  </div>
+                  {mensajePegado[categoriaKey] && <div className="form-text text-muted mb-2">{mensajePegado[categoriaKey]}</div>}
+                  <SearchableSelect
+                    label=""
+                    value={selecciones[`insumo-${categoriaIndex}`] || ""}
+                    options={insumosDisponibles}
+                    onChange={(id, opcion) => agregarInsumo(categoriaIndex, id, opcion)}
+                    onSearchChange={setBusquedaInsumo}
+                    closeOnSelect={false}
+                    loading={cargando || cargandoBusquedaInsumos}
+                    placeholder={cargando ? "Cargando insumos..." : "Buscar y agregar insumo..."}
+                    searchPlaceholder="Busca por codigo, nombre o unidad..."
+                    emptyText={busquedaInsumo.trim() ? "No se encontraron coincidencias" : "Escribe para buscar en todo el catalogo"}
+                    getOptionValue={getId}
+                    getOptionLabel={(item) => `${item.codigo ? `[${item.codigo}] ` : ""}${item.nombre || "-"}`}
+                    getOptionSearchText={(item) => [item.codigo, item.nombre, getUnidad(item)].filter(Boolean).join(" ").toLowerCase()}
+                  />
+
+                  <div className="table-responsive mt-2">
+                    <table className="table table-sm align-middle mb-0">
+                      <tbody>
+                        {insumos.length > 0 && (
+                          <tr>
+                            <td style={{ width: 44 }}>
+                              <input
+                                type="checkbox"
+                                className="form-check-input"
+                                checked={todosInsumosSeleccionados}
+                                onChange={() => toggleTodosInsumos(categoria, categoriaIndex, insumos)}
+                                aria-label={`Seleccionar todos los insumos de ${categoria.nombre || "categoria"}`}
+                              />
+                            </td>
+                            <td colSpan={3}>
+                              <span className="text-muted small">Seleccionar todos</span>
+                            </td>
+                          </tr>
+                        )}
+                        {insumos.map((item) => (
+                          <tr key={getId(item)}>
+                            <td style={{ width: 44 }}>
+                              <input
+                                type="checkbox"
+                                className="form-check-input"
+                                checked={Boolean(seleccionInsumosCategoria[getInsumoKey(item)])}
+                                onChange={() => toggleInsumoSeleccionado(categoria, categoriaIndex, getId(item))}
+                                aria-label={`Seleccionar insumo ${item.nombre || getId(item)}`}
+                              />
+                            </td>
+                            <td>
+                              <span className="fw-semibold">{item.codigo ? `[${item.codigo}] ` : ""}{item.nombre || `Insumo ${getId(item)}`}</span>
+                              {getUnidad(item) && <span className="text-muted ms-2">{getUnidad(item)}</span>}
+                            </td>
+                            <td style={{ width: 180 }}>
+                              <input
+                                type="number"
+                                min="0.0001"
+                                step="0.0001"
+                                className="form-control form-control-sm"
+                                value={item.cantidad ?? ""}
+                                onChange={(event) => actualizarCantidadInsumo(categoriaIndex, getId(item), event.target.value)}
+                                placeholder="Cantidad"
+                              />
+                            </td>
+                            <td className="text-end" style={{ width: 52 }}>
+                              <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => quitarInsumo(categoriaIndex, getId(item))}>
+                                <i className="bi bi-x-lg"></i>
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {!insumos.length && <div className="form-text text-muted">Sin insumos capturados para esta categoria.</div>}
+                  </div>
+                </div>
+
+                <div className="col-12">
+                  <div className="d-flex justify-content-between align-items-center mb-2">
+                    <label className="form-label fw-semibold mb-0">Operaciones de la categoria</label>
+                    <button type="button" className="btn btn-outline-primary btn-sm" onClick={() => setModalOperacionIndex(categoriaIndex)}>
+                      <i className="bi bi-plus-lg me-1"></i>Nueva operacion
+                    </button>
+                  </div>
+                  <SearchableSelect
+                    label=""
+                    value={selecciones[`operacion-${categoriaIndex}`] || ""}
+                    options={operacionesDisponibles}
+                    onChange={(id, opcion) => agregarOperacion(categoriaIndex, id, opcion)}
+                    closeOnSelect={false}
+                    loading={cargando}
+                    placeholder={cargando ? "Cargando operaciones..." : "Buscar y agregar operacion..."}
+                    searchPlaceholder="Busca por codigo, nombre o centro..."
+                    getOptionValue={getId}
+                    getOptionLabel={(item) => `${item.codigo ? `[${item.codigo}] ` : ""}${item.nombre || "-"}`}
+                    getOptionSearchText={(item) => [item.codigo, item.nombre, item.centroTrabajoNombre].filter(Boolean).join(" ").toLowerCase()}
+                  />
+
+                  <div className="table-responsive mt-2">
+                    <table className="table table-sm align-middle mb-0">
+                      <tbody>
+                        {operaciones.map((item, index) => (
+                          <tr key={getId(item)}>
+                            <td style={{ width: 44 }}><span className="badge text-bg-secondary">{index + 1}</span></td>
+                            <td>
+                              <span className="fw-semibold">{item.codigo ? `[${item.codigo}] ` : ""}{item.nombre || `Operacion ${getId(item)}`}</span>
+                              {item.centroTrabajoNombre && <span className="text-muted ms-2">{item.centroTrabajoNombre}</span>}
+                            </td>
+                            <td style={{ width: 160 }}>
+                              <input
+                                type="number"
+                                min="1"
+                                step="1"
+                                className="form-control form-control-sm"
+                                value={item.cantidad ?? 1}
+                                onChange={(event) => actualizarCantidadOperacion(categoriaIndex, getId(item), event.target.value)}
+                                placeholder="Cantidad"
+                              />
+                            </td>
+                            <td className="text-end" style={{ width: 150 }}>
+                              <div className="btn-group btn-group-sm">
+                                <button type="button" className="btn btn-outline-secondary" disabled={index === 0} onClick={() => moverOperacion(categoriaIndex, index, -1)}>
+                                  <i className="bi bi-arrow-up"></i>
+                                </button>
+                                <button type="button" className="btn btn-outline-secondary" disabled={index === operaciones.length - 1} onClick={() => moverOperacion(categoriaIndex, index, 1)}>
+                                  <i className="bi bi-arrow-down"></i>
+                                </button>
+                                <button type="button" className="btn btn-outline-danger" onClick={() => quitarOperacion(categoriaIndex, getId(item))}>
+                                  <i className="bi bi-x-lg"></i>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {!operaciones.length && <div className="form-text text-muted">Sin operaciones capturadas para esta categoria.</div>}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
-      <CatalogModal show={mostrarInsumo} title="Nuevo insumo" onClose={() => setMostrarInsumo(false)}>
+      <CatalogModal show={modalInsumoIndex !== null} title="Nuevo insumo" onClose={() => setModalInsumoIndex(null)}>
         <InsumoForm
-          onCancel={() => setMostrarInsumo(false)}
+          onCancel={() => setModalInsumoIndex(null)}
           onSave={(creado) => {
-            setCatalogoInsumos((actual) => [...actual.filter((item) => String(getId(item)) !== String(getId(creado))), creado]);
-            agregarInsumo(getId(creado), creado);
-            setMostrarInsumo(false);
+            setCatalogoInsumos((actual) => mergePorId(actual, [creado]));
+            agregarInsumo(modalInsumoIndex, getId(creado), creado);
+            setModalInsumoIndex(null);
           }}
         />
       </CatalogModal>
 
-      <CatalogModal show={mostrarOperacion} title="Nueva operación" onClose={() => setMostrarOperacion(false)}>
+      <CatalogModal show={modalOperacionIndex !== null} title="Nueva operacion" onClose={() => setModalOperacionIndex(null)}>
         <OperacionForm
-          onCancel={() => setMostrarOperacion(false)}
+          onCancel={() => setModalOperacionIndex(null)}
           onSave={(creada) => {
-            setCatalogoOperaciones((actual) => [...actual.filter((item) => String(getId(item)) !== String(getId(creada))), creada]);
-            agregarOperacion(getId(creada), creada);
-            setMostrarOperacion(false);
+            setCatalogoOperaciones((actual) => mergePorId(actual, [creada]));
+            agregarOperacion(modalOperacionIndex, getId(creada), creada);
+            setModalOperacionIndex(null);
           }}
         />
       </CatalogModal>
