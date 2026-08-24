@@ -1,10 +1,22 @@
 import "./Sidebar.css";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { logout, getUser, hasPermission } from "../../modules/auth/services/authService";
 import { useState, useRef, useEffect } from "react";
 import { API_BASE_URL } from "../../config/apiConfig";
 import { contarNotificacionesNoLeidas } from "../../modules/notificaciones/services/notificaciones";
 import ProtectedImage from "../ui/ProtectedImage";
+
+const NAV_USAGE_PREFIX = "mobilesco:navigationUsage";
+const COMPACT_VISIBLE_ITEMS = 8;
+
+function loadNavigationUsage(key) {
+  try {
+    const stored = window.localStorage.getItem(key);
+    return stored ? JSON.parse(stored) : {};
+  } catch {
+    return {};
+  }
+}
 
 function LinkItem({ to, label, icon, sub = false, onClick }) {
   return (
@@ -15,19 +27,39 @@ function LinkItem({ to, label, icon, sub = false, onClick }) {
   );
 }
 
+function CompactLinkItem({ item, onClick }) {
+  return (
+    <NavLink
+      to={item.to}
+      className="sidebar-compact-link"
+      onClick={onClick}
+      title={item.label}
+      aria-label={item.label}
+    >
+      <i className={`bi ${item.icon}`}></i>
+      <span>{item.shortLabel || item.label}</span>
+    </NavLink>
+  );
+}
+
 export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [user, setUser] = useState(getUser());
   const [failedFoto, setFailedFoto] = useState(null);
   const [openMenu, setOpenMenu] = useState(false);
   const [openSubmenu, setOpenSubmenu] = useState(null);
+  const [openMore, setOpenMore] = useState(false);
+  const [navUsageVersion, setNavUsageVersion] = useState(0);
   const [notificacionesNoLeidas, setNotificacionesNoLeidas] = useState(0);
   const [isMobile, setIsMobile] = useState(() => window.matchMedia("(max-width: 768px)").matches);
   const menuRef = useRef(null);
+  const moreRef = useRef(null);
 
   const handleNavigation = () => {
     setOpenSubmenu(null);
     setOpenMenu(false);
+    setOpenMore(false);
     if (isMobile && isOpen) {
       closeSidebar();
     }
@@ -52,6 +84,31 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
   const nombre = user?.nombre || "";
   const apellido = user?.apellidoPaterno || "";
   const roles = user?.roles || [];
+  const userStorageId =
+    user?.id ||
+    user?.usuarioId ||
+    user?.email ||
+    user?.username ||
+    user?.nombreUsuario ||
+    `${nombre || "usuario"}-${roles.join("-") || "sin-rol"}`;
+  const navUsageKey = `${NAV_USAGE_PREFIX}:${userStorageId}`;
+  const navUsage = navUsageVersion >= 0 ? loadNavigationUsage(navUsageKey) : {};
+
+  const registerRouteUse = (to) => {
+    const current = loadNavigationUsage(navUsageKey);
+    const next = { ...current, [to]: (Number(current[to]) || 0) + 1 };
+    try {
+      window.localStorage.setItem(navUsageKey, JSON.stringify(next));
+    } catch {
+      // Si localStorage no esta disponible, la navegacion sigue funcionando.
+    }
+    setNavUsageVersion((version) => version + 1);
+  };
+
+  const handleRouteNavigation = (to) => {
+    registerRouteUse(to);
+    handleNavigation();
+  };
 
   const rolMap = {
     ADMIN: "Dev / Admin",
@@ -78,6 +135,52 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
   const mostrarFoto = foto && failedFoto !== foto;
   const showProductos = ["VIEW_PRODUCTS", "VIEW_PRODUCT_CATALOG", "VIEW_PRODUCT_QUALITY", "VIEW_PRODUCT_LINES", "VIEW_FAMILIES", "VIEW_SUBFAMILIES", "VIEW_MODELS", "VIEW_MATERIALS", "VIEW_COLORS"].some(can);
   const showAlmacen = ["VIEW_INVENTORY", "VIEW_INPUT_TYPES", "VIEW_MEASURE_UNITS", "VIEW_INVENTORY_OUTPUTS", "VIEW_WAREHOUSE_REQUISITIONS", "VIEW_WAREHOUSE_RECEIPTS"].some(can);
+  const navItems = [
+    can("VIEW_DASHBOARD") && { to: "/tablero", label: "Tablero", shortLabel: "Inicio", icon: "bi-speedometer2", section: "Inicio" },
+    puedeGestionarUsuarios && { to: "/usuarios/accesos", label: "Usuarios y accesos", shortLabel: "Usuarios", icon: "bi-shield-check", section: "General" },
+    can("VIEW_EMPLOYEES") && { to: "/empleados", label: "Empleados", icon: "bi-people", section: "General" },
+    can("VIEW_WORK_AREAS") && { to: "/areas-trabajo", label: "Areas de trabajo", shortLabel: "Areas", icon: "bi-diagram-3", section: "General" },
+    can("VIEW_SUPPLIERS") && { to: "/proveedores", label: "Proveedores", shortLabel: "Prov.", icon: "bi-truck", section: "General" },
+    can("VIEW_PRODUCT_LINES") && { to: "/lineas-producto", label: "Lineas", icon: "bi-collection", section: "Productos" },
+    can("VIEW_FAMILIES") && { to: "/familias", label: "Familias", icon: "bi-diagram-3", section: "Productos" },
+    can("VIEW_SUBFAMILIES") && { to: "/subfamilias", label: "Subfamilias", shortLabel: "Subfam.", icon: "bi-diagram-2", section: "Productos" },
+    can("VIEW_MODELS") && { to: "/modelos", label: "Modelos", icon: "bi-boxes", section: "Productos" },
+    can("VIEW_MATERIALS") && { to: "/materiales", label: "Materiales", shortLabel: "Material", icon: "bi-layers", section: "Productos" },
+    can("VIEW_COLORS") && { to: "/colores", label: "Colores", icon: "bi-palette", section: "Productos" },
+    can("VIEW_PRODUCTS") && { to: "/productos", label: "Productos", shortLabel: "Productos", icon: "bi-box-seam", section: "Productos" },
+    can("VIEW_PRODUCT_QUALITY") && { to: "/productos/calidad", label: "Calidad de datos", shortLabel: "Calidad", icon: "bi-clipboard-check", section: "Productos" },
+    can("VIEW_PRODUCT_CATALOG") && { to: "/productos/catalogo", label: "Catalogo visual", shortLabel: "Catalogo", icon: "bi-images", section: "Productos" },
+    can("VIEW_INVENTORY") && { to: "/insumos", label: "Insumos", icon: "bi-boxes", section: "Almacen" },
+    can("VIEW_WAREHOUSE_RECEIPTS") && { to: "/almacen/entradas", label: "Entradas", icon: "bi-box-arrow-in-down", section: "Almacen" },
+    can("VIEW_INPUT_TYPES") && { to: "/insumos/tipos", label: "Tipos de insumo", shortLabel: "Tipos", icon: "bi-tags", section: "Almacen" },
+    can("VIEW_INVENTORY_OUTPUTS") && { to: "/salidas-insumos", label: "Salidas", icon: "bi-box-arrow-right", section: "Almacen" },
+    can("VIEW_WAREHOUSE_REQUISITIONS") && { to: "/almacen/requisiciones", label: "Requisiciones", shortLabel: "Req.", icon: "bi-clipboard-check", section: "Almacen" },
+    can("VIEW_MEASURE_UNITS") && { to: "/unidades-medida", label: "Unidad Medida", shortLabel: "Unidad", icon: "bi-aspect-ratio", section: "Almacen" },
+    can("VIEW_WORK_CENTERS") && { to: "/centros-trabajo", label: "Centros de Trabajo", shortLabel: "Centros", icon: "bi-building", section: "Produccion" },
+    can("VIEW_OPERATIONS") && { to: "/operaciones", label: "Operaciones", shortLabel: "Operacion", icon: "bi-gear", section: "Produccion" },
+    can("VIEW_PRODUCTION_ORDERS") && { to: "/ordenes-produccion", label: "Ordenes de produccion", shortLabel: "Ordenes", icon: "bi-clipboard2-check", section: "Produccion" },
+    can("VIEW_CIF") && { to: "/cif", label: "CIF", icon: "bi-diagram-3", section: "Produccion" },
+    can("VIEW_PURCHASES") && { to: "/compras", label: "Compras", icon: "bi-cart-check", section: "Compras" },
+    can("VIEW_PURCHASES") && { to: "/compras/abastecimiento", label: "Abastecimiento asistido", shortLabel: "Abasto", icon: "bi-stars", section: "Compras" },
+    can("VIEW_ACCOUNTS_PAYABLE") && { to: "/compras/cuentas-por-pagar", label: "Cuentas por pagar", shortLabel: "Cuentas", icon: "bi-cash-coin", section: "Compras" },
+    can("VIEW_CUSTOMERS") && { to: "/clientes", label: "Clientes", icon: "bi-person-vcard", section: "Comercial" },
+    can("VIEW_QUOTES") && { to: "/cotizaciones", label: "Cotizaciones", shortLabel: "Cotiza.", icon: "bi-file-earmark-text", section: "Comercial" }
+  ].filter(Boolean);
+  const compactItems = [...navItems]
+    .sort((a, b) => {
+      const usageDiff = (Number(navUsage[b.to]) || 0) - (Number(navUsage[a.to]) || 0);
+      if (usageDiff !== 0) return usageDiff;
+      const activeDiff = Number(location.pathname.startsWith(b.to)) - Number(location.pathname.startsWith(a.to));
+      return activeDiff;
+    })
+    .slice(0, COMPACT_VISIBLE_ITEMS);
+  const moreItems = navItems.filter((item) => !compactItems.some((compactItem) => compactItem.to === item.to));
+  const moreSections = moreItems.reduce((sections, item) => {
+    const section = item.section || "Mas";
+    if (!sections[section]) sections[section] = [];
+    sections[section].push(item);
+    return sections;
+  }, {});
 
   const handleLogout = async () => {
     try {
@@ -110,6 +213,9 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
         setOpenMenu(false);
+      }
+      if (moreRef.current && !moreRef.current.contains(event.target)) {
+        setOpenMore(false);
       }
     };
 
@@ -151,14 +257,70 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
         <div className="sidebar-brand-name">Mobilesco</div>
       </div>
 
-      {/* MENÚ */}
-      <nav className="sidebar-menu-list">
-        {can("VIEW_DASHBOARD") && <LinkItem to="/tablero" label="Tablero" icon="bi-speedometer2" onClick={handleNavigation} />}
+      {!isOpen && !isMobile ? (
+        <>
+          <nav className="sidebar-compact-menu" aria-label="Accesos mas usados">
+            {compactItems.map((item) => (
+              <CompactLinkItem
+                key={item.to}
+                item={item}
+                onClick={() => handleRouteNavigation(item.to)}
+              />
+            ))}
+          </nav>
 
-        {puedeGestionarUsuarios && <LinkItem to="/usuarios/accesos" label="Usuarios y accesos" icon="bi-shield-check" onClick={handleNavigation} />}
-        {can("VIEW_EMPLOYEES") && <LinkItem to="/empleados" label="Empleados" icon="bi-people" onClick={handleNavigation} />}
-        {can("VIEW_WORK_AREAS") && <LinkItem to="/areas-trabajo" label="Areas de trabajo" icon="bi-diagram-3" onClick={handleNavigation} />}
-        {can("VIEW_SUPPLIERS") && <LinkItem to="/proveedores" label="Proveedores" icon="bi-truck" onClick={handleNavigation} />}
+          <div ref={moreRef} className="sidebar-more">
+            <button
+              type="button"
+              className={`sidebar-more-button ${openMore ? "is-open" : ""}`}
+              onClick={() => {
+                setOpenMenu(false);
+                setOpenMore((current) => !current);
+              }}
+              aria-label="Mostrar mas opciones"
+              title="Mas"
+              aria-expanded={openMore}
+            >
+              <i className="bi bi-grid-3x3-gap-fill"></i>
+              <span>Mas</span>
+            </button>
+
+            {openMore && (
+              <div className="sidebar-more-panel">
+                <div className="sidebar-more-header">
+                  <strong>Mas opciones</strong>
+                  <span>Segun tus permisos</span>
+                </div>
+                <div className="sidebar-more-content">
+                  {Object.entries(moreSections).map(([section, items]) => (
+                    <div key={section} className="sidebar-more-section">
+                      <div className="sidebar-more-section-title">{section}</div>
+                      {items.map((item) => (
+                        <NavLink
+                          key={item.to}
+                          to={item.to}
+                          className="sidebar-more-link"
+                          onClick={() => handleRouteNavigation(item.to)}
+                        >
+                          <i className={`bi ${item.icon}`}></i>
+                          <span>{item.label}</span>
+                        </NavLink>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </>
+      ) : (
+      <nav className="sidebar-menu-list">
+        {can("VIEW_DASHBOARD") && <LinkItem to="/tablero" label="Tablero" icon="bi-speedometer2" onClick={() => handleRouteNavigation("/tablero")} />}
+
+        {puedeGestionarUsuarios && <LinkItem to="/usuarios/accesos" label="Usuarios y accesos" icon="bi-shield-check" onClick={() => handleRouteNavigation("/usuarios/accesos")} />}
+        {can("VIEW_EMPLOYEES") && <LinkItem to="/empleados" label="Empleados" icon="bi-people" onClick={() => handleRouteNavigation("/empleados")} />}
+        {can("VIEW_WORK_AREAS") && <LinkItem to="/areas-trabajo" label="Areas de trabajo" icon="bi-diagram-3" onClick={() => handleRouteNavigation("/areas-trabajo")} />}
+        {can("VIEW_SUPPLIERS") && <LinkItem to="/proveedores" label="Proveedores" icon="bi-truck" onClick={() => handleRouteNavigation("/proveedores")} />}
 
         {showProductos && (
           <div>
@@ -178,15 +340,15 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
             </button>
 
             <div className={`collapse sidebar-submenu ${openSubmenu === "productos" ? "show" : ""}`} id="menuProductos">
-              {can("VIEW_PRODUCT_LINES") && <LinkItem to="/lineas-producto" label="Lineas" icon="bi-collection" sub onClick={handleNavigation} />}
-              {can("VIEW_FAMILIES") && <LinkItem to="/familias" label="Familias" icon="bi-diagram-3" sub onClick={handleNavigation} />}
-              {can("VIEW_SUBFAMILIES") && <LinkItem to="/subfamilias" label="Subfamilias" icon="bi-diagram-2" sub onClick={handleNavigation} />}
-              {can("VIEW_MODELS") && <LinkItem to="/modelos" label="Modelos" icon="bi-boxes" sub onClick={handleNavigation} />}
-              {can("VIEW_MATERIALS") && <LinkItem to="/materiales" label="Materiales" icon="bi-layers" sub onClick={handleNavigation} />}
-              {can("VIEW_COLORS") && <LinkItem to="/colores" label="Colores" icon="bi-palette" sub onClick={handleNavigation} />}
-              {can("VIEW_PRODUCTS") && <LinkItem to="/productos" label="Productos" icon="bi-box-seam" onClick={handleNavigation} />}
-              {can("VIEW_PRODUCT_QUALITY") && <LinkItem to="/productos/calidad" label="Calidad de datos" icon="bi-clipboard-check" sub onClick={handleNavigation} />}
-              {can("VIEW_PRODUCT_CATALOG") && <LinkItem to="/productos/catalogo" label="Catalogo visual" icon="bi-images" sub onClick={handleNavigation} />}
+              {can("VIEW_PRODUCT_LINES") && <LinkItem to="/lineas-producto" label="Lineas" icon="bi-collection" sub onClick={() => handleRouteNavigation("/lineas-producto")} />}
+              {can("VIEW_FAMILIES") && <LinkItem to="/familias" label="Familias" icon="bi-diagram-3" sub onClick={() => handleRouteNavigation("/familias")} />}
+              {can("VIEW_SUBFAMILIES") && <LinkItem to="/subfamilias" label="Subfamilias" icon="bi-diagram-2" sub onClick={() => handleRouteNavigation("/subfamilias")} />}
+              {can("VIEW_MODELS") && <LinkItem to="/modelos" label="Modelos" icon="bi-boxes" sub onClick={() => handleRouteNavigation("/modelos")} />}
+              {can("VIEW_MATERIALS") && <LinkItem to="/materiales" label="Materiales" icon="bi-layers" sub onClick={() => handleRouteNavigation("/materiales")} />}
+              {can("VIEW_COLORS") && <LinkItem to="/colores" label="Colores" icon="bi-palette" sub onClick={() => handleRouteNavigation("/colores")} />}
+              {can("VIEW_PRODUCTS") && <LinkItem to="/productos" label="Productos" icon="bi-box-seam" onClick={() => handleRouteNavigation("/productos")} />}
+              {can("VIEW_PRODUCT_QUALITY") && <LinkItem to="/productos/calidad" label="Calidad de datos" icon="bi-clipboard-check" sub onClick={() => handleRouteNavigation("/productos/calidad")} />}
+              {can("VIEW_PRODUCT_CATALOG") && <LinkItem to="/productos/catalogo" label="Catalogo visual" icon="bi-images" sub onClick={() => handleRouteNavigation("/productos/catalogo")} />}
             </div>
           </div>
         )}
@@ -208,26 +370,27 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
               <i className="bi bi-chevron-down sidebar-chevron"></i>
             </button>
             <div className={`collapse sidebar-submenu ${openSubmenu === "almacen" ? "show" : ""}`} id="menuAlmacen">
-              {can("VIEW_INVENTORY") && <LinkItem to="/insumos" label="Insumos" icon="bi-boxes" sub onClick={handleNavigation} />}
-              {can("VIEW_WAREHOUSE_RECEIPTS") && <LinkItem to="/almacen/entradas" label="Entradas" icon="bi-box-arrow-in-down" sub onClick={handleNavigation} />}
-              {can("VIEW_INPUT_TYPES") && <LinkItem to="/insumos/tipos" label="Tipos de insumo" icon="bi-tags" sub onClick={handleNavigation} />}
-              {can("VIEW_INVENTORY_OUTPUTS") && <LinkItem to="/salidas-insumos" label="Salidas" icon="bi-box-arrow-right" sub onClick={handleNavigation} />}
-              {can("VIEW_WAREHOUSE_REQUISITIONS") && <LinkItem to="/almacen/requisiciones" label="Requisiciones" icon="bi-clipboard-check" sub onClick={handleNavigation} />}
-              {can("VIEW_MEASURE_UNITS") && <LinkItem to="/unidades-medida" label="Unidad Medida" icon="bi-aspect-ratio" sub onClick={handleNavigation} />}
+              {can("VIEW_INVENTORY") && <LinkItem to="/insumos" label="Insumos" icon="bi-boxes" sub onClick={() => handleRouteNavigation("/insumos")} />}
+              {can("VIEW_WAREHOUSE_RECEIPTS") && <LinkItem to="/almacen/entradas" label="Entradas" icon="bi-box-arrow-in-down" sub onClick={() => handleRouteNavigation("/almacen/entradas")} />}
+              {can("VIEW_INPUT_TYPES") && <LinkItem to="/insumos/tipos" label="Tipos de insumo" icon="bi-tags" sub onClick={() => handleRouteNavigation("/insumos/tipos")} />}
+              {can("VIEW_INVENTORY_OUTPUTS") && <LinkItem to="/salidas-insumos" label="Salidas" icon="bi-box-arrow-right" sub onClick={() => handleRouteNavigation("/salidas-insumos")} />}
+              {can("VIEW_WAREHOUSE_REQUISITIONS") && <LinkItem to="/almacen/requisiciones" label="Requisiciones" icon="bi-clipboard-check" sub onClick={() => handleRouteNavigation("/almacen/requisiciones")} />}
+              {can("VIEW_MEASURE_UNITS") && <LinkItem to="/unidades-medida" label="Unidad Medida" icon="bi-aspect-ratio" sub onClick={() => handleRouteNavigation("/unidades-medida")} />}
             </div>
           </div>
         )}
 
-        {can("VIEW_WORK_CENTERS") && <LinkItem to="/centros-trabajo" label="Centros de Trabajo" icon="bi-building" onClick={handleNavigation} />}
-        {can("VIEW_OPERATIONS") && <LinkItem to="/operaciones" label="Operaciones" icon="bi-gear" onClick={handleNavigation} />}
-        {can("VIEW_PRODUCTION_ORDERS") && <LinkItem to="/ordenes-produccion" label="Órdenes de producción" icon="bi-clipboard2-check" onClick={handleNavigation} />}
-        {can("VIEW_CIF") && <LinkItem to="/cif" label="CIF" icon="bi-diagram-3" onClick={handleNavigation} />}
-        {can("VIEW_PURCHASES") && <LinkItem to="/compras" label="Compras" icon="bi-cart-check" onClick={handleNavigation} />}
-        {can("VIEW_PURCHASES") && <LinkItem to="/compras/abastecimiento" label="Abastecimiento asistido" icon="bi-stars" onClick={handleNavigation} />}
-        {can("VIEW_ACCOUNTS_PAYABLE") && <LinkItem to="/compras/cuentas-por-pagar" label="Cuentas por pagar" icon="bi-cash-coin" onClick={handleNavigation} />}
-        {can("VIEW_CUSTOMERS") && <LinkItem to="/clientes" label="Clientes" icon="bi-person-vcard" onClick={handleNavigation} />}
-        {can("VIEW_QUOTES") && <LinkItem to="/cotizaciones" label="Cotizaciones" icon="bi-file-earmark-text" onClick={handleNavigation} />}
+        {can("VIEW_WORK_CENTERS") && <LinkItem to="/centros-trabajo" label="Centros de Trabajo" icon="bi-building" onClick={() => handleRouteNavigation("/centros-trabajo")} />}
+        {can("VIEW_OPERATIONS") && <LinkItem to="/operaciones" label="Operaciones" icon="bi-gear" onClick={() => handleRouteNavigation("/operaciones")} />}
+        {can("VIEW_PRODUCTION_ORDERS") && <LinkItem to="/ordenes-produccion" label="Órdenes de producción" icon="bi-clipboard2-check" onClick={() => handleRouteNavigation("/ordenes-produccion")} />}
+        {can("VIEW_CIF") && <LinkItem to="/cif" label="CIF" icon="bi-diagram-3" onClick={() => handleRouteNavigation("/cif")} />}
+        {can("VIEW_PURCHASES") && <LinkItem to="/compras" label="Compras" icon="bi-cart-check" onClick={() => handleRouteNavigation("/compras")} />}
+        {can("VIEW_PURCHASES") && <LinkItem to="/compras/abastecimiento" label="Abastecimiento asistido" icon="bi-stars" onClick={() => handleRouteNavigation("/compras/abastecimiento")} />}
+        {can("VIEW_ACCOUNTS_PAYABLE") && <LinkItem to="/compras/cuentas-por-pagar" label="Cuentas por pagar" icon="bi-cash-coin" onClick={() => handleRouteNavigation("/compras/cuentas-por-pagar")} />}
+        {can("VIEW_CUSTOMERS") && <LinkItem to="/clientes" label="Clientes" icon="bi-person-vcard" onClick={() => handleRouteNavigation("/clientes")} />}
+        {can("VIEW_QUOTES") && <LinkItem to="/cotizaciones" label="Cotizaciones" icon="bi-file-earmark-text" onClick={() => handleRouteNavigation("/cotizaciones")} />}
       </nav>
+      )}
 
       <button
         type="button"
