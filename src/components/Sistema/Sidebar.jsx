@@ -8,7 +8,7 @@ import ProtectedImage from "../ui/ProtectedImage";
 
 const NAV_USAGE_PREFIX = "mobilesco:navigationUsage";
 const NAV_PINNED_PREFIX = "mobilesco:navigationPinned";
-const COMPACT_VISIBLE_ITEMS = 8;
+const COMPACT_VISIBLE_ITEMS = 9;
 
 function loadNavigationUsage(key) {
   try {
