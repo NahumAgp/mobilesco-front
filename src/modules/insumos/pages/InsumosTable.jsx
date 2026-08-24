@@ -16,24 +16,24 @@ const COLUMNAS_ORDENABLES = {
 // con el de las celdas del <tbody>.
 const COLUMNAS = [
   { id: "id", label: "ID", sortField: "id", defaultWidth: 54 },
-  { id: "codigo", label: "Codigo", defaultWidth: 118 },
-  { id: "nombre", label: "Nombre", sortField: "nombre", defaultWidth: 320 },
-  { id: "tipo", label: "Tipo", defaultWidth: 86 },
+  { id: "codigo", label: "Codigo", defaultWidth: 156 },
+  { id: "nombre", label: "Nombre", sortField: "nombre", defaultWidth: 340 },
+  { id: "tipo", label: "Tipo", defaultWidth: 96 },
   { id: "abc", label: "Clase ABC", defaultWidth: 78 },
-  { id: "ubicacion", label: "Ubicacion", sortField: "ubicacion", defaultWidth: 76 },
-  { id: "unidad", label: "Unidad", defaultWidth: 70 },
-  { id: "stockActual", label: "Stock actual", sortField: "stockActual", defaultWidth: 82 },
-  { id: "stockApartado", label: "Apartado", defaultWidth: 82 },
-  { id: "stockDisponible", label: "Disponible", defaultWidth: 82 },
-  { id: "stockMinimo", label: "Stock minimo", sortField: "stockMinimo", defaultWidth: 82 },
-  { id: "ultimoCosto", label: "Ultimo costo", defaultWidth: 86 },
-  { id: "costoPromedio", label: "Costo promedio", defaultWidth: 92 },
-  { id: "costoCotizacion", label: "Costo cotizacion", sortField: "costoCotizacion", defaultWidth: 96 },
-  { id: "acciones", label: "Acciones", defaultWidth: 150 }
+  { id: "ubicacion", label: "Ubicacion", sortField: "ubicacion", defaultWidth: 84 },
+  { id: "unidad", label: "Unidad", defaultWidth: 74 },
+  { id: "stockActual", label: "Stock actual", sortField: "stockActual", defaultWidth: 92 },
+  { id: "stockApartado", label: "Apartado", defaultWidth: 90 },
+  { id: "stockDisponible", label: "Disponible", defaultWidth: 98 },
+  { id: "stockMinimo", label: "Stock minimo", sortField: "stockMinimo", defaultWidth: 96 },
+  { id: "ultimoCosto", label: "Ultimo costo", defaultWidth: 104 },
+  { id: "costoPromedio", label: "Costo promedio", defaultWidth: 118 },
+  { id: "costoCotizacion", label: "Costo cotizacion", sortField: "costoCotizacion", defaultWidth: 124 },
+  { id: "acciones", label: "Acciones", defaultWidth: 240 }
 ];
 
-const STORAGE_KEY = "insumos-columnas-ancho-v3";
-const ANCHO_MINIMO = 60;
+const STORAGE_KEY = "insumos-columnas-ancho-v4";
+const ANCHO_MINIMO = 72;
 
 function anchosPorDefecto() {
   return COLUMNAS.reduce((acc, col) => {
@@ -83,9 +83,7 @@ export default function InsumosTable({
   onEditar,
   onVerKardex,
   onCambiarEstado,
-  onAjustarStock,
   puedeGestionar = false,
-  puedeAjustarStock = false,
   sortField = "nombre",
   sortDirection = "asc",
   onSort
@@ -300,21 +298,7 @@ export default function InsumosTable({
                         </span>
                       </td>
                       <td className="insumos-actions">
-                        <div className="d-flex flex-wrap gap-2 justify-content-end">
-                          {puedeAjustarStock && (
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline-primary"
-                              title="Ajustar stock"
-                              aria-label={`Ajustar stock de ${insumo.nombre}`}
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                onAjustarStock?.(insumo);
-                              }}
-                            >
-                              <i className="bi bi-arrow-left-right"></i>
-                            </button>
-                          )}
+                        <div className="insumos-actions-group">
                           {puedeGestionar && (
                             <CatalogRowActions
                               item={insumo}

@@ -214,7 +214,7 @@
 }
 
 .insumos-main-table {
-  min-width: 1393px;
+  min-width: 1844px;
 }
 
 .insumos-abc-badge {
@@ -271,6 +271,7 @@
 /* Los anchos de columna del catalogo de insumos los controla el <colgroup>
    (redimensionable por el usuario), por eso aqui ya no se fijan por nth-child. */
 
+.insumos-main-table td:nth-child(2),
 .insumos-main-table td:nth-child(3),
 .insumos-main-table td:nth-child(5),
 .insumos-main-table td:nth-child(7),
@@ -278,6 +279,9 @@
 .insumos-main-table td:nth-child(9),
 .insumos-main-table td:nth-child(10),
 .insumos-main-table td:nth-child(11),
+.insumos-main-table td:nth-child(12),
+.insumos-main-table td:nth-child(13),
+.insumos-main-table td:nth-child(14),
 .insumos-costos-table td:nth-child(4),
 .insumos-costos-table td:nth-child(5),
 .insumos-costos-table td:nth-child(6) {
@@ -391,6 +395,7 @@
 /* Codigo como chip limpio y legible */
 .insumos-code-badge {
   display: inline-block;
+  max-width: 100%;
   background: var(--ms-surface-2);
   color: var(--ms-ink-700);
   border: 1px solid var(--ms-line);
@@ -399,6 +404,8 @@
   font-size: 0.8rem;
   letter-spacing: 0.04em;
   font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -417,8 +424,18 @@
   white-space: nowrap;
 }
 
+.insumos-actions-group {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
 .insumos-row-actions {
   display: inline-flex;
+  flex-wrap: nowrap;
+  gap: 8px;
 }
 
 .insumos-row-actions .btn {
