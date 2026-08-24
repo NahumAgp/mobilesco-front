@@ -1,7 +1,7 @@
 :root {
   --sidebar-expanded-width: 306px;
   --sidebar-rail-width: 18px;
-  --sidebar-compact-width: 64px;
+  --sidebar-compact-width: 78px;
 }
 
 /* ===== Contenedor ===== */
@@ -20,8 +20,7 @@
   gap: 4px;
   background: linear-gradient(180deg, var(--ms-sidebar) 0%, var(--ms-sidebar-deep) 100%);
   color: #eaf1ee;
-  overflow-x: visible;
-  overflow-y: auto;
+  overflow: hidden;
   box-shadow: 4px 0 18px rgba(40, 83, 73, 0.18);
   scrollbar-width: none;
   transition:
@@ -67,8 +66,27 @@
 .sidebar-menu-list {
   display: flex;
   flex-direction: column;
+  flex: 1 1 auto;
   gap: 5px;
   min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-right: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.26) transparent;
+}
+
+.sidebar-menu-list::-webkit-scrollbar {
+  width: 5px;
+}
+
+.sidebar-menu-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-menu-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.26);
+  border-radius: 999px;
 }
 
 /* ===== BOTÓN PADRE ===== */
@@ -192,6 +210,7 @@
 .sidebar-profile {
   position: relative;
   margin-top: auto;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   padding: 12px;
@@ -438,13 +457,14 @@
 .app-sidebar.app-sidebar--compact:hover,
 .app-sidebar.app-sidebar--compact:focus-within {
   width: var(--sidebar-compact-width);
-  padding: 8px 6px;
-  overflow: visible;
+  padding: 10px 10px;
+  gap: 8px;
+  overflow: hidden;
 }
 
 .app-sidebar--compact .sidebar-brand {
   justify-content: center;
-  padding: 4px 0 10px;
+  padding: 2px 0 8px;
 }
 
 .app-sidebar--compact .sidebar-brand-name {
@@ -455,11 +475,15 @@
   width: 30px;
   height: 30px;
   flex-basis: 30px;
-  margin: 4px auto;
+  margin: 6px auto 2px;
 }
 
 .app-sidebar--compact .sidebar-profile {
-  padding: 6px;
+  align-items: center;
+  padding: 8px 0 0;
+  background: transparent;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 0;
 }
 
 .app-sidebar--compact .sidebar-profile-button {
@@ -481,11 +505,12 @@
   position: relative;
   justify-content: center;
   width: 100%;
-  min-height: 36px;
-  padding: 4px;
+  min-height: 40px;
+  padding: 0;
   gap: 0;
-  overflow: visible;
+  overflow: hidden;
   font-size: 0;
+  border-radius: 12px;
 }
 
 .app-sidebar--compact .sidebar-link.active::before {
@@ -513,19 +538,22 @@
   width: 20px;
   min-width: 20px;
   margin: 0 !important;
-  font-size: 1rem;
+  font-size: 1.1rem;
 }
 
 .app-sidebar--compact .sidebar-menu-list {
   align-items: stretch;
   width: 100%;
-  gap: 2px;
+  gap: 6px;
+  padding: 2px 0;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .app-sidebar--compact .sidebar-chevron {
   position: absolute;
   top: 50%;
-  right: 2px;
+  right: 5px;
   display: block;
   width: auto;
   min-width: 0;
@@ -539,9 +567,9 @@
 }
 
 .app-sidebar--compact .sidebar-submenu.show {
-  position: absolute;
-  top: 0;
-  left: calc(100% + 10px);
+  position: fixed;
+  top: 92px;
+  left: calc(var(--sidebar-compact-width) + 8px);
   z-index: 1090;
   display: flex;
   width: 190px;
