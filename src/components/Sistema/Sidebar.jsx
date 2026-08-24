@@ -7,6 +7,7 @@ import { contarNotificacionesNoLeidas } from "../../modules/notificaciones/servi
 import ProtectedImage from "../ui/ProtectedImage";
 
 const NAV_USAGE_PREFIX = "mobilesco:navigationUsage";
+const NAV_PINNED_PREFIX = "mobilesco:navigationPinned";
 const COMPACT_VISIBLE_ITEMS = 8;
 
 function loadNavigationUsage(key) {
@@ -15,6 +16,16 @@ function loadNavigationUsage(key) {
     return stored ? JSON.parse(stored) : {};
   } catch {
     return {};
+  }
+}
+
+function loadNavigationPins(key) {
+  try {
+    const stored = window.localStorage.getItem(key);
+    const parsed = stored ? JSON.parse(stored) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
   }
 }
 
@@ -27,17 +38,18 @@ function LinkItem({ to, label, icon, sub = false, onClick }) {
   );
 }
 
-function CompactLinkItem({ item, onClick }) {
+function CompactLinkItem({ item, pinned, onClick, onContextMenu }) {
   return (
     <NavLink
       to={item.to}
-      className="sidebar-compact-link"
+      className={`sidebar-compact-link ${pinned ? "is-pinned" : ""}`}
       onClick={onClick}
+      onContextMenu={onContextMenu}
       title={item.label}
       aria-label={item.label}
     >
       <i className={`bi ${item.icon}`}></i>
-      <span>{item.shortLabel || item.label}</span>
+      {pinned && <span className="sidebar-pin-indicator" aria-hidden="true"></span>}
     </NavLink>
   );
 }
@@ -51,6 +63,8 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
   const [openSubmenu, setOpenSubmenu] = useState(null);
   const [openMore, setOpenMore] = useState(false);
   const [navUsageVersion, setNavUsageVersion] = useState(0);
+  const [pinnedVersion, setPinnedVersion] = useState(0);
+  const [pinMenu, setPinMenu] = useState(null);
   const [notificacionesNoLeidas, setNotificacionesNoLeidas] = useState(0);
   const [isMobile, setIsMobile] = useState(() => window.matchMedia("(max-width: 768px)").matches);
   const menuRef = useRef(null);
@@ -60,6 +74,7 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
     setOpenSubmenu(null);
     setOpenMenu(false);
     setOpenMore(false);
+    setPinMenu(null);
     if (isMobile && isOpen) {
       closeSidebar();
     }
@@ -92,7 +107,10 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
     user?.nombreUsuario ||
     `${nombre || "usuario"}-${roles.join("-") || "sin-rol"}`;
   const navUsageKey = `${NAV_USAGE_PREFIX}:${userStorageId}`;
+  const navPinnedKey = `${NAV_PINNED_PREFIX}:${userStorageId}`;
   const navUsage = navUsageVersion >= 0 ? loadNavigationUsage(navUsageKey) : {};
+  const pinnedRoutes = pinnedVersion >= 0 ? loadNavigationPins(navPinnedKey) : [];
+  const pinnedRouteSet = new Set(pinnedRoutes);
 
   const registerRouteUse = (to) => {
     const current = loadNavigationUsage(navUsageKey);
@@ -108,6 +126,33 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
   const handleRouteNavigation = (to) => {
     registerRouteUse(to);
     handleNavigation();
+  };
+
+  const openPinMenu = (event, item) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setOpenMenu(false);
+    setOpenMore(false);
+    setPinMenu({
+      item,
+      x: event.clientX,
+      y: event.clientY
+    });
+  };
+
+  const togglePinnedRoute = (item) => {
+    const current = loadNavigationPins(navPinnedKey);
+    const exists = current.includes(item.to);
+    const next = exists
+      ? current.filter((route) => route !== item.to)
+      : [...current, item.to];
+    try {
+      window.localStorage.setItem(navPinnedKey, JSON.stringify(next));
+    } catch {
+      // Si localStorage no esta disponible, la fijacion solo no persiste.
+    }
+    setPinnedVersion((version) => version + 1);
+    setPinMenu(null);
   };
 
   const rolMap = {
@@ -166,13 +211,18 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
     can("VIEW_CUSTOMERS") && { to: "/clientes", label: "Clientes", icon: "bi-person-vcard", section: "Comercial" },
     can("VIEW_QUOTES") && { to: "/cotizaciones", label: "Cotizaciones", shortLabel: "Cotiza.", icon: "bi-file-earmark-text", section: "Comercial" }
   ].filter(Boolean);
-  const compactItems = [...navItems]
+  const pinnedItems = pinnedRoutes
+    .map((route) => navItems.find((item) => item.to === route))
+    .filter(Boolean);
+  const automaticItems = navItems
+    .filter((item) => !pinnedRouteSet.has(item.to))
     .sort((a, b) => {
       const usageDiff = (Number(navUsage[b.to]) || 0) - (Number(navUsage[a.to]) || 0);
       if (usageDiff !== 0) return usageDiff;
       const activeDiff = Number(location.pathname.startsWith(b.to)) - Number(location.pathname.startsWith(a.to));
       return activeDiff;
-    })
+    });
+  const compactItems = [...pinnedItems, ...automaticItems]
     .slice(0, COMPACT_VISIBLE_ITEMS);
   const moreItems = navItems.filter((item) => !compactItems.some((compactItem) => compactItem.to === item.to));
   const moreSections = moreItems.reduce((sections, item) => {
@@ -217,10 +267,20 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
       if (moreRef.current && !moreRef.current.contains(event.target)) {
         setOpenMore(false);
       }
+      setPinMenu(null);
     };
 
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        setPinMenu(null);
+      }
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
   }, []);
 
   useEffect(() => {
@@ -264,7 +324,9 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
               <CompactLinkItem
                 key={item.to}
                 item={item}
+                pinned={pinnedRouteSet.has(item.to)}
                 onClick={() => handleRouteNavigation(item.to)}
+                onContextMenu={(event) => openPinMenu(event, item)}
               />
             ))}
           </nav>
@@ -282,7 +344,6 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
               aria-expanded={openMore}
             >
               <i className="bi bi-grid-3x3-gap-fill"></i>
-              <span>Mas</span>
             </button>
 
             {openMore && (
@@ -299,11 +360,13 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
                         <NavLink
                           key={item.to}
                           to={item.to}
-                          className="sidebar-more-link"
+                          className={`sidebar-more-link ${pinnedRouteSet.has(item.to) ? "is-pinned" : ""}`}
                           onClick={() => handleRouteNavigation(item.to)}
+                          onContextMenu={(event) => openPinMenu(event, item)}
                         >
                           <i className={`bi ${item.icon}`}></i>
                           <span>{item.label}</span>
+                          {pinnedRouteSet.has(item.to) && <i className="bi bi-pin-angle-fill sidebar-more-pin" aria-hidden="true"></i>}
                         </NavLink>
                       ))}
                     </div>
@@ -390,6 +453,21 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
         {can("VIEW_CUSTOMERS") && <LinkItem to="/clientes" label="Clientes" icon="bi-person-vcard" onClick={() => handleRouteNavigation("/clientes")} />}
         {can("VIEW_QUOTES") && <LinkItem to="/cotizaciones" label="Cotizaciones" icon="bi-file-earmark-text" onClick={() => handleRouteNavigation("/cotizaciones")} />}
       </nav>
+      )}
+
+      {pinMenu && (
+        <div
+          className="sidebar-pin-menu"
+          style={{ left: `${pinMenu.x}px`, top: `${pinMenu.y}px` }}
+          role="menu"
+          onMouseDown={(event) => event.stopPropagation()}
+        >
+          <div className="sidebar-pin-menu-title">{pinMenu.item.label}</div>
+          <button type="button" role="menuitem" onClick={() => togglePinnedRoute(pinMenu.item)}>
+            <i className={`bi ${pinnedRouteSet.has(pinMenu.item.to) ? "bi-pin-angle-fill" : "bi-pin-angle"}`}></i>
+            {pinnedRouteSet.has(pinMenu.item.to) ? "Desfijar" : "Fijar"}
+          </button>
+        </div>
       )}
 
       <button

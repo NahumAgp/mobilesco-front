@@ -492,11 +492,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-direction: column;
-  gap: 4px;
   width: 100%;
-  min-height: 58px;
-  padding: 6px 4px;
+  min-height: 46px;
+  padding: 0;
   border: 0;
   border-radius: 14px;
   background: transparent;
@@ -511,25 +509,26 @@
 
 .sidebar-compact-link i,
 .sidebar-more-button i {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   display: grid;
   place-items: center;
-  font-size: 1.18rem;
+  font-size: 1.24rem;
 }
 
-.sidebar-compact-link span,
-.sidebar-more-button span {
-  display: block;
-  width: 100%;
-  overflow: hidden;
-  color: inherit;
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: 0;
-  text-align: center;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.sidebar-compact-link {
+  position: relative;
+}
+
+.sidebar-pin-indicator {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--ms-brand-300);
+  box-shadow: 0 0 0 2px rgba(40, 83, 73, 0.7);
 }
 
 .sidebar-compact-link:hover,
@@ -635,6 +634,14 @@
   color: var(--ms-brand-700);
 }
 
+.sidebar-more-link .sidebar-more-pin {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  color: var(--ms-brand-500);
+  font-size: 0.85rem;
+}
+
 .sidebar-more-link span {
   min-width: 0;
   overflow: hidden;
@@ -645,6 +652,51 @@
 .sidebar-more-link:hover,
 .sidebar-more-link:focus-visible,
 .sidebar-more-link.active {
+  background: var(--ms-surface-2);
+  color: var(--ms-brand-900);
+  outline: none;
+}
+
+.sidebar-pin-menu {
+  position: fixed;
+  z-index: 1200;
+  width: 180px;
+  padding: 8px;
+  border: 1px solid var(--ms-line-soft);
+  border-radius: 12px;
+  background: var(--ms-surface);
+  color: var(--ms-ink);
+  box-shadow: 0 14px 34px rgba(15, 32, 28, 0.24);
+}
+
+.sidebar-pin-menu-title {
+  padding: 4px 8px 7px;
+  overflow: hidden;
+  color: var(--ms-ink-500);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-pin-menu button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ms-ink-800);
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-align: left;
+}
+
+.sidebar-pin-menu button:hover,
+.sidebar-pin-menu button:focus-visible {
   background: var(--ms-surface-2);
   color: var(--ms-brand-900);
   outline: none;
