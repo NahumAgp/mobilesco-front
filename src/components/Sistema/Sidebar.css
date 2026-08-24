@@ -13,6 +13,7 @@
   flex-direction: column;
   width: var(--sidebar-expanded-width);
   height: 100vh;
+  height: 100dvh;
   flex-shrink: 0;
   box-sizing: border-box;
   padding: 18px 16px;
@@ -67,6 +68,7 @@
   display: flex;
   flex-direction: column;
   gap: 5px;
+  min-height: 0;
 }
 
 /* ===== BOTÓN PADRE ===== */
@@ -436,13 +438,13 @@
 .app-sidebar.app-sidebar--compact:hover,
 .app-sidebar.app-sidebar--compact:focus-within {
   width: var(--sidebar-compact-width);
-  padding: 12px 8px;
+  padding: 8px 6px;
   overflow: visible;
 }
 
 .app-sidebar--compact .sidebar-brand {
   justify-content: center;
-  padding: 6px 0 16px;
+  padding: 4px 0 10px;
 }
 
 .app-sidebar--compact .sidebar-brand-name {
@@ -450,11 +452,14 @@
 }
 
 .app-sidebar--compact .sidebar-collapse-button {
-  margin-right: auto;
+  width: 30px;
+  height: 30px;
+  flex-basis: 30px;
+  margin: 4px auto;
 }
 
 .app-sidebar--compact .sidebar-profile {
-  padding: 8px;
+  padding: 6px;
 }
 
 .app-sidebar--compact .sidebar-profile-button {
@@ -476,7 +481,8 @@
   position: relative;
   justify-content: center;
   width: 100%;
-  padding: 5px;
+  min-height: 36px;
+  padding: 4px;
   gap: 0;
   overflow: visible;
   font-size: 0;
@@ -513,6 +519,7 @@
 .app-sidebar--compact .sidebar-menu-list {
   align-items: stretch;
   width: 100%;
+  gap: 2px;
 }
 
 .app-sidebar--compact .sidebar-chevron {
