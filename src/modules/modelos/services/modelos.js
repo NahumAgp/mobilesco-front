@@ -69,6 +69,13 @@ export function actualizarModelo(id, data) {
   });
 }
 
+export function sincronizarInsumosVariantes(modeloId, nivelId, insumos) {
+  return request(`${API_PATHS.MODELOS}/${modeloId}/categorias/${nivelId}/insumos/sincronizar-variantes`, {
+    method: "PUT",
+    body: JSON.stringify(insumos),
+  });
+}
+
 export function obtenerCodigoSugerido(nombre, familiaId, subfamiliaId) {
   const params = new URLSearchParams({ nombre });
   if (familiaId !== undefined && familiaId !== null && familiaId !== "") {

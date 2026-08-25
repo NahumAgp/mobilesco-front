@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import SearchableSelect from "../../../components/ui/SearchableSelect.jsx";
 import InsumoForm from "../../insumos/pages/InsumoForm.jsx";
 import { obtenerInsumos } from "../../insumos/services/insumos.js";
+import { sincronizarInsumosVariantes } from "../services/modelos.js";
 import OperacionForm from "../../operaciones/pages/OperacionForm.jsx";
 import { obtenerOperacionesActivas } from "../../operaciones/services/operaciones.js";
 
@@ -15,6 +16,8 @@ const getLista = (respuesta) => {
 
 const getId = (item) => item?.id ?? item?.insumoId ?? item?.operacionId ?? item?.insumo_id ?? item?.operacion_id ?? null;
 const getUnidad = (item) => item?.unidadMedida?.simbolo ?? item?.unidadMedida ?? item?.unidad_medida ?? "";
+const getDesperdicio = (item) => item?.desperdicioPorcentaje ?? item?.desperdicio_porcentaje ?? item?.desperdicio ?? 0;
+const getCostoCotizacion = (item) => item?.costoCotizacion ?? item?.costo_cotizacion ?? item?.costo_cotizar ?? item?.costo ?? 0;
 const INSUMOS_CLIPBOARD_KEY = "mobilesco:modelos:insumosClipboard";
 
 const mergePorId = (...listas) => {
@@ -38,7 +41,10 @@ const normalizarInsumoParaCopiar = (item) => ({
   codigo: item?.codigo ?? "",
   nombre: item?.nombre ?? "",
   unidadMedida: getUnidad(item),
-  cantidad: item?.cantidad ?? ""
+  cantidad: item?.cantidad ?? "",
+  desperdicioPorcentaje: getDesperdicio(item),
+  costoCotizacion: getCostoCotizacion(item),
+  costoCotizacionOriginal: item?.costoCotizacionOriginal ?? getCostoCotizacion(item)
 });
 
 const leerClipboardInsumos = () => {
@@ -76,7 +82,7 @@ function CatalogModal({ show, title, onClose, children }) {
   );
 }
 
-export default function ModeloPlantillaProductivaFields({ categorias = [], onCategoriasChange, error }) {
+export default function ModeloPlantillaProductivaFields({ modeloId, categorias = [], onCategoriasChange }) {
   const [catalogoInsumos, setCatalogoInsumos] = useState([]);
   const [insumosBuscados, setInsumosBuscados] = useState([]);
   const [busquedaInsumo, setBusquedaInsumo] = useState("");
@@ -89,6 +95,7 @@ export default function ModeloPlantillaProductivaFields({ categorias = [], onCat
   const [insumosSeleccionados, setInsumosSeleccionados] = useState({});
   const [clipboardInsumos, setClipboardInsumos] = useState(() => leerClipboardInsumos());
   const [mensajePegado, setMensajePegado] = useState({});
+  const [sincronizandoCategoria, setSincronizandoCategoria] = useState(null);
 
   useEffect(() => {
     let activo = true;
@@ -247,7 +254,10 @@ export default function ModeloPlantillaProductivaFields({ categorias = [], onCat
         .map((item) => ({
           ...item,
           id: getId(item),
-          cantidad: item.cantidad ?? ""
+          cantidad: item.cantidad ?? "",
+          desperdicioPorcentaje: getDesperdicio(item),
+          costoCotizacion: getCostoCotizacion(item),
+          costoCotizacionOriginal: item.costoCotizacionOriginal ?? getCostoCotizacion(item)
         }));
 
       agregados = nuevos.length;
@@ -280,7 +290,14 @@ export default function ModeloPlantillaProductivaFields({ categorias = [], onCat
       if (actuales.some((item) => String(getId(item)) === String(getId(insumo)))) return categoria;
       return {
         ...categoria,
-        insumos: [...actuales, { ...insumo, id: getId(insumo), cantidad: insumo.cantidad ?? "" }]
+        insumos: [...actuales, {
+          ...insumo,
+          id: getId(insumo),
+          cantidad: insumo.cantidad ?? "",
+          desperdicioPorcentaje: getDesperdicio(insumo),
+          costoCotizacion: getCostoCotizacion(insumo),
+          costoCotizacionOriginal: insumo.costoCotizacionOriginal ?? getCostoCotizacion(insumo)
+        }]
       };
     });
     setSelecciones((prev) => ({ ...prev, [`insumo-${categoriaIndex}`]: "" }));
@@ -305,6 +322,24 @@ export default function ModeloPlantillaProductivaFields({ categorias = [], onCat
       ...categoria,
       insumos: (categoria.insumos || []).map((item) =>
         String(getId(item)) === String(insumoId) ? { ...item, cantidad } : item
+      )
+    }));
+  };
+
+  const actualizarDesperdicioInsumo = (categoriaIndex, insumoId, desperdicioPorcentaje) => {
+    actualizarCategoria(categoriaIndex, (categoria) => ({
+      ...categoria,
+      insumos: (categoria.insumos || []).map((item) =>
+        String(getId(item)) === String(insumoId) ? { ...item, desperdicioPorcentaje } : item
+      )
+    }));
+  };
+
+  const actualizarCostoInsumo = (categoriaIndex, insumoId, costoCotizacion) => {
+    actualizarCategoria(categoriaIndex, (categoria) => ({
+      ...categoria,
+      insumos: (categoria.insumos || []).map((item) =>
+        String(getId(item)) === String(insumoId) ? { ...item, costoCotizacion } : item
       )
     }));
   };
@@ -344,6 +379,63 @@ export default function ModeloPlantillaProductivaFields({ categorias = [], onCat
     }));
   };
 
+  const sincronizarVariantes = async (categoria, categoriaIndex) => {
+    const nivelId = categoria?.id;
+    const categoriaKey = getCategoriaKey(categoria, categoriaIndex);
+    const insumos = Array.isArray(categoria.insumos) ? categoria.insumos : [];
+    const payload = insumos
+      .map((item) => ({
+        id: Number(getId(item)),
+        cantidad: Number(item.cantidad),
+        desperdicioPorcentaje: Number(getDesperdicio(item) || 0)
+      }))
+      .filter((item) => Number.isFinite(item.id));
+
+    if (!modeloId || !nivelId) {
+      setMensajePegado((prev) => ({
+        ...prev,
+        [categoriaKey]: "Guarda el modelo antes de sincronizar esta categoria con sus variantes."
+      }));
+      return;
+    }
+
+    if (payload.some((item) => !Number.isFinite(item.cantidad) || item.cantidad <= 0)) {
+      setMensajePegado((prev) => ({
+        ...prev,
+        [categoriaKey]: "Cada insumo debe tener cantidad mayor a cero antes de sincronizar."
+      }));
+      return;
+    }
+
+    if (payload.some((item) => !Number.isFinite(item.desperdicioPorcentaje) || item.desperdicioPorcentaje < 0)) {
+      setMensajePegado((prev) => ({
+        ...prev,
+        [categoriaKey]: "Cada insumo debe tener desperdicio mayor o igual a cero antes de sincronizar."
+      }));
+      return;
+    }
+
+    if (!window.confirm("Se actualizarán los insumos heredados en todas las variantes de esta categoría. Los insumos únicos de cada producto se conservarán. ¿Deseas continuar?")) {
+      return;
+    }
+
+    try {
+      setSincronizandoCategoria(categoriaKey);
+      const resultado = await sincronizarInsumosVariantes(modeloId, nivelId, payload);
+      setMensajePegado((prev) => ({
+        ...prev,
+        [categoriaKey]: `Variantes sincronizadas: ${resultado.productosActualizados || 0}. Agregados: ${resultado.insumosAgregados || 0}, actualizados: ${resultado.insumosActualizados || 0}, eliminados: ${resultado.insumosEliminados || 0}.`
+      }));
+    } catch (errorSincronizacion) {
+      setMensajePegado((prev) => ({
+        ...prev,
+        [categoriaKey]: errorSincronizacion.message || "No se pudieron sincronizar las variantes."
+      }));
+    } finally {
+      setSincronizandoCategoria(null);
+    }
+  };
+
   const moverOperacion = (categoriaIndex, operacionIndex, delta) => {
     actualizarCategoria(categoriaIndex, (categoria) => {
       const operaciones = [...(categoria.operaciones || [])];
@@ -360,8 +452,6 @@ export default function ModeloPlantillaProductivaFields({ categorias = [], onCat
 
   return (
     <>
-      {error && <div className="alert alert-warning py-2">{error}</div>}
-
       <div className="d-flex flex-column gap-3">
         {categorias.map((categoria, categoriaIndex) => {
           const insumos = Array.isArray(categoria.insumos) ? categoria.insumos : [];
@@ -377,6 +467,14 @@ export default function ModeloPlantillaProductivaFields({ categorias = [], onCat
           const totalSeleccionados = insumos.filter((item) => seleccionInsumosCategoria[getInsumoKey(item)]).length;
           const todosInsumosSeleccionados =
             insumos.length > 0 && insumos.every((item) => seleccionInsumosCategoria[getInsumoKey(item)]);
+          const insumosInvalidos = insumos.some((item) => {
+            const cantidad = Number(item.cantidad);
+            const desperdicio = Number(getDesperdicio(item) || 0);
+            return !Number.isFinite(cantidad) || cantidad <= 0
+              || !Number.isFinite(desperdicio) || desperdicio < 0;
+          });
+          const puedeSincronizar = Boolean(modeloId && categoria.id) && !insumosInvalidos;
+          const sincronizando = sincronizandoCategoria === categoriaKey;
 
           return (
             <div
@@ -419,6 +517,15 @@ export default function ModeloPlantillaProductivaFields({ categorias = [], onCat
                       >
                         <i className="bi bi-clipboard-plus me-1"></i>Pegar
                       </button>
+                      <button
+                        type="button"
+                        className="btn btn-outline-success btn-sm"
+                        onClick={() => sincronizarVariantes(categoria, categoriaIndex)}
+                        disabled={!puedeSincronizar || sincronizando}
+                        title={!modeloId || !categoria.id ? "Guarda el modelo antes de sincronizar variantes" : insumosInvalidos ? "Corrige cantidades antes de sincronizar" : "Sincronizar insumos heredados en variantes"}
+                      >
+                        <i className="bi bi-arrow-repeat me-1"></i>{sincronizando ? "Sincronizando..." : "Sincronizar variantes"}
+                      </button>
                       <button type="button" className="btn btn-outline-primary btn-sm" onClick={() => setModalInsumoIndex(categoriaIndex)}>
                         <i className="bi bi-plus-lg me-1"></i>Nuevo insumo
                       </button>
@@ -443,6 +550,19 @@ export default function ModeloPlantillaProductivaFields({ categorias = [], onCat
 
                   <div className="table-responsive mt-2">
                     <table className="table table-sm align-middle mb-0">
+                      {insumos.length > 0 && (
+                        <thead className="table-light">
+                          <tr>
+                            <th style={{ width: 44 }}></th>
+                            <th>Insumo</th>
+                            <th className="text-end" style={{ width: 150 }}>Cantidad</th>
+                            <th className="text-end" style={{ width: 135 }}>% Desperdicio</th>
+                            <th className="text-end" style={{ width: 140 }}>Costo</th>
+                            <th className="text-end" style={{ width: 120 }}>Subtotal</th>
+                            <th style={{ width: 52 }}></th>
+                          </tr>
+                        </thead>
+                      )}
                       <tbody>
                         {insumos.length > 0 && (
                           <tr>
@@ -455,12 +575,17 @@ export default function ModeloPlantillaProductivaFields({ categorias = [], onCat
                                 aria-label={`Seleccionar todos los insumos de ${categoria.nombre || "categoria"}`}
                               />
                             </td>
-                            <td colSpan={3}>
+                            <td colSpan={6}>
                               <span className="text-muted small">Seleccionar todos</span>
                             </td>
                           </tr>
                         )}
-                        {insumos.map((item) => (
+                        {insumos.map((item) => {
+                          const cantidad = Number(item.cantidad || 0);
+                          const desperdicio = Number(getDesperdicio(item) || 0);
+                          const costo = Number(getCostoCotizacion(item) || 0);
+                          const subtotal = cantidad * (1 + desperdicio / 100) * costo;
+                          return (
                           <tr key={getId(item)}>
                             <td style={{ width: 44 }}>
                               <input
@@ -475,16 +600,50 @@ export default function ModeloPlantillaProductivaFields({ categorias = [], onCat
                               <span className="fw-semibold">{item.codigo ? `[${item.codigo}] ` : ""}{item.nombre || `Insumo ${getId(item)}`}</span>
                               {getUnidad(item) && <span className="text-muted ms-2">{getUnidad(item)}</span>}
                             </td>
-                            <td style={{ width: 180 }}>
+                            <td style={{ width: 150 }}>
                               <input
                                 type="number"
                                 min="0.0001"
                                 step="0.0001"
                                 className="form-control form-control-sm"
                                 value={item.cantidad ?? ""}
+                                data-modelo-categoria-index={categoriaIndex}
+                                data-modelo-insumo-id={getId(item)}
+                                data-modelo-insumo-campo="cantidad"
                                 onChange={(event) => actualizarCantidadInsumo(categoriaIndex, getId(item), event.target.value)}
                                 placeholder="Cantidad"
                               />
+                            </td>
+                            <td style={{ width: 135 }}>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                className="form-control form-control-sm"
+                                value={getDesperdicio(item)}
+                                data-modelo-categoria-index={categoriaIndex}
+                                data-modelo-insumo-id={getId(item)}
+                                data-modelo-insumo-campo="desperdicio"
+                                onChange={(event) => actualizarDesperdicioInsumo(categoriaIndex, getId(item), event.target.value)}
+                                placeholder="% desperdicio"
+                              />
+                            </td>
+                            <td style={{ width: 140 }}>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                className="form-control form-control-sm"
+                                value={getCostoCotizacion(item)}
+                                data-modelo-categoria-index={categoriaIndex}
+                                data-modelo-insumo-id={getId(item)}
+                                data-modelo-insumo-campo="costo"
+                                onChange={(event) => actualizarCostoInsumo(categoriaIndex, getId(item), event.target.value)}
+                                placeholder="Costo"
+                              />
+                            </td>
+                            <td className="text-end fw-semibold" style={{ width: 120 }}>
+                              {subtotal.toLocaleString("es-MX", { style: "currency", currency: "MXN" })}
                             </td>
                             <td className="text-end" style={{ width: 52 }}>
                               <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => quitarInsumo(categoriaIndex, getId(item))}>
@@ -492,7 +651,8 @@ export default function ModeloPlantillaProductivaFields({ categorias = [], onCat
                               </button>
                             </td>
                           </tr>
-                        ))}
+                          );
+                        })}
                       </tbody>
                     </table>
                     {!insumos.length && <div className="form-text text-muted">Sin insumos capturados para esta categoria.</div>}
@@ -537,6 +697,9 @@ export default function ModeloPlantillaProductivaFields({ categorias = [], onCat
                                 step="1"
                                 className="form-control form-control-sm"
                                 value={item.cantidad ?? 1}
+                                data-modelo-categoria-index={categoriaIndex}
+                                data-modelo-operacion-id={getId(item)}
+                                data-modelo-operacion-campo="cantidad"
                                 onChange={(event) => actualizarCantidadOperacion(categoriaIndex, getId(item), event.target.value)}
                                 placeholder="Cantidad"
                               />

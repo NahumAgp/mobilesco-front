@@ -20,6 +20,7 @@ import { materialGateway } from "../../materiales/services/materialGateway.js";
 import MaterialModal from "../../materiales/pages/MaterialModal.jsx";
 import ModeloPlantillaProductivaFields from "../components/ModeloPlantillaProductivaFields.jsx";
 import { crearCategoriaGlobal, obtenerCategoriasGlobalesActivas } from "../services/categoriasGlobales.js";
+import { actualizarCostoCotizacion } from "../../insumos/services/insumos.js";
 import { API_BASE_URL } from "../../../config/apiConfig.js";
 import Toast from "../../../components/ui/Toast.jsx";
 import SearchableSelect from "../../../components/ui/SearchableSelect.jsx";
@@ -164,6 +165,8 @@ const getMaterialesDelModelo = (modelo = {}) => {
 };
 
 const getItemId = (item) => item?.id ?? item?.insumoId ?? item?.operacionId ?? item?.insumo_id ?? item?.operacion_id ?? null;
+const getDesperdicioInsumo = (item) => item?.desperdicioPorcentaje ?? item?.desperdicio_porcentaje ?? item?.desperdicio ?? 0;
+const getCostoCotizacionInsumo = (item) => item?.costoCotizacion ?? item?.costo_cotizacion ?? item?.costo_cotizar ?? item?.costo ?? 0;
 
 const getCategoriasDelModelo = (modelo = {}) => {
   const candidatos = [
@@ -187,7 +190,10 @@ const getCategoriasDelModelo = (modelo = {}) => {
           ? categoria.insumos.map((insumo) => ({
               ...insumo,
               id: getItemId(insumo),
-              cantidad: insumo?.cantidad ?? ""
+              cantidad: insumo?.cantidad ?? "",
+              desperdicioPorcentaje: getDesperdicioInsumo(insumo),
+              costoCotizacion: getCostoCotizacionInsumo(insumo),
+              costoCotizacionOriginal: insumo?.costoCotizacionOriginal ?? getCostoCotizacionInsumo(insumo)
             }))
           : [],
         operaciones: Array.isArray(categoria?.operaciones)
@@ -847,7 +853,9 @@ export default function ModeloForm({
         insumos: (categoria.insumos || [])
           .map((insumo) => ({
             id: Number(getItemId(insumo)),
-            cantidad: Number(insumo.cantidad)
+            cantidad: Number(insumo.cantidad),
+            desperdicioPorcentaje: Number(getDesperdicioInsumo(insumo) || 0),
+            costoCotizacion: Number(getCostoCotizacionInsumo(insumo) || 0)
           }))
           .filter((insumo) => Number.isFinite(insumo.id)),
         operaciones: (categoria.operaciones || [])
@@ -859,30 +867,80 @@ export default function ModeloForm({
           .filter((operacion) => Number.isFinite(operacion.id))
       }));
       if (!categorias.length || categorias.some((categoria) => !categoria.categoria_id)) {
-        setErroresBackend((prev) => ({
-          ...prev,
-          categorias: "El modelo debe tener al menos una categoria seleccionada"
-        }));
+        mostrarErrorCategorias("El modelo debe tener al menos una categoria seleccionada");
+        enfocarBuscadorCategorias();
         return;
       }
-      const categoriaConInsumoInvalido = categorias.find((categoria) =>
-        categoria.insumos.some((insumo) => !Number.isFinite(insumo.cantidad) || insumo.cantidad <= 0)
-      );
-      if (categoriaConInsumoInvalido) {
-        setErroresBackend((prev) => ({
-          ...prev,
-          categorias: "Cada insumo agregado a una categoria debe tener cantidad mayor a cero"
-        }));
+      const insumoConCantidadInvalida = categoriasSeleccionadas
+        .flatMap((categoria, categoriaIndex) => (categoria.insumos || []).map((insumo) => ({ categoriaIndex, insumo })))
+        .find(({ insumo }) => {
+          const cantidad = Number(insumo.cantidad);
+          return !Number.isFinite(cantidad) || cantidad <= 0;
+        });
+      if (insumoConCantidadInvalida) {
+        mostrarErrorCategorias("Cada insumo agregado a una categoria debe tener cantidad mayor a cero");
+        enfocarInsumoCategoria(insumoConCantidadInvalida.categoriaIndex, getItemId(insumoConCantidadInvalida.insumo), "cantidad");
         return;
       }
-      const categoriaConOperacionInvalida = categorias.find((categoria) =>
-        categoria.operaciones.some((operacion) => !Number.isFinite(operacion.cantidad) || operacion.cantidad < 1)
+      const insumoConDesperdicioInvalido = categoriasSeleccionadas
+        .flatMap((categoria, categoriaIndex) => (categoria.insumos || []).map((insumo) => ({ categoriaIndex, insumo })))
+        .find(({ insumo }) => {
+          const desperdicio = Number(getDesperdicioInsumo(insumo) || 0);
+          return !Number.isFinite(desperdicio) || desperdicio < 0;
+        });
+      if (insumoConDesperdicioInvalido) {
+        mostrarErrorCategorias("Cada insumo agregado a una categoria debe tener desperdicio mayor o igual a cero");
+        enfocarInsumoCategoria(insumoConDesperdicioInvalido.categoriaIndex, getItemId(insumoConDesperdicioInvalido.insumo), "desperdicio");
+        return;
+      }
+      const costosCapturados = categoriasSeleccionadas
+        .flatMap((categoria) => categoria.insumos || [])
+        .map((insumo) => ({
+          id: Number(getItemId(insumo)),
+          nombre: insumo.nombre || `Insumo ${getItemId(insumo)}`,
+          costoCotizacion: Number(getCostoCotizacionInsumo(insumo) || 0),
+          costoOriginal: Number(insumo.costoCotizacionOriginal ?? getCostoCotizacionInsumo(insumo) ?? 0)
+        }))
+        .filter((insumo) => Number.isFinite(insumo.id));
+      const costosCapturadosPorInsumo = new Map();
+      const costoCapturadoDuplicadoDistinto = costosCapturados.find((insumo) => {
+        const key = String(insumo.id);
+        if (!costosCapturadosPorInsumo.has(key)) {
+          costosCapturadosPorInsumo.set(key, insumo);
+          return false;
+        }
+        return costosCapturadosPorInsumo.get(key).costoCotizacion !== insumo.costoCotizacion;
+      });
+      if (costoCapturadoDuplicadoDistinto) {
+        mostrarErrorCategorias(`El insumo ${costoCapturadoDuplicadoDistinto.nombre} tiene costos distintos en categorias diferentes`);
+        return;
+      }
+      const costosModificados = costosCapturados
+        .filter((insumo) => insumo.costoCotizacion !== insumo.costoOriginal);
+      const costosPorInsumo = new Map();
+      costosModificados.forEach((insumo) => costosPorInsumo.set(String(insumo.id), insumo));
+      const costoInvalido = costosModificados.find((insumo) =>
+        !Number.isFinite(insumo.costoCotizacion) || insumo.costoCotizacion <= 0
       );
-      if (categoriaConOperacionInvalida) {
-        setErroresBackend((prev) => ({
-          ...prev,
-          categorias: "Cada operacion agregada a una categoria debe tener cantidad minima de 1"
-        }));
+      if (costoInvalido) {
+        mostrarErrorCategorias(`El costo de ${costoInvalido.nombre} debe ser mayor a cero`);
+        const ubicacionCosto = categoriasSeleccionadas
+          .flatMap((categoria, categoriaIndex) => (categoria.insumos || []).map((insumo) => ({ categoriaIndex, insumo })))
+          .find(({ insumo }) => String(getItemId(insumo)) === String(costoInvalido.id));
+        if (ubicacionCosto) {
+          enfocarInsumoCategoria(ubicacionCosto.categoriaIndex, getItemId(ubicacionCosto.insumo), "costo");
+        }
+        return;
+      }
+      const operacionConCantidadInvalida = categoriasSeleccionadas
+        .flatMap((categoria, categoriaIndex) => (categoria.operaciones || []).map((operacion) => ({ categoriaIndex, operacion })))
+        .find(({ operacion }) => {
+          const cantidad = Number(operacion.cantidad ?? 1);
+          return !Number.isFinite(cantidad) || cantidad < 1;
+        });
+      if (operacionConCantidadInvalida) {
+        mostrarErrorCategorias("Cada operacion agregada a una categoria debe tener cantidad minima de 1");
+        enfocarOperacionCategoria(operacionConCantidadInvalida.categoriaIndex, getItemId(operacionConCantidadInvalida.operacion));
         return;
       }
 
@@ -903,6 +961,10 @@ export default function ModeloForm({
       }
 
       let respuesta;
+      await Promise.all(Array.from(costosPorInsumo.values()).map((insumo) =>
+        actualizarCostoCotizacion(insumo.id, insumo.costoCotizacion)
+      ));
+
       if (esEdicion) {
         const id = modelo?.id || modeloId;
         respuesta = await actualizarModelo(id, dataToSend);
@@ -920,6 +982,10 @@ export default function ModeloForm({
     } catch (error) {
       if (error.errors) {
         setErroresBackend(error.errors);
+        if (error.errors.categorias) {
+          setToastType("warning");
+          setToastMessage(error.errors.categorias);
+        }
       } else if (esModal) {
         console.error("Error en modal:", error);
       } else {
@@ -986,6 +1052,32 @@ export default function ModeloForm({
   const inputClass = (field) =>
     `form-control ${(erroresBackend[field] || erroresExternos[field]) ? "is-invalid" : "border-soft"}`;
 
+  const enfocarElemento = (selector) => {
+    window.setTimeout(() => {
+      const elemento = document.querySelector(selector);
+      if (!elemento) return;
+      elemento.scrollIntoView({ behavior: "smooth", block: "center" });
+      elemento.focus({ preventScroll: true });
+      elemento.select?.();
+    }, 80);
+  };
+
+  const enfocarBuscadorCategorias = () => {
+    enfocarElemento("[data-modelo-categorias-search] input, [data-modelo-categorias-search] button");
+  };
+
+  const enfocarInsumoCategoria = (categoriaIndex, insumoId, campo) => {
+    enfocarElemento(
+      `[data-modelo-categoria-index="${categoriaIndex}"][data-modelo-insumo-id="${insumoId}"][data-modelo-insumo-campo="${campo}"]`
+    );
+  };
+
+  const enfocarOperacionCategoria = (categoriaIndex, operacionId) => {
+    enfocarElemento(
+      `[data-modelo-categoria-index="${categoriaIndex}"][data-modelo-operacion-id="${operacionId}"][data-modelo-operacion-campo="cantidad"]`
+    );
+  };
+
   const handleCancel = () => {
     if (esModal) {
       onCancel();
@@ -1016,6 +1108,15 @@ export default function ModeloForm({
       setToastType("danger");
       setToastMessage(error.message || "No se pudo eliminar el modelo");
     }
+  };
+
+  const mostrarErrorCategorias = (mensaje) => {
+    setErroresBackend((prev) => ({
+      ...prev,
+      categorias: mensaje
+    }));
+    setToastType("warning");
+    setToastMessage(mensaje);
   };
 
   return (
@@ -1201,87 +1302,6 @@ export default function ModeloForm({
                   </div>
 
                   <div className="col-md-12">
-                    <div className="d-flex justify-content-between align-items-center border-top pt-3 mt-2 mb-3">
-                      <div>
-                        <div className="fw-semibold">Categorias del catalogo global</div>
-                        <small className="text-muted">
-                          Selecciona categorias globales y el sistema les asignara un codigo interno por modelo: 01, 02, 03...
-                        </small>
-                      </div>
-                    </div>
-
-                    {erroresBackend.categorias && (
-                      <div className="alert alert-warning py-2">{erroresBackend.categorias}</div>
-                    )}
-
-                    <label className="form-label fw-semibold mb-2">
-                      Buscar categoría global
-                    </label>
-                    <SearchableSelect
-                      label=""
-                      value={categoriaSeleccionadaId}
-                      options={categoriasDisponibles}
-                      onChange={agregarCategoria}
-                      placeholder={cargandoCategorias ? "Cargando categorías..." : "Buscar y agregar categoría global..."}
-                      searchPlaceholder="Escribe código, nombre o descripción..."
-                      emptyText="No hay categorías globales disponibles"
-                      getOptionValue={(categoria) => categoria.id}
-                      getOptionLabel={(categoria) => `${categoria.codigo ? `[${categoria.codigo}] ` : ""}${categoria.nombre || "-"}`}
-                      getOptionSearchText={(categoria) =>
-                        [categoria.codigo, categoria.nombre, categoria.descripcion].filter(Boolean).join(" ").toLowerCase()
-                      }
-                      renderOptionLabel={(categoria) =>
-                        `${categoria.codigo ? `[${categoria.codigo}] ` : ""}${categoria.nombre || "-"}`
-                      }
-                      helperText="Selecciona una categoría del catálogo global y se enlazará al modelo."
-                      keepOpenOnSelect
-                      actionNode={
-                        <button
-                          type="button"
-                          className="btn btn-outline-primary px-3"
-                          onClick={abrirModalCategoria}
-                          title="Crear categoria global"
-                          aria-label="Crear categoria global"
-                        >
-                          <i className="bi bi-plus-lg"></i>
-                        </button>
-                      }
-                      className="mb-3"
-                    />
-
-                    {categoriasSeleccionadas.length > 0 && (
-                      <div className="d-flex flex-wrap gap-2 mb-3">
-                        {categoriasSeleccionadas.map((categoria, index) => (
-                          <span
-                            key={categoria.id || categoria.categoriaId || index}
-                            className="badge rounded-pill text-bg-light border d-inline-flex align-items-center gap-2"
-                          >
-                            <span className="fw-semibold">
-                              {categoria.codigo ? `[${categoria.codigo}] ` : `[${String(index + 1).padStart(2, "0")}] `}
-                              {categoria.nombre || "-"}
-                            </span>
-                            <button
-                              type="button"
-                              className="btn btn-sm p-0 border-0 bg-transparent text-danger"
-                              onClick={() => quitarCategoria(categoria.categoriaId ?? categoria.id)}
-                              aria-label={`Quitar categoria ${categoria.nombre || categoria.id || categoria.categoriaId}`}
-                              title="Quitar categoria"
-                            >
-                              <i className="bi bi-x-lg"></i>
-                            </button>
-                          </span>
-                        ))}
-                      </div>
-                    )}
-
-                    <ModeloPlantillaProductivaFields
-                      categorias={categoriasSeleccionadas}
-                      onCategoriasChange={setCategoriasSeleccionadas}
-                      error={erroresBackend.categorias}
-                    />
-                  </div>
-
-                  <div className="col-md-12">
                     <div className="border-top pt-3 mt-2">
                       <div className="d-flex align-items-center">
                         <div className="form-check form-switch mb-0">
@@ -1387,6 +1407,89 @@ export default function ModeloForm({
               </div>
             </div>
           )}
+
+          <div className="col-12">
+            <div className="card shadow-sm border-0 mb-4 modelos-table-card">
+              <div className="card-body">
+                <div className="d-flex justify-content-between align-items-center border-bottom pb-3 mb-3">
+                  <div>
+                    <div className="fw-semibold">Categorias del catalogo global</div>
+                    <small className="text-muted">
+                      Selecciona categorias globales y el sistema les asignara un codigo interno por modelo: 01, 02, 03...
+                    </small>
+                  </div>
+                </div>
+
+                <label className="form-label fw-semibold mb-2">
+                  Buscar categoría global
+                </label>
+                <div data-modelo-categorias-search>
+                  <SearchableSelect
+                    label=""
+                    value={categoriaSeleccionadaId}
+                    options={categoriasDisponibles}
+                    onChange={agregarCategoria}
+                    placeholder={cargandoCategorias ? "Cargando categorías..." : "Buscar y agregar categoría global..."}
+                    searchPlaceholder="Escribe código, nombre o descripción..."
+                    emptyText="No hay categorías globales disponibles"
+                    getOptionValue={(categoria) => categoria.id}
+                    getOptionLabel={(categoria) => `${categoria.codigo ? `[${categoria.codigo}] ` : ""}${categoria.nombre || "-"}`}
+                    getOptionSearchText={(categoria) =>
+                      [categoria.codigo, categoria.nombre, categoria.descripcion].filter(Boolean).join(" ").toLowerCase()
+                    }
+                    renderOptionLabel={(categoria) =>
+                      `${categoria.codigo ? `[${categoria.codigo}] ` : ""}${categoria.nombre || "-"}`
+                    }
+                    helperText="Selecciona una categoría del catálogo global y se enlazará al modelo."
+                    keepOpenOnSelect
+                    actionNode={
+                      <button
+                        type="button"
+                        className="btn btn-outline-primary px-3"
+                        onClick={abrirModalCategoria}
+                        title="Crear categoria global"
+                        aria-label="Crear categoria global"
+                      >
+                        <i className="bi bi-plus-lg"></i>
+                      </button>
+                    }
+                    className="mb-3"
+                  />
+                </div>
+
+                {categoriasSeleccionadas.length > 0 && (
+                  <div className="d-flex flex-wrap gap-2 mb-3">
+                    {categoriasSeleccionadas.map((categoria, index) => (
+                      <span
+                        key={categoria.id || categoria.categoriaId || index}
+                        className="badge rounded-pill text-bg-light border d-inline-flex align-items-center gap-2"
+                      >
+                        <span className="fw-semibold">
+                          {categoria.codigo ? `[${categoria.codigo}] ` : `[${String(index + 1).padStart(2, "0")}] `}
+                          {categoria.nombre || "-"}
+                        </span>
+                        <button
+                          type="button"
+                          className="btn btn-sm p-0 border-0 bg-transparent text-danger"
+                          onClick={() => quitarCategoria(categoria.categoriaId ?? categoria.id)}
+                          aria-label={`Quitar categoria ${categoria.nombre || categoria.id || categoria.categoriaId}`}
+                          title="Quitar categoria"
+                        >
+                          <i className="bi bi-x-lg"></i>
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <ModeloPlantillaProductivaFields
+                  modeloId={modelo?.id || modeloId}
+                  categorias={categoriasSeleccionadas}
+                  onCategoriasChange={setCategoriasSeleccionadas}
+                />
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="d-flex justify-content-between align-items-center bg-white p-3 rounded shadow-sm">
