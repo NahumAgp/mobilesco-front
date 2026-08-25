@@ -313,6 +313,38 @@
   opacity: 0.62;
 }
 
+.producto-insumo-row-warning > td {
+  background: rgba(255, 193, 7, 0.08);
+}
+
+.producto-insumo-select-col {
+  width: 38px;
+  text-align: center;
+}
+
+.producto-insumo-bulkbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(40, 83, 73, 0.14);
+  background: rgba(84, 134, 116, 0.08);
+}
+
+.producto-insumo-bulkbar span {
+  display: block;
+  color: #6B716E;
+  font-size: 0.84rem;
+}
+
+.producto-insumo-costo {
+  width: 116px;
+  margin-left: auto;
+  text-align: right;
+}
+
 .producto-cif-warning {
   padding: 20px;
   border: 1px solid rgba(217, 91, 63, 0.26);

@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  aplicarCantidadesInsumosMismoNivel,
   aplicarCantidadesOperacionesMismoNivel,
   actualizarInsumoDeProducto,
   actualizarOperacionDeProducto,
+  eliminarInsumoDeProducto,
   obtenerEstructuraCostos,
 } from "../../services/productos.js";
+import { actualizarCostoCotizacion } from "../../../insumos/services/insumos.js";
 import Card from "../../../../components/ui/Card.jsx";
 
 function formatCurrency(value) {
@@ -125,8 +126,10 @@ export default function ProductoCostosPanel({ productoId, embedded = false, summ
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [cantidades, setCantidades] = useState({});
+  const [costosInsumos, setCostosInsumos] = useState({});
   const [guardandoCantidades, setGuardandoCantidades] = useState(false);
-  const [aplicandoNivel, setAplicandoNivel] = useState(false);
+  const [insumosSeleccionados, setInsumosSeleccionados] = useState([]);
+  const [eliminandoInsumos, setEliminandoInsumos] = useState(false);
   const [mensajeCantidades, setMensajeCantidades] = useState("");
   const [errorInsumos, setErrorInsumos] = useState("");
   const [cantidadesOperaciones, setCantidadesOperaciones] = useState({});
@@ -149,6 +152,10 @@ export default function ProductoCostosPanel({ productoId, embedded = false, summ
       setCantidades(Object.fromEntries(
         (data.insumos || []).map((item) => [item.insumoId, item.cantidad == null ? "" : String(item.cantidad)])
       ));
+      setCostosInsumos(Object.fromEntries(
+        (data.insumos || []).map((item) => [item.insumoId, item.costoUnitario == null ? "" : String(item.costoUnitario)])
+      ));
+      setInsumosSeleccionados([]);
       setCantidadesOperaciones(Object.fromEntries(
         (data.operaciones || []).map((item) => [item.operacionId, item.cantidad == null ? "" : String(item.cantidad)])
       ));
@@ -185,8 +192,26 @@ export default function ProductoCostosPanel({ productoId, embedded = false, summ
   const totalInsumosCapturado = useMemo(() => (estructura?.insumos || []).reduce((total, item) => {
     const cantidad = Number(cantidades[item.insumoId] || 0);
     const desperdicio = Number(item.desperdicioPorcentaje || 0);
-    return total + cantidad * (1 + desperdicio / 100) * Number(item.costoUnitario || 0);
-  }, 0), [cantidades, estructura?.insumos]);
+    return total + cantidad * (1 + desperdicio / 100) * Number(costosInsumos[item.insumoId] || 0);
+  }, 0), [cantidades, costosInsumos, estructura?.insumos]);
+
+  const insumosSinCosto = useMemo(() => (estructura?.insumos || []).filter((item) =>
+    Number(costosInsumos[item.insumoId] || 0) <= 0
+  ), [costosInsumos, estructura?.insumos]);
+
+  const costosInsumosActualizados = useMemo(() => (estructura?.insumos || [])
+    .map((item) => ({
+      insumoId: item.insumoId,
+      insumoNombre: item.insumoNombre,
+      costoOriginal: Number(item.costoUnitario || 0),
+      costoCotizacion: Number(costosInsumos[item.insumoId] || 0),
+    }))
+    .filter((item) => item.costoCotizacion !== item.costoOriginal),
+  [costosInsumos, estructura?.insumos]);
+
+  const insumosIds = useMemo(() => (estructura?.insumos || []).map((item) => String(item.insumoId)), [estructura?.insumos]);
+  const todosInsumosSeleccionados = insumosIds.length > 0
+    && insumosIds.every((insumoId) => insumosSeleccionados.includes(insumoId));
 
   const operacionesPayload = useMemo(() => (estructura?.operaciones || []).map((item, index) => ({
     operacionId: item.operacionId,
@@ -207,48 +232,75 @@ export default function ProductoCostosPanel({ productoId, embedded = false, summ
     window.dispatchEvent(new CustomEvent("producto-costos-actualizados", { detail: { productoId } }));
   };
 
-  const guardarCantidades = async () => {
+  const guardarCambiosInsumos = async () => {
     if (!cantidadesValidas) {
       setErrorInsumos("Captura una cantidad mayor a 0 para cada insumo.");
+      return;
+    }
+    const costoInvalido = costosInsumosActualizados.find((item) =>
+      !Number.isFinite(item.costoCotizacion) || item.costoCotizacion <= 0
+    );
+    if (costoInvalido) {
+      setErrorInsumos(`Captura un costo mayor a 0 para ${costoInvalido.insumoNombre}.`);
       return;
     }
     try {
       setGuardandoCantidades(true);
       setErrorInsumos("");
       setMensajeCantidades("");
-      await Promise.all(insumosPayload.map((item) =>
-        actualizarInsumoDeProducto(productoId, item.insumoId, item)
-      ));
-      setMensajeCantidades("Cantidades guardadas en este producto.");
+      await Promise.all([
+        ...insumosPayload.map((item) => actualizarInsumoDeProducto(productoId, item.insumoId, item)),
+        ...costosInsumosActualizados.map((item) =>
+          actualizarCostoCotizacion(item.insumoId, item.costoCotizacion)
+        ),
+      ]);
+      setMensajeCantidades("Cambios de insumos guardados.");
+      await cargar();
       notificarActualizacion();
     } catch (e) {
-      setErrorInsumos(e.message || "No fue posible guardar las cantidades.");
+      setErrorInsumos(e.message || "No fue posible guardar los cambios de insumos.");
     } finally {
       setGuardandoCantidades(false);
     }
   };
 
-  const aplicarMismoNivel = async () => {
-    if (!cantidadesValidas) {
-      setErrorInsumos("Captura una cantidad mayor a 0 para cada insumo.");
+  const cambiarSeleccionInsumo = (insumoId, seleccionado) => {
+    const idNormalizado = String(insumoId);
+    setInsumosSeleccionados((actual) => {
+      if (seleccionado) {
+        return actual.includes(idNormalizado) ? actual : [...actual, idNormalizado];
+      }
+      return actual.filter((id) => id !== idNormalizado);
+    });
+  };
+
+  const cambiarSeleccionTodosInsumos = (seleccionado) => {
+    setInsumosSeleccionados(seleccionado ? insumosIds : []);
+  };
+
+  const eliminarInsumosSeleccionados = async () => {
+    if (insumosSeleccionados.length === 0) {
+      setErrorInsumos("Selecciona al menos un insumo para eliminar.");
       return;
     }
-    if (!window.confirm("Se copiarán estas cantidades a todas las variantes del mismo modelo y nivel, sin importar el color. ¿Deseas continuar?")) {
+    if (!window.confirm(`Se eliminarán ${insumosSeleccionados.length} insumo${insumosSeleccionados.length === 1 ? "" : "s"} de este producto. ¿Deseas continuar?`)) {
       return;
     }
     try {
-      setAplicandoNivel(true);
+      setEliminandoInsumos(true);
       setErrorInsumos("");
       setMensajeCantidades("");
-      const resultado = await aplicarCantidadesInsumosMismoNivel(productoId, insumosPayload);
-      setMensajeCantidades(
-        `Cantidades aplicadas a ${resultado.productosActualizados} producto${resultado.productosActualizados === 1 ? "" : "s"} del nivel ${resultado.nivelNombre}.`
-      );
+      await Promise.all(insumosSeleccionados.map((insumoId) =>
+        eliminarInsumoDeProducto(productoId, insumoId)
+      ));
+      setMensajeCantidades(`${insumosSeleccionados.length} insumo${insumosSeleccionados.length === 1 ? "" : "s"} eliminado${insumosSeleccionados.length === 1 ? "" : "s"} del producto.`);
+      setInsumosSeleccionados([]);
+      await cargar();
       notificarActualizacion();
     } catch (e) {
-      setErrorInsumos(e.message || "No fue posible aplicar las cantidades al mismo nivel.");
+      setErrorInsumos(e.message || "No fue posible eliminar los insumos seleccionados.");
     } finally {
-      setAplicandoNivel(false);
+      setEliminandoInsumos(false);
     }
   };
 
@@ -387,6 +439,15 @@ export default function ProductoCostosPanel({ productoId, embedded = false, summ
     <>
       <CostAccordionItem id={`insumos-${productoId}`} title="Insumos" icon="bi bi-box-seam">
         <CostSectionActions>
+          <button
+            type="button"
+            className="btn producto-form-danger me-2"
+            disabled={insumosSeleccionados.length === 0 || eliminandoInsumos}
+            onClick={eliminarInsumosSeleccionados}
+          >
+            <i className="bi bi-trash me-2"></i>
+            {eliminandoInsumos ? "Eliminando..." : `Eliminar seleccionados (${insumosSeleccionados.length})`}
+          </button>
           <button type="button" className="btn producto-form-primary" onClick={() => navigate(`/productos/${productoId}/bom/insumos`)}>
             <i className="bi bi-plus-circle me-2"></i>
             Agregar insumo
@@ -398,12 +459,44 @@ export default function ProductoCostosPanel({ productoId, embedded = false, summ
         </div>
         {errorInsumos && <div className="alert alert-danger py-2 mb-3">{errorInsumos}</div>}
         {mensajeCantidades && <div className="alert alert-success py-2 mb-3">{mensajeCantidades}</div>}
+        {insumosSinCosto.length > 0 && (
+          <div className="alert alert-warning py-2 mb-3">
+            <i className="bi bi-exclamation-triangle me-2" />
+            No hay costos en {insumosSinCosto.length} insumo{insumosSinCosto.length === 1 ? "" : "s"}:
+            {" "}
+            {insumosSinCosto.map((item) => item.insumoNombre).join(", ")}.
+          </div>
+        )}
         {estructura.insumos?.length ? (
           <>
+          <div className="producto-insumo-bulkbar">
+            <div>
+              <strong>{insumosSeleccionados.length} seleccionado{insumosSeleccionados.length === 1 ? "" : "s"}</strong>
+              <span>Las acciones sobre seleccionados no requieren capturar cantidades.</span>
+            </div>
+            <button
+              type="button"
+              className="btn producto-form-danger btn-sm"
+              disabled={insumosSeleccionados.length === 0 || eliminandoInsumos}
+              onClick={eliminarInsumosSeleccionados}
+            >
+              <i className="bi bi-trash me-2"></i>
+              {eliminandoInsumos ? "Eliminando..." : "Eliminar"}
+            </button>
+          </div>
           <div className="table-responsive">
             <table className="table table-sm align-middle mb-0">
               <thead className="table-light">
                 <tr>
+                  <th className="producto-insumo-select-col">
+                    <input
+                      type="checkbox"
+                      className="form-check-input"
+                      aria-label="Seleccionar todos los insumos"
+                      checked={todosInsumosSeleccionados}
+                      onChange={(event) => cambiarSeleccionTodosInsumos(event.target.checked)}
+                    />
+                  </th>
                   <th>Insumo</th>
                   <th className="text-end">Cantidad</th>
                   <th>Unidad</th>
@@ -413,8 +506,20 @@ export default function ProductoCostosPanel({ productoId, embedded = false, summ
                 </tr>
               </thead>
               <tbody>
-                {estructura.insumos.map((item) => (
-                  <tr key={item.id}>
+                {estructura.insumos.map((item) => {
+                  const costoPendiente = Number(costosInsumos[item.insumoId] || 0) <= 0;
+                  const seleccionado = insumosSeleccionados.includes(String(item.insumoId));
+                  return (
+                  <tr key={item.id} className={costoPendiente ? "producto-insumo-row-warning" : undefined}>
+                    <td className="producto-insumo-select-col">
+                      <input
+                        type="checkbox"
+                        className="form-check-input"
+                        aria-label={`Seleccionar ${item.insumoNombre}`}
+                        checked={seleccionado}
+                        onChange={(event) => cambiarSeleccionInsumo(item.insumoId, event.target.checked)}
+                      />
+                    </td>
                     <td>
                       <div className="fw-semibold">{item.insumoNombre}</div>
                       {item.observaciones && <div className="text-muted small">{item.observaciones}</div>}
@@ -438,31 +543,45 @@ export default function ProductoCostosPanel({ productoId, embedded = false, summ
                     </td>
                     <td>{item.insumoUnidad}</td>
                     <td className="text-end">{Number(item.desperdicioPorcentaje || 0).toFixed(2)}%</td>
-                    <td className="text-end">{formatCurrency(item.costoUnitario)}</td>
+                    <td className="text-end">
+                      <input
+                        className={`form-control form-control-sm producto-insumo-costo ${costoPendiente ? "is-invalid" : ""}`}
+                        type="number"
+                        inputMode="decimal"
+                        min="0.01"
+                        step="0.01"
+                        aria-label={`Costo de ${item.insumoNombre}`}
+                        value={costosInsumos[item.insumoId] ?? ""}
+                        placeholder="0.00"
+                        onChange={(event) => {
+                          setMensajeCantidades("");
+                          setErrorInsumos("");
+                          setCostosInsumos((actual) => ({ ...actual, [item.insumoId]: event.target.value }));
+                        }}
+                      />
+                    </td>
                     <td className="text-end fw-semibold">{formatCurrency(
                       Number(cantidades[item.insumoId] || 0)
                       * (1 + Number(item.desperdicioPorcentaje || 0) / 100)
-                      * Number(item.costoUnitario || 0)
+                      * Number(costosInsumos[item.insumoId] || 0)
                     )}</td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
               <tfoot className="table-light">
                 <tr>
-                  <td colSpan="5" className="text-end fw-bold">TOTAL INSUMOS:</td>
+                  <td colSpan="6" className="text-end fw-bold">TOTAL INSUMOS:</td>
                   <td className="text-end fw-bold text-success">{formatCurrency(totalInsumosCapturado)}</td>
                 </tr>
               </tfoot>
             </table>
           </div>
           <div className="producto-insumo-savebar">
-            <div><strong>¿Terminaste este tamaño?</strong><span>Guarda sólo este producto o replica las cantidades a todas sus variantes del mismo nivel.</span></div>
+            <div><strong>Guardar cambios</strong><span>Guarda los insumos, cantidades y costos capturados en esta tabla.</span></div>
             <div className="producto-insumo-savebar-actions">
-              <button type="button" className="btn btn-outline-secondary" disabled={!cantidadesValidas || guardandoCantidades || aplicandoNivel} onClick={guardarCantidades}>
-                <i className="bi bi-floppy me-2" />{guardandoCantidades ? "Guardando..." : "Guardar cantidades"}
-              </button>
-              <button type="button" className="btn producto-form-primary" disabled={!cantidadesValidas || guardandoCantidades || aplicandoNivel} onClick={aplicarMismoNivel}>
-                <i className="bi bi-copy me-2" />{aplicandoNivel ? "Aplicando..." : "Aplicar a todos los productos del mismo nivel"}
+              <button type="button" className="btn producto-form-primary" disabled={!cantidadesValidas || guardandoCantidades} onClick={guardarCambiosInsumos}>
+                <i className="bi bi-floppy me-2" />{guardandoCantidades ? "Guardando..." : "Guardar cambios"}
               </button>
             </div>
           </div>
