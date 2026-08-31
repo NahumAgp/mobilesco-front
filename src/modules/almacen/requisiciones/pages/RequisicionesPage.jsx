@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
+import useDebouncedValue from "../../../../hooks/useDebouncedValue.js";
 import { getInitialPaginationPage, usePersistedPagination } from "../../../../hooks/usePersistedPagination.js";
+import usePersistedState from "../../../../hooks/usePersistedState.js";
 import { useNavigate } from "react-router-dom";
 
 import { getUser, hasPermission } from "../../../auth/services/authService";
@@ -12,11 +14,13 @@ const estadoClase = {
   RECHAZADA: "text-bg-danger",
   CANCELADA: "text-bg-secondary",
 };
+const FILTROS_DEFAULT = { busqueda: "", estado: "" };
 
 export default function RequisicionesPage() {
   const navigate = useNavigate();
   const puedeCrear = hasPermission(getUser(), "ACTION_WAREHOUSE_REQUISITIONS_CREATE");
-  const [filtros, setFiltros] = useState({ busqueda: "", estado: "" });
+  const [filtros, setFiltros] = usePersistedState("almacen-requisiciones:filtros", FILTROS_DEFAULT);
+  const busqueda = useDebouncedValue(filtros.busqueda, 350);
   const [page, setPage] = useState(() => getInitialPaginationPage("almacen-requisiciones"));
   usePersistedPagination("almacen-requisiciones", page);
   const [resultado, setResultado] = useState({ content: [], totalElements: 0, totalPages: 0 });
@@ -30,7 +34,7 @@ export default function RequisicionesPage() {
       const data = await obtenerRequisiciones({
         page,
         size: 10,
-        busqueda: filtros.busqueda.trim(),
+        busqueda: busqueda.trim(),
         estado: filtros.estado,
       });
       setResultado(data);
@@ -39,7 +43,7 @@ export default function RequisicionesPage() {
     } finally {
       setCargando(false);
     }
-  }, [filtros, page]);
+  }, [busqueda, filtros.estado, page]);
 
   useEffect(() => {
     const timer = setTimeout(cargar, 250);

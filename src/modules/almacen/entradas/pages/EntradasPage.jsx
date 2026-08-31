@@ -1,5 +1,7 @@
 import { Fragment, useEffect, useState } from "react";
+import useDebouncedValue from "../../../../hooks/useDebouncedValue.js";
 import { getInitialPaginationPage, usePersistedPagination } from "../../../../hooks/usePersistedPagination.js";
+import usePersistedState from "../../../../hooks/usePersistedState.js";
 import { useNavigate } from "react-router-dom";
 
 import PageHeader from "../../../../components/Sistema/PageHeader.jsx";
@@ -58,6 +60,10 @@ const PAGE_INFO_DEFAULT = {
   size: PAGE_SIZE,
   totalElements: 0,
   totalPages: 0
+};
+const FILTROS_DEFAULT = {
+  busqueda: "",
+  filtroEstado: "TODOS"
 };
 
 function getPendienteDetalle(detalle) {
@@ -146,8 +152,9 @@ export default function EntradasPage() {
   const [loading, setLoading] = useState(true);
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
-  const [busqueda, setBusqueda] = useState("");
-  const [filtroEstado, setFiltroEstado] = useState("TODOS");
+  const [filtros, setFiltros] = usePersistedState("almacen-entradas:filtros", FILTROS_DEFAULT);
+  const { busqueda: busquedaInput, filtroEstado } = filtros;
+  const busqueda = useDebouncedValue(busquedaInput, 350);
   const [page, setPage] = useState(() => getInitialPaginationPage("almacen-entradas"));
   usePersistedPagination("almacen-entradas", page);
   const [historialAbiertoId, setHistorialAbiertoId] = useState(null);
@@ -282,9 +289,9 @@ export default function EntradasPage() {
                 type="text"
                 className="form-control"
                 placeholder="Buscar por folio, proveedor, RFC, documento o entregante..."
-                value={busqueda}
+                value={busquedaInput}
                 onChange={(e) => {
-                  setBusqueda(e.target.value);
+                  setFiltros((actuales) => ({ ...actuales, busqueda: e.target.value }));
                   setPage(0);
                 }}
               />
@@ -294,7 +301,7 @@ export default function EntradasPage() {
                 className="form-select"
                 value={filtroEstado}
                 onChange={(e) => {
-                  setFiltroEstado(e.target.value);
+                  setFiltros((actuales) => ({ ...actuales, filtroEstado: e.target.value }));
                   setPage(0);
                 }}
               >
@@ -311,8 +318,7 @@ export default function EntradasPage() {
                 type="button"
                 className="btn btn-outline-secondary w-100"
                 onClick={() => {
-                  setBusqueda("");
-                  setFiltroEstado("TODOS");
+                  setFiltros(FILTROS_DEFAULT);
                   setPage(0);
                 }}
               >
@@ -323,9 +329,7 @@ export default function EntradasPage() {
         </div>
       </div>
 
-      {loading ? (
-        <div className="alert alert-info">Cargando entradas...</div>
-      ) : (
+      {!loading ? (
         <div className="card shadow-sm border-0">
           <div className="table-responsive">
             <table className="table table-hover mb-0 align-middle">
@@ -482,7 +486,7 @@ export default function EntradasPage() {
             />
           )}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

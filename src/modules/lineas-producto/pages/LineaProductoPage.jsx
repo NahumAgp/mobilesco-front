@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import useDebouncedValue from "../../../hooks/useDebouncedValue.js";
 import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
+import usePersistedState from "../../../hooks/usePersistedState.js";
 import { useNavigate } from "react-router-dom";
 
 import { useLineasProducto } from "../hooks/useLineasProducto";
@@ -13,6 +15,10 @@ import { getUser, hasPermission } from "../../auth/services/authService";
 import "./LineaProductoPage.css";
 
 const PAGE_SIZE = 10;
+const FILTROS_DEFAULT = {
+  busqueda: "",
+  soloActivos: false
+};
 
 export default function LineaProductoPage() {
   const navigate = useNavigate();
@@ -23,11 +29,12 @@ export default function LineaProductoPage() {
   const [toastType, setToastType] = useState("success");
   const [page, setPage] = useState(() => getInitialPaginationPage("lineas-producto"));
   usePersistedPagination("lineas-producto", page);
-  const [busqueda, setBusqueda] = useState("");
-  const [soloActivos, setSoloActivos] = useState(false);
+  const [filtros, setFiltros] = usePersistedState("lineas-producto:filtros", FILTROS_DEFAULT);
+  const { busqueda: busquedaInput, soloActivos } = filtros;
   const [sortField, setSortField] = useState("nombre");
   const [sortDirection, setSortDirection] = useState("asc");
   const [exportandoExcel, setExportandoExcel] = useState(false);
+  const busqueda = useDebouncedValue(busquedaInput, 350);
   const terminoBusqueda = busqueda.toLowerCase().trim().replace(/\s+/g, " ");
 
   const {
@@ -47,7 +54,7 @@ export default function LineaProductoPage() {
   const totalElements = pageInfo.totalElements ?? 0;
   const totalPages = pageInfo.totalPages ?? 0;
 
-  const hayFiltrosActivos = Boolean(terminoBusqueda) || soloActivos;
+  const hayFiltrosActivos = Boolean(busquedaInput.trim()) || soloActivos;
   const mostrarVacio = !loadingLista && !error && !hayFiltrosActivos && totalElements === 0;
   const mostrarSinCoincidencias = !loadingLista && !error && hayFiltrosActivos && totalElements === 0;
 
@@ -81,12 +88,12 @@ export default function LineaProductoPage() {
   };
 
   const cambiarBusqueda = (e) => {
-    setBusqueda(e.target.value);
+    setFiltros((actuales) => ({ ...actuales, busqueda: e.target.value }));
     setPage(0);
   };
 
   const cambiarSoloActivos = (e) => {
-    setSoloActivos(e.target.checked);
+    setFiltros((actuales) => ({ ...actuales, soloActivos: e.target.checked }));
     setPage(0);
   };
 
@@ -96,7 +103,7 @@ export default function LineaProductoPage() {
 
       const blob = await lineaProductoGateway.exportarLineasProductoExcel({
         activo: soloActivos ? true : undefined,
-        busqueda: terminoBusqueda || undefined,
+        busqueda: busquedaInput.toLowerCase().trim().replace(/\s+/g, " ") || undefined,
         sortBy: sortField,
         direction: sortDirection
       });
@@ -162,12 +169,6 @@ export default function LineaProductoPage() {
         }
       />
 
-      {loadingLista && (
-        <div className="alert alert-info">
-          Cargando lineas de producto...
-        </div>
-      )}
-
       {error && (
         <div className="alert alert-danger">
           {error}
@@ -182,7 +183,7 @@ export default function LineaProductoPage() {
                 type="text"
                 className="form-control"
                 placeholder="Buscar por codigo o nombre..."
-                value={busqueda}
+                value={busquedaInput}
                 onChange={cambiarBusqueda}
               />
             </div>

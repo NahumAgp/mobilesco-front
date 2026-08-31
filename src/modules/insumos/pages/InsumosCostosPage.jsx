@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import useDebouncedValue from "../../../hooks/useDebouncedValue.js";
 import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
+import usePersistedState from "../../../hooks/usePersistedState.js";
 import { useNavigate } from "react-router-dom";
 
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
@@ -10,6 +12,11 @@ import { puedeGestionarCostosInsumos } from "../utils/costosPermisos.js";
 import "./InsumosPage.css";
 
 const PAGE_SIZE = 10;
+const FILTROS_DEFAULT = {
+  busqueda: "",
+  sortField: "nombre",
+  sortDirection: "asc"
+};
 
 function construirRangoPaginas(totalPages, currentPage) {
   if (!totalPages || totalPages <= 0) return [];
@@ -70,9 +77,9 @@ export default function InsumosCostosPage() {
   });
   const [page, setPage] = useState(() => getInitialPaginationPage("insumos-costos"));
   usePersistedPagination("insumos-costos", page);
-  const [busqueda, setBusqueda] = useState("");
-  const [sortField, setSortField] = useState("nombre");
-  const [sortDirection, setSortDirection] = useState("asc");
+  const [filtros, setFiltros] = usePersistedState("insumos-costos:filtros", FILTROS_DEFAULT);
+  const { busqueda: busquedaInput, sortField, sortDirection } = filtros;
+  const busqueda = useDebouncedValue(busquedaInput, 350);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [editingId, setEditingId] = useState(null);
@@ -173,22 +180,21 @@ export default function InsumosCostosPage() {
   };
 
   const cambiarOrden = (campo) => {
-    if (sortField === campo) {
-      setSortDirection((actual) => (actual === "asc" ? "desc" : "asc"));
-    } else {
-      setSortField(campo);
-      setSortDirection("asc");
-    }
+    setFiltros((actuales) => ({
+      ...actuales,
+      sortField: campo,
+      sortDirection: actuales.sortField === campo && actuales.sortDirection === "asc" ? "desc" : "asc"
+    }));
     setPage(0);
   };
 
   const cambiarBusqueda = (event) => {
-    setBusqueda(event.target.value);
+    setFiltros((actuales) => ({ ...actuales, busqueda: event.target.value }));
     setPage(0);
   };
 
   const limpiarBusqueda = () => {
-    setBusqueda("");
+    setFiltros((actuales) => ({ ...actuales, busqueda: "" }));
     setPage(0);
   };
 
@@ -231,7 +237,6 @@ export default function InsumosCostosPage() {
         }
       />
 
-      {loading && <div className="alert alert-info">Cargando costos...</div>}
       {error && <div className="alert alert-danger">{error}</div>}
       {!puedeGestionarCostos && (
         <div className="alert alert-info">
@@ -256,10 +261,10 @@ export default function InsumosCostosPage() {
                     type="search"
                     className="form-control"
                     placeholder="Nombre, codigo o unidad..."
-                    value={busqueda}
+                    value={busquedaInput}
                     onChange={cambiarBusqueda}
                   />
-                  {busqueda && (
+                  {busquedaInput && (
                     <button
                       type="button"
                       className="btn btn-outline-secondary"

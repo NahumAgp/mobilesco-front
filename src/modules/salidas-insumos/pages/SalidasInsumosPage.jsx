@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import useDebouncedValue from "../../../hooks/useDebouncedValue.js";
 import { useNavigate } from "react-router-dom";
 
 import Toast from "../../../components/ui/Toast.jsx";
 import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
+import usePersistedState from "../../../hooks/usePersistedState.js";
 import { uniqueOptionsByValue } from "../../../utils/uniqueOptions.js";
 import { getUser, hasPermission } from "../../auth/services/authService.js";
 import { eliminarSalidaInsumo, obtenerSalidasInsumos } from "../services/salidasInsumos.js";
@@ -13,6 +15,13 @@ const PAGE_INFO_DEFAULT = {
   size: PAGE_SIZE,
   totalElements: 0,
   totalPages: 0
+};
+const FILTROS_DEFAULT = {
+  busqueda: "",
+  filtroArea: "",
+  filtroResponsable: "",
+  fechaInicio: "",
+  fechaFin: ""
 };
 
 function formatoFecha(valor) {
@@ -47,11 +56,9 @@ export default function SalidasInsumosPage() {
   const [salidas, setSalidas] = useState([]);
   const [salidaSeleccionada, setSalidaSeleccionada] = useState(null);
   const [eliminandoId, setEliminandoId] = useState(null);
-  const [busqueda, setBusqueda] = useState("");
-  const [filtroArea, setFiltroArea] = useState("");
-  const [filtroResponsable, setFiltroResponsable] = useState("");
-  const [fechaInicio, setFechaInicio] = useState("");
-  const [fechaFin, setFechaFin] = useState("");
+  const [filtros, setFiltros] = usePersistedState("salidas-insumos:filtros", FILTROS_DEFAULT);
+  const { busqueda: busquedaInput, filtroArea, filtroResponsable, fechaInicio, fechaFin } = filtros;
+  const busqueda = useDebouncedValue(busquedaInput, 350);
   const [paginaActual, setPaginaActual] = useState(() => getInitialPaginationPage("salidas-insumos"));
   usePersistedPagination("salidas-insumos", paginaActual);
   const [pageInfo, setPageInfo] = useState(PAGE_INFO_DEFAULT);
@@ -116,11 +123,7 @@ export default function SalidasInsumosPage() {
   }, [pageInfo.totalPages, paginaActual]);
 
   const limpiarFiltros = () => {
-    setBusqueda("");
-    setFiltroArea("");
-    setFiltroResponsable("");
-    setFechaInicio("");
-    setFechaFin("");
+    setFiltros(FILTROS_DEFAULT);
   };
 
   const verDetalleSalida = (salida) => {
@@ -189,13 +192,13 @@ export default function SalidasInsumosPage() {
             <div className="col-md-4">
               <input
                 className="form-control"
-                value={busqueda}
-                onChange={(event) => setBusqueda(event.target.value)}
+                value={busquedaInput}
+                onChange={(event) => setFiltros((actuales) => ({ ...actuales, busqueda: event.target.value }))}
                 placeholder="Buscar salidas..."
               />
             </div>
             <div className="col-md-2">
-              <select className="form-select" value={filtroArea} onChange={(event) => setFiltroArea(event.target.value)}>
+              <select className="form-select" value={filtroArea} onChange={(event) => setFiltros((actuales) => ({ ...actuales, filtroArea: event.target.value }))}>
                 <option value="">Todas las areas</option>
                 {areas.map((area) => (
                   <option key={area} value={area}>{area}</option>
@@ -203,7 +206,7 @@ export default function SalidasInsumosPage() {
               </select>
             </div>
             <div className="col-md-2">
-              <select className="form-select" value={filtroResponsable} onChange={(event) => setFiltroResponsable(event.target.value)}>
+              <select className="form-select" value={filtroResponsable} onChange={(event) => setFiltros((actuales) => ({ ...actuales, filtroResponsable: event.target.value }))}>
                 <option value="">Todos los responsables</option>
                 {responsables.map((responsable) => (
                   <option key={responsable} value={responsable}>{responsable}</option>
@@ -211,11 +214,11 @@ export default function SalidasInsumosPage() {
               </select>
             </div>
             <div className="col-md-2">
-              <input type="date" className="form-control" value={fechaInicio} onChange={(event) => setFechaInicio(event.target.value)} />
+              <input type="date" className="form-control" value={fechaInicio} onChange={(event) => setFiltros((actuales) => ({ ...actuales, fechaInicio: event.target.value }))} />
             </div>
             <div className="col-md-2">
               <div className="input-group">
-                <input type="date" className="form-control" value={fechaFin} onChange={(event) => setFechaFin(event.target.value)} />
+                <input type="date" className="form-control" value={fechaFin} onChange={(event) => setFiltros((actuales) => ({ ...actuales, fechaFin: event.target.value }))} />
                 <button className="btn btn-outline-secondary" type="button" onClick={limpiarFiltros} title="Limpiar filtros">
                   <i className="bi bi-eraser"></i>
                 </button>

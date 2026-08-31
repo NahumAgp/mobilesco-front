@@ -1,6 +1,8 @@
 // pages/Materiales/MaterialesPage.jsx
-import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
 import React, { useEffect, useState } from "react";
+import useDebouncedValue from "../../../hooks/useDebouncedValue.js";
+import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
+import usePersistedState from "../../../hooks/usePersistedState.js";
 import { useNavigate } from "react-router-dom";
 
 import { useMateriales } from "../hooks/useMateriales";
@@ -14,6 +16,11 @@ import { getUser, hasPermission } from "../../auth/services/authService";
 import "./MaterialesPage.css";
 
 const PAGE_SIZE = 10;
+const FILTROS_DEFAULT = {
+  busqueda: "",
+  filtroEstatus: "TODOS",
+  soloActivos: false
+};
 
 export default function MaterialesPage() {
   const navigate = useNavigate();
@@ -24,12 +31,12 @@ export default function MaterialesPage() {
   const [toastType, setToastType] = useState("success");
   const [page, setPage] = useState(() => getInitialPaginationPage("materiales"));
   usePersistedPagination("materiales", page);
-  const [busqueda, setBusqueda] = useState("");
-  const [filtroEstatus, setFiltroEstatus] = useState("TODOS");
-  const [soloActivos, setSoloActivos] = useState(false);
+  const [filtros, setFiltros] = usePersistedState("materiales:filtros", FILTROS_DEFAULT);
+  const { busqueda: busquedaInput, filtroEstatus, soloActivos } = filtros;
   const [sortField] = useState("nombre");
   const [sortDirection] = useState("asc");
   const [exportandoExcel, setExportandoExcel] = useState(false);
+  const busqueda = useDebouncedValue(busquedaInput, 350);
   const terminoBusqueda = busqueda.toLowerCase().trim().replace(/\s+/g, " ");
   const filtroActivo = soloActivos
     ? true
@@ -57,7 +64,7 @@ export default function MaterialesPage() {
   const totalElements = pageInfo.totalElements ?? 0;
   const totalPages = pageInfo.totalPages ?? 0;
 
-  const hayFiltrosActivos = Boolean(terminoBusqueda) || filtroEstatus !== "TODOS" || soloActivos;
+  const hayFiltrosActivos = Boolean(busquedaInput.trim()) || filtroEstatus !== "TODOS" || soloActivos;
   const mostrarVacio = !loadingLista && !error && !hayFiltrosActivos && totalElements === 0;
   const mostrarSinCoincidencias = !loadingLista && !error && hayFiltrosActivos && totalElements === 0;
 
@@ -96,7 +103,7 @@ export default function MaterialesPage() {
 
       const blob = await materialGateway.exportarMaterialesExcel({
         activo: filtroActivo ?? undefined,
-        busqueda: terminoBusqueda || undefined,
+        busqueda: busquedaInput.toLowerCase().trim().replace(/\s+/g, " ") || undefined,
         sortBy: sortField,
         direction: sortDirection
       });
@@ -121,17 +128,17 @@ export default function MaterialesPage() {
   };
 
   const cambiarBusqueda = (e) => {
-    setBusqueda(e.target.value);
+    setFiltros((actuales) => ({ ...actuales, busqueda: e.target.value }));
     setPage(0);
   };
 
   const cambiarEstatus = (e) => {
-    setFiltroEstatus(e.target.value);
+    setFiltros((actuales) => ({ ...actuales, filtroEstatus: e.target.value }));
     setPage(0);
   };
 
   const cambiarSoloActivos = (e) => {
-    setSoloActivos(e.target.checked);
+    setFiltros((actuales) => ({ ...actuales, soloActivos: e.target.checked }));
     setPage(0);
   };
 
@@ -166,12 +173,6 @@ export default function MaterialesPage() {
         }
       />
 
-      {loadingLista && (
-        <div className="alert alert-info">
-          Cargando materiales...
-        </div>
-      )}
-
       {error && (
         <div className="alert alert-danger">
           {error}
@@ -186,7 +187,7 @@ export default function MaterialesPage() {
                 type="text"
                 className="form-control"
                 placeholder="Buscar por nombre, código o descripción..."
-                value={busqueda}
+                value={busquedaInput}
                 onChange={cambiarBusqueda}
               />
             </div>

@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import useDebouncedValue from "../../../hooks/useDebouncedValue.js";
 import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
+import usePersistedState from "../../../hooks/usePersistedState.js";
 import { useNavigate } from "react-router-dom";
 
 import { useEmpleado } from "../hooks/useEmpleado";
@@ -11,15 +13,20 @@ import { getUser, hasPermission } from "../../auth/services/authService";
 import "./EmpleadoPage.css";
 
 const PAGE_SIZE = 10;
+const FILTROS_DEFAULT = {
+  busqueda: "",
+  filtroEstatus: "TODOS",
+  soloActivos: false
+};
 
 export default function EmpleadoPage() {
   const navigate = useNavigate();
 
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
-  const [busqueda, setBusqueda] = useState("");
-  const [filtroEstatus, setFiltroEstatus] = useState("TODOS");
-  const [soloActivos, setSoloActivos] = useState(false);
+  const [filtros, setFiltros] = usePersistedState("empleados:filtros", FILTROS_DEFAULT);
+  const { busqueda: busquedaInput, filtroEstatus, soloActivos } = filtros;
+  const busqueda = useDebouncedValue(busquedaInput, 350);
   const [page, setPage] = useState(() => getInitialPaginationPage("empleados"));
   usePersistedPagination("empleados", page);
   const currentUser = getUser();
@@ -51,17 +58,17 @@ export default function EmpleadoPage() {
   }, [page, totalPages]);
 
   const handleBusquedaChange = (event) => {
-    setBusqueda(event.target.value);
+    setFiltros((actuales) => ({ ...actuales, busqueda: event.target.value }));
     setPage(0);
   };
 
   const handleFiltroEstatusChange = (event) => {
-    setFiltroEstatus(event.target.value);
+    setFiltros((actuales) => ({ ...actuales, filtroEstatus: event.target.value }));
     setPage(0);
   };
 
   const handleSoloActivosChange = (event) => {
-    setSoloActivos(event.target.checked);
+    setFiltros((actuales) => ({ ...actuales, soloActivos: event.target.checked }));
     setPage(0);
   };
 
@@ -113,12 +120,6 @@ export default function EmpleadoPage() {
         ) : null}
       />
 
-      {loadingLista && (
-        <div className="alert alert-info">
-          Cargando empleados...
-        </div>
-      )}
-
       {error && (
         <div className="alert alert-danger">
           {error}
@@ -133,7 +134,7 @@ export default function EmpleadoPage() {
                 type="text"
                 className="form-control"
                 placeholder="Buscar por nombre, apellidos, telefono, correo o ID..."
-                value={busqueda}
+                value={busquedaInput}
                 onChange={handleBusquedaChange}
               />
             </div>

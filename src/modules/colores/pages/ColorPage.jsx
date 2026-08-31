@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
+import useDebouncedValue from "../../../hooks/useDebouncedValue.js";
 import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
+import usePersistedState from "../../../hooks/usePersistedState.js";
 import { useNavigate } from "react-router-dom";
 
 import { useColor } from "../hooks/useColor.js";
@@ -12,6 +14,9 @@ import { getUser, hasPermission } from "../../auth/services/authService";
 import "./ColorPage.css";
 
 const PAGE_SIZE = 10;
+const FILTROS_DEFAULT = {
+  busqueda: ""
+};
 
 export default function ColorPage() {
   const navigate = useNavigate();
@@ -22,8 +27,10 @@ export default function ColorPage() {
   const [page, setPage] = useState(() => getInitialPaginationPage("colores"));
   usePersistedPagination("colores", page);
 
-  const [busqueda, setBusqueda] = useState("");
-  const { colores, pageInfo, loadingLista, error, recargar } = useColor({
+  const [filtros, setFiltros] = usePersistedState("colores:filtros", FILTROS_DEFAULT);
+  const { busqueda: busquedaInput } = filtros;
+  const busqueda = useDebouncedValue(busquedaInput, 350);
+  const { colores, pageInfo, error, recargar } = useColor({
     page,
     size: PAGE_SIZE,
     busqueda
@@ -64,7 +71,7 @@ export default function ColorPage() {
   }, [page, totalPages]);
 
   const handleBusquedaChange = (e) => {
-    setBusqueda(e.target.value);
+    setFiltros({ busqueda: e.target.value });
     setPage(0);
   };
 
@@ -82,7 +89,6 @@ export default function ColorPage() {
         }
       />
 
-      {loadingLista && <div className="alert alert-info">Cargando colores...</div>}
       {error && <div className="alert alert-danger">{error}</div>}
 
       <div className="card mb-3 colores-filters-card">
@@ -93,7 +99,7 @@ export default function ColorPage() {
                 type="text"
                 className="form-control"
                 placeholder="Buscar por codigo, nombre o hex..."
-                value={busqueda}
+                value={busquedaInput}
                 onChange={handleBusquedaChange}
               />
             </div>

@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import useDebouncedValue from "../../../hooks/useDebouncedValue.js";
 import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
+import usePersistedState from "../../../hooks/usePersistedState.js";
 import { useNavigate } from "react-router-dom";
 
 import CatalogPagination from "../../../components/ui/CatalogPagination.jsx";
@@ -13,6 +15,11 @@ import "../../familias/pages/FamiliasPage.css";
 import { getUser, hasPermission } from "../../auth/services/authService";
 
 const PAGE_SIZE = 10;
+const FILTROS_DEFAULT = {
+  busqueda: "",
+  familiaFiltroId: "",
+  soloActivos: false
+};
 
 const getLista = (respuesta) => {
   if (Array.isArray(respuesta)) return respuesta;
@@ -32,13 +39,13 @@ export default function SubfamiliasPage() {
   const [toastType, setToastType] = useState("success");
   const [page, setPage] = useState(() => getInitialPaginationPage("subfamilias"));
   usePersistedPagination("subfamilias", page);
-  const [busqueda, setBusqueda] = useState("");
-  const [familiaFiltroId, setFamiliaFiltroId] = useState("");
-  const [soloActivos, setSoloActivos] = useState(false);
+  const [filtros, setFiltros] = usePersistedState("subfamilias:filtros", FILTROS_DEFAULT);
+  const { busqueda: busquedaInput, familiaFiltroId, soloActivos } = filtros;
   const [sortField, setSortField] = useState("nombre");
   const [sortDirection, setSortDirection] = useState("asc");
   const [familiasDisponibles, setFamiliasDisponibles] = useState([]);
 
+  const busqueda = useDebouncedValue(busquedaInput, 350);
   const terminoBusqueda = busqueda.toLowerCase().trim().replace(/\s+/g, " ");
   const {
     subfamilias,
@@ -57,7 +64,7 @@ export default function SubfamiliasPage() {
 
   const totalElements = pageInfo.totalElements ?? 0;
   const totalPages = pageInfo.totalPages ?? 0;
-  const hayFiltrosActivos = Boolean(terminoBusqueda) || Boolean(familiaFiltroId) || soloActivos;
+  const hayFiltrosActivos = Boolean(busquedaInput.trim()) || Boolean(familiaFiltroId) || soloActivos;
 
   useEffect(() => {
     obtenerFamiliasActivas()
@@ -108,7 +115,6 @@ export default function SubfamiliasPage() {
         }
       />
 
-      {loadingLista && <div className="alert alert-info">Cargando subfamilias...</div>}
       {error && <div className="alert alert-danger">{error}</div>}
 
       <div className="card mb-3 familias-filters-card">
@@ -119,9 +125,9 @@ export default function SubfamiliasPage() {
                 type="text"
                 className="form-control"
                 placeholder="Buscar por codigo, nombre, descripcion, familia o linea..."
-                value={busqueda}
+                value={busquedaInput}
                 onChange={(event) => {
-                  setBusqueda(event.target.value);
+                  setFiltros((actuales) => ({ ...actuales, busqueda: event.target.value }));
                   setPage(0);
                 }}
               />
@@ -132,7 +138,7 @@ export default function SubfamiliasPage() {
                 className="form-select"
                 value={familiaFiltroId}
                 onChange={(event) => {
-                  setFamiliaFiltroId(event.target.value);
+                  setFiltros((actuales) => ({ ...actuales, familiaFiltroId: event.target.value }));
                   setPage(0);
                 }}
               >
@@ -153,7 +159,7 @@ export default function SubfamiliasPage() {
                   id="soloActivasSubfamiliasSwitch"
                   checked={soloActivos}
                   onChange={(event) => {
-                    setSoloActivos(event.target.checked);
+                    setFiltros((actuales) => ({ ...actuales, soloActivos: event.target.checked }));
                     setPage(0);
                   }}
                 />

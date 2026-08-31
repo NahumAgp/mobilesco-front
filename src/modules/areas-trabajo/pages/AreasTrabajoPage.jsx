@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
+import useDebouncedValue from "../../../hooks/useDebouncedValue.js";
 import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
+import usePersistedState from "../../../hooks/usePersistedState.js";
 
 import CatalogPagination from "../../../components/ui/CatalogPagination.jsx";
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
@@ -28,14 +30,19 @@ const initialForm = {
   descripcion: "",
   activo: true
 };
+const FILTROS_DEFAULT = {
+  busqueda: "",
+  soloActivas: false
+};
 
 export default function AreasTrabajoPage() {
   const [areas, setAreas] = useState([]);
   const [pageInfo, setPageInfo] = useState(PAGE_INFO_DEFAULT);
   const [form, setForm] = useState(initialForm);
   const [editando, setEditando] = useState(null);
-  const [busqueda, setBusqueda] = useState("");
-  const [soloActivas, setSoloActivas] = useState(false);
+  const [filtros, setFiltros] = usePersistedState("areas-trabajo:filtros", FILTROS_DEFAULT);
+  const { busqueda: busquedaInput, soloActivas } = filtros;
+  const busqueda = useDebouncedValue(busquedaInput, 350);
   const [page, setPage] = useState(() => getInitialPaginationPage("areas-trabajo"));
   usePersistedPagination("areas-trabajo", page);
   const [loading, setLoading] = useState(false);
@@ -168,9 +175,9 @@ export default function AreasTrabajoPage() {
                 <div className="col-md-8">
                   <input
                     className="form-control"
-                    value={busqueda}
+                    value={busquedaInput}
                     onChange={(event) => {
-                      setBusqueda(event.target.value);
+                      setFiltros((actuales) => ({ ...actuales, busqueda: event.target.value }));
                       setPage(0);
                     }}
                     placeholder="Buscar por codigo, nombre o descripcion..."
@@ -184,7 +191,7 @@ export default function AreasTrabajoPage() {
                       type="checkbox"
                       checked={soloActivas}
                       onChange={(event) => {
-                        setSoloActivas(event.target.checked);
+                        setFiltros((actuales) => ({ ...actuales, soloActivas: event.target.checked }));
                         setPage(0);
                       }}
                     />

@@ -1,5 +1,7 @@
 import React, { useState } from "react";
+import useDebouncedValue from "../../../hooks/useDebouncedValue.js";
 import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
+import usePersistedState from "../../../hooks/usePersistedState.js";
 import { useNavigate } from "react-router-dom";
 
 import { useCentrosTrabajo } from "../hooks/useCentrosTrabajo";
@@ -11,6 +13,11 @@ import Toast from "../../../components/ui/Toast.jsx";
 import { getUser, hasPermission } from "../../auth/services/authService";
 
 const PAGE_SIZE = 12;
+const FILTROS_DEFAULT = {
+  busqueda: "",
+  filtroEstatus: "TODOS",
+  soloActivos: false
+};
 
 export default function CentrosTrabajoPage() {
 
@@ -22,16 +29,15 @@ export default function CentrosTrabajoPage() {
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
 
-  const [busqueda, setBusqueda] = useState("");
-  const [filtroEstatus, setFiltroEstatus] = useState("TODOS");
-  const [soloActivos, setSoloActivos] = useState(false);
+  const [filtros, setFiltros] = usePersistedState("centros-trabajo:filtros", FILTROS_DEFAULT);
+  const { busqueda: busquedaInput, filtroEstatus, soloActivos } = filtros;
+  const busqueda = useDebouncedValue(busquedaInput, 350);
   const [page, setPage] = useState(() => getInitialPaginationPage("centros-trabajo"));
   usePersistedPagination("centros-trabajo", page);
 
   const {
     centrosTrabajo,
     pageInfo,
-    loadingLista,
     error,
     eliminarCentroTrabajo
   } = useCentrosTrabajo({
@@ -89,12 +95,6 @@ export default function CentrosTrabajoPage() {
         }
       />
 
-      {loadingLista && (
-        <div className="alert alert-info">
-          Cargando centros de trabajo...
-        </div>
-      )}
-
       {error && (
         <div className="alert alert-danger">
           {error}
@@ -110,9 +110,9 @@ export default function CentrosTrabajoPage() {
                 type="text"
                 className="form-control"
                 placeholder="Buscar por código, nombre o descripción..."
-                value={busqueda}
+                value={busquedaInput}
                 onChange={(e) => {
-                  setBusqueda(e.target.value);
+                  setFiltros((actuales) => ({ ...actuales, busqueda: e.target.value }));
                   setPage(0);
                 }}
               />
@@ -123,7 +123,7 @@ export default function CentrosTrabajoPage() {
                 className="form-select"
                 value={filtroEstatus}
                 onChange={(e) => {
-                  setFiltroEstatus(e.target.value);
+                  setFiltros((actuales) => ({ ...actuales, filtroEstatus: e.target.value }));
                   setPage(0);
                 }}
               >
@@ -140,7 +140,7 @@ export default function CentrosTrabajoPage() {
                   type="checkbox"
                   checked={soloActivos}
                   onChange={() => {
-                    setSoloActivos(!soloActivos);
+                    setFiltros((actuales) => ({ ...actuales, soloActivos: !soloActivos }));
                     setPage(0);
                   }}
                 />
@@ -155,9 +155,7 @@ export default function CentrosTrabajoPage() {
                 type="button"
                 className="btn btn-outline-secondary w-100"
                 onClick={() => {
-                  setBusqueda("");
-                  setFiltroEstatus("TODOS");
-                  setSoloActivos(false);
+                  setFiltros(FILTROS_DEFAULT);
                   setPage(0);
                 }}
                 title="Limpiar filtros"

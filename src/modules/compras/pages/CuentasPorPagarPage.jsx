@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import useDebouncedValue from "../../../hooks/useDebouncedValue.js";
 import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
+import usePersistedState from "../../../hooks/usePersistedState.js";
 import { useNavigate } from "react-router-dom";
 
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
@@ -9,6 +11,12 @@ import { exportarCuentasPorPagarExcel, obtenerCuentasPorPagar } from "../service
 import "./CuentasPorPagarPage.css";
 
 const PAGE_SIZE = 10;
+const FILTROS_DEFAULT = {
+  busqueda: "",
+  estado: "TODOS",
+  mesInicio: "",
+  mesFin: ""
+};
 
 function formatCurrency(value) {
   return new Intl.NumberFormat("es-MX", {
@@ -66,12 +74,10 @@ function descargarBlob(blob, filename) {
 export default function CuentasPorPagarPage() {
   const navigate = useNavigate();
   const [cuentas, setCuentas] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [busqueda, setBusqueda] = useState("");
-  const [estado, setEstado] = useState("TODOS");
-  const [mesInicio, setMesInicio] = useState("");
-  const [mesFin, setMesFin] = useState("");
+  const [filtros, setFiltros] = usePersistedState("cuentas-por-pagar:filtros", FILTROS_DEFAULT);
+  const { busqueda: busquedaInput, estado, mesInicio, mesFin } = filtros;
+  const busqueda = useDebouncedValue(busquedaInput, 350);
   const [page, setPage] = useState(() => getInitialPaginationPage("cuentas-por-pagar"));
   usePersistedPagination("cuentas-por-pagar", page);
   const [cuentasReporte, setCuentasReporte] = useState([]);
@@ -88,7 +94,6 @@ export default function CuentasPorPagarPage() {
   useEffect(() => {
     const cargar = async () => {
       try {
-        setLoading(true);
         setError("");
         const data = await obtenerCuentasPorPagar({
           estado,
@@ -107,8 +112,6 @@ export default function CuentasPorPagarPage() {
         });
       } catch (err) {
         setError(err.message || "No se pudieron cargar las cuentas por pagar");
-      } finally {
-        setLoading(false);
       }
     };
     cargar();
@@ -179,7 +182,7 @@ export default function CuentasPorPagarPage() {
       setExportandoExcel(true);
       const blob = await exportarCuentasPorPagarExcel({
         estado,
-        busqueda,
+        busqueda: busquedaInput.trim(),
         fechaInicio: getMonthStart(mesInicio),
         fechaFin: getMonthEnd(mesFin)
       });
@@ -214,7 +217,6 @@ export default function CuentasPorPagarPage() {
         }
       />
 
-      {loading && <div className="alert alert-info">Cargando cuentas por pagar...</div>}
       {error && <div className="alert alert-danger">{error}</div>}
 
       <div className="row g-3 mb-3">
@@ -258,13 +260,17 @@ export default function CuentasPorPagarPage() {
             <div className="col-md-4">
               <input
                 className="form-control"
-                value={busqueda}
-                onChange={(event) => setBusqueda(event.target.value)}
+                value={busquedaInput}
+                onChange={(event) => setFiltros((actuales) => ({ ...actuales, busqueda: event.target.value }))}
                 placeholder="Buscar por proveedor, folio, RFC o estado"
               />
             </div>
             <div className="col-md-2">
-              <select className="form-select" value={estado} onChange={(event) => setEstado(event.target.value)}>
+              <select
+                className="form-select"
+                value={estado}
+                onChange={(event) => setFiltros((actuales) => ({ ...actuales, estado: event.target.value }))}
+              >
                 <option value="TODOS">Todos los estados</option>
                 <option value="PENDIENTE">Pendiente</option>
                 <option value="PARCIAL">Parcial</option>
@@ -277,7 +283,7 @@ export default function CuentasPorPagarPage() {
                 type="month"
                 className="form-control"
                 value={mesInicio}
-                onChange={(event) => setMesInicio(event.target.value)}
+                onChange={(event) => setFiltros((actuales) => ({ ...actuales, mesInicio: event.target.value }))}
                 aria-label="Mes inicial"
               />
             </div>
@@ -286,7 +292,7 @@ export default function CuentasPorPagarPage() {
                 type="month"
                 className="form-control"
                 value={mesFin}
-                onChange={(event) => setMesFin(event.target.value)}
+                onChange={(event) => setFiltros((actuales) => ({ ...actuales, mesFin: event.target.value }))}
                 aria-label="Mes final"
               />
             </div>

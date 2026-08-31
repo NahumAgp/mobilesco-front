@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
+import useDebouncedValue from "../../../hooks/useDebouncedValue.js";
 import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
+import usePersistedState from "../../../hooks/usePersistedState.js";
 import { useNavigate } from "react-router-dom";
 
 import { useUnidadesMedida } from "../hooks/useUnidadesMedida";
@@ -11,6 +13,13 @@ import { getUser, hasPermission } from "../../auth/services/authService";
 import "./UnidadMedidaPage.css";
 
 const PAGE_SIZE = 10;
+const FILTROS_DEFAULT = {
+  busqueda: "",
+  filtroEstatus: "TODOS",
+  soloActivos: false,
+  sortField: "nombre",
+  sortDirection: "asc"
+};
 
 function construirRangoPaginas(totalPages, currentPage) {
   if (!totalPages || totalPages <= 0) return [];
@@ -42,12 +51,10 @@ export default function UnidadesMedidaPage() {
   const [toastType, setToastType] = useState("success");
   const [page, setPage] = useState(() => getInitialPaginationPage("unidades-medida"));
   usePersistedPagination("unidades-medida", page);
-  const [busqueda, setBusqueda] = useState("");
-  const [filtroEstatus, setFiltroEstatus] = useState("TODOS");
-  const [soloActivos, setSoloActivos] = useState(false);
-  const [sortField, setSortField] = useState("nombre");
-  const [sortDirection, setSortDirection] = useState("asc");
+  const [filtros, setFiltros] = usePersistedState("unidades-medida:filtros", FILTROS_DEFAULT);
+  const { busqueda: busquedaInput, filtroEstatus, soloActivos, sortField, sortDirection } = filtros;
   const [exportandoExcel, setExportandoExcel] = useState(false);
+  const busqueda = useDebouncedValue(busquedaInput, 350);
   const terminoBusqueda = busqueda.toLowerCase().trim().replace(/\s+/g, " ");
   const estadoFiltro =
     soloActivos || filtroEstatus === "ACTIVO"
@@ -79,7 +86,7 @@ export default function UnidadesMedidaPage() {
   const hasta = totalElements > 0 ? page * PAGE_SIZE + unidadesMedida.length : 0;
 
   const hayFiltrosActivos =
-    Boolean(terminoBusqueda) || filtroEstatus !== "TODOS" || soloActivos;
+    Boolean(busquedaInput.trim()) || filtroEstatus !== "TODOS" || soloActivos;
   const mostrarVacio = !loadingLista && !error && !hayFiltrosActivos && totalElements === 0;
   const mostrarSinCoincidencias =
     !loadingLista && !error && hayFiltrosActivos && totalElements === 0;
@@ -116,7 +123,7 @@ export default function UnidadesMedidaPage() {
 
       const blob = await exportarUnidadesMedidaExcel({
         estado: estadoFiltro ?? undefined,
-        busqueda: terminoBusqueda || undefined,
+        busqueda: busquedaInput.toLowerCase().trim().replace(/\s+/g, " ") || undefined,
         sortBy: sortField,
         direction: sortDirection
       });
@@ -147,28 +154,26 @@ export default function UnidadesMedidaPage() {
   };
 
   const cambiarBusqueda = (e) => {
-    setBusqueda(e.target.value);
+    setFiltros((actuales) => ({ ...actuales, busqueda: e.target.value }));
     setPage(0);
   };
 
   const cambiarEstatus = (e) => {
-    setFiltroEstatus(e.target.value);
+    setFiltros((actuales) => ({ ...actuales, filtroEstatus: e.target.value }));
     setPage(0);
   };
 
   const cambiarSoloActivos = (e) => {
-    setSoloActivos(e.target.checked);
+    setFiltros((actuales) => ({ ...actuales, soloActivos: e.target.checked }));
     setPage(0);
   };
 
   const manejarOrden = (campo) => {
-    if (sortField === campo) {
-      setSortDirection((direccionActual) => (direccionActual === "asc" ? "desc" : "asc"));
-    } else {
-      setSortDirection("asc");
-      setSortField(campo);
-    }
-
+    setFiltros((actuales) => ({
+      ...actuales,
+      sortField: campo,
+      sortDirection: actuales.sortField === campo && actuales.sortDirection === "asc" ? "desc" : "asc"
+    }));
     setPage(0);
   };
 
@@ -203,12 +208,6 @@ export default function UnidadesMedidaPage() {
         }
       />
 
-      {loadingLista && (
-        <div className="alert alert-info">
-          Cargando unidades de medida...
-        </div>
-      )}
-
       {error && (
         <div className="alert alert-danger">
           {error}
@@ -223,7 +222,7 @@ export default function UnidadesMedidaPage() {
                 type="text"
                 className="form-control"
                 placeholder="Buscar por nombre, simbolo, tipo o estado..."
-                value={busqueda}
+                value={busquedaInput}
                 onChange={cambiarBusqueda}
               />
             </div>

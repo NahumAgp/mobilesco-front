@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
+import useDebouncedValue from "../../../hooks/useDebouncedValue.js";
 import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
+import usePersistedState from "../../../hooks/usePersistedState.js";
 import { useNavigate } from "react-router-dom";
 
 import { useCategorias } from "../hooks/useCategorias";
@@ -12,6 +14,12 @@ import CatalogFilters from "../../../components/ui/CatalogFilters.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
 import "./CategoriaPage.css";
 
+const FILTROS_DEFAULT = {
+  busqueda: "",
+  filtroEstatus: "TODOS",
+  soloActivos: false
+};
+
 export default function CategoriaPage() {
   const navigate = useNavigate();
 
@@ -22,16 +30,16 @@ export default function CategoriaPage() {
   const PAGE_SIZE = 10;
   const [exportandoExcel, setExportandoExcel] = useState(false);
 
-  const [busqueda, setBusqueda] = useState("");
-  const [filtroEstatus, setFiltroEstatus] = useState("TODOS");
-  const [soloActivos, setSoloActivos] = useState(false);
+  const [filtros, setFiltros] = usePersistedState("categorias:filtros", FILTROS_DEFAULT);
+  const { busqueda: busquedaInput, filtroEstatus, soloActivos } = filtros;
+  const busqueda = useDebouncedValue(busquedaInput, 350);
   const activo = filtroEstatus === "TODOS" && !soloActivos
     ? undefined
     : filtroEstatus === "INACTIVO"
       ? false
       : true;
 
-  const { categorias, pageInfo, loadingLista, error, recargar } = useCategorias({
+  const { categorias, pageInfo, error, recargar } = useCategorias({
     page,
     size: PAGE_SIZE,
     busqueda,
@@ -68,7 +76,7 @@ export default function CategoriaPage() {
 
       const blob = await categoriaGateway.exportarCategoriasExcel({
         activo: filtroEstatus === "TODOS" ? undefined : filtroEstatus === "ACTIVO",
-        busqueda: busqueda || undefined
+        busqueda: busquedaInput.trim() || undefined
       });
 
       const url = window.URL.createObjectURL(blob);
@@ -128,18 +136,15 @@ export default function CategoriaPage() {
         }
       />
 
-      {loadingLista && <div className="alert alert-info">Cargando categorías…</div>}
-
       {error && <div className="alert alert-danger">{error}</div>}
 
       <CatalogFilters
         className="categorias-filters-card"
         onClear={() => {
-          setBusqueda("");
-          setFiltroEstatus("TODOS");
-          setSoloActivos(false);
+          setFiltros(FILTROS_DEFAULT);
+          setPage(0);
         }}
-        clearDisabled={!busqueda && filtroEstatus === "TODOS" && !soloActivos}
+        clearDisabled={!busquedaInput && filtroEstatus === "TODOS" && !soloActivos}
       >
             <div className="col-md-6">
               <label className="form-label" htmlFor="categorias-busqueda">Búsqueda</label>
@@ -148,14 +153,25 @@ export default function CategoriaPage() {
                 type="text"
                 className="form-control"
                 placeholder="Código, nombre o descripción"
-                value={busqueda}
-                onChange={(e) => setBusqueda(e.target.value)}
+                value={busquedaInput}
+                onChange={(e) => {
+                  setFiltros((actuales) => ({ ...actuales, busqueda: e.target.value }));
+                  setPage(0);
+                }}
               />
             </div>
 
             <div className="col-md-3">
               <label className="form-label" htmlFor="categorias-estado">Estado</label>
-              <select id="categorias-estado" className="form-select" value={filtroEstatus} onChange={(e) => setFiltroEstatus(e.target.value)}>
+              <select
+                id="categorias-estado"
+                className="form-select"
+                value={filtroEstatus}
+                onChange={(e) => {
+                  setFiltros((actuales) => ({ ...actuales, filtroEstatus: e.target.value }));
+                  setPage(0);
+                }}
+              >
                 <option value="TODOS">Todos</option>
                 <option value="ACTIVO">Activos</option>
                 <option value="INACTIVO">Inactivos</option>
@@ -168,7 +184,10 @@ export default function CategoriaPage() {
                   className="form-check-input"
                   type="checkbox"
                   checked={soloActivos}
-                  onChange={() => setSoloActivos(!soloActivos)}
+                  onChange={() => {
+                    setFiltros((actuales) => ({ ...actuales, soloActivos: !soloActivos }));
+                    setPage(0);
+                  }}
                 />
                 <label className="form-check-label">Solo activos</label>
               </div>

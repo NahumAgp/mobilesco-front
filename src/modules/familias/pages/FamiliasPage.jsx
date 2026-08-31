@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import useDebouncedValue from "../../../hooks/useDebouncedValue.js";
 import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
+import usePersistedState from "../../../hooks/usePersistedState.js";
 import { useNavigate } from "react-router-dom";
 
 import { useFamilias } from "../hooks/useFamilias";
@@ -15,6 +17,11 @@ import { getUser, hasPermission } from "../../auth/services/authService";
 import "./FamiliasPage.css";
 
 const PAGE_SIZE = 10;
+const FILTROS_DEFAULT = {
+  busqueda: "",
+  lineaFiltroId: "",
+  soloActivos: false
+};
 
 export default function FamiliasPage() {
   const navigate = useNavigate();
@@ -25,13 +32,13 @@ export default function FamiliasPage() {
   const [toastType, setToastType] = useState("success");
   const [page, setPage] = useState(() => getInitialPaginationPage("familias"));
   usePersistedPagination("familias", page);
-  const [busqueda, setBusqueda] = useState("");
-  const [lineaFiltroId, setLineaFiltroId] = useState("");
-  const [soloActivos, setSoloActivos] = useState(false);
+  const [filtros, setFiltros] = usePersistedState("familias:filtros", FILTROS_DEFAULT);
+  const { busqueda: busquedaInput, lineaFiltroId, soloActivos } = filtros;
   const [sortField, setSortField] = useState("nombre");
   const [sortDirection, setSortDirection] = useState("asc");
   const [lineasDisponibles, setLineasDisponibles] = useState([]);
   const [exportandoExcel, setExportandoExcel] = useState(false);
+  const busqueda = useDebouncedValue(busquedaInput, 350);
   const terminoBusqueda = busqueda.toLowerCase().trim().replace(/\s+/g, " ");
   const lineaFiltroNormalizado = lineaFiltroId ? String(lineaFiltroId) : "";
 
@@ -83,7 +90,7 @@ export default function FamiliasPage() {
     };
   }, []);
 
-  const hayFiltrosActivos = Boolean(terminoBusqueda) || Boolean(lineaFiltroNormalizado) || soloActivos;
+  const hayFiltrosActivos = Boolean(busquedaInput.trim()) || Boolean(lineaFiltroNormalizado) || soloActivos;
   const mostrarVacio = !loadingLista && !error && !hayFiltrosActivos && totalElements === 0;
   const mostrarSinCoincidencias = !loadingLista && !error && hayFiltrosActivos && totalElements === 0;
 
@@ -122,7 +129,7 @@ export default function FamiliasPage() {
 
       const blob = await familiaGateway.exportarFamiliasExcel({
         activo: soloActivos ? true : undefined,
-        busqueda: terminoBusqueda || undefined,
+        busqueda: busquedaInput.toLowerCase().trim().replace(/\s+/g, " ") || undefined,
         lineaId: lineaFiltroId || undefined,
         sortBy: sortField,
         direction: sortDirection
@@ -148,17 +155,17 @@ export default function FamiliasPage() {
   };
 
   const cambiarBusqueda = (e) => {
-    setBusqueda(e.target.value);
+    setFiltros((actuales) => ({ ...actuales, busqueda: e.target.value }));
     setPage(0);
   };
 
   const cambiarLineaFiltro = (e) => {
-    setLineaFiltroId(e.target.value);
+    setFiltros((actuales) => ({ ...actuales, lineaFiltroId: e.target.value }));
     setPage(0);
   };
 
   const cambiarSoloActivos = (e) => {
-    setSoloActivos(e.target.checked);
+    setFiltros((actuales) => ({ ...actuales, soloActivos: e.target.checked }));
     setPage(0);
   };
 
@@ -204,12 +211,6 @@ export default function FamiliasPage() {
         }
       />
 
-      {loadingLista && (
-        <div className="alert alert-info">
-          Cargando familias...
-        </div>
-      )}
-
       {error && (
         <div className="alert alert-danger">
           {error}
@@ -224,7 +225,7 @@ export default function FamiliasPage() {
                 type="text"
                 className="form-control"
                 placeholder="Buscar por codigo, nombre, descripcion o linea..."
-                value={busqueda}
+                value={busquedaInput}
                 onChange={cambiarBusqueda}
               />
             </div>
