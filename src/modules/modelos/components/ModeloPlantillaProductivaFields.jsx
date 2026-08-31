@@ -695,7 +695,7 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
                     <label className="form-label fw-semibold mb-0">Insumos de la categoria</label>
                   </div>
                   <div className="d-flex flex-column gap-3">
-                    {renderInsumosSection(categoria, categoriaIndex)}
+                    {materiales.length === 0 && renderInsumosSection(categoria, categoriaIndex)}
                     {materiales.map((material) => renderInsumosSection(categoria, categoriaIndex, material))}
                   </div>
                 </div>
