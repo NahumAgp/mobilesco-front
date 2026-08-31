@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
 
 import CatalogPagination from "../../../components/ui/CatalogPagination.jsx";
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
@@ -35,7 +36,8 @@ export default function AreasTrabajoPage() {
   const [editando, setEditando] = useState(null);
   const [busqueda, setBusqueda] = useState("");
   const [soloActivas, setSoloActivas] = useState(false);
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(() => getInitialPaginationPage("areas-trabajo"));
+  usePersistedPagination("areas-trabajo", page);
   const [loading, setLoading] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");

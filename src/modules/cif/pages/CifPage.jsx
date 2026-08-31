@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
 import { useLocation, useNavigate } from "react-router-dom";
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
 import CatalogPagination from "../../../components/ui/CatalogPagination.jsx";
@@ -59,7 +60,8 @@ export default function CifPage() {
   const [resumen, setResumen] = useState(null);
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("TODOS");
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(() => getInitialPaginationPage("cif"));
+  usePersistedPagination("cif", page);
   const [loading, setLoading] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [toast, setToast] = useState({ message: "", type: "success" });

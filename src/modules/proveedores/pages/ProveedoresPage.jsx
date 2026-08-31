@@ -1,4 +1,5 @@
 ﻿import React, { useEffect, useMemo, useState } from "react";
+import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
 import { useNavigate } from "react-router-dom";
 
 import { useProveedores } from "../hooks/useProveedores";
@@ -27,7 +28,8 @@ export default function ProveedoresPage() {
   const [busqueda, setBusqueda] = useState("");
   const [tipoInsumo, setTipoInsumo] = useState("");
   const [soloActivos, setSoloActivos] = useState(false);
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(() => getInitialPaginationPage("proveedores"));
+  usePersistedPagination("proveedores", page);
   const [tiposInsumo, setTiposInsumo] = useState([]);
   const [proveedorPorCambiar, setProveedorPorCambiar] = useState(null);
   const [cambiandoEstado, setCambiandoEstado] = useState(false);

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
 import {
   marcarNotificacionLeida,
   marcarTodasNotificacionesLeidas,
@@ -17,7 +18,8 @@ const tipoClase = {
 export default function NotificacionesPage() {
   const navigate = useNavigate();
   const [soloNoLeidas, setSoloNoLeidas] = useState(false);
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(() => getInitialPaginationPage("notificaciones"));
+  usePersistedPagination("notificaciones", page);
   const [resultado, setResultado] = useState({ content: [], totalPages: 0, totalElements: 0 });
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");

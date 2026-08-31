@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
 import { useNavigate } from "react-router-dom";
 
 import { useOperaciones } from "../hooks/useOperaciones";
@@ -23,7 +24,8 @@ export default function OperacionesPage() {
   const [filtroEstatus, setFiltroEstatus] = useState("TODOS");
   const [soloActivos, setSoloActivos] = useState(false);
   const [filtroCentroTrabajo, setFiltroCentroTrabajo] = useState("");
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(() => getInitialPaginationPage("operaciones"));
+  usePersistedPagination("operaciones", page);
   const [operacionPorEliminar, setOperacionPorEliminar] = useState(null);
   const [eliminando, setEliminando] = useState(false);
   const activo = filtroEstatus === "TODOS" && !soloActivos

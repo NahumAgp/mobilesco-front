@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
 import { useNavigate } from "react-router-dom";
 
 import { useEmpleado } from "../hooks/useEmpleado";
@@ -19,7 +20,8 @@ export default function EmpleadoPage() {
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstatus, setFiltroEstatus] = useState("TODOS");
   const [soloActivos, setSoloActivos] = useState(false);
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(() => getInitialPaginationPage("empleados"));
+  usePersistedPagination("empleados", page);
   const currentUser = getUser();
   const puedeEditarEmpleado = hasPermission(currentUser, "ACTION_EMPLOYEES_EDIT");
   const puedeCambiarEstadoEmpleado = hasPermission(currentUser, "ACTION_EMPLOYEES_STATUS");

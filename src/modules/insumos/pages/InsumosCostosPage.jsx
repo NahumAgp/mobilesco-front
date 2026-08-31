@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
 import { useNavigate } from "react-router-dom";
 
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
@@ -67,7 +68,8 @@ export default function InsumosCostosPage() {
     page: 0,
     size: PAGE_SIZE
   });
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(() => getInitialPaginationPage("insumos-costos"));
+  usePersistedPagination("insumos-costos", page);
   const [busqueda, setBusqueda] = useState("");
   const [sortField, setSortField] = useState("nombre");
   const [sortDirection, setSortDirection] = useState("asc");

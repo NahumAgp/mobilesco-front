@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { getInitialPaginationPage, usePersistedPagination } from "../../../../hooks/usePersistedPagination.js";
 import { useNavigate } from "react-router-dom";
 import ProductoWizard from "./components/ProductoWizard";
 import { actualizarModelo, subirImagenModelo } from "../../../modelos/services/modelos";
@@ -150,7 +151,8 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
   const [errorLista, setErrorLista] = useState("");
   const [mensaje, setMensaje] = useState("");
   const [tipoMensaje, setTipoMensaje] = useState("success");
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(() => getInitialPaginationPage("productos-completos"));
+  usePersistedPagination("productos-completos", page);
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstatus, setFiltroEstatus] = useState("TODOS");
   const [filtroModelo, setFiltroModelo] = useState("");

@@ -1,4 +1,5 @@
 // pages/Materiales/MaterialesPage.jsx
+import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -21,7 +22,8 @@ export default function MaterialesPage() {
 
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(() => getInitialPaginationPage("materiales"));
+  usePersistedPagination("materiales", page);
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstatus, setFiltroEstatus] = useState("TODOS");
   const [soloActivos, setSoloActivos] = useState(false);

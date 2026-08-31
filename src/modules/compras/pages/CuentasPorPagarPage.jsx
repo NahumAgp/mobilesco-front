@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
 import { useNavigate } from "react-router-dom";
 
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
@@ -71,7 +72,8 @@ export default function CuentasPorPagarPage() {
   const [estado, setEstado] = useState("TODOS");
   const [mesInicio, setMesInicio] = useState("");
   const [mesFin, setMesFin] = useState("");
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(() => getInitialPaginationPage("cuentas-por-pagar"));
+  usePersistedPagination("cuentas-por-pagar", page);
   const [cuentasReporte, setCuentasReporte] = useState([]);
   const [exportandoExcel, setExportandoExcel] = useState(false);
   const [toastMessage, setToastMessage] = useState("");

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
 import { useNavigate } from "react-router-dom";
 
 import { useCentrosTrabajo } from "../hooks/useCentrosTrabajo";
@@ -24,7 +25,8 @@ export default function CentrosTrabajoPage() {
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstatus, setFiltroEstatus] = useState("TODOS");
   const [soloActivos, setSoloActivos] = useState(false);
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(() => getInitialPaginationPage("centros-trabajo"));
+  usePersistedPagination("centros-trabajo", page);
 
   const {
     centrosTrabajo,

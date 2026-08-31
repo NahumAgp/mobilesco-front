@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
 import { useNavigate } from "react-router-dom";
 
 import { useCategorias } from "../hooks/useCategorias";
@@ -16,7 +17,8 @@ export default function CategoriaPage() {
 
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(() => getInitialPaginationPage("categorias"));
+  usePersistedPagination("categorias", page);
   const PAGE_SIZE = 10;
   const [exportandoExcel, setExportandoExcel] = useState(false);
 

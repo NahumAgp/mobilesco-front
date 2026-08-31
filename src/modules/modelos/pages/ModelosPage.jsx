@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
 import { useNavigate } from "react-router-dom";
 
 import { useModelos } from "../hooks/useModelos.js";
@@ -30,7 +31,8 @@ export default function ModelosPage() {
 
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(() => getInitialPaginationPage("modelos"));
+  usePersistedPagination("modelos", page);
   const [busqueda, setBusqueda] = useState("");
   const [filtroFamilia, setFiltroFamilia] = useState("");
   const [filtroEstatus, setFiltroEstatus] = useState("TODOS");

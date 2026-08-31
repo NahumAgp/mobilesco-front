@@ -127,6 +127,9 @@ export default function OperacionForm({
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (esModal) {
+      e.stopPropagation();
+    }
 
     // Convertir valores vacíos a null para números
     const dataToSend = {

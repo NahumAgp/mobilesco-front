@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { getInitialPaginationPage, usePersistedPagination } from "../../../../hooks/usePersistedPagination.js";
 import { useNavigate } from "react-router-dom";
 
 import PageHeader from "../../../../components/Sistema/PageHeader.jsx";
@@ -19,7 +20,8 @@ export default function ProductosPage() {
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstatus, setFiltroEstatus] = useState("TODOS");
   const [soloActivos, setSoloActivos] = useState(false);
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(() => getInitialPaginationPage("productos"));
+  usePersistedPagination("productos", page);
   const [productoPorDesactivar, setProductoPorDesactivar] = useState(null);
   const [desactivando, setDesactivando] = useState(false);
 

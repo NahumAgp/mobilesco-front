@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
 import { useNavigate } from "react-router-dom";
 
 import { useColor } from "../hooks/useColor.js";
@@ -18,7 +19,8 @@ export default function ColorPage() {
 
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(() => getInitialPaginationPage("colores"));
+  usePersistedPagination("colores", page);
 
   const [busqueda, setBusqueda] = useState("");
   const { colores, pageInfo, loadingLista, error, recargar } = useColor({

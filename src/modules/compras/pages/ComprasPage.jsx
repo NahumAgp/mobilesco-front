@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
 import { useNavigate } from "react-router-dom";
 
 import { useCompras } from "../hooks/useCompras";
@@ -24,7 +25,8 @@ export default function ComprasPage() {
   const [filtroProveedor, setFiltroProveedor] = useState("");
   const [fechaInicio, setFechaInicio] = useState("");
   const [fechaFin, setFechaFin] = useState("");
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(() => getInitialPaginationPage("compras"));
+  usePersistedPagination("compras", page);
   const [compraPorEliminar, setCompraPorEliminar] = useState(null);
   const [compraPorConfirmar, setCompraPorConfirmar] = useState(null);
   const [eliminando, setEliminando] = useState(false);

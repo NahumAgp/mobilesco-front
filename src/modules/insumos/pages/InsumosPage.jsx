@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { useInsumos } from "../hooks/useInsumos";
@@ -45,7 +46,8 @@ export default function InsumosPage() {
 
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(() => getInitialPaginationPage("insumos"));
+  usePersistedPagination("insumos", page);
   const [busquedaInput, setBusquedaInput] = useState("");
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstatus, setFiltroEstatus] = useState("TODOS");

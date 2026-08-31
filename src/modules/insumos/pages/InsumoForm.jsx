@@ -228,6 +228,9 @@ export default function InsumoForm({
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (esModal) {
+      e.stopPropagation();
+    }
 
     try {
       setErroresBackend({});

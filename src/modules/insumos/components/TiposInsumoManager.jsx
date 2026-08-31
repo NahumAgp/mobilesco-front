@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
 import CatalogPagination from "../../../components/ui/CatalogPagination.jsx";
 import CatalogStatusBadge from "../../../components/ui/CatalogStatusBadge";
 import {
@@ -40,7 +41,8 @@ export default function TiposInsumoManager({
   const canEdit = puedeEditar ?? puedeGestionar ?? false;
   const canChangeStatus = puedeCambiarEstado ?? puedeGestionar ?? false;
   const [tipos, setTipos] = useState([]);
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(() => getInitialPaginationPage("tipos-insumo"));
+  usePersistedPagination("tipos-insumo", page);
   const [pageInfo, setPageInfo] = useState(PAGE_INFO_DEFAULT);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);

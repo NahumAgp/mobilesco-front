@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
 import { useNavigate } from "react-router-dom";
 
 import CatalogPagination from "../../../components/ui/CatalogPagination.jsx";
@@ -28,7 +29,8 @@ export default function SubfamiliasPage() {
   const canCreate = hasPermission(getUser(), "ACTION_SUBFAMILIES_CREATE");
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(() => getInitialPaginationPage("subfamilias"));
+  usePersistedPagination("subfamilias", page);
   const [busqueda, setBusqueda] = useState("");
   const [familiaFiltroId, setFamiliaFiltroId] = useState("");
   const [soloActivos, setSoloActivos] = useState(false);

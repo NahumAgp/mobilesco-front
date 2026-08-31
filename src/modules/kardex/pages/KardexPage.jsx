@@ -1,4 +1,5 @@
 import React, { useCallback, useState, useEffect } from "react";
+import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
 import { useLocation, useNavigate } from "react-router-dom";
 import { obtenerInsumos } from "../../insumos/services/insumos.js";
 import { obtenerCompraPorId } from "../../compras/services/compras.js";
@@ -46,7 +47,8 @@ export default function KardexPage() {
   const [movimientos, setMovimientos] = useState([]);
   const [insumoSeleccionado, setInsumoSeleccionado] = useState("");
   const [costoPromedio, setCostoPromedio] = useState(0);
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(() => getInitialPaginationPage("kardex"));
+  usePersistedPagination("kardex", page);
   const [pageInfo, setPageInfo] = useState(PAGE_INFO_DEFAULT);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");

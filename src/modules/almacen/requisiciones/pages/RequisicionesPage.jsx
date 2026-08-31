@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { getInitialPaginationPage, usePersistedPagination } from "../../../../hooks/usePersistedPagination.js";
 import { useNavigate } from "react-router-dom";
 
 import { getUser, hasPermission } from "../../../auth/services/authService";
@@ -16,7 +17,8 @@ export default function RequisicionesPage() {
   const navigate = useNavigate();
   const puedeCrear = hasPermission(getUser(), "ACTION_WAREHOUSE_REQUISITIONS_CREATE");
   const [filtros, setFiltros] = useState({ busqueda: "", estado: "" });
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(() => getInitialPaginationPage("almacen-requisiciones"));
+  usePersistedPagination("almacen-requisiciones", page);
   const [resultado, setResultado] = useState({ content: [], totalElements: 0, totalPages: 0 });
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");

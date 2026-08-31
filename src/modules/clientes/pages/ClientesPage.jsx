@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
 import { useNavigate } from "react-router-dom";
 
 import CatalogRowActions from "../../../components/ui/CatalogRowActions";
@@ -20,7 +21,8 @@ export default function ClientesPage() {
   const navigate = useNavigate();
   const puedeCrear = hasPermission(getUser(), "ACTION_CUSTOMERS_CREATE");
   const [filtros, setFiltros] = useState(estadoInicial);
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(() => getInitialPaginationPage("clientes"));
+  usePersistedPagination("clientes", page);
   const [resultado, setResultado] = useState({ content: [], totalPages: 0, totalElements: 0 });
   const [clasificaciones, setClasificaciones] = useState([]);
   const [cargando, setCargando] = useState(true);

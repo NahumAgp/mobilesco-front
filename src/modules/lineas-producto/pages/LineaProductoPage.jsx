@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
 import { useNavigate } from "react-router-dom";
 
 import { useLineasProducto } from "../hooks/useLineasProducto";
@@ -20,7 +21,8 @@ export default function LineaProductoPage() {
 
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(() => getInitialPaginationPage("lineas-producto"));
+  usePersistedPagination("lineas-producto", page);
   const [busqueda, setBusqueda] = useState("");
   const [soloActivos, setSoloActivos] = useState(false);
   const [sortField, setSortField] = useState("nombre");

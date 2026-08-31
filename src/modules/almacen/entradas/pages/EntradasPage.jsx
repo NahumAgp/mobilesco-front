@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useState } from "react";
+import { getInitialPaginationPage, usePersistedPagination } from "../../../../hooks/usePersistedPagination.js";
 import { useNavigate } from "react-router-dom";
 
 import PageHeader from "../../../../components/Sistema/PageHeader.jsx";
@@ -147,7 +148,8 @@ export default function EntradasPage() {
   const [toastType, setToastType] = useState("success");
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("TODOS");
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(() => getInitialPaginationPage("almacen-entradas"));
+  usePersistedPagination("almacen-entradas", page);
   const [historialAbiertoId, setHistorialAbiertoId] = useState(null);
   const [historialCargandoPorCompra, setHistorialCargandoPorCompra] = useState({});
   const [historialPorCompra, setHistorialPorCompra] = useState({});

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import CatalogPagination from "../../../components/ui/CatalogPagination.jsx";
+import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
 import {
   createInvitation,
   createRole,
@@ -101,9 +102,11 @@ export default function UsuariosAccesoPage() {
   const [success, setSuccess] = useState("");
   const [tokenGenerado, setTokenGenerado] = useState("");
   const [busquedaRoles, setBusquedaRoles] = useState("");
-  const [pageRoles, setPageRoles] = useState(0);
+  const [pageRoles, setPageRoles] = useState(() => getInitialPaginationPage("usuarios-roles"));
   const [pageInfoRoles, setPageInfoRoles] = useState(PAGE_INFO_ROLES_DEFAULT);
-  const [pageUsuarios, setPageUsuarios] = useState(0);
+  const [pageUsuarios, setPageUsuarios] = useState(() => getInitialPaginationPage("usuarios-acceso"));
+  usePersistedPagination("usuarios-roles", pageRoles);
+  usePersistedPagination("usuarios-acceso", pageUsuarios);
   const [pageInfoUsuarios, setPageInfoUsuarios] = useState(PAGE_INFO_USERS_DEFAULT);
   const [mostrarNuevoRol, setMostrarNuevoRol] = useState(false);
   const [rolSeleccionadoId, setRolSeleccionadoId] = useState(null);

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import Toast from "../../../components/ui/Toast.jsx";
+import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
 import { getUser, hasPermission } from "../../auth/services/authService.js";
 import { eliminarSalidaInsumo, obtenerSalidasInsumos } from "../services/salidasInsumos.js";
 
@@ -50,7 +51,8 @@ export default function SalidasInsumosPage() {
   const [filtroResponsable, setFiltroResponsable] = useState("");
   const [fechaInicio, setFechaInicio] = useState("");
   const [fechaFin, setFechaFin] = useState("");
-  const [paginaActual, setPaginaActual] = useState(0);
+  const [paginaActual, setPaginaActual] = useState(() => getInitialPaginationPage("salidas-insumos"));
+  usePersistedPagination("salidas-insumos", paginaActual);
   const [pageInfo, setPageInfo] = useState(PAGE_INFO_DEFAULT);
 
   const cargarSalidas = useCallback(async () => {

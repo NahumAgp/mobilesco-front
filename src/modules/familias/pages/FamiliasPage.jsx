@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
 import { useNavigate } from "react-router-dom";
 
 import { useFamilias } from "../hooks/useFamilias";
@@ -21,7 +22,8 @@ export default function FamiliasPage() {
 
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(() => getInitialPaginationPage("familias"));
+  usePersistedPagination("familias", page);
   const [busqueda, setBusqueda] = useState("");
   const [lineaFiltroId, setLineaFiltroId] = useState("");
   const [soloActivos, setSoloActivos] = useState(false);
