@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import CatalogPagination from "../../../components/ui/CatalogPagination.jsx";
+import useDebouncedValue from "../../../hooks/useDebouncedValue.js";
+import usePersistedState from "../../../hooks/usePersistedState.js";
 import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
 import {
   createInvitation,
@@ -89,7 +91,7 @@ function groupPermissionsByModule(permisos = []) {
 }
 
 export default function UsuariosAccesoPage() {
-  const [activeTab, setActiveTab] = useState("usuarios");
+  const [activeTab, setActiveTab] = usePersistedState("usuarios-acceso:tab", "usuarios");
   const [roles, setRoles] = useState([]);
   const [rolesConfig, setRolesConfig] = useState([]);
   const [rolesCatalogo, setRolesCatalogo] = useState([]);
@@ -101,7 +103,8 @@ export default function UsuariosAccesoPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [tokenGenerado, setTokenGenerado] = useState("");
-  const [busquedaRoles, setBusquedaRoles] = useState("");
+  const [busquedaRoles, setBusquedaRoles] = usePersistedState("usuarios-roles:busqueda", "");
+  const busquedaRolesDebounced = useDebouncedValue(busquedaRoles, 350);
   const [pageRoles, setPageRoles] = useState(() => getInitialPaginationPage("usuarios-roles"));
   const [pageInfoRoles, setPageInfoRoles] = useState(PAGE_INFO_ROLES_DEFAULT);
   const [pageUsuarios, setPageUsuarios] = useState(() => getInitialPaginationPage("usuarios-acceso"));
@@ -198,7 +201,7 @@ export default function UsuariosAccesoPage() {
         getRolesConfig({
           page: pageRoles,
           size: PAGE_SIZE_ROLES,
-          busqueda: busquedaRoles,
+          busqueda: busquedaRolesDebounced,
           sortBy: "name",
           direction: "asc"
         }),
@@ -236,7 +239,7 @@ export default function UsuariosAccesoPage() {
     } finally {
       setLoading(false);
     }
-  }, [busquedaRoles, pageRoles, pageUsuarios]);
+  }, [busquedaRolesDebounced, pageRoles, pageUsuarios]);
 
   useEffect(() => {
     cargarDatos();

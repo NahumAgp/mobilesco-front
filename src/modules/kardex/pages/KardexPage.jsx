@@ -1,4 +1,5 @@
 import React, { useCallback, useState, useEffect } from "react";
+import usePersistedState from "../../../hooks/usePersistedState.js";
 import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
 import { useLocation, useNavigate } from "react-router-dom";
 import { obtenerInsumos } from "../../insumos/services/insumos.js";
@@ -16,6 +17,11 @@ const PAGE_INFO_DEFAULT = {
   totalElements: 0,
   totalPages: 0
 };
+
+const getDefaultFechaInicio = () =>
+  new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split("T")[0];
+
+const getDefaultFechaFin = () => new Date().toISOString().split("T")[0];
 
 function obtenerNombreProveedorCompra(compra) {
   if (!compra) return "";
@@ -45,7 +51,7 @@ export default function KardexPage() {
   
   const [insumos, setInsumos] = useState([]);
   const [movimientos, setMovimientos] = useState([]);
-  const [insumoSeleccionado, setInsumoSeleccionado] = useState("");
+  const [insumoSeleccionado, setInsumoSeleccionado] = usePersistedState("kardex:insumo", "");
   const [costoPromedio, setCostoPromedio] = useState(0);
   const [page, setPage] = useState(() => getInitialPaginationPage("kardex"));
   usePersistedPagination("kardex", page);
@@ -54,13 +60,9 @@ export default function KardexPage() {
   const [error, setError] = useState("");
   
   // Filtros de fecha
-  const [fechaInicio, setFechaInicio] = useState(
-    new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0]
-  );
-  const [fechaFin, setFechaFin] = useState(
-    new Date().toISOString().split('T')[0]
-  );
-  const [usarFiltroFechas, setUsarFiltroFechas] = useState(false);
+  const [fechaInicio, setFechaInicio] = usePersistedState("kardex:fecha-inicio", getDefaultFechaInicio());
+  const [fechaFin, setFechaFin] = usePersistedState("kardex:fecha-fin", getDefaultFechaFin());
+  const [usarFiltroFechas, setUsarFiltroFechas] = usePersistedState("kardex:usar-fechas", false);
 
   const completarDatosCompras = useCallback(async (movimientosBase) => {
     const compraIds = [...new Set(
@@ -117,7 +119,7 @@ export default function KardexPage() {
     if (insumoIdParam) {
       setInsumoSeleccionado(insumoIdParam);
     }
-  }, [location.search]);
+  }, [location.search, setInsumoSeleccionado]);
 
   const handleConsultar = useCallback(async ({ mostrarAviso = true, pageOverride = 0 } = {}) => {
     if (!insumoSeleccionado) {

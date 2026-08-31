@@ -1,17 +1,21 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Factory, Plus, Search, TriangleAlert } from "lucide-react";
+import useDebouncedValue from "../../../hooks/useDebouncedValue.js";
+import usePersistedState from "../../../hooks/usePersistedState.js";
 import { getUser, hasPermission } from "../../auth/services/authService";
 import { listarOrdenesProduccion } from "../services/ordenesProduccion";
 import "./ordenesProduccion.css";
 
 const ESTADOS = { BORRADOR: "Borrador", LIBERADA: "Liberada", EN_PROCESO: "En proceso", TERMINADA: "Terminada", CANCELADA: "Cancelada" };
+const FILTROS_DEFAULT = { busqueda: "", estado: "", origen: "" };
 
 export default function OrdenesProduccionPage() {
   const navigate = useNavigate();
   const puedeCrear = hasPermission(getUser(), "ACTION_PRODUCTION_ORDERS_CREATE");
   const [items, setItems] = useState([]);
-  const [filtros, setFiltros] = useState({ busqueda: "", estado: "", origen: "" });
+  const [filtros, setFiltros] = usePersistedState("ordenes-produccion:filtros", FILTROS_DEFAULT);
+  const busquedaDebounced = useDebouncedValue(filtros.busqueda, 350);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
 
@@ -19,14 +23,19 @@ export default function OrdenesProduccionPage() {
     const timer = setTimeout(async () => {
       try {
         setCargando(true);
-        const data = await listarOrdenesProduccion({ ...filtros, size: 50 });
+        const data = await listarOrdenesProduccion({
+          busqueda: busquedaDebounced,
+          estado: filtros.estado,
+          origen: filtros.origen,
+          size: 50
+        });
         setItems(data.content || []);
         setError("");
       } catch (err) { setError(err.message || "No fue posible cargar las órdenes"); }
       finally { setCargando(false); }
-    }, 250);
+    }, 150);
     return () => clearTimeout(timer);
-  }, [filtros]);
+  }, [busquedaDebounced, filtros.estado, filtros.origen]);
 
   const set = (key, value) => setFiltros((current) => ({ ...current, [key]: value }));
   return <div className="op-page">
@@ -46,7 +55,7 @@ export default function OrdenesProduccionPage() {
         <td><div className="progress" title={`${item.porcentajeAvance || 0}%`}><div className="progress-bar" style={{ width: `${Math.min(100, item.porcentajeAvance || 0)}%` }} /></div><small>{item.porcentajeAvance || 0}%</small></td>
         <td><span className={`op-status op-status-${item.estado.toLowerCase()}`}>{ESTADOS[item.estado]}</span></td>
       </tr>)}</tbody></table>
-      {cargando && <div className="op-empty">Cargando órdenes…</div>}{!cargando && !items.length && <div className="op-empty">No hay órdenes con estos filtros.</div>}
+      {!cargando && !items.length && <div className="op-empty">No hay órdenes con estos filtros.</div>}
     </section>
   </div>;
 }

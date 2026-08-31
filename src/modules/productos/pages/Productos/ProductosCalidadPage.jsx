@@ -2,10 +2,16 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import PageHeader from "../../../../components/Sistema/PageHeader";
+import useDebouncedValue from "../../../../hooks/useDebouncedValue.js";
+import usePersistedState from "../../../../hooks/usePersistedState.js";
 import { obtenerProductos } from "../../services/productos";
 import "./ProductosCalidadPage.css";
 
 const FETCH_PAGE_SIZE = 200;
+const FILTROS_DEFAULT = {
+  busqueda: "",
+  problema: "todos"
+};
 
 const PROBLEMAS = [
   { key: "imagen", label: "Sin imagen", icon: "bi-image", tone: "warning" },
@@ -96,8 +102,8 @@ export default function ProductosCalidadPage() {
   const [productos, setProductos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [busqueda, setBusqueda] = useState("");
-  const [filtroProblema, setFiltroProblema] = useState("todos");
+  const [filtros, setFiltros] = usePersistedState("productos-calidad:filtros", FILTROS_DEFAULT);
+  const busquedaDebounced = useDebouncedValue(filtros.busqueda, 250);
 
   const cargarProductos = useCallback(async () => {
     setLoading(true);
@@ -167,13 +173,13 @@ export default function ProductosCalidadPage() {
   }, [productosEvaluados]);
 
   const productosFiltrados = useMemo(() => {
-    const termino = normalizar(busqueda);
+    const termino = normalizar(busquedaDebounced);
 
     return productosEvaluados.filter((producto) => {
       const coincideProblema =
-        filtroProblema === "todos" ||
-        (filtroProblema === "completos" && producto._problemas.length === 0) ||
-        producto._problemas.some((problema) => problema.key === filtroProblema);
+        filtros.problema === "todos" ||
+        (filtros.problema === "completos" && producto._problemas.length === 0) ||
+        producto._problemas.some((problema) => problema.key === filtros.problema);
 
       if (!coincideProblema) return false;
       if (!termino) return true;
@@ -190,7 +196,7 @@ export default function ProductosCalidadPage() {
 
       return normalizar(texto).includes(termino);
     });
-  }, [busqueda, filtroProblema, productosEvaluados]);
+  }, [busquedaDebounced, filtros.problema, productosEvaluados]);
 
   const porcentajeCompleto = resumen.total ? Math.round((resumen.completos / resumen.total) * 100) : 0;
 
@@ -223,8 +229,8 @@ export default function ProductosCalidadPage() {
       <div className="productos-calidad-metrics">
         <button
           type="button"
-          className={`productos-calidad-metric ${filtroProblema === "todos" ? "is-active" : ""}`}
-          onClick={() => setFiltroProblema("todos")}
+          className={`productos-calidad-metric ${filtros.problema === "todos" ? "is-active" : ""}`}
+          onClick={() => setFiltros((current) => ({ ...current, problema: "todos" }))}
         >
           <i className="bi bi-list-check"></i>
           <span>Revisados</span>
@@ -232,8 +238,8 @@ export default function ProductosCalidadPage() {
         </button>
         <button
           type="button"
-          className={`productos-calidad-metric ${filtroProblema === "completos" ? "is-active" : ""}`}
-          onClick={() => setFiltroProblema("completos")}
+          className={`productos-calidad-metric ${filtros.problema === "completos" ? "is-active" : ""}`}
+          onClick={() => setFiltros((current) => ({ ...current, problema: "completos" }))}
         >
           <i className="bi bi-check2-circle"></i>
           <span>Completos</span>
@@ -243,8 +249,8 @@ export default function ProductosCalidadPage() {
           <button
             type="button"
             key={problema.key}
-            className={`productos-calidad-metric tone-${problema.tone} ${filtroProblema === problema.key ? "is-active" : ""}`}
-            onClick={() => setFiltroProblema(problema.key)}
+            className={`productos-calidad-metric tone-${problema.tone} ${filtros.problema === problema.key ? "is-active" : ""}`}
+            onClick={() => setFiltros((current) => ({ ...current, problema: problema.key }))}
           >
             <i className={`bi ${problema.icon}`}></i>
             <span>{problema.label}</span>
@@ -258,12 +264,12 @@ export default function ProductosCalidadPage() {
           <i className="bi bi-search"></i>
           <input
             type="search"
-            value={busqueda}
+            value={filtros.busqueda}
             placeholder="Buscar por SKU, nombre, ruta, material o color"
-            onChange={(event) => setBusqueda(event.target.value)}
+            onChange={(event) => setFiltros((current) => ({ ...current, busqueda: event.target.value }))}
           />
         </div>
-        <select className="form-select" value={filtroProblema} onChange={(event) => setFiltroProblema(event.target.value)}>
+        <select className="form-select" value={filtros.problema} onChange={(event) => setFiltros((current) => ({ ...current, problema: event.target.value }))}>
           <option value="todos">Todos los productos</option>
           <option value="completos">Solo completos</option>
           {PROBLEMAS.map((problema) => (
@@ -274,9 +280,7 @@ export default function ProductosCalidadPage() {
       </div>
 
       <div className="productos-calidad-table">
-        {loading ? (
-          <div className="productos-calidad-empty">Cargando revision de productos...</div>
-        ) : productosFiltrados.length === 0 ? (
+        {!loading && productosFiltrados.length === 0 ? (
           <div className="productos-calidad-empty">No hay productos con esos filtros.</div>
         ) : (
           <table className="table align-middle mb-0">

@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import useDebouncedValue from "../../../hooks/useDebouncedValue.js";
+import usePersistedState from "../../../hooks/usePersistedState.js";
 import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
 import { useLocation, useNavigate } from "react-router-dom";
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
@@ -21,6 +23,10 @@ const PAGE_INFO_DEFAULT = {
   size: PAGE_SIZE,
   totalElements: 0,
   totalPages: 0
+};
+const FILTROS_DEFAULT = {
+  busqueda: "",
+  estado: "TODOS"
 };
 
 function isConfiguracionCifError(error) {
@@ -58,8 +64,8 @@ export default function CifPage() {
   const [pageInfo, setPageInfo] = useState(PAGE_INFO_DEFAULT);
   const [configuracion, setConfiguracion] = useState(null);
   const [resumen, setResumen] = useState(null);
-  const [busqueda, setBusqueda] = useState("");
-  const [filtroEstado, setFiltroEstado] = useState("TODOS");
+  const [filtros, setFiltros] = usePersistedState("cif:filtros", FILTROS_DEFAULT);
+  const busquedaDebounced = useDebouncedValue(filtros.busqueda, 350);
   const [page, setPage] = useState(() => getInitialPaginationPage("cif"));
   usePersistedPagination("cif", page);
   const [loading, setLoading] = useState(true);
@@ -90,12 +96,12 @@ export default function CifPage() {
   const cargarDatos = useCallback(async (pagina = page) => {
     try {
       setLoading(true);
-      const activo = filtroEstado === "TODOS" ? undefined : filtroEstado === "ACTIVO";
+      const activo = filtros.estado === "TODOS" ? undefined : filtros.estado === "ACTIVO";
       const [conceptosResp, configResp, resumenResp] = await Promise.all([
         obtenerConceptosCif({
           page: pagina,
           size: PAGE_SIZE,
-          busqueda,
+          busqueda: busquedaDebounced,
           activo
         }),
         obtenerConfiguracionCif(),
@@ -122,7 +128,7 @@ export default function CifPage() {
     } finally {
       setLoading(false);
     }
-  }, [busqueda, filtroEstado, page]);
+  }, [busquedaDebounced, filtros.estado, page]);
 
   useEffect(() => {
     cargarDatos(page);
@@ -318,9 +324,9 @@ export default function CifPage() {
               <input
                 className="form-control"
                 placeholder="Buscar por nombre o descripcion..."
-                value={busqueda}
+                value={filtros.busqueda}
                 onChange={(e) => {
-                  setBusqueda(e.target.value);
+                  setFiltros((current) => ({ ...current, busqueda: e.target.value }));
                   setPage(0);
                 }}
               />
@@ -328,9 +334,9 @@ export default function CifPage() {
             <div className="col-12 col-md-3">
               <select
                 className="form-select"
-                value={filtroEstado}
+                value={filtros.estado}
                 onChange={(e) => {
-                  setFiltroEstado(e.target.value);
+                  setFiltros((current) => ({ ...current, estado: e.target.value }));
                   setPage(0);
                 }}
               >
@@ -341,63 +347,59 @@ export default function CifPage() {
             </div>
           </div>
 
-          {loading ? (
-            <div className="alert alert-info mb-0">Cargando CIF...</div>
-          ) : (
-            <div className="table-responsive">
-              <table className="table table-hover align-middle mb-0">
-                <thead className="table-light">
-                  <tr className="text-center">
-                    <th>Concepto</th>
-                    <th>Tipo</th>
-                    <th>Periodo</th>
-                    <th>Monto</th>
-                    <th>Mensual</th>
-                    <th>Costo/min</th>
-                    <th>Estado</th>
-                    <th>Acciones</th>
+          <div className="table-responsive">
+            <table className="table table-hover align-middle mb-0">
+              <thead className="table-light">
+                <tr className="text-center">
+                  <th>Concepto</th>
+                  <th>Tipo</th>
+                  <th>Periodo</th>
+                  <th>Monto</th>
+                  <th>Mensual</th>
+                  <th>Costo/min</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="text-center">
+                {conceptos.map((concepto) => (
+                  <tr key={concepto.id}>
+                    <td className="text-start">
+                      <div className="fw-semibold">{concepto.nombre}</div>
+                      {concepto.descripcion && <div className="text-muted small">{concepto.descripcion}</div>}
+                    </td>
+                    <td>{concepto.tipo === "VARIABLE" ? "Variable" : "Fijo"}</td>
+                    <td>{concepto.periodicidad || "MENSUAL"}</td>
+                    <td className="fw-semibold">{formatCurrency(concepto.monto ?? concepto.montoMensual)}</td>
+                    <td>{formatCurrency(concepto.montoMensualEquivalente)}</td>
+                    <td className="fw-bold text-success">{formatCurrency(concepto.costoMinuto)}</td>
+                    <td>
+                      <span className={`badge ${concepto.activo ? "text-bg-success" : "text-bg-secondary"}`}>
+                        {concepto.activo ? "Activo" : "Inactivo"}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="d-flex justify-content-center gap-2">
+                        <button className="btn btn-outline-primary btn-sm" disabled={!puedeGestionar} onClick={() => navigate(`/cif/${concepto.id}`)}>
+                          <i className="bi bi-pencil me-1" />
+                          Editar
+                        </button>
+                        <button className={`btn btn-sm ${concepto.activo ? "btn-outline-danger" : "btn-outline-success"}`} disabled={!puedeGestionar} onClick={() => alternarEstado(concepto)}>
+                          <i className={`bi ${concepto.activo ? "bi-toggle-off" : "bi-toggle-on"} me-1`} />
+                          {concepto.activo ? "Desactivar" : "Activar"}
+                        </button>
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="text-center">
-                  {conceptos.map((concepto) => (
-                    <tr key={concepto.id}>
-                      <td className="text-start">
-                        <div className="fw-semibold">{concepto.nombre}</div>
-                        {concepto.descripcion && <div className="text-muted small">{concepto.descripcion}</div>}
-                      </td>
-                      <td>{concepto.tipo === "VARIABLE" ? "Variable" : "Fijo"}</td>
-                      <td>{concepto.periodicidad || "MENSUAL"}</td>
-                      <td className="fw-semibold">{formatCurrency(concepto.monto ?? concepto.montoMensual)}</td>
-                      <td>{formatCurrency(concepto.montoMensualEquivalente)}</td>
-                      <td className="fw-bold text-success">{formatCurrency(concepto.costoMinuto)}</td>
-                      <td>
-                        <span className={`badge ${concepto.activo ? "text-bg-success" : "text-bg-secondary"}`}>
-                          {concepto.activo ? "Activo" : "Inactivo"}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="d-flex justify-content-center gap-2">
-                          <button className="btn btn-outline-primary btn-sm" disabled={!puedeGestionar} onClick={() => navigate(`/cif/${concepto.id}`)}>
-                            <i className="bi bi-pencil me-1" />
-                            Editar
-                          </button>
-                          <button className={`btn btn-sm ${concepto.activo ? "btn-outline-danger" : "btn-outline-success"}`} disabled={!puedeGestionar} onClick={() => alternarEstado(concepto)}>
-                            <i className={`bi ${concepto.activo ? "bi-toggle-off" : "bi-toggle-on"} me-1`} />
-                            {concepto.activo ? "Desactivar" : "Activar"}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {!conceptos.length && (
-                    <tr>
-                      <td colSpan="8" className="text-muted py-4">No hay conceptos CIF para mostrar.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
+                ))}
+                {!conceptos.length && (
+                  <tr>
+                    <td colSpan="8" className="text-muted py-4">No hay conceptos CIF para mostrar.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
           {totalElements > 0 && (
             <CatalogPagination
               currentPage={paginaActual}

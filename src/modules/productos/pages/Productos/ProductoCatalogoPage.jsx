@@ -2,11 +2,17 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import PageHeader from "../../../../components/Sistema/PageHeader";
+import useDebouncedValue from "../../../../hooks/useDebouncedValue.js";
+import usePersistedState from "../../../../hooks/usePersistedState.js";
 import { API_BASE_URL } from "../../../../config/apiConfig";
 import { obtenerProductos } from "../../services/productos";
 import "./ProductoCatalogoPage.css";
 
 const LOAD_SIZE = 100;
+const FILTROS_DEFAULT = {
+  busqueda: "",
+  soloActivos: true
+};
 
 const COLOR_FALLBACKS = [
   { pattern: /blanco|white/i, value: "#f8fafc" },
@@ -339,8 +345,8 @@ export default function ProductoCatalogoPage() {
   const [productos, setProductos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [busqueda, setBusqueda] = useState("");
-  const [soloActivos, setSoloActivos] = useState(true);
+  const [filtros, setFiltros] = usePersistedState("productos-catalogo:filtros", FILTROS_DEFAULT);
+  const busquedaDebounced = useDebouncedValue(filtros.busqueda, 350);
   const [lineaSeleccionada, setLineaSeleccionada] = useState("");
   const [familiaSeleccionada, setFamiliaSeleccionada] = useState("");
   const [subfamiliaSeleccionada, setSubfamiliaSeleccionada] = useState("");
@@ -352,8 +358,8 @@ export default function ProductoCatalogoPage() {
         setLoading(true);
         setError("");
         const parametros = {
-          busqueda,
-          activo: soloActivos ? true : undefined,
+          busqueda: busquedaDebounced,
+          activo: filtros.soloActivos ? true : undefined,
           sortBy: "modeloNombre",
           direction: "asc"
         };
@@ -378,7 +384,7 @@ export default function ProductoCatalogoPage() {
     };
 
     cargarProductos();
-  }, [busqueda, soloActivos]);
+  }, [busquedaDebounced, filtros.soloActivos]);
 
   const lineas = useMemo(() => {
     const mapa = new Map();
@@ -578,16 +584,16 @@ export default function ProductoCatalogoPage() {
           <i className="bi bi-search"></i>
           <input
             type="search"
-            value={busqueda}
-            onChange={(event) => setBusqueda(event.target.value)}
+            value={filtros.busqueda}
+            onChange={(event) => setFiltros((current) => ({ ...current, busqueda: event.target.value }))}
             placeholder="Buscar por SKU, modelo, familia, color o material..."
           />
         </div>
         <label className="producto-catalogo-toggle">
           <input
             type="checkbox"
-            checked={soloActivos}
-            onChange={(event) => setSoloActivos(event.target.checked)}
+            checked={filtros.soloActivos}
+            onChange={(event) => setFiltros((current) => ({ ...current, soloActivos: event.target.checked }))}
           />
           <span>Solo activos</span>
         </label>
@@ -619,7 +625,6 @@ export default function ProductoCatalogoPage() {
         </nav>
       )}
 
-      {loading && <div className="alert alert-info">Cargando catalogo visual...</div>}
       {error && <div className="alert alert-danger">{error}</div>}
 
       {!loading && !error && !productoSeleccionado && (

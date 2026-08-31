@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Download, Eye, Factory, MessageCircle, Plus, Search } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import useDebouncedValue from "../../../hooks/useDebouncedValue.js";
+import usePersistedState from "../../../hooks/usePersistedState.js";
 import { listarCotizaciones, obtenerCotizacion } from "../services/cotizaciones";
 import { descargarPdfCotizacion, compartirCotizacionWhatsApp } from "../utils/cotizacionPdf";
 import "./cotizaciones.css";
@@ -12,6 +14,10 @@ const estados = {
   RECHAZADA: "Rechazada", VENCIDA: "Vencida", COMPLETADA: "Completada", CANCELADA: "Cancelada",
 };
 const moneda = (value) => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(value || 0);
+const FILTROS_DEFAULT = {
+  busqueda: "",
+  estado: ""
+};
 
 export default function Cotizaciones() {
   const navigate = useNavigate();
@@ -19,8 +25,8 @@ export default function Cotizaciones() {
   const puedeCrearOrden = hasPermission(getUser(), "VIEW_PRODUCTION_ORDERS") && hasPermission(getUser(), "ACTION_PRODUCTION_ORDERS_CREATE");
   const [searchParams] = useSearchParams();
   const [items, setItems] = useState([]);
-  const [busqueda, setBusqueda] = useState("");
-  const [estado, setEstado] = useState("");
+  const [filtros, setFiltros] = usePersistedState("cotizaciones:filtros", FILTROS_DEFAULT);
+  const busquedaDebounced = useDebouncedValue(filtros.busqueda, 350);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
   const [detalle, setDetalle] = useState(null);
@@ -30,7 +36,7 @@ export default function Cotizaciones() {
     const timer = setTimeout(async () => {
       setCargando(true);
       try {
-        const data = await listarCotizaciones({ busqueda, estado, size: 50 });
+        const data = await listarCotizaciones({ busqueda: busquedaDebounced, estado: filtros.estado, size: 50 });
         setItems(data.content || []);
         setError("");
       } catch (e) {
@@ -40,7 +46,7 @@ export default function Cotizaciones() {
       }
     }, 300);
     return () => clearTimeout(timer);
-  }, [busqueda, estado]);
+  }, [busquedaDebounced, filtros.estado]);
 
   useEffect(() => {
     if (!cotizacionInicial) return;
@@ -67,8 +73,8 @@ export default function Cotizaciones() {
         {puedeCrear && <button className="cot-primary cot-new-button" onClick={() => navigate("/cotizaciones/nueva")}><span className="cot-new-button-icon"><Plus size={20} /></span><span>Nueva cotización</span></button>}
       </header>
       <section className="cot-card cot-filters">
-        <label className="cot-search"><Search size={18} /><input value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder="Buscar por folio o cliente..." /></label>
-        <select value={estado} onChange={(e) => setEstado(e.target.value)}>
+        <label className="cot-search"><Search size={18} /><input value={filtros.busqueda} onChange={(e) => setFiltros((current) => ({ ...current, busqueda: e.target.value }))} placeholder="Buscar por folio o cliente..." /></label>
+        <select value={filtros.estado} onChange={(e) => setFiltros((current) => ({ ...current, estado: e.target.value }))}>
           <option value="">Todos los estados</option>
           {Object.entries(estados).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
         </select>
@@ -93,7 +99,6 @@ export default function Cotizaciones() {
             ))}
           </tbody>
         </table>
-        {cargando && <div className="cot-empty">Cargando cotizaciones...</div>}
         {!cargando && !items.length && <div className="cot-empty">No hay cotizaciones con estos filtros.</div>}
       </section>
       {detalle && <div className="cot-modal-backdrop" onClick={() => setDetalle(null)}>
