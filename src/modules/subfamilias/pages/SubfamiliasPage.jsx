@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import CatalogPagination from "../../../components/ui/CatalogPagination.jsx";
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
+import { uniqueOptionsByLabel } from "../../../utils/uniqueOptions.js";
 import { obtenerFamiliasActivas } from "../../familias/services/familias.js";
 import { useSubfamilias } from "../hooks/useSubfamilias.js";
 import SubfamiliasTable from "./SubfamiliasTable.jsx";
@@ -60,7 +61,7 @@ export default function SubfamiliasPage() {
 
   useEffect(() => {
     obtenerFamiliasActivas()
-      .then((respuesta) => setFamiliasDisponibles(getLista(respuesta)))
+      .then((respuesta) => setFamiliasDisponibles(uniqueOptionsByLabel(getLista(respuesta), getFamiliaLabel)))
       .catch(() => setFamiliasDisponibles([]));
   }, []);
 

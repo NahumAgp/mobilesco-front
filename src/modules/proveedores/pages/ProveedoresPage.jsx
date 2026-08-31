@@ -10,6 +10,7 @@ import CatalogPagination from "../../../components/ui/CatalogPagination.jsx";
 import CatalogFilters from "../../../components/ui/CatalogFilters.jsx";
 import ConfirmationDialog from "../../../components/ui/ConfirmationDialog.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
+import { uniqueOptionsByLabel } from "../../../utils/uniqueOptions.js";
 import {
   exportarProveedoresExcel
 } from "../services/proveedores.js";
@@ -213,7 +214,7 @@ export default function ProveedoresPage() {
                 onChange={cambiarTipoInsumo}
               >
                 <option value="">Todos los tipos</option>
-                {tiposInsumo.map((tipo) => (
+                {uniqueOptionsByLabel(tiposInsumo, (tipo) => tipo?.nombre || tipo?.codigo).map((tipo) => (
                   <option key={tipo.id || tipo.codigo} value={tipo.codigo}>
                     {tipo.nombre}
                   </option>

@@ -10,6 +10,7 @@ import FamiliasTable from "./FamiliasTable";
 import PageHeader from "../../../components/Sistema/PageHeader";
 import CatalogPagination from "../../../components/ui/CatalogPagination";
 import Toast from "../../../components/ui/Toast";
+import { uniqueOptionsByLabel } from "../../../utils/uniqueOptions.js";
 import { getUser, hasPermission } from "../../auth/services/authService";
 import "./FamiliasPage.css";
 
@@ -66,7 +67,7 @@ export default function FamiliasPage() {
             : [];
 
         if (activo) {
-          setLineasDisponibles(lista);
+          setLineasDisponibles(uniqueOptionsByLabel(lista, (linea) => linea?.nombre || linea?.codigo));
         }
       } catch {
         if (activo) {

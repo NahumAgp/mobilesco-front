@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 
 import CatalogRowActions from "../../../components/ui/CatalogRowActions";
 import CatalogStatusBadge from "../../../components/ui/CatalogStatusBadge";
+import { uniqueOptionsByValue } from "../../../utils/uniqueOptions.js";
 import { getUser, hasPermission } from "../../auth/services/authService";
 import {
   cambiarEstatusCliente,
@@ -51,6 +52,7 @@ export default function ClientesPage() {
 
   useEffect(() => {
     obtenerClasificacionesCliente()
+      .then((items) => uniqueOptionsByValue(items, (item) => item?.codigo || item?.etiqueta))
       .then(setClasificaciones)
       .catch(() => setClasificaciones([]));
   }, []);

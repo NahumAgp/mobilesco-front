@@ -10,6 +10,7 @@ import ModelosTable from "./ModelosTable.jsx";
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
 import CatalogPagination from "../../../components/ui/CatalogPagination.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
+import { uniqueOptionsByLabel } from "../../../utils/uniqueOptions.js";
 import { getUser, hasPermission } from "../../auth/services/authService";
 import "./ModelosPage.css";
 
@@ -76,12 +77,13 @@ export default function ModelosPage() {
       try {
         const data = await familiaGateway.obtenerFamiliasActivas();
         const lista = Array.isArray(data) ? data : Array.isArray(data?.content) ? data.content : [];
-        const opciones = lista
+        const opcionesBase = lista
           .map((familia) => ({
             id: familia.id ?? familia.familiaId,
             label: getFamiliaLabel(familia) || familia.nombre || familia.codigo || `Familia ${familia.id ?? familia.familiaId}`
           }))
-          .filter((familia) => familia.id && familia.label)
+          .filter((familia) => familia.id && familia.label);
+        const opciones = uniqueOptionsByLabel(opcionesBase, (familia) => familia.label)
           .sort((a, b) => a.label.localeCompare(b.label, "es"));
 
         if (activo) {

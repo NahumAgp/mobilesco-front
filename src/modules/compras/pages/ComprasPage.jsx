@@ -9,6 +9,7 @@ import CatalogFilters from "../../../components/ui/CatalogFilters.jsx";
 import CatalogPagination from "../../../components/ui/CatalogPagination.jsx";
 import ConfirmationDialog from "../../../components/ui/ConfirmationDialog.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
+import { uniqueOptionsByValue } from "../../../utils/uniqueOptions.js";
 import { getUser, hasPermission } from "../../auth/services/authService.js";
 const PAGE_SIZE = 10;
 
@@ -91,7 +92,10 @@ export default function ComprasPage() {
     setFechaFin("");
   };
 
-  const proveedoresUnicos = [...new Set(compras.map((compra) => compra.proveedorRazonSocial).filter(Boolean))];
+  const proveedoresUnicos = uniqueOptionsByValue(
+    compras.map((compra) => compra.proveedorRazonSocial).filter(Boolean),
+    (proveedor) => proveedor
+  );
 
   useEffect(() => {
     setPage(0);

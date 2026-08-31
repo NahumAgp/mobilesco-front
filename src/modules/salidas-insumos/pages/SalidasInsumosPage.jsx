@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 import Toast from "../../../components/ui/Toast.jsx";
 import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
+import { uniqueOptionsByValue } from "../../../utils/uniqueOptions.js";
 import { getUser, hasPermission } from "../../auth/services/authService.js";
 import { eliminarSalidaInsumo, obtenerSalidasInsumos } from "../services/salidasInsumos.js";
 
@@ -86,12 +87,18 @@ export default function SalidasInsumosPage() {
   }, [cargarSalidas]);
 
   const areas = useMemo(
-    () => [...new Set(salidas.map((salida) => salida.area).filter(Boolean))].sort(),
+    () => uniqueOptionsByValue(
+      salidas.map((salida) => salida.area).filter(Boolean),
+      (area) => area
+    ).sort(),
     [salidas]
   );
 
   const responsables = useMemo(
-    () => [...new Set(salidas.map((salida) => salida.responsable).filter(Boolean))].sort(),
+    () => uniqueOptionsByValue(
+      salidas.map((salida) => salida.responsable).filter(Boolean),
+      (responsable) => responsable
+    ).sort(),
     [salidas]
   );
 

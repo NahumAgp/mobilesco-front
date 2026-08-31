@@ -13,6 +13,7 @@ import ProductosListadoTable from "./components/ProductosListadoTable";
 import PageHeader from "../../../../components/Sistema/PageHeader";
 import CatalogPagination from "../../../../components/ui/CatalogPagination";
 import Toast from "../../../../components/ui/Toast";
+import { uniqueOptionsByLabel } from "../../../../utils/uniqueOptions.js";
 import { getUser, hasPermission } from "../../../auth/services/authService.js";
 import SkuRevalidationModal from "./components/SkuRevalidationModal.jsx";
 import "./ProductosCompletosPage.css";
@@ -625,23 +626,29 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
   );
 
   const modelosDisponibles = useMemo(() => {
-    return modelosCatalogo
+    const opciones = modelosCatalogo
       .map((modelo) => ({ id: modelo?.id, nombre: modelo?.nombre }))
-      .filter((modelo) => modelo.id && modelo.nombre)
+      .filter((modelo) => modelo.id && modelo.nombre);
+
+    return uniqueOptionsByLabel(opciones, (modelo) => modelo.nombre)
       .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
   }, [modelosCatalogo]);
 
   const nivelesDisponibles = useMemo(() => {
-    return categoriasCatalogo
+    const opciones = categoriasCatalogo
       .map((nivel) => ({ id: nivel?.id, nombre: nivel?.nombre }))
-      .filter((nivel) => nivel.id && nivel.nombre)
+      .filter((nivel) => nivel.id && nivel.nombre);
+
+    return uniqueOptionsByLabel(opciones, (nivel) => nivel.nombre)
       .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
   }, [categoriasCatalogo]);
 
   const coloresDisponibles = useMemo(() => {
-    return coloresCatalogo
+    const opciones = coloresCatalogo
       .map((color) => ({ id: color?.id, nombre: color?.nombre }))
-      .filter((color) => color.id && color.nombre)
+      .filter((color) => color.id && color.nombre);
+
+    return uniqueOptionsByLabel(opciones, (color) => color.nombre)
       .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
   }, [coloresCatalogo]);
 

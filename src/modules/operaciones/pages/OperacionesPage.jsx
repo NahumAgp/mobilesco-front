@@ -10,6 +10,7 @@ import CatalogFilters from "../../../components/ui/CatalogFilters.jsx";
 import ConfirmationDialog from "../../../components/ui/ConfirmationDialog.jsx";
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
+import { uniqueOptionsByValue } from "../../../utils/uniqueOptions.js";
 import { getUser, hasPermission } from "../../auth/services/authService";
 
 const PAGE_SIZE = 10;
@@ -60,7 +61,10 @@ export default function OperacionesPage() {
   }, [page, totalPages]);
 
   const centrosUnicos = useMemo(
-    () => [...new Set(operaciones.map((op) => op.centroTrabajoNombre).filter(Boolean))].sort(),
+    () => uniqueOptionsByValue(
+      operaciones.map((op) => op.centroTrabajoNombre).filter(Boolean),
+      (centro) => centro
+    ).sort(),
     [operaciones]
   );
 
