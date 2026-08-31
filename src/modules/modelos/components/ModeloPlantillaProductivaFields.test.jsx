@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import ModeloPlantillaProductivaFields from "./ModeloPlantillaProductivaFields.jsx";
+import { obtenerInsumos } from "../../insumos/services/insumos.js";
 
 vi.mock("../../insumos/services/insumos.js", () => ({
   obtenerInsumos: vi.fn().mockResolvedValue([])
@@ -66,6 +67,24 @@ function renderConEstado(categoriasIniciales = categoriasBase) {
   };
 }
 
+function renderConMateriales(categoriasIniciales, materiales) {
+  function Wrapper() {
+    const [categorias, setCategorias] = useState(categoriasIniciales);
+    return (
+      <ModeloPlantillaProductivaFields
+        categorias={categorias}
+        materiales={materiales}
+        onCategoriasChange={setCategorias}
+      />
+    );
+  }
+
+  return {
+    user: userEvent.setup(),
+    ...render(<Wrapper />)
+  };
+}
+
 describe("ModeloPlantillaProductivaFields", () => {
   beforeEach(() => {
     window.localStorage.clear();
@@ -117,5 +136,38 @@ describe("ModeloPlantillaProductivaFields", () => {
     expect(within(secundaria).getByDisplayValue("9")).toBeInTheDocument();
     expect(within(secundaria).getByText(/Pintura/)).toBeInTheDocument();
     expect(within(secundaria).getByText("1 insumo pegado.")).toBeInTheDocument();
+  });
+
+  it("agrega un insumo solo al material seleccionado", async () => {
+    obtenerInsumos.mockResolvedValue([
+      { id: 21, codigo: "7500000002286", nombre: "ADHESIVO AMARILLO", unidadMedida: "pz" }
+    ]);
+
+    const materiales = [
+      { id: 1, codigo: "F", nombre: "FORMICA" },
+      { id: 2, codigo: "FD", nombre: "FORMICA DURANGO" },
+      { id: 3, codigo: "FM", nombre: "FORMICA MERIDA" }
+    ];
+    const { user, container } = renderConMateriales([
+      { id: 101, categoriaId: 1, nombre: "Primaria", insumos: [], operaciones: [] }
+    ], materiales);
+
+    const formica = screen.getByRole("group", { name: "Material [F] FORMICA" });
+    const durango = screen.getByRole("group", { name: "Material [FD] FORMICA DURANGO" });
+
+    await user.click(await within(formica).findByPlaceholderText("Buscar y agregar insumo..."));
+    await user.click(within(formica).getByRole("button", { name: "[7500000002286] ADHESIVO AMARILLO" }));
+
+    expect(container.querySelectorAll('[data-modelo-material-id="1"][data-modelo-insumo-id="21"]')).toHaveLength(3);
+    expect(container.querySelectorAll('[data-modelo-material-id="2"][data-modelo-insumo-id="21"]')).toHaveLength(0);
+    expect(container.querySelectorAll('[data-modelo-material-id="3"][data-modelo-insumo-id="21"]')).toHaveLength(0);
+
+    await user.click(await within(durango).findByPlaceholderText("Buscar y agregar insumo..."));
+    await user.click(within(durango).getByRole("button", { name: "[7500000002286] ADHESIVO AMARILLO" }));
+    await user.click(within(formica).getByRole("button", { name: "Eliminar ADHESIVO AMARILLO de [F] FORMICA" }));
+
+    expect(container.querySelectorAll('[data-modelo-material-id="1"][data-modelo-insumo-id="21"]')).toHaveLength(0);
+    expect(container.querySelectorAll('[data-modelo-material-id="2"][data-modelo-insumo-id="21"]')).toHaveLength(3);
+    expect(container.querySelectorAll('[data-modelo-material-id="3"][data-modelo-insumo-id="21"]')).toHaveLength(0);
   });
 });

@@ -15,7 +15,7 @@ const getLista = (respuesta) => {
 };
 
 const getId = (item) => item?.id ?? item?.insumoId ?? item?.operacionId ?? item?.insumo_id ?? item?.operacion_id ?? null;
-const getMaterialId = (item) => item?.materialId ?? item?.material_id ?? item?.id_material ?? item?.material?.id ?? null;
+const getMaterialId = (item) => item?.id ?? item?.materialId ?? item?.material_id ?? item?.id_material ?? null;
 const getMaterialLabel = (item) => `${item?.codigo ? `[${item.codigo}] ` : ""}${item?.nombre || "Material"}`;
 const getUnidad = (item) => item?.unidadMedida?.simbolo ?? item?.unidadMedida ?? item?.unidad_medida ?? "";
 const getDesperdicio = (item) => item?.desperdicioPorcentaje ?? item?.desperdicio_porcentaje ?? item?.desperdicio ?? 0;
@@ -36,8 +36,8 @@ const mergePorId = (...listas) => {
 const getCategoriaKey = (categoria, index) =>
   String(categoria?.categoriaId ?? categoria?.categoria_id ?? categoria?.id ?? `categoria-${index}`);
 
-const getInsumoMaterialId = (item) => getMaterialId(item);
-const getInsumoScopeKey = (item) => `${getMaterialId(item) ?? "comun"}::${getId(item) ?? ""}`;
+const getInsumoMaterialId = (item) => item?.materialId ?? item?.material_id ?? item?.id_material ?? item?.material?.id ?? null;
+const getInsumoScopeKey = (item) => `${getInsumoMaterialId(item) ?? "comun"}::${getId(item) ?? ""}`;
 const getSectionKey = (categoria, categoriaIndex, materialId = null) =>
   `${getCategoriaKey(categoria, categoriaIndex)}::${materialId ?? "comunes"}`;
 
@@ -46,7 +46,7 @@ const normalizarInsumoParaCopiar = (item) => ({
   codigo: item?.codigo ?? "",
   nombre: item?.nombre ?? "",
   unidadMedida: getUnidad(item),
-  materialId: getMaterialId(item),
+  materialId: getInsumoMaterialId(item),
   cantidad: item?.cantidad ?? "",
   desperdicioPorcentaje: getDesperdicio(item),
   costoCotizacion: getCostoCotizacion(item),
@@ -489,7 +489,7 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
     const sincronizando = sincronizandoCategoria === sectionKey;
 
     return (
-      <div key={materialKey} className="border rounded-3 p-3 bg-white">
+      <div key={materialKey} className="border rounded-3 p-3 bg-white" role="group" aria-label={`Material ${titulo}`}>
         <div className="d-flex justify-content-between align-items-center gap-2 mb-2 flex-wrap">
           <label className="form-label fw-semibold mb-0">{titulo}</label>
           <div className="d-flex align-items-center gap-2 flex-wrap">
@@ -644,7 +644,12 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
                       {subtotal.toLocaleString("es-MX", { style: "currency", currency: "MXN" })}
                     </td>
                     <td className="text-end" style={{ width: 52 }}>
-                      <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => quitarInsumo(categoriaIndex, getId(item), materialId)}>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-danger"
+                        onClick={() => quitarInsumo(categoriaIndex, getId(item), materialId)}
+                        aria-label={`Eliminar ${item.nombre || getId(item)} de ${titulo}`}
+                      >
                         <i className="bi bi-x-lg"></i>
                       </button>
                     </td>
