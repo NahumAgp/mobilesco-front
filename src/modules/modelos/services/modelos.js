@@ -14,6 +14,7 @@ export function obtenerModelos(params = {}) {
   const busqueda = typeof params === "object" ? params.busqueda : undefined;
   const activo = typeof params === "object" ? params.activo : undefined;
   const familiaId = typeof params === "object" ? params.familiaId : undefined;
+  const lineaId = typeof params === "object" ? params.lineaId : undefined;
 
   const searchParams = new URLSearchParams();
 
@@ -43,6 +44,10 @@ export function obtenerModelos(params = {}) {
 
   if (familiaId !== undefined && familiaId !== null && familiaId !== "") {
     searchParams.set("familiaId", String(familiaId));
+  }
+
+  if (lineaId !== undefined && lineaId !== null && lineaId !== "") {
+    searchParams.set("lineaId", String(lineaId));
   }
 
   const queryString = searchParams.toString();

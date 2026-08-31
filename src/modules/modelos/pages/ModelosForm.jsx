@@ -165,6 +165,7 @@ const getMaterialesDelModelo = (modelo = {}) => {
 };
 
 const getItemId = (item) => item?.id ?? item?.insumoId ?? item?.operacionId ?? item?.insumo_id ?? item?.operacion_id ?? null;
+const getMaterialId = (item) => item?.materialId ?? item?.material_id ?? item?.id_material ?? item?.material?.id ?? null;
 const getDesperdicioInsumo = (item) => item?.desperdicioPorcentaje ?? item?.desperdicio_porcentaje ?? item?.desperdicio ?? 0;
 const getCostoCotizacionInsumo = (item) => item?.costoCotizacion ?? item?.costo_cotizacion ?? item?.costo_cotizar ?? item?.costo ?? 0;
 
@@ -190,6 +191,9 @@ const getCategoriasDelModelo = (modelo = {}) => {
           ? categoria.insumos.map((insumo) => ({
               ...insumo,
               id: getItemId(insumo),
+              materialId: getMaterialId(insumo),
+              materialCodigo: insumo?.materialCodigo ?? insumo?.material_codigo ?? insumo?.material?.codigo ?? "",
+              materialNombre: insumo?.materialNombre ?? insumo?.material_nombre ?? insumo?.material?.nombre ?? "",
               cantidad: insumo?.cantidad ?? "",
               desperdicioPorcentaje: getDesperdicioInsumo(insumo),
               costoCotizacion: getCostoCotizacionInsumo(insumo),
@@ -598,6 +602,12 @@ export default function ModeloForm({
 
   const quitarMaterial = (materialId) => {
     setMaterialesSeleccionados((prev) => prev.filter((material) => String(material.id) !== String(materialId)));
+    setCategoriasSeleccionadas((prev) =>
+      prev.map((categoria) => ({
+        ...categoria,
+        insumos: (categoria.insumos || []).filter((insumo) => String(getMaterialId(insumo) ?? "") !== String(materialId))
+      }))
+    );
   };
 
   const manejarMaterialCreado = async (materialCreado) => {
@@ -853,6 +863,7 @@ export default function ModeloForm({
         insumos: (categoria.insumos || [])
           .map((insumo) => ({
             id: Number(getItemId(insumo)),
+            materialId: getMaterialId(insumo) ? Number(getMaterialId(insumo)) : null,
             cantidad: Number(insumo.cantidad),
             desperdicioPorcentaje: Number(getDesperdicioInsumo(insumo) || 0),
             costoCotizacion: Number(getCostoCotizacionInsumo(insumo) || 0)
@@ -1485,6 +1496,7 @@ export default function ModeloForm({
                 <ModeloPlantillaProductivaFields
                   modeloId={modelo?.id || modeloId}
                   categorias={categoriasSeleccionadas}
+                  materiales={materialesSeleccionados}
                   onCategoriasChange={setCategoriasSeleccionadas}
                 />
               </div>

@@ -15,6 +15,8 @@ const getLista = (respuesta) => {
 };
 
 const getId = (item) => item?.id ?? item?.insumoId ?? item?.operacionId ?? item?.insumo_id ?? item?.operacion_id ?? null;
+const getMaterialId = (item) => item?.materialId ?? item?.material_id ?? item?.id_material ?? item?.material?.id ?? null;
+const getMaterialLabel = (item) => `${item?.codigo ? `[${item.codigo}] ` : ""}${item?.nombre || "Material"}`;
 const getUnidad = (item) => item?.unidadMedida?.simbolo ?? item?.unidadMedida ?? item?.unidad_medida ?? "";
 const getDesperdicio = (item) => item?.desperdicioPorcentaje ?? item?.desperdicio_porcentaje ?? item?.desperdicio ?? 0;
 const getCostoCotizacion = (item) => item?.costoCotizacion ?? item?.costo_cotizacion ?? item?.costo_cotizar ?? item?.costo ?? 0;
@@ -34,13 +36,17 @@ const mergePorId = (...listas) => {
 const getCategoriaKey = (categoria, index) =>
   String(categoria?.categoriaId ?? categoria?.categoria_id ?? categoria?.id ?? `categoria-${index}`);
 
-const getInsumoKey = (item) => String(getId(item) ?? "");
+const getInsumoMaterialId = (item) => getMaterialId(item);
+const getInsumoScopeKey = (item) => `${getMaterialId(item) ?? "comun"}::${getId(item) ?? ""}`;
+const getSectionKey = (categoria, categoriaIndex, materialId = null) =>
+  `${getCategoriaKey(categoria, categoriaIndex)}::${materialId ?? "comunes"}`;
 
 const normalizarInsumoParaCopiar = (item) => ({
   id: getId(item),
   codigo: item?.codigo ?? "",
   nombre: item?.nombre ?? "",
   unidadMedida: getUnidad(item),
+  materialId: getMaterialId(item),
   cantidad: item?.cantidad ?? "",
   desperdicioPorcentaje: getDesperdicio(item),
   costoCotizacion: getCostoCotizacion(item),
@@ -82,7 +88,7 @@ function CatalogModal({ show, title, onClose, children }) {
   );
 }
 
-export default function ModeloPlantillaProductivaFields({ modeloId, categorias = [], onCategoriasChange }) {
+export default function ModeloPlantillaProductivaFields({ modeloId, categorias = [], materiales = [], onCategoriasChange }) {
   const [catalogoInsumos, setCatalogoInsumos] = useState([]);
   const [insumosBuscados, setInsumosBuscados] = useState([]);
   const [busquedaInsumo, setBusquedaInsumo] = useState("");
@@ -168,27 +174,27 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
     );
   };
 
-  const getSeleccionadosCategoria = (categoria, categoriaIndex) => {
-    const categoriaKey = getCategoriaKey(categoria, categoriaIndex);
-    return insumosSeleccionados[categoriaKey] || {};
+  const getSeleccionadosCategoria = (categoria, categoriaIndex, materialId = null) => {
+    const sectionKey = getSectionKey(categoria, categoriaIndex, materialId);
+    return insumosSeleccionados[sectionKey] || {};
   };
 
-  const limpiarSeleccionCategoria = (categoria, categoriaIndex) => {
-    const categoriaKey = getCategoriaKey(categoria, categoriaIndex);
+  const limpiarSeleccionCategoria = (categoria, categoriaIndex, materialId = null) => {
+    const sectionKey = getSectionKey(categoria, categoriaIndex, materialId);
     setInsumosSeleccionados((prev) => {
-      if (!prev[categoriaKey]) return prev;
+      if (!prev[sectionKey]) return prev;
       const siguiente = { ...prev };
-      delete siguiente[categoriaKey];
+      delete siguiente[sectionKey];
       return siguiente;
     });
   };
 
-  const toggleInsumoSeleccionado = (categoria, categoriaIndex, insumoId) => {
-    const categoriaKey = getCategoriaKey(categoria, categoriaIndex);
-    const insumoKey = String(insumoId);
+  const toggleInsumoSeleccionado = (categoria, categoriaIndex, item, materialId = null) => {
+    const sectionKey = getSectionKey(categoria, categoriaIndex, materialId);
+    const insumoKey = getInsumoScopeKey(item);
 
     setInsumosSeleccionados((prev) => {
-      const seleccionCategoria = { ...(prev[categoriaKey] || {}) };
+      const seleccionCategoria = { ...(prev[sectionKey] || {}) };
       if (seleccionCategoria[insumoKey]) {
         delete seleccionCategoria[insumoKey];
       } else {
@@ -197,30 +203,31 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
 
       return {
         ...prev,
-        [categoriaKey]: seleccionCategoria
+        [sectionKey]: seleccionCategoria
       };
     });
   };
 
-  const toggleTodosInsumos = (categoria, categoriaIndex, insumos) => {
-    const categoriaKey = getCategoriaKey(categoria, categoriaIndex);
-    const seleccionCategoria = insumosSeleccionados[categoriaKey] || {};
+  const toggleTodosInsumos = (categoria, categoriaIndex, insumos, materialId = null) => {
+    const sectionKey = getSectionKey(categoria, categoriaIndex, materialId);
+    const seleccionCategoria = insumosSeleccionados[sectionKey] || {};
     const todosSeleccionados =
-      insumos.length > 0 && insumos.every((item) => seleccionCategoria[getInsumoKey(item)]);
+      insumos.length > 0 && insumos.every((item) => seleccionCategoria[getInsumoScopeKey(item)]);
 
     setInsumosSeleccionados((prev) => ({
       ...prev,
-      [categoriaKey]: todosSeleccionados
+      [sectionKey]: todosSeleccionados
         ? {}
-        : Object.fromEntries(insumos.map((item) => [getInsumoKey(item), true]).filter(([key]) => key))
+        : Object.fromEntries(insumos.map((item) => [getInsumoScopeKey(item), true]).filter(([key]) => key))
     }));
   };
 
-  const copiarInsumosSeleccionados = (categoria, categoriaIndex) => {
-    const seleccionCategoria = getSeleccionadosCategoria(categoria, categoriaIndex);
+  const copiarInsumosSeleccionados = (categoria, categoriaIndex, materialId = null) => {
+    const seleccionCategoria = getSeleccionadosCategoria(categoria, categoriaIndex, materialId);
     const insumos = Array.isArray(categoria.insumos) ? categoria.insumos : [];
+    const insumosSeccion = insumos.filter((item) => String(getInsumoMaterialId(item) ?? "") === String(materialId ?? ""));
     const copiados = insumos
-      .filter((item) => seleccionCategoria[getInsumoKey(item)])
+      .filter((item) => insumosSeccion.includes(item) && seleccionCategoria[getInsumoScopeKey(item)])
       .map(normalizarInsumoParaCopiar);
 
     if (!copiados.length) return;
@@ -234,26 +241,31 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
     setClipboardInsumos(copiados);
     setMensajePegado((prev) => ({
       ...prev,
-      [getCategoriaKey(categoria, categoriaIndex)]: `${copiados.length} insumo${copiados.length === 1 ? "" : "s"} copiado${copiados.length === 1 ? "" : "s"}.`
+      [getSectionKey(categoria, categoriaIndex, materialId)]: `${copiados.length} insumo${copiados.length === 1 ? "" : "s"} copiado${copiados.length === 1 ? "" : "s"}.`
     }));
   };
 
-  const pegarInsumos = (categoriaIndex) => {
+  const pegarInsumos = (categoriaIndex, materialId = null) => {
     const copiados = clipboardInsumos.length ? clipboardInsumos : leerClipboardInsumos();
     const categoriaActual = categorias[categoriaIndex];
-    const categoriaKey = getCategoriaKey(categoriaActual, categoriaIndex);
+    const sectionKey = getSectionKey(categoriaActual, categoriaIndex, materialId);
 
     if (!copiados.length) return;
 
     let agregados = 0;
     actualizarCategoria(categoriaIndex, (categoria) => {
       const actuales = Array.isArray(categoria.insumos) ? categoria.insumos : [];
-      const idsActuales = new Set(actuales.map((item) => String(getId(item))));
+      const idsActuales = new Set(
+        actuales
+          .filter((item) => String(getInsumoMaterialId(item) ?? "") === String(materialId ?? ""))
+          .map((item) => String(getId(item)))
+      );
       const nuevos = copiados
         .filter((item) => !idsActuales.has(String(getId(item))))
         .map((item) => ({
           ...item,
           id: getId(item),
+          materialId,
           cantidad: item.cantidad ?? "",
           desperdicioPorcentaje: getDesperdicio(item),
           costoCotizacion: getCostoCotizacion(item),
@@ -272,27 +284,30 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
     setClipboardInsumos(copiados);
     setMensajePegado((prev) => ({
       ...prev,
-      [categoriaKey]: agregados
+      [sectionKey]: agregados
         ? `${agregados} insumo${agregados === 1 ? "" : "s"} pegado${agregados === 1 ? "" : "s"}.`
         : "No se pego ningun insumo porque ya estaban en esta categoria."
     }));
 
     if (agregados) {
-      limpiarSeleccionCategoria(categoriaActual, categoriaIndex);
+      limpiarSeleccionCategoria(categoriaActual, categoriaIndex, materialId);
     }
   };
 
-  const agregarInsumo = (categoriaIndex, id, opcion) => {
+  const agregarInsumo = (categoriaIndex, id, opcion, materialId = null) => {
     if (categoriaIndex === null || categoriaIndex === undefined || !id) return;
     const insumo = opcion || catalogoInsumosDisponible.find((item) => String(getId(item)) === String(id)) || { id };
     actualizarCategoria(categoriaIndex, (categoria) => {
       const actuales = Array.isArray(categoria.insumos) ? categoria.insumos : [];
-      if (actuales.some((item) => String(getId(item)) === String(getId(insumo)))) return categoria;
+      if (actuales.some((item) =>
+        String(getId(item)) === String(getId(insumo)) && String(getInsumoMaterialId(item) ?? "") === String(materialId ?? "")
+      )) return categoria;
       return {
         ...categoria,
         insumos: [...actuales, {
           ...insumo,
           id: getId(insumo),
+          materialId,
           cantidad: insumo.cantidad ?? "",
           desperdicioPorcentaje: getDesperdicio(insumo),
           costoCotizacion: getCostoCotizacion(insumo),
@@ -300,7 +315,7 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
         }]
       };
     });
-    setSelecciones((prev) => ({ ...prev, [`insumo-${categoriaIndex}`]: "" }));
+    setSelecciones((prev) => ({ ...prev, [`insumo-${categoriaIndex}-${materialId ?? "comunes"}`]: "" }));
   };
 
   const agregarOperacion = (categoriaIndex, id, opcion) => {
@@ -317,29 +332,29 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
     setSelecciones((prev) => ({ ...prev, [`operacion-${categoriaIndex}`]: "" }));
   };
 
-  const actualizarCantidadInsumo = (categoriaIndex, insumoId, cantidad) => {
+  const actualizarCantidadInsumo = (categoriaIndex, insumoId, cantidad, materialId = null) => {
     actualizarCategoria(categoriaIndex, (categoria) => ({
       ...categoria,
       insumos: (categoria.insumos || []).map((item) =>
-        String(getId(item)) === String(insumoId) ? { ...item, cantidad } : item
+        String(getId(item)) === String(insumoId) && String(getInsumoMaterialId(item) ?? "") === String(materialId ?? "") ? { ...item, cantidad } : item
       )
     }));
   };
 
-  const actualizarDesperdicioInsumo = (categoriaIndex, insumoId, desperdicioPorcentaje) => {
+  const actualizarDesperdicioInsumo = (categoriaIndex, insumoId, desperdicioPorcentaje, materialId = null) => {
     actualizarCategoria(categoriaIndex, (categoria) => ({
       ...categoria,
       insumos: (categoria.insumos || []).map((item) =>
-        String(getId(item)) === String(insumoId) ? { ...item, desperdicioPorcentaje } : item
+        String(getId(item)) === String(insumoId) && String(getInsumoMaterialId(item) ?? "") === String(materialId ?? "") ? { ...item, desperdicioPorcentaje } : item
       )
     }));
   };
 
-  const actualizarCostoInsumo = (categoriaIndex, insumoId, costoCotizacion) => {
+  const actualizarCostoInsumo = (categoriaIndex, insumoId, costoCotizacion, materialId = null) => {
     actualizarCategoria(categoriaIndex, (categoria) => ({
       ...categoria,
       insumos: (categoria.insumos || []).map((item) =>
-        String(getId(item)) === String(insumoId) ? { ...item, costoCotizacion } : item
+        String(getId(item)) === String(insumoId) && String(getInsumoMaterialId(item) ?? "") === String(materialId ?? "") ? { ...item, costoCotizacion } : item
       )
     }));
   };
@@ -353,21 +368,23 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
     }));
   };
 
-  const quitarInsumo = (categoriaIndex, insumoId) => {
+  const quitarInsumo = (categoriaIndex, insumoId, materialId = null) => {
     const categoriaActual = categorias[categoriaIndex];
-    const categoriaKey = getCategoriaKey(categoriaActual, categoriaIndex);
-    const insumoKey = String(insumoId);
+    const sectionKey = getSectionKey(categoriaActual, categoriaIndex, materialId);
+    const insumoKey = `${materialId ?? "comun"}::${insumoId}`;
     actualizarCategoria(categoriaIndex, (categoria) => ({
       ...categoria,
-      insumos: (categoria.insumos || []).filter((item) => String(getId(item)) !== String(insumoId))
+      insumos: (categoria.insumos || []).filter((item) =>
+        !(String(getId(item)) === String(insumoId) && String(getInsumoMaterialId(item) ?? "") === String(materialId ?? ""))
+      )
     }));
     setInsumosSeleccionados((prev) => {
-      if (!prev[categoriaKey]?.[insumoKey]) return prev;
-      const seleccionCategoria = { ...prev[categoriaKey] };
+      if (!prev[sectionKey]?.[insumoKey]) return prev;
+      const seleccionCategoria = { ...prev[sectionKey] };
       delete seleccionCategoria[insumoKey];
       return {
         ...prev,
-        [categoriaKey]: seleccionCategoria
+        [sectionKey]: seleccionCategoria
       };
     });
   };
@@ -386,6 +403,7 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
     const payload = insumos
       .map((item) => ({
         id: Number(getId(item)),
+        materialId: getInsumoMaterialId(item) ? Number(getInsumoMaterialId(item)) : null,
         cantidad: Number(item.cantidad),
         desperdicioPorcentaje: Number(getDesperdicio(item) || 0)
       }))
@@ -446,6 +464,183 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
     });
   };
 
+  const renderInsumosSection = (categoria, categoriaIndex, material = null) => {
+    const materialId = material ? getMaterialId(material) : null;
+    const materialKey = materialId ?? "comunes";
+    const insumos = (Array.isArray(categoria.insumos) ? categoria.insumos : [])
+      .filter((item) => String(getInsumoMaterialId(item) ?? "") === String(materialId ?? ""));
+    const insumosDisponibles = catalogoInsumosDisponible.filter(
+      (item) => !insumos.some((seleccionado) => String(getId(seleccionado)) === String(getId(item)))
+    );
+    const sectionKey = getSectionKey(categoria, categoriaIndex, materialId);
+    const seleccionInsumosCategoria = getSeleccionadosCategoria(categoria, categoriaIndex, materialId);
+    const totalSeleccionados = insumos.filter((item) => seleccionInsumosCategoria[getInsumoScopeKey(item)]).length;
+    const todosInsumosSeleccionados =
+      insumos.length > 0 && insumos.every((item) => seleccionInsumosCategoria[getInsumoScopeKey(item)]);
+    const titulo = material ? getMaterialLabel(material) : "Insumos comunes";
+
+    return (
+      <div key={materialKey} className="border rounded-3 p-3 bg-white">
+        <div className="d-flex justify-content-between align-items-center gap-2 mb-2 flex-wrap">
+          <label className="form-label fw-semibold mb-0">{titulo}</label>
+          <div className="d-flex align-items-center gap-2 flex-wrap">
+            {totalSeleccionados > 0 && (
+              <span className="badge text-bg-light border">{totalSeleccionados} seleccionados</span>
+            )}
+            <button
+              type="button"
+              className="btn btn-outline-secondary btn-sm"
+              onClick={() => copiarInsumosSeleccionados(categoria, categoriaIndex, materialId)}
+              disabled={!totalSeleccionados}
+            >
+              <i className="bi bi-clipboard me-1"></i>Copiar seleccionados
+            </button>
+            <button
+              type="button"
+              className="btn btn-outline-secondary btn-sm"
+              onClick={() => pegarInsumos(categoriaIndex, materialId)}
+              disabled={!clipboardInsumos.length}
+            >
+              <i className="bi bi-clipboard-plus me-1"></i>Pegar
+            </button>
+            <button type="button" className="btn btn-outline-primary btn-sm" onClick={() => setModalInsumoIndex({ categoriaIndex, materialId })}>
+              <i className="bi bi-plus-lg me-1"></i>Nuevo insumo
+            </button>
+          </div>
+        </div>
+        {mensajePegado[sectionKey] && <div className="form-text text-muted mb-2">{mensajePegado[sectionKey]}</div>}
+        <SearchableSelect
+          label=""
+          value={selecciones[`insumo-${categoriaIndex}-${materialKey}`] || ""}
+          options={insumosDisponibles}
+          onChange={(id, opcion) => agregarInsumo(categoriaIndex, id, opcion, materialId)}
+          onSearchChange={setBusquedaInsumo}
+          closeOnSelect={false}
+          loading={cargando || cargandoBusquedaInsumos}
+          placeholder={cargando ? "Cargando insumos..." : "Buscar y agregar insumo..."}
+          searchPlaceholder="Busca por codigo, nombre o unidad..."
+          emptyText={busquedaInsumo.trim() ? "No se encontraron coincidencias" : "Escribe para buscar en todo el catalogo"}
+          getOptionValue={getId}
+          getOptionLabel={(item) => `${item.codigo ? `[${item.codigo}] ` : ""}${item.nombre || "-"}`}
+          getOptionSearchText={(item) => [item.codigo, item.nombre, getUnidad(item)].filter(Boolean).join(" ").toLowerCase()}
+        />
+
+        <div className="table-responsive mt-2">
+          <table className="table table-sm align-middle mb-0">
+            {insumos.length > 0 && (
+              <thead className="table-light">
+                <tr>
+                  <th style={{ width: 44 }}></th>
+                  <th>Insumo</th>
+                  <th className="text-end" style={{ width: 150 }}>Cantidad</th>
+                  <th className="text-end" style={{ width: 135 }}>% Desperdicio</th>
+                  <th className="text-end" style={{ width: 140 }}>Costo</th>
+                  <th className="text-end" style={{ width: 120 }}>Subtotal</th>
+                  <th style={{ width: 52 }}></th>
+                </tr>
+              </thead>
+            )}
+            <tbody>
+              {insumos.length > 0 && (
+                <tr>
+                  <td style={{ width: 44 }}>
+                    <input
+                      type="checkbox"
+                      className="form-check-input"
+                      checked={todosInsumosSeleccionados}
+                      onChange={() => toggleTodosInsumos(categoria, categoriaIndex, insumos, materialId)}
+                      aria-label={`Seleccionar todos los insumos de ${titulo}`}
+                    />
+                  </td>
+                  <td colSpan={6}>
+                    <span className="text-muted small">Seleccionar todos</span>
+                  </td>
+                </tr>
+              )}
+              {insumos.map((item) => {
+                const cantidad = Number(item.cantidad || 0);
+                const desperdicio = Number(getDesperdicio(item) || 0);
+                const costo = Number(getCostoCotizacion(item) || 0);
+                const subtotal = cantidad * (1 + desperdicio / 100) * costo;
+                return (
+                  <tr key={getInsumoScopeKey(item)}>
+                    <td style={{ width: 44 }}>
+                      <input
+                        type="checkbox"
+                        className="form-check-input"
+                        checked={Boolean(seleccionInsumosCategoria[getInsumoScopeKey(item)])}
+                        onChange={() => toggleInsumoSeleccionado(categoria, categoriaIndex, item, materialId)}
+                        aria-label={`Seleccionar insumo ${item.nombre || getId(item)}`}
+                      />
+                    </td>
+                    <td>
+                      <span className="fw-semibold">{item.codigo ? `[${item.codigo}] ` : ""}{item.nombre || `Insumo ${getId(item)}`}</span>
+                      {getUnidad(item) && <span className="text-muted ms-2">{getUnidad(item)}</span>}
+                    </td>
+                    <td style={{ width: 150 }}>
+                      <input
+                        type="number"
+                        min="0.0001"
+                        step="0.0001"
+                        className="form-control form-control-sm"
+                        value={item.cantidad ?? ""}
+                        data-modelo-categoria-index={categoriaIndex}
+                        data-modelo-insumo-id={getId(item)}
+                        data-modelo-material-id={materialId ?? ""}
+                        data-modelo-insumo-campo="cantidad"
+                        onChange={(event) => actualizarCantidadInsumo(categoriaIndex, getId(item), event.target.value, materialId)}
+                        placeholder="Cantidad"
+                      />
+                    </td>
+                    <td style={{ width: 135 }}>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        className="form-control form-control-sm"
+                        value={getDesperdicio(item)}
+                        data-modelo-categoria-index={categoriaIndex}
+                        data-modelo-insumo-id={getId(item)}
+                        data-modelo-material-id={materialId ?? ""}
+                        data-modelo-insumo-campo="desperdicio"
+                        onChange={(event) => actualizarDesperdicioInsumo(categoriaIndex, getId(item), event.target.value, materialId)}
+                        placeholder="% desperdicio"
+                      />
+                    </td>
+                    <td style={{ width: 140 }}>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        className="form-control form-control-sm"
+                        value={getCostoCotizacion(item)}
+                        data-modelo-categoria-index={categoriaIndex}
+                        data-modelo-insumo-id={getId(item)}
+                        data-modelo-material-id={materialId ?? ""}
+                        data-modelo-insumo-campo="costo"
+                        onChange={(event) => actualizarCostoInsumo(categoriaIndex, getId(item), event.target.value, materialId)}
+                        placeholder="Costo"
+                      />
+                    </td>
+                    <td className="text-end fw-semibold" style={{ width: 120 }}>
+                      {subtotal.toLocaleString("es-MX", { style: "currency", currency: "MXN" })}
+                    </td>
+                    <td className="text-end" style={{ width: 52 }}>
+                      <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => quitarInsumo(categoriaIndex, getId(item), materialId)}>
+                        <i className="bi bi-x-lg"></i>
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {!insumos.length && <div className="form-text text-muted">Sin insumos capturados en esta seccion.</div>}
+        </div>
+      </div>
+    );
+  };
+
   if (!categorias.length) {
     return <div className="form-text text-muted">Aun no se ha asociado ninguna categoria al modelo.</div>;
   }
@@ -456,17 +651,10 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
         {categorias.map((categoria, categoriaIndex) => {
           const insumos = Array.isArray(categoria.insumos) ? categoria.insumos : [];
           const operaciones = Array.isArray(categoria.operaciones) ? categoria.operaciones : [];
-          const insumosDisponibles = catalogoInsumosDisponible.filter(
-            (item) => !insumos.some((seleccionado) => String(getId(seleccionado)) === String(getId(item)))
-          );
           const operacionesDisponibles = catalogoOperaciones.filter(
             (item) => !operaciones.some((seleccionada) => String(getId(seleccionada)) === String(getId(item)))
           );
           const categoriaKey = getCategoriaKey(categoria, categoriaIndex);
-          const seleccionInsumosCategoria = getSeleccionadosCategoria(categoria, categoriaIndex);
-          const totalSeleccionados = insumos.filter((item) => seleccionInsumosCategoria[getInsumoKey(item)]).length;
-          const todosInsumosSeleccionados =
-            insumos.length > 0 && insumos.every((item) => seleccionInsumosCategoria[getInsumoKey(item)]);
           const insumosInvalidos = insumos.some((item) => {
             const cantidad = Number(item.cantidad);
             const desperdicio = Number(getDesperdicio(item) || 0);
@@ -497,165 +685,19 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
                 <div className="col-12">
                   <div className="d-flex justify-content-between align-items-center gap-2 mb-2 flex-wrap">
                     <label className="form-label fw-semibold mb-0">Insumos de la categoria</label>
-                    <div className="d-flex align-items-center gap-2 flex-wrap">
-                      {totalSeleccionados > 0 && (
-                        <span className="badge text-bg-light border">{totalSeleccionados} seleccionados</span>
-                      )}
-                      <button
-                        type="button"
-                        className="btn btn-outline-secondary btn-sm"
-                        onClick={() => copiarInsumosSeleccionados(categoria, categoriaIndex)}
-                        disabled={!totalSeleccionados}
-                      >
-                        <i className="bi bi-clipboard me-1"></i>Copiar seleccionados
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-outline-secondary btn-sm"
-                        onClick={() => pegarInsumos(categoriaIndex)}
-                        disabled={!clipboardInsumos.length}
-                      >
-                        <i className="bi bi-clipboard-plus me-1"></i>Pegar
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-outline-success btn-sm"
-                        onClick={() => sincronizarVariantes(categoria, categoriaIndex)}
-                        disabled={!puedeSincronizar || sincronizando}
-                        title={!modeloId || !categoria.id ? "Guarda el modelo antes de sincronizar variantes" : insumosInvalidos ? "Corrige cantidades antes de sincronizar" : "Sincronizar insumos heredados en variantes"}
-                      >
-                        <i className="bi bi-arrow-repeat me-1"></i>{sincronizando ? "Sincronizando..." : "Sincronizar variantes"}
-                      </button>
-                      <button type="button" className="btn btn-outline-primary btn-sm" onClick={() => setModalInsumoIndex(categoriaIndex)}>
-                        <i className="bi bi-plus-lg me-1"></i>Nuevo insumo
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-outline-success btn-sm"
+                      onClick={() => sincronizarVariantes(categoria, categoriaIndex)}
+                      disabled={!puedeSincronizar || sincronizando}
+                      title={!modeloId || !categoria.id ? "Guarda el modelo antes de sincronizar variantes" : insumosInvalidos ? "Corrige cantidades antes de sincronizar" : "Sincronizar insumos heredados en variantes"}
+                    >
+                      <i className="bi bi-arrow-repeat me-1"></i>{sincronizando ? "Sincronizando..." : "Sincronizar variantes"}
+                    </button>
                   </div>
-                  {mensajePegado[categoriaKey] && <div className="form-text text-muted mb-2">{mensajePegado[categoriaKey]}</div>}
-                  <SearchableSelect
-                    label=""
-                    value={selecciones[`insumo-${categoriaIndex}`] || ""}
-                    options={insumosDisponibles}
-                    onChange={(id, opcion) => agregarInsumo(categoriaIndex, id, opcion)}
-                    onSearchChange={setBusquedaInsumo}
-                    closeOnSelect={false}
-                    loading={cargando || cargandoBusquedaInsumos}
-                    placeholder={cargando ? "Cargando insumos..." : "Buscar y agregar insumo..."}
-                    searchPlaceholder="Busca por codigo, nombre o unidad..."
-                    emptyText={busquedaInsumo.trim() ? "No se encontraron coincidencias" : "Escribe para buscar en todo el catalogo"}
-                    getOptionValue={getId}
-                    getOptionLabel={(item) => `${item.codigo ? `[${item.codigo}] ` : ""}${item.nombre || "-"}`}
-                    getOptionSearchText={(item) => [item.codigo, item.nombre, getUnidad(item)].filter(Boolean).join(" ").toLowerCase()}
-                  />
-
-                  <div className="table-responsive mt-2">
-                    <table className="table table-sm align-middle mb-0">
-                      {insumos.length > 0 && (
-                        <thead className="table-light">
-                          <tr>
-                            <th style={{ width: 44 }}></th>
-                            <th>Insumo</th>
-                            <th className="text-end" style={{ width: 150 }}>Cantidad</th>
-                            <th className="text-end" style={{ width: 135 }}>% Desperdicio</th>
-                            <th className="text-end" style={{ width: 140 }}>Costo</th>
-                            <th className="text-end" style={{ width: 120 }}>Subtotal</th>
-                            <th style={{ width: 52 }}></th>
-                          </tr>
-                        </thead>
-                      )}
-                      <tbody>
-                        {insumos.length > 0 && (
-                          <tr>
-                            <td style={{ width: 44 }}>
-                              <input
-                                type="checkbox"
-                                className="form-check-input"
-                                checked={todosInsumosSeleccionados}
-                                onChange={() => toggleTodosInsumos(categoria, categoriaIndex, insumos)}
-                                aria-label={`Seleccionar todos los insumos de ${categoria.nombre || "categoria"}`}
-                              />
-                            </td>
-                            <td colSpan={6}>
-                              <span className="text-muted small">Seleccionar todos</span>
-                            </td>
-                          </tr>
-                        )}
-                        {insumos.map((item) => {
-                          const cantidad = Number(item.cantidad || 0);
-                          const desperdicio = Number(getDesperdicio(item) || 0);
-                          const costo = Number(getCostoCotizacion(item) || 0);
-                          const subtotal = cantidad * (1 + desperdicio / 100) * costo;
-                          return (
-                          <tr key={getId(item)}>
-                            <td style={{ width: 44 }}>
-                              <input
-                                type="checkbox"
-                                className="form-check-input"
-                                checked={Boolean(seleccionInsumosCategoria[getInsumoKey(item)])}
-                                onChange={() => toggleInsumoSeleccionado(categoria, categoriaIndex, getId(item))}
-                                aria-label={`Seleccionar insumo ${item.nombre || getId(item)}`}
-                              />
-                            </td>
-                            <td>
-                              <span className="fw-semibold">{item.codigo ? `[${item.codigo}] ` : ""}{item.nombre || `Insumo ${getId(item)}`}</span>
-                              {getUnidad(item) && <span className="text-muted ms-2">{getUnidad(item)}</span>}
-                            </td>
-                            <td style={{ width: 150 }}>
-                              <input
-                                type="number"
-                                min="0.0001"
-                                step="0.0001"
-                                className="form-control form-control-sm"
-                                value={item.cantidad ?? ""}
-                                data-modelo-categoria-index={categoriaIndex}
-                                data-modelo-insumo-id={getId(item)}
-                                data-modelo-insumo-campo="cantidad"
-                                onChange={(event) => actualizarCantidadInsumo(categoriaIndex, getId(item), event.target.value)}
-                                placeholder="Cantidad"
-                              />
-                            </td>
-                            <td style={{ width: 135 }}>
-                              <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                className="form-control form-control-sm"
-                                value={getDesperdicio(item)}
-                                data-modelo-categoria-index={categoriaIndex}
-                                data-modelo-insumo-id={getId(item)}
-                                data-modelo-insumo-campo="desperdicio"
-                                onChange={(event) => actualizarDesperdicioInsumo(categoriaIndex, getId(item), event.target.value)}
-                                placeholder="% desperdicio"
-                              />
-                            </td>
-                            <td style={{ width: 140 }}>
-                              <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                className="form-control form-control-sm"
-                                value={getCostoCotizacion(item)}
-                                data-modelo-categoria-index={categoriaIndex}
-                                data-modelo-insumo-id={getId(item)}
-                                data-modelo-insumo-campo="costo"
-                                onChange={(event) => actualizarCostoInsumo(categoriaIndex, getId(item), event.target.value)}
-                                placeholder="Costo"
-                              />
-                            </td>
-                            <td className="text-end fw-semibold" style={{ width: 120 }}>
-                              {subtotal.toLocaleString("es-MX", { style: "currency", currency: "MXN" })}
-                            </td>
-                            <td className="text-end" style={{ width: 52 }}>
-                              <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => quitarInsumo(categoriaIndex, getId(item))}>
-                                <i className="bi bi-x-lg"></i>
-                              </button>
-                            </td>
-                          </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                    {!insumos.length && <div className="form-text text-muted">Sin insumos capturados para esta categoria.</div>}
+                  <div className="d-flex flex-column gap-3">
+                    {renderInsumosSection(categoria, categoriaIndex)}
+                    {materiales.map((material) => renderInsumosSection(categoria, categoriaIndex, material))}
                   </div>
                 </div>
 
@@ -735,7 +777,7 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
           onCancel={() => setModalInsumoIndex(null)}
           onSave={(creado) => {
             setCatalogoInsumos((actual) => mergePorId(actual, [creado]));
-            agregarInsumo(modalInsumoIndex, getId(creado), creado);
+            agregarInsumo(modalInsumoIndex?.categoriaIndex, getId(creado), creado, modalInsumoIndex?.materialId ?? null);
             setModalInsumoIndex(null);
           }}
         />

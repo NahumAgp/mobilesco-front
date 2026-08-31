@@ -89,7 +89,8 @@ export function useModelos({
   direction = "asc",
   busqueda = "",
   activo = null,
-  familiaId = ""
+  familiaId = "",
+  lineaId = ""
 } = {}) {
   const [modelos, setModelos] = useState([]);
   const [pageInfo, setPageInfo] = useState(PAGE_INFO_DEFAULT);
@@ -104,7 +105,7 @@ export function useModelos({
       const data =
         page === undefined || page === null
           ? await obtenerModelos()
-          : await obtenerModelos({ page, size, sortBy, direction, busqueda, activo, familiaId });
+          : await obtenerModelos({ page, size, sortBy, direction, busqueda, activo, familiaId, lineaId });
 
       if (data?.content) {
         setModelos(data.content);
@@ -138,7 +139,7 @@ export function useModelos({
     } finally {
       setLoadingLista(false);
     }
-  }, [direction, page, size, sortBy, busqueda, activo, familiaId]);
+  }, [direction, page, size, sortBy, busqueda, activo, familiaId, lineaId]);
 
   useEffect(() => {
     cargar();

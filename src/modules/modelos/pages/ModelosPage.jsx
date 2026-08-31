@@ -12,14 +12,13 @@ import ModelosTable from "./ModelosTable.jsx";
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
 import CatalogPagination from "../../../components/ui/CatalogPagination.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
-import { uniqueOptionsByLabel } from "../../../utils/uniqueOptions.js";
 import { getUser, hasPermission } from "../../auth/services/authService";
 import "./ModelosPage.css";
 
 const PAGE_SIZE = 10;
 const FILTROS_DEFAULT = {
   busqueda: "",
-  filtroFamilia: "",
+  filtroLinea: "",
   filtroEstatus: "TODOS",
   soloActivos: false
 };
@@ -27,11 +26,8 @@ const FILTROS_DEFAULT = {
 const getLineaNombre = (modelo = {}) =>
   modelo.lineaNombre || modelo.linea?.nombre || modelo.familia?.lineaNombre || modelo.familia?.linea?.nombre || "";
 
-const getFamiliaNombre = (modelo = {}) =>
-  modelo.familiaNombre || modelo.familia?.nombre || "";
-
-const getFamiliaLabel = (modelo = {}) =>
-  [getLineaNombre(modelo), getFamiliaNombre(modelo)].filter(Boolean).join(" / ");
+const getLineaId = (modelo = {}) =>
+  modelo.lineaId || modelo.linea_id || modelo.linea?.id || modelo.familia?.lineaId || modelo.familia?.linea?.id || "";
 
 export default function ModelosPage() {
   const navigate = useNavigate();
@@ -43,9 +39,9 @@ export default function ModelosPage() {
   const [page, setPage] = useState(() => getInitialPaginationPage("modelos"));
   usePersistedPagination("modelos", page);
   const [filtros, setFiltros] = usePersistedState("modelos:filtros", FILTROS_DEFAULT);
-  const { busqueda: busquedaInput, filtroFamilia, filtroEstatus, soloActivos } = filtros;
+  const { busqueda: busquedaInput, filtroLinea, filtroEstatus, soloActivos } = filtros;
   const [exportandoExcel, setExportandoExcel] = useState(false);
-  const [familiasDisponibles, setFamiliasDisponibles] = useState([]);
+  const [lineasDisponibles, setLineasDisponibles] = useState([]);
   const busqueda = useDebouncedValue(busquedaInput, 350);
   const terminoBusqueda = busqueda.toLowerCase().trim().replace(/\s+/g, " ");
   const filtroActivo = soloActivos
@@ -67,43 +63,51 @@ export default function ModelosPage() {
     size: PAGE_SIZE,
     busqueda: terminoBusqueda,
     activo: filtroActivo,
-    familiaId: filtroFamilia
+    lineaId: filtroLinea
   });
 
   const totalElements = pageInfo.totalElements ?? 0;
   const totalPages = pageInfo.totalPages ?? 0;
 
-  const hayFiltrosActivos = Boolean(busquedaInput.trim()) || Boolean(filtroFamilia) || filtroEstatus !== "TODOS" || soloActivos;
+  const hayFiltrosActivos = Boolean(busquedaInput.trim()) || Boolean(filtroLinea) || filtroEstatus !== "TODOS" || soloActivos;
   const mostrarVacio = !loadingLista && !error && !hayFiltrosActivos && totalElements === 0;
   const mostrarSinCoincidencias = !loadingLista && !error && hayFiltrosActivos && totalElements === 0;
 
   useEffect(() => {
     let activo = true;
 
-    const cargarFamilias = async () => {
+    const cargarLineas = async () => {
       try {
         const data = await familiaGateway.obtenerFamiliasActivas();
         const lista = Array.isArray(data) ? data : Array.isArray(data?.content) ? data.content : [];
-        const opcionesBase = lista
-          .map((familia) => ({
-            id: familia.id ?? familia.familiaId,
-            label: getFamiliaLabel(familia) || familia.nombre || familia.codigo || `Familia ${familia.id ?? familia.familiaId}`
-          }))
-          .filter((familia) => familia.id && familia.label);
-        const opciones = uniqueOptionsByLabel(opcionesBase, (familia) => familia.label)
+        const opcionesMap = new Map();
+
+        lista.forEach((familia) => {
+          const lineaId = getLineaId(familia);
+          const lineaNombre = getLineaNombre(familia);
+
+          if (lineaId && lineaNombre && !opcionesMap.has(String(lineaId))) {
+            opcionesMap.set(String(lineaId), {
+              id: lineaId,
+              label: lineaNombre
+            });
+          }
+        });
+
+        const opciones = Array.from(opcionesMap.values())
           .sort((a, b) => a.label.localeCompare(b.label, "es"));
 
         if (activo) {
-          setFamiliasDisponibles(opciones);
+          setLineasDisponibles(opciones);
         }
       } catch {
         if (activo) {
-          setFamiliasDisponibles([]);
+          setLineasDisponibles([]);
         }
       }
     };
 
-    cargarFamilias();
+    cargarLineas();
 
     return () => {
       activo = false;
@@ -146,7 +150,7 @@ export default function ModelosPage() {
       const blob = await exportarModelosExcel({
         activo: filtroActivo ?? undefined,
         busqueda: busquedaInput.toLowerCase().trim().replace(/\s+/g, " ") || undefined,
-        familiaId: filtroFamilia || undefined,
+        lineaId: filtroLinea || undefined,
         sortBy: "nombre",
         direction: "asc"
       });
@@ -175,8 +179,8 @@ export default function ModelosPage() {
     setPage(0);
   };
 
-  const cambiarFamilia = (e) => {
-    setFiltros((actuales) => ({ ...actuales, filtroFamilia: e.target.value }));
+  const cambiarLinea = (e) => {
+    setFiltros((actuales) => ({ ...actuales, filtroLinea: e.target.value }));
     setPage(0);
   };
 
@@ -234,7 +238,7 @@ export default function ModelosPage() {
               <input
                 type="text"
                 className="form-control"
-                placeholder="Buscar por nombre, descripcion o familia..."
+                placeholder="Buscar por nombre, descripcion, linea o familia..."
                 value={busquedaInput}
                 onChange={cambiarBusqueda}
               />
@@ -243,13 +247,13 @@ export default function ModelosPage() {
             <div className="col-md-3">
               <select
                 className="form-select"
-                value={filtroFamilia}
-                onChange={cambiarFamilia}
+                value={filtroLinea}
+                onChange={cambiarLinea}
               >
-                <option value="">Todas las familias</option>
-                {familiasDisponibles.map((familia) => (
-                  <option key={familia.id} value={familia.id}>
-                    {familia.label}
+                <option value="">Todas las lineas</option>
+                {lineasDisponibles.map((linea) => (
+                  <option key={linea.id} value={linea.id}>
+                    {linea.label}
                   </option>
                 ))}
               </select>
