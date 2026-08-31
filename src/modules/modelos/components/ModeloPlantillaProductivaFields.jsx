@@ -396,9 +396,9 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
     }));
   };
 
-  const sincronizarVariantes = async (categoria, categoriaIndex) => {
+  const sincronizarVariantes = async (categoria, categoriaIndex, materialId = null, titulo = "Insumos comunes") => {
     const nivelId = categoria?.id;
-    const categoriaKey = getCategoriaKey(categoria, categoriaIndex);
+    const sectionKey = getSectionKey(categoria, categoriaIndex, materialId);
     const insumos = Array.isArray(categoria.insumos) ? categoria.insumos : [];
     const payload = insumos
       .map((item) => ({
@@ -412,7 +412,7 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
     if (!modeloId || !nivelId) {
       setMensajePegado((prev) => ({
         ...prev,
-        [categoriaKey]: "Guarda el modelo antes de sincronizar esta categoria con sus variantes."
+        [sectionKey]: "Guarda el modelo antes de sincronizar esta seccion con sus variantes."
       }));
       return;
     }
@@ -420,7 +420,7 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
     if (payload.some((item) => !Number.isFinite(item.cantidad) || item.cantidad <= 0)) {
       setMensajePegado((prev) => ({
         ...prev,
-        [categoriaKey]: "Cada insumo debe tener cantidad mayor a cero antes de sincronizar."
+        [sectionKey]: "Cada insumo debe tener cantidad mayor a cero antes de sincronizar."
       }));
       return;
     }
@@ -428,26 +428,27 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
     if (payload.some((item) => !Number.isFinite(item.desperdicioPorcentaje) || item.desperdicioPorcentaje < 0)) {
       setMensajePegado((prev) => ({
         ...prev,
-        [categoriaKey]: "Cada insumo debe tener desperdicio mayor o igual a cero antes de sincronizar."
+        [sectionKey]: "Cada insumo debe tener desperdicio mayor o igual a cero antes de sincronizar."
       }));
       return;
     }
 
-    if (!window.confirm("Se actualizarán los insumos heredados en todas las variantes de esta categoría. Los insumos únicos de cada producto se conservarán. ¿Deseas continuar?")) {
+    const alcance = materialId ? `las variantes de ${titulo}` : "todas las variantes de esta categoria";
+    if (!window.confirm(`Se actualizaran los insumos heredados en ${alcance}. Los insumos unicos de cada producto se conservaran. Deseas continuar?`)) {
       return;
     }
 
     try {
-      setSincronizandoCategoria(categoriaKey);
-      const resultado = await sincronizarInsumosVariantes(modeloId, nivelId, payload);
+      setSincronizandoCategoria(sectionKey);
+      const resultado = await sincronizarInsumosVariantes(modeloId, nivelId, payload, materialId);
       setMensajePegado((prev) => ({
         ...prev,
-        [categoriaKey]: `Variantes sincronizadas: ${resultado.productosActualizados || 0}. Agregados: ${resultado.insumosAgregados || 0}, actualizados: ${resultado.insumosActualizados || 0}, eliminados: ${resultado.insumosEliminados || 0}.`
+        [sectionKey]: `Variantes sincronizadas: ${resultado.productosActualizados || 0}. Agregados: ${resultado.insumosAgregados || 0}, actualizados: ${resultado.insumosActualizados || 0}, eliminados: ${resultado.insumosEliminados || 0}.`
       }));
     } catch (errorSincronizacion) {
       setMensajePegado((prev) => ({
         ...prev,
-        [categoriaKey]: errorSincronizacion.message || "No se pudieron sincronizar las variantes."
+        [sectionKey]: errorSincronizacion.message || "No se pudieron sincronizar las variantes."
       }));
     } finally {
       setSincronizandoCategoria(null);
@@ -478,6 +479,14 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
     const todosInsumosSeleccionados =
       insumos.length > 0 && insumos.every((item) => seleccionInsumosCategoria[getInsumoScopeKey(item)]);
     const titulo = material ? getMaterialLabel(material) : "Insumos comunes";
+    const insumosInvalidos = insumos.some((item) => {
+      const cantidad = Number(item.cantidad);
+      const desperdicio = Number(getDesperdicio(item) || 0);
+      return !Number.isFinite(cantidad) || cantidad <= 0
+        || !Number.isFinite(desperdicio) || desperdicio < 0;
+    });
+    const puedeSincronizar = Boolean(modeloId && categoria.id) && !insumosInvalidos;
+    const sincronizando = sincronizandoCategoria === sectionKey;
 
     return (
       <div key={materialKey} className="border rounded-3 p-3 bg-white">
@@ -505,6 +514,15 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
             </button>
             <button type="button" className="btn btn-outline-primary btn-sm" onClick={() => setModalInsumoIndex({ categoriaIndex, materialId })}>
               <i className="bi bi-plus-lg me-1"></i>Nuevo insumo
+            </button>
+            <button
+              type="button"
+              className="btn btn-outline-success btn-sm"
+              onClick={() => sincronizarVariantes(categoria, categoriaIndex, materialId, titulo)}
+              disabled={!puedeSincronizar || sincronizando}
+              title={!modeloId || !categoria.id ? "Guarda el modelo antes de sincronizar variantes" : insumosInvalidos ? "Corrige cantidades antes de sincronizar" : "Sincronizar insumos heredados en variantes"}
+            >
+              <i className="bi bi-arrow-repeat me-1"></i>{sincronizando ? "Sincronizando..." : "Sincronizar variantes"}
             </button>
           </div>
         </div>
@@ -654,16 +672,6 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
           const operacionesDisponibles = catalogoOperaciones.filter(
             (item) => !operaciones.some((seleccionada) => String(getId(seleccionada)) === String(getId(item)))
           );
-          const categoriaKey = getCategoriaKey(categoria, categoriaIndex);
-          const insumosInvalidos = insumos.some((item) => {
-            const cantidad = Number(item.cantidad);
-            const desperdicio = Number(getDesperdicio(item) || 0);
-            return !Number.isFinite(cantidad) || cantidad <= 0
-              || !Number.isFinite(desperdicio) || desperdicio < 0;
-          });
-          const puedeSincronizar = Boolean(modeloId && categoria.id) && !insumosInvalidos;
-          const sincronizando = sincronizandoCategoria === categoriaKey;
-
           return (
             <div
               key={categoria.id || categoria.categoriaId || categoriaIndex}
@@ -685,15 +693,6 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
                 <div className="col-12">
                   <div className="d-flex justify-content-between align-items-center gap-2 mb-2 flex-wrap">
                     <label className="form-label fw-semibold mb-0">Insumos de la categoria</label>
-                    <button
-                      type="button"
-                      className="btn btn-outline-success btn-sm"
-                      onClick={() => sincronizarVariantes(categoria, categoriaIndex)}
-                      disabled={!puedeSincronizar || sincronizando}
-                      title={!modeloId || !categoria.id ? "Guarda el modelo antes de sincronizar variantes" : insumosInvalidos ? "Corrige cantidades antes de sincronizar" : "Sincronizar insumos heredados en variantes"}
-                    >
-                      <i className="bi bi-arrow-repeat me-1"></i>{sincronizando ? "Sincronizando..." : "Sincronizar variantes"}
-                    </button>
                   </div>
                   <div className="d-flex flex-column gap-3">
                     {renderInsumosSection(categoria, categoriaIndex)}

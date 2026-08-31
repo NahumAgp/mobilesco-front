@@ -74,8 +74,13 @@ export function actualizarModelo(id, data) {
   });
 }
 
-export function sincronizarInsumosVariantes(modeloId, nivelId, insumos) {
-  return request(`${API_PATHS.MODELOS}/${modeloId}/categorias/${nivelId}/insumos/sincronizar-variantes`, {
+export function sincronizarInsumosVariantes(modeloId, nivelId, insumos, materialId = null) {
+  const params = new URLSearchParams();
+  if (materialId !== null && materialId !== undefined && materialId !== "") {
+    params.set("materialId", String(materialId));
+  }
+  const query = params.toString();
+  return request(`${API_PATHS.MODELOS}/${modeloId}/categorias/${nivelId}/insumos/sincronizar-variantes${query ? `?${query}` : ""}`, {
     method: "PUT",
     body: JSON.stringify(insumos),
   });
