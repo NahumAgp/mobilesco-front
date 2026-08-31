@@ -304,6 +304,113 @@
   gap: 16px;
 }
 
+.producto-catalogo-subfamilias {
+  display: grid;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--ms-surface);
+  border: 1px solid var(--ms-line-soft);
+}
+
+.producto-catalogo-subfamilias-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.producto-catalogo-subfamilias-heading span {
+  display: block;
+  color: #70818b;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.producto-catalogo-subfamilias-heading h2 {
+  margin: 1px 0 0;
+  color: #1c3d35;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.producto-catalogo-subfamilias-heading small {
+  color: #61727d;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.producto-catalogo-subfamilias-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+}
+
+.producto-catalogo-subfamilias-list > button {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-height: 72px;
+  padding: 8px;
+  border: 1px solid #d8e0e5;
+  background: #ffffff;
+  color: #1c3d35;
+  text-align: left;
+}
+
+.producto-catalogo-subfamilias-list > button:hover,
+.producto-catalogo-subfamilias-list > button:focus {
+  border-color: #548674;
+  background: rgba(84, 134, 116, 0.06);
+  outline: none;
+}
+
+.producto-catalogo-subfamilias-list > button.is-active {
+  border-color: #285349;
+  background: rgba(84, 134, 116, 0.08);
+  box-shadow: inset 0 -3px 0 #285349;
+}
+
+.producto-catalogo-subfamilias-list img,
+.producto-catalogo-subfamilia-fallback {
+  width: 54px;
+  height: 54px;
+  object-fit: contain;
+  background: #f7f9f8;
+}
+
+.producto-catalogo-subfamilia-fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #21443b;
+  font-weight: 800;
+}
+
+.producto-catalogo-subfamilias-list > button > span:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.producto-catalogo-subfamilias-list strong,
+.producto-catalogo-subfamilias-list small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.producto-catalogo-subfamilias-list strong {
+  color: #1f2933;
+  font-size: 0.9rem;
+}
+
+.producto-catalogo-subfamilias-list small {
+  color: #61727d;
+  font-size: 0.76rem;
+}
+
 .producto-catalogo-modelos {
   display: grid;
   gap: 12px;
@@ -832,6 +939,7 @@
     padding: 14px;
   }
 
+  .producto-catalogo-subfamilias-heading,
   .producto-catalogo-modelos-heading {
     align-items: start;
     flex-direction: column;

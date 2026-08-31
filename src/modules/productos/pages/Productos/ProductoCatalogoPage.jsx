@@ -144,6 +144,26 @@ const getFamiliaKey = (producto) => {
   return familiaId ? `familia-${familiaId}` : normalizar(getFamiliaNombre(producto));
 };
 
+const getSubfamiliaNombre = (producto) =>
+  getTexto(
+    producto?.subfamiliaNombre,
+    producto?.nombre_subfamilia,
+    producto?.subfamilia?.nombre,
+    producto?.modelo?.subfamilia?.nombre,
+    producto?.productoBase?.subfamilia?.nombre,
+    "Sin subfamilia"
+  );
+
+const getSubfamiliaKey = (producto) => {
+  const subfamiliaId =
+    producto?.subfamiliaId ||
+    producto?.id_subfamilia ||
+    producto?.subfamilia?.id ||
+    producto?.modelo?.subfamilia?.id ||
+    producto?.productoBase?.subfamilia?.id;
+  return subfamiliaId ? `subfamilia-${subfamiliaId}` : normalizar(getSubfamiliaNombre(producto));
+};
+
 const getModeloInfo = (productos) => {
   const base = productos[0] || {};
   const modelo = getTexto(base?.modeloNombre, base?.nombre_modelo, base?.productoBaseNombre, base?.modelo?.nombre);
@@ -152,6 +172,7 @@ const getModeloInfo = (productos) => {
     titulo: modelo || base?.nombre || "Modelo",
     modelo: modelo || "Sin modelo",
     familia: getTexto(base?.familiaNombre, base?.familia?.nombre, base?.modelo?.familia?.nombre),
+    subfamilia: getSubfamiliaNombre(base),
     linea: getTexto(base?.lineaNombre, base?.linea?.nombre, base?.modelo?.familia?.linea?.nombre)
   };
 };
@@ -266,6 +287,28 @@ const construirModelos = (productos) => {
     .sort((a, b) => a.titulo.localeCompare(b.titulo, "es", { numeric: true, sensitivity: "base" }));
 };
 
+const construirSubfamilias = (productos) => {
+  const mapa = new Map();
+  productos.forEach((producto) => {
+    const key = getSubfamiliaKey(producto);
+    if (!mapa.has(key)) mapa.set(key, []);
+    mapa.get(key).push(producto);
+  });
+
+  return Array.from(mapa.entries())
+    .map(([key, lista]) => {
+      const modelos = construirModelos(lista);
+      return {
+        key,
+        nombre: getSubfamiliaNombre(lista[0]),
+        productos: lista,
+        modelos,
+        imagen: getImagenModelo(lista)
+      };
+    })
+    .sort((a, b) => a.nombre.localeCompare(b.nombre, "es", { numeric: true, sensitivity: "base" }));
+};
+
 const construirFamilias = (productos) => {
   const mapa = new Map();
   productos.forEach((producto) => {
@@ -277,11 +320,13 @@ const construirFamilias = (productos) => {
   return Array.from(mapa.entries())
     .map(([key, lista]) => {
       const modelos = construirModelos(lista);
+      const subfamilias = construirSubfamilias(lista);
       return {
         key,
         nombre: getFamiliaNombre(lista[0]),
         productos: lista,
         modelos,
+        subfamilias,
         imagen: getImagenModelo(lista)
       };
     })
@@ -298,6 +343,7 @@ export default function ProductoCatalogoPage() {
   const [soloActivos, setSoloActivos] = useState(true);
   const [lineaSeleccionada, setLineaSeleccionada] = useState("");
   const [familiaSeleccionada, setFamiliaSeleccionada] = useState("");
+  const [subfamiliaSeleccionada, setSubfamiliaSeleccionada] = useState("");
   const [imagenSeleccionada, setImagenSeleccionada] = useState(0);
 
   useEffect(() => {
@@ -343,10 +389,17 @@ export default function ProductoCatalogoPage() {
       const linea = mapa.get(key);
       linea.productos += 1;
       linea.familias.add(getFamiliaKey(producto));
+      linea.subfamilias = linea.subfamilias || new Set();
+      linea.subfamilias.add(getSubfamiliaKey(producto));
       linea.modelos.add(getModeloKey(producto));
     });
     return Array.from(mapa.values())
-      .map((linea) => ({ ...linea, familias: linea.familias.size, modelos: linea.modelos.size }))
+      .map((linea) => ({
+        ...linea,
+        familias: linea.familias.size,
+        subfamilias: linea.subfamilias?.size || 0,
+        modelos: linea.modelos.size
+      }))
       .sort((a, b) => a.nombre.localeCompare(b.nombre, "es", { sensitivity: "base" }));
   }, [productos]);
 
@@ -395,12 +448,33 @@ export default function ProductoCatalogoPage() {
     [familiaSeleccionada, familias]
   );
   const productosFamilia = useMemo(() => familiaActual?.productos || [], [familiaActual]);
-  const modelos = useMemo(() => familiaActual?.modelos || [], [familiaActual]);
+  const subfamilias = useMemo(() => familiaActual?.subfamilias || [], [familiaActual]);
+
+  useEffect(() => {
+    if (!subfamilias.length) {
+      setSubfamiliaSeleccionada("");
+      return;
+    }
+    const productoRuta = productosFamilia.find((producto) => String(getProductoId(producto)) === String(id));
+    const subfamiliaRuta = productoRuta ? getSubfamiliaKey(productoRuta) : "";
+    setSubfamiliaSeleccionada((actual) => {
+      if (subfamiliaRuta && subfamilias.some((subfamilia) => subfamilia.key === subfamiliaRuta)) return subfamiliaRuta;
+      if (subfamilias.some((subfamilia) => subfamilia.key === actual)) return actual;
+      return subfamilias[0].key;
+    });
+  }, [id, productosFamilia, subfamilias]);
+
+  const subfamiliaActual = useMemo(
+    () => subfamilias.find((subfamilia) => subfamilia.key === subfamiliaSeleccionada) || null,
+    [subfamiliaSeleccionada, subfamilias]
+  );
+  const productosSubfamilia = useMemo(() => subfamiliaActual?.productos || [], [subfamiliaActual]);
+  const modelos = useMemo(() => subfamiliaActual?.modelos || [], [subfamiliaActual]);
   const productoSeleccionado = useMemo(() => {
-    const porRuta = productosFamilia.find((producto) => String(getProductoId(producto)) === String(id));
+    const porRuta = productosSubfamilia.find((producto) => String(getProductoId(producto)) === String(id));
     if (porRuta) return porRuta;
     return modelos[0]?.productos?.[0] || null;
-  }, [id, modelos, productosFamilia]);
+  }, [id, modelos, productosSubfamilia]);
 
   const modeloSeleccionado = useMemo(() => {
     if (!productoSeleccionado) return null;
@@ -449,7 +523,13 @@ export default function ProductoCatalogoPage() {
 
   const cambiarFamilia = (familia) => {
     setFamiliaSeleccionada(familia.key);
-    const primerProducto = familia.modelos[0]?.productos?.[0] || familia.productos[0];
+    const primerProducto = familia.subfamilias[0]?.modelos[0]?.productos?.[0] || familia.productos[0];
+    if (primerProducto) cambiarProducto(primerProducto);
+  };
+
+  const cambiarSubfamilia = (subfamilia) => {
+    setSubfamiliaSeleccionada(subfamilia.key);
+    const primerProducto = subfamilia.modelos[0]?.productos?.[0] || subfamilia.productos[0];
     if (primerProducto) cambiarProducto(primerProducto);
   };
 
@@ -512,7 +592,7 @@ export default function ProductoCatalogoPage() {
           <span>Solo activos</span>
         </label>
         <div className="producto-catalogo-count">
-          {familias.length} familias / {modelos.length} modelos / {productosFamilia.length} productos
+          {familias.length} familias / {subfamilias.length} subfamilias / {modelos.length} modelos / {productosSubfamilia.length} productos
         </div>
       </section>
 
@@ -532,7 +612,7 @@ export default function ProductoCatalogoPage() {
               >
                 <strong>{linea.nombre}</strong>
                 <span>{linea.familias} familias</span>
-                <small>{linea.modelos} modelos · {linea.productos} productos</small>
+                <small>{linea.subfamilias} subfamilias · {linea.modelos} modelos · {linea.productos} productos</small>
               </button>
             ))}
           </div>
@@ -577,6 +657,7 @@ export default function ProductoCatalogoPage() {
                     <span className="producto-catalogo-group-copy">
                       <strong>{familia.nombre}</strong>
                       <small>{familia.modelos.length} modelos</small>
+                      <small>{familia.subfamilias.length} subfamilias</small>
                       <span>
                         {familia.productos.length} productos
                       </span>
@@ -588,13 +669,48 @@ export default function ProductoCatalogoPage() {
           </aside>
 
           <div className="producto-catalogo-content">
-            <section className="producto-catalogo-modelos" aria-label={`Modelos de ${familiaActual?.nombre || "la familia"}`}>
-              <div className="producto-catalogo-modelos-heading">
+            <section className="producto-catalogo-subfamilias" aria-label={`Subfamilias de ${familiaActual?.nombre || "la familia"}`}>
+              <div className="producto-catalogo-subfamilias-heading">
                 <div>
                   <span>Familia seleccionada</span>
                   <h2>{familiaActual?.nombre || "Sin familia"}</h2>
                 </div>
-                <small>{modelos.length} modelos · {productosFamilia.length} productos</small>
+                <small>{subfamilias.length} subfamilias · {familiaActual?.modelos?.length || 0} modelos · {productosFamilia.length} productos</small>
+              </div>
+              <div className="producto-catalogo-subfamilias-list">
+                {subfamilias.map((subfamilia) => {
+                  const activo = subfamilia.key === subfamiliaActual?.key;
+                  return (
+                    <button
+                      key={subfamilia.key}
+                      type="button"
+                      className={activo ? "is-active" : ""}
+                      onClick={() => cambiarSubfamilia(subfamilia)}
+                    >
+                      {subfamilia.imagen?.url ? (
+                        <img src={subfamilia.imagen.url} alt={subfamilia.nombre} />
+                      ) : (
+                        <span className="producto-catalogo-subfamilia-fallback">
+                          {subfamilia.nombre.charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                      <span>
+                        <strong>{subfamilia.nombre}</strong>
+                        <small>{subfamilia.modelos.length} modelos · {subfamilia.productos.length} productos</small>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section className="producto-catalogo-modelos" aria-label={`Modelos de ${familiaActual?.nombre || "la familia"}`}>
+              <div className="producto-catalogo-modelos-heading">
+                <div>
+                  <span>Subfamilia seleccionada</span>
+                  <h2>{subfamiliaActual?.nombre || "Sin subfamilia"}</h2>
+                </div>
+                <small>{modelos.length} modelos · {productosSubfamilia.length} productos</small>
               </div>
               <div className="producto-catalogo-modelos-list">
                 {modelos.map((modelo) => {
@@ -636,7 +752,7 @@ export default function ProductoCatalogoPage() {
                 <span>Modelo</span>
                 <strong>{modeloSeleccionado?.modelo || "-"}</strong>
                 <small>
-                  {[modeloSeleccionado?.linea, modeloSeleccionado?.familia].filter(Boolean).join(" - ") || "Sin clasificacion"}
+                  {[modeloSeleccionado?.linea, modeloSeleccionado?.familia, modeloSeleccionado?.subfamilia].filter(Boolean).join(" - ") || "Sin clasificacion"}
                 </small>
               </div>
               <div className="producto-catalogo-model-stats">
@@ -722,6 +838,10 @@ export default function ProductoCatalogoPage() {
                 <div>
                   <span>Familia</span>
                   <strong>{modeloSeleccionado?.familia || "-"}</strong>
+                </div>
+                <div>
+                  <span>Subfamilia</span>
+                  <strong>{modeloSeleccionado?.subfamilia || "-"}</strong>
                 </div>
                 <div>
                   <span>Modelo</span>
