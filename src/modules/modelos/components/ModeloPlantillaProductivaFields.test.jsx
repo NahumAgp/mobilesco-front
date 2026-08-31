@@ -107,7 +107,7 @@ describe("ModeloPlantillaProductivaFields", () => {
     const primaria = screen.getByRole("region", { name: "Categoria Primaria" });
     const secundaria = screen.getByRole("region", { name: "Categoria Secundaria" });
 
-    await user.click(within(primaria).getByRole("checkbox", { name: "Seleccionar todos los insumos de Primaria" }));
+    await user.click(within(primaria).getByRole("checkbox", { name: "Seleccionar todos los insumos de Insumos comunes" }));
     expect(within(primaria).getByText("2 seleccionados")).toBeInTheDocument();
 
     await user.click(within(primaria).getByRole("button", { name: /Copiar seleccionados/i }));
