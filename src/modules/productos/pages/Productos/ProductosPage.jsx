@@ -25,7 +25,7 @@ export default function ProductosPage() {
   const [productoPorDesactivar, setProductoPorDesactivar] = useState(null);
   const [desactivando, setDesactivando] = useState(false);
 
-  const { productos, pageInfo, loadingLista, error, desactivarProducto } = useProductos({
+  const { productos, pageInfo, error, desactivarProducto } = useProductos({
     page,
     size: PAGE_SIZE,
     busqueda,
@@ -89,7 +89,6 @@ export default function ProductosPage() {
         }
       />
 
-      {loadingLista && <div className="alert alert-info">Cargando productos…</div>}
       {error && <div className="alert alert-danger">{error}</div>}
 
       <CatalogFilters

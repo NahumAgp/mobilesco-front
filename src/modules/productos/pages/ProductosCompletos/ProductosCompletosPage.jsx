@@ -721,7 +721,6 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
         onCorrected={cargarProductos}
       />
 
-      {loadingLista && <div className="alert alert-info">Cargando productos...</div>}
       {errorLista && <div className="alert alert-danger">{errorLista}</div>}
 
       <div className="card mb-3 productos-filters-card">
