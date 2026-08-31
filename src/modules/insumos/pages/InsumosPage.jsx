@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
+import useDebouncedValue from "../../../hooks/useDebouncedValue.js";
 import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
+import usePersistedState from "../../../hooks/usePersistedState.js";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { useInsumos } from "../hooks/useInsumos";
@@ -16,6 +18,14 @@ import Toast from "../../../components/ui/Toast.jsx";
 import "./InsumosPage.css";
 
 const PAGE_SIZE = 10;
+const FILTROS_DEFAULT = {
+  busquedaInput: "",
+  filtroEstatus: "TODOS",
+  soloActivos: false,
+  filtroStockBajo: false,
+  sortField: "nombre",
+  sortDirection: "asc"
+};
 
 function construirRangoPaginas(totalPages, currentPage) {
   if (!totalPages || totalPages <= 0) return [];
@@ -48,26 +58,29 @@ export default function InsumosPage() {
   const [toastType, setToastType] = useState("success");
   const [page, setPage] = useState(() => getInitialPaginationPage("insumos"));
   usePersistedPagination("insumos", page);
-  const [busquedaInput, setBusquedaInput] = useState("");
-  const [busqueda, setBusqueda] = useState("");
-  const [filtroEstatus, setFiltroEstatus] = useState("TODOS");
-  const [soloActivos, setSoloActivos] = useState(false);
-  const [filtroStockBajo, setFiltroStockBajo] = useState(searchParams.get("stockBajo") === "true");
-  const [sortField, setSortField] = useState("nombre");
-  const [sortDirection, setSortDirection] = useState("asc");
+  const stockBajoDesdeUrl = searchParams.get("stockBajo") === "true";
+  const [filtros, setFiltros] = usePersistedState("insumos:filtros", {
+    ...FILTROS_DEFAULT,
+    filtroStockBajo: stockBajoDesdeUrl
+  });
+  const {
+    busquedaInput,
+    filtroEstatus,
+    soloActivos,
+    filtroStockBajo,
+    sortField,
+    sortDirection
+  } = filtros;
+  const busqueda = useDebouncedValue(busquedaInput, 350);
   const [exportandoExcel, setExportandoExcel] = useState(false);
   const [ajusteStock, setAjusteStock] = useState(null);
   const [guardandoAjuste, setGuardandoAjuste] = useState(false);
 
-  // Debounce: actualiza el termino de busqueda real desde el input (~350ms)
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setBusqueda(busquedaInput);
-      setPage(0);
-    }, 350);
-
-    return () => window.clearTimeout(timer);
-  }, [busquedaInput]);
+    if (stockBajoDesdeUrl) {
+      setFiltros((actuales) => ({ ...actuales, filtroStockBajo: true }));
+    }
+  }, [setFiltros, stockBajoDesdeUrl]);
 
   // Derivar el filtro de estatus para el backend
   const activoBackend =
@@ -234,32 +247,31 @@ export default function InsumosPage() {
   };
 
   const manejarOrden = (campo) => {
-    if (sortField === campo) {
-      setSortDirection((direccionActual) => (direccionActual === "asc" ? "desc" : "asc"));
-    } else {
-      setSortDirection("asc");
-      setSortField(campo);
-    }
-
+    setFiltros((actuales) => ({
+      ...actuales,
+      sortField: campo,
+      sortDirection: actuales.sortField === campo && actuales.sortDirection === "asc" ? "desc" : "asc"
+    }));
     setPage(0);
   };
 
   const cambiarBusqueda = (e) => {
-    setBusquedaInput(e.target.value);
+    setFiltros((actuales) => ({ ...actuales, busquedaInput: e.target.value }));
+    setPage(0);
   };
 
   const cambiarEstatus = (e) => {
-    setFiltroEstatus(e.target.value);
+    setFiltros((actuales) => ({ ...actuales, filtroEstatus: e.target.value }));
     setPage(0);
   };
 
   const cambiarSoloActivos = (e) => {
-    setSoloActivos(e.target.checked);
+    setFiltros((actuales) => ({ ...actuales, soloActivos: e.target.checked }));
     setPage(0);
   };
 
   const cambiarStockBajo = (e) => {
-    setFiltroStockBajo(e.target.checked);
+    setFiltros((actuales) => ({ ...actuales, filtroStockBajo: e.target.checked }));
     setPage(0);
   };
 
@@ -304,12 +316,6 @@ export default function InsumosPage() {
           </div>
         }
       />
-
-      {loadingLista && (
-        <div className="alert alert-info">
-          Cargando insumos...
-        </div>
-      )}
 
       {error && (
         <div className="alert alert-danger">

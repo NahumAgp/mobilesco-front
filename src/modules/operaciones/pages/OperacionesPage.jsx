@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
+import useDebouncedValue from "../../../hooks/useDebouncedValue.js";
 import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
+import usePersistedState from "../../../hooks/usePersistedState.js";
 import { useNavigate } from "react-router-dom";
 
 import { useOperaciones } from "../hooks/useOperaciones";
@@ -14,6 +16,12 @@ import { uniqueOptionsByValue } from "../../../utils/uniqueOptions.js";
 import { getUser, hasPermission } from "../../auth/services/authService";
 
 const PAGE_SIZE = 10;
+const FILTROS_DEFAULT = {
+  busqueda: "",
+  filtroEstatus: "TODOS",
+  soloActivos: false,
+  filtroCentroTrabajo: ""
+};
 
 export default function OperacionesPage() {
   const navigate = useNavigate();
@@ -21,10 +29,9 @@ export default function OperacionesPage() {
 
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
-  const [busqueda, setBusqueda] = useState("");
-  const [filtroEstatus, setFiltroEstatus] = useState("TODOS");
-  const [soloActivos, setSoloActivos] = useState(false);
-  const [filtroCentroTrabajo, setFiltroCentroTrabajo] = useState("");
+  const [filtros, setFiltros] = usePersistedState("operaciones:filtros", FILTROS_DEFAULT);
+  const { busqueda: busquedaInput, filtroEstatus, soloActivos, filtroCentroTrabajo } = filtros;
+  const busqueda = useDebouncedValue(busquedaInput, 350);
   const [page, setPage] = useState(() => getInitialPaginationPage("operaciones"));
   usePersistedPagination("operaciones", page);
   const [operacionPorEliminar, setOperacionPorEliminar] = useState(null);
@@ -38,7 +45,6 @@ export default function OperacionesPage() {
   const {
     operaciones,
     pageInfo,
-    loadingLista,
     error,
     eliminarOperacion
   } = useOperaciones({
@@ -124,12 +130,6 @@ export default function OperacionesPage() {
         }
       />
 
-      {loadingLista && (
-        <div className="alert alert-info">
-          Cargando operaciones…
-        </div>
-      )}
-
       {error && (
         <div className="alert alert-danger">
           {error}
@@ -138,13 +138,9 @@ export default function OperacionesPage() {
 
       <CatalogFilters
         onClear={() => {
-          setBusqueda("");
-          setFiltroEstatus("TODOS");
-          setFiltroCentroTrabajo("");
-          setSoloActivos(false);
-          setPage(0);
+          resetPage(() => setFiltros(FILTROS_DEFAULT));
         }}
-        clearDisabled={!busqueda && filtroEstatus === "TODOS" && !filtroCentroTrabajo && !soloActivos}
+        clearDisabled={!busquedaInput && filtroEstatus === "TODOS" && !filtroCentroTrabajo && !soloActivos}
       >
             <div className="col-md-3">
               <label className="form-label" htmlFor="operaciones-busqueda">Búsqueda</label>
@@ -153,8 +149,8 @@ export default function OperacionesPage() {
                 type="text"
                 className="form-control"
                 placeholder="Código, nombre o descripción"
-                value={busqueda}
-                onChange={(event) => resetPage(() => setBusqueda(event.target.value))}
+                value={busquedaInput}
+                onChange={(event) => resetPage(() => setFiltros((actuales) => ({ ...actuales, busqueda: event.target.value })))}
               />
             </div>
 
@@ -164,7 +160,7 @@ export default function OperacionesPage() {
                 id="operaciones-estado"
                 className="form-select"
                 value={filtroEstatus}
-                onChange={(event) => resetPage(() => setFiltroEstatus(event.target.value))}
+                onChange={(event) => resetPage(() => setFiltros((actuales) => ({ ...actuales, filtroEstatus: event.target.value })))}
               >
                 <option value="TODOS">Todos</option>
                 <option value="ACTIVO">Activos</option>
@@ -178,7 +174,7 @@ export default function OperacionesPage() {
                 id="operaciones-centro"
                 className="form-select"
                 value={filtroCentroTrabajo}
-                onChange={(event) => resetPage(() => setFiltroCentroTrabajo(event.target.value))}
+                onChange={(event) => resetPage(() => setFiltros((actuales) => ({ ...actuales, filtroCentroTrabajo: event.target.value })))}
               >
                 <option value="">Todos los centros</option>
                 {centrosUnicos.map((centro) => (
@@ -193,7 +189,7 @@ export default function OperacionesPage() {
                   className="form-check-input"
                   type="checkbox"
                   checked={soloActivos}
-                  onChange={() => resetPage(() => setSoloActivos((prev) => !prev))}
+                  onChange={() => resetPage(() => setFiltros((actuales) => ({ ...actuales, soloActivos: !soloActivos })))}
                 />
                 <label className="form-check-label">
                   Solo activos

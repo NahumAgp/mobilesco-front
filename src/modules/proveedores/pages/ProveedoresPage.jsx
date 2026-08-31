@@ -1,5 +1,7 @@
 ﻿import React, { useEffect, useMemo, useState } from "react";
 import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
+import useDebouncedValue from "../../../hooks/useDebouncedValue.js";
+import usePersistedState from "../../../hooks/usePersistedState.js";
 import { useNavigate } from "react-router-dom";
 
 import { useProveedores } from "../hooks/useProveedores";
@@ -17,6 +19,12 @@ import {
 import { obtenerTiposInsumo } from "../../insumos/services/tiposInsumo.js";
 import { getUser, hasPermission } from "../../auth/services/authService.js";
 
+const FILTROS_DEFAULT = {
+  busqueda: "",
+  tipoInsumo: "",
+  soloActivos: false
+};
+
 export default function ProveedoresPage() {
   const navigate = useNavigate();
   const user = getUser();
@@ -26,9 +34,8 @@ export default function ProveedoresPage() {
 
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
-  const [busqueda, setBusqueda] = useState("");
-  const [tipoInsumo, setTipoInsumo] = useState("");
-  const [soloActivos, setSoloActivos] = useState(false);
+  const [filtros, setFiltros] = usePersistedState("proveedores:filtros", FILTROS_DEFAULT);
+  const { busqueda: busquedaInput, tipoInsumo, soloActivos } = filtros;
   const [page, setPage] = useState(() => getInitialPaginationPage("proveedores"));
   usePersistedPagination("proveedores", page);
   const [tiposInsumo, setTiposInsumo] = useState([]);
@@ -36,13 +43,13 @@ export default function ProveedoresPage() {
   const [cambiandoEstado, setCambiandoEstado] = useState(false);
 
   const activoFiltro = useMemo(() => (soloActivos ? true : undefined), [soloActivos]);
+  const busqueda = useDebouncedValue(busquedaInput, 350);
   const busquedaGeneral = busqueda.trim() || undefined;
   const tipoInsumoFiltro = tipoInsumo || undefined;
 
   const {
     proveedores,
     pageInfo,
-    loadingLista,
     error,
     cambiarEstadoProveedor
   } = useProveedores({
@@ -92,17 +99,17 @@ export default function ProveedoresPage() {
   };
 
   const cambiarBusqueda = (e) => {
-    setBusqueda(e.target.value);
+    setFiltros((actuales) => ({ ...actuales, busqueda: e.target.value }));
     setPage(0);
   };
 
   const cambiarTipoInsumo = (e) => {
-    setTipoInsumo(e.target.value);
+    setFiltros((actuales) => ({ ...actuales, tipoInsumo: e.target.value }));
     setPage(0);
   };
 
   const cambiarSoloActivos = (e) => {
-    setSoloActivos(e.target.checked);
+    setFiltros((actuales) => ({ ...actuales, soloActivos: e.target.checked }));
     setPage(0);
   };
 
@@ -110,7 +117,7 @@ export default function ProveedoresPage() {
     try {
       const blob = await exportarProveedoresExcel({
         activo: activoFiltro,
-        busqueda: busquedaGeneral,
+        busqueda: busquedaInput.trim() || undefined,
         tipoInsumo: tipoInsumoFiltro
       });
 
@@ -172,12 +179,6 @@ export default function ProveedoresPage() {
         }
       />
 
-      {loadingLista && (
-        <div className="alert alert-info">
-          Cargando proveedores…
-        </div>
-      )}
-
       {error && (
         <div className="alert alert-danger">
           {error}
@@ -186,12 +187,10 @@ export default function ProveedoresPage() {
 
       <CatalogFilters
         onClear={() => {
-          setBusqueda("");
-          setTipoInsumo("");
-          setSoloActivos(false);
+          setFiltros(FILTROS_DEFAULT);
           setPage(0);
         }}
-        clearDisabled={!busqueda && !tipoInsumo && !soloActivos}
+        clearDisabled={!busquedaInput && !tipoInsumo && !soloActivos}
       >
             <div className="col-md-4">
               <label className="form-label" htmlFor="proveedores-busqueda">Búsqueda</label>
@@ -200,7 +199,7 @@ export default function ProveedoresPage() {
                 type="text"
                 className="form-control"
                 placeholder="Razón social, contacto, RFC, correo o teléfono"
-                value={busqueda}
+                value={busquedaInput}
                 onChange={cambiarBusqueda}
               />
             </div>

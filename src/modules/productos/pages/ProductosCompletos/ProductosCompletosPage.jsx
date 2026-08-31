@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import useDebouncedValue from "../../../../hooks/useDebouncedValue.js";
 import { getInitialPaginationPage, usePersistedPagination } from "../../../../hooks/usePersistedPagination.js";
+import usePersistedState from "../../../../hooks/usePersistedState.js";
 import { useNavigate } from "react-router-dom";
 import ProductoWizard from "./components/ProductoWizard";
 import { actualizarModelo, subirImagenModelo } from "../../../modelos/services/modelos";
@@ -24,6 +26,15 @@ const PAGE_INFO_DEFAULT = {
   size: PAGE_SIZE,
   totalElements: 0,
   totalPages: 0
+};
+const FILTROS_DEFAULT = {
+  busqueda: "",
+  filtroEstatus: "TODOS",
+  filtroModelo: "",
+  filtroNivel: "",
+  filtroColor: "",
+  sortField: "sku",
+  sortDirection: "asc"
 };
 
 const getLista = (respuesta) => {
@@ -154,15 +165,24 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
   const [tipoMensaje, setTipoMensaje] = useState("success");
   const [page, setPage] = useState(() => getInitialPaginationPage("productos-completos"));
   usePersistedPagination("productos-completos", page);
-  const [busqueda, setBusqueda] = useState("");
-  const [filtroEstatus, setFiltroEstatus] = useState("TODOS");
-  const [filtroModelo, setFiltroModelo] = useState("");
-  const [filtroNivel, setFiltroNivel] = useState("");
-  const [filtroColor, setFiltroColor] = useState("");
-  const [sortField, setSortField] = useState("sku");
-  const [sortDirection, setSortDirection] = useState("asc");
+  const [filtros, setFiltros] = usePersistedState("productos-completos:filtros", FILTROS_DEFAULT);
+  const {
+    busqueda: busquedaInput,
+    filtroEstatus,
+    filtroModelo,
+    filtroNivel,
+    filtroColor,
+    sortField,
+    sortDirection
+  } = filtros;
+  const busqueda = useDebouncedValue(busquedaInput, 350);
   const [exportandoExcel, setExportandoExcel] = useState(false);
   const [mostrarValidacionSkus, setMostrarValidacionSkus] = useState(false);
+
+  const actualizarFiltros = useCallback((cambios) => {
+    setFiltros((actuales) => ({ ...actuales, ...cambios }));
+    setPage(0);
+  }, [setFiltros]);
 
   const cargarProductos = useCallback(async () => {
     // Limpiar cache legado del modulo cuando existia en modo local.
@@ -230,7 +250,7 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
 
       const blob = await exportarProductosExcel({
         activo: filtroEstatus === "TODOS" ? undefined : filtroEstatus === "ACTIVO",
-        busqueda: busqueda || undefined,
+        busqueda: busquedaInput.trim() || undefined,
         sortBy: sortField,
         direction: sortDirection
       });
@@ -656,7 +676,7 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
   const totalPages = pageInfo.totalPages || 0;
   const paginaActual = totalPages > 0 ? Math.min(page, totalPages - 1) : 0;
   const productosPaginados = productosEnriquecidos;
-  const hayFiltrosActivos = Boolean(busqueda.trim()) || filtroEstatus !== "TODOS" || Boolean(filtroModelo) || Boolean(filtroNivel) || Boolean(filtroColor);
+  const hayFiltrosActivos = Boolean(busquedaInput.trim()) || filtroEstatus !== "TODOS" || Boolean(filtroModelo) || Boolean(filtroNivel) || Boolean(filtroColor);
   const mostrarVacio = !loadingLista && !errorLista && productos.length === 0;
   const mostrarSinCoincidencias = !loadingLista && !errorLista && productos.length === 0 && hayFiltrosActivos;
 
@@ -667,12 +687,11 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
   }, [loadingLista, page, totalPages]);
 
   const manejarOrden = (campo) => {
-    if (sortField === campo) {
-      setSortDirection((direccionActual) => (direccionActual === "asc" ? "desc" : "asc"));
-    } else {
-      setSortDirection("asc");
-      setSortField(campo);
-    }
+    setFiltros((actuales) => ({
+      ...actuales,
+      sortField: campo,
+      sortDirection: actuales.sortField === campo && actuales.sortDirection === "asc" ? "desc" : "asc"
+    }));
     setPage(0);
   };
 
@@ -738,11 +757,8 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
                 type="text"
                 className="form-control"
                 placeholder="Buscar por SKU, producto, modelo, nivel o color..."
-                value={busqueda}
-                onChange={(event) => {
-                  setBusqueda(event.target.value);
-                  setPage(0);
-                }}
+                value={busquedaInput}
+                onChange={(event) => actualizarFiltros({ busqueda: event.target.value })}
               />
             </div>
 
@@ -750,10 +766,7 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
               <select
                 className="form-select"
                 value={filtroModelo}
-                onChange={(event) => {
-                  setFiltroModelo(event.target.value);
-                  setPage(0);
-                }}
+                onChange={(event) => actualizarFiltros({ filtroModelo: event.target.value })}
               >
                 <option value="">Todos los modelos</option>
                 {modelosDisponibles.map((modelo) => (
@@ -768,10 +781,7 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
               <select
                 className="form-select"
                 value={filtroNivel}
-                onChange={(event) => {
-                  setFiltroNivel(event.target.value);
-                  setPage(0);
-                }}
+                onChange={(event) => actualizarFiltros({ filtroNivel: event.target.value })}
               >
                 <option value="">Todos los niveles</option>
                 {nivelesDisponibles.map((nivel) => (
@@ -786,10 +796,7 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
               <select
                 className="form-select"
                 value={filtroColor}
-                onChange={(event) => {
-                  setFiltroColor(event.target.value);
-                  setPage(0);
-                }}
+                onChange={(event) => actualizarFiltros({ filtroColor: event.target.value })}
               >
                 <option value="">Todos los colores</option>
                 {coloresDisponibles.map((color) => (
@@ -804,10 +811,7 @@ export default function ProductosCompletosPage({ iniciarCreacion = false }) {
               <select
                 className="form-select"
                 value={filtroEstatus}
-                onChange={(event) => {
-                  setFiltroEstatus(event.target.value);
-                  setPage(0);
-                }}
+                onChange={(event) => actualizarFiltros({ filtroEstatus: event.target.value })}
               >
                 <option value="TODOS">Todos</option>
                 <option value="ACTIVO">Activos</option>

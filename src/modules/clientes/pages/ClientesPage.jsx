@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
+import useDebouncedValue from "../../../hooks/useDebouncedValue.js";
 import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
+import usePersistedState from "../../../hooks/usePersistedState.js";
 import { useNavigate } from "react-router-dom";
 
 import CatalogRowActions from "../../../components/ui/CatalogRowActions";
@@ -21,7 +23,8 @@ const estadoInicial = {
 export default function ClientesPage() {
   const navigate = useNavigate();
   const puedeCrear = hasPermission(getUser(), "ACTION_CUSTOMERS_CREATE");
-  const [filtros, setFiltros] = useState(estadoInicial);
+  const [filtros, setFiltros] = usePersistedState("clientes:filtros", estadoInicial);
+  const busqueda = useDebouncedValue(filtros.busqueda, 350);
   const [page, setPage] = useState(() => getInitialPaginationPage("clientes"));
   usePersistedPagination("clientes", page);
   const [resultado, setResultado] = useState({ content: [], totalPages: 0, totalElements: 0 });
@@ -36,7 +39,7 @@ export default function ClientesPage() {
       const data = await obtenerClientes({
         page,
         size: 10,
-        busqueda: filtros.busqueda.trim(),
+        busqueda: busqueda.trim(),
         clasificacion: filtros.clasificacion,
         activo: filtros.activo,
         sortBy: "nombre",
@@ -48,7 +51,7 @@ export default function ClientesPage() {
     } finally {
       setCargando(false);
     }
-  }, [filtros, page]);
+  }, [busqueda, filtros.activo, filtros.clasificacion, page]);
 
   useEffect(() => {
     obtenerClasificacionesCliente()

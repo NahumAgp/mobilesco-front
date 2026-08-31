@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import useDebouncedValue from "../../../hooks/useDebouncedValue.js";
 import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
+import usePersistedState from "../../../hooks/usePersistedState.js";
 import { useNavigate } from "react-router-dom";
 
 import { useModelos } from "../hooks/useModelos.js";
@@ -15,6 +17,12 @@ import { getUser, hasPermission } from "../../auth/services/authService";
 import "./ModelosPage.css";
 
 const PAGE_SIZE = 10;
+const FILTROS_DEFAULT = {
+  busqueda: "",
+  filtroFamilia: "",
+  filtroEstatus: "TODOS",
+  soloActivos: false
+};
 
 const getLineaNombre = (modelo = {}) =>
   modelo.lineaNombre || modelo.linea?.nombre || modelo.familia?.lineaNombre || modelo.familia?.linea?.nombre || "";
@@ -34,12 +42,11 @@ export default function ModelosPage() {
   const [toastType, setToastType] = useState("success");
   const [page, setPage] = useState(() => getInitialPaginationPage("modelos"));
   usePersistedPagination("modelos", page);
-  const [busqueda, setBusqueda] = useState("");
-  const [filtroFamilia, setFiltroFamilia] = useState("");
-  const [filtroEstatus, setFiltroEstatus] = useState("TODOS");
-  const [soloActivos, setSoloActivos] = useState(false);
+  const [filtros, setFiltros] = usePersistedState("modelos:filtros", FILTROS_DEFAULT);
+  const { busqueda: busquedaInput, filtroFamilia, filtroEstatus, soloActivos } = filtros;
   const [exportandoExcel, setExportandoExcel] = useState(false);
   const [familiasDisponibles, setFamiliasDisponibles] = useState([]);
+  const busqueda = useDebouncedValue(busquedaInput, 350);
   const terminoBusqueda = busqueda.toLowerCase().trim().replace(/\s+/g, " ");
   const filtroActivo = soloActivos
     ? true
@@ -66,7 +73,7 @@ export default function ModelosPage() {
   const totalElements = pageInfo.totalElements ?? 0;
   const totalPages = pageInfo.totalPages ?? 0;
 
-  const hayFiltrosActivos = Boolean(terminoBusqueda) || Boolean(filtroFamilia) || filtroEstatus !== "TODOS" || soloActivos;
+  const hayFiltrosActivos = Boolean(busquedaInput.trim()) || Boolean(filtroFamilia) || filtroEstatus !== "TODOS" || soloActivos;
   const mostrarVacio = !loadingLista && !error && !hayFiltrosActivos && totalElements === 0;
   const mostrarSinCoincidencias = !loadingLista && !error && hayFiltrosActivos && totalElements === 0;
 
@@ -138,7 +145,7 @@ export default function ModelosPage() {
 
       const blob = await exportarModelosExcel({
         activo: filtroActivo ?? undefined,
-        busqueda: terminoBusqueda || undefined,
+        busqueda: busquedaInput.toLowerCase().trim().replace(/\s+/g, " ") || undefined,
         familiaId: filtroFamilia || undefined,
         sortBy: "nombre",
         direction: "asc"
@@ -164,22 +171,22 @@ export default function ModelosPage() {
   };
 
   const cambiarBusqueda = (e) => {
-    setBusqueda(e.target.value);
+    setFiltros((actuales) => ({ ...actuales, busqueda: e.target.value }));
     setPage(0);
   };
 
   const cambiarFamilia = (e) => {
-    setFiltroFamilia(e.target.value);
+    setFiltros((actuales) => ({ ...actuales, filtroFamilia: e.target.value }));
     setPage(0);
   };
 
   const cambiarEstatus = (e) => {
-    setFiltroEstatus(e.target.value);
+    setFiltros((actuales) => ({ ...actuales, filtroEstatus: e.target.value }));
     setPage(0);
   };
 
   const cambiarSoloActivos = (e) => {
-    setSoloActivos(e.target.checked);
+    setFiltros((actuales) => ({ ...actuales, soloActivos: e.target.checked }));
     setPage(0);
   };
 
@@ -214,12 +221,6 @@ export default function ModelosPage() {
         }
       />
 
-      {loadingLista && (
-        <div className="alert alert-info">
-          Cargando modelos...
-        </div>
-      )}
-
       {error && (
         <div className="alert alert-danger">
           {error}
@@ -234,7 +235,7 @@ export default function ModelosPage() {
                 type="text"
                 className="form-control"
                 placeholder="Buscar por nombre, descripcion o familia..."
-                value={busqueda}
+                value={busquedaInput}
                 onChange={cambiarBusqueda}
               />
             </div>

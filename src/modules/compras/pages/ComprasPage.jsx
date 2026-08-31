@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
+import useDebouncedValue from "../../../hooks/useDebouncedValue.js";
 import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
+import usePersistedState from "../../../hooks/usePersistedState.js";
 import { useNavigate } from "react-router-dom";
 
 import { useCompras } from "../hooks/useCompras";
@@ -12,6 +14,13 @@ import Toast from "../../../components/ui/Toast.jsx";
 import { uniqueOptionsByValue } from "../../../utils/uniqueOptions.js";
 import { getUser, hasPermission } from "../../auth/services/authService.js";
 const PAGE_SIZE = 10;
+const FILTROS_DEFAULT = {
+  busqueda: "",
+  filtroEstado: "TODOS",
+  filtroProveedor: "",
+  fechaInicio: "",
+  fechaFin: ""
+};
 
 export default function ComprasPage() {
   const navigate = useNavigate();
@@ -21,11 +30,9 @@ export default function ComprasPage() {
 
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
-  const [busqueda, setBusqueda] = useState("");
-  const [filtroEstado, setFiltroEstado] = useState("TODOS");
-  const [filtroProveedor, setFiltroProveedor] = useState("");
-  const [fechaInicio, setFechaInicio] = useState("");
-  const [fechaFin, setFechaFin] = useState("");
+  const [filtros, setFiltros] = usePersistedState("compras:filtros", FILTROS_DEFAULT);
+  const { busqueda: busquedaInput, filtroEstado, filtroProveedor, fechaInicio, fechaFin } = filtros;
+  const busqueda = useDebouncedValue(busquedaInput, 350);
   const [page, setPage] = useState(() => getInitialPaginationPage("compras"));
   usePersistedPagination("compras", page);
   const [compraPorEliminar, setCompraPorEliminar] = useState(null);
@@ -33,7 +40,7 @@ export default function ComprasPage() {
   const [eliminando, setEliminando] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
 
-  const { compras, pageInfo, loadingLista, error, eliminarCompra, confirmarBorrador } = useCompras({
+  const { compras, pageInfo, error, eliminarCompra, confirmarBorrador } = useCompras({
     page,
     size: PAGE_SIZE,
     busqueda,
@@ -85,11 +92,7 @@ export default function ComprasPage() {
   };
 
   const limpiarFiltros = () => {
-    setBusqueda("");
-    setFiltroEstado("TODOS");
-    setFiltroProveedor("");
-    setFechaInicio("");
-    setFechaFin("");
+    setFiltros(FILTROS_DEFAULT);
   };
 
   const proveedoresUnicos = uniqueOptionsByValue(
@@ -104,7 +107,7 @@ export default function ComprasPage() {
   const totalPages = Math.max(pageInfo.totalPages || 0, 1);
   const safePage = Math.min(page, totalPages - 1);
   const filtrosVacios =
-    !busqueda && filtroEstado === "TODOS" && !filtroProveedor && !fechaInicio && !fechaFin;
+    !busquedaInput && filtroEstado === "TODOS" && !filtroProveedor && !fechaInicio && !fechaFin;
 
   return (
     <>
@@ -159,7 +162,6 @@ export default function ComprasPage() {
         }
       />
 
-      {loadingLista && <div className="alert alert-info">Cargando compras…</div>}
       {error && <div className="alert alert-danger">{error}</div>}
 
       <CatalogFilters onClear={limpiarFiltros} clearDisabled={filtrosVacios}>
@@ -170,8 +172,8 @@ export default function ComprasPage() {
             type="text"
             className="form-control"
             placeholder="Folio, método de pago o proveedor"
-            value={busqueda}
-            onChange={(event) => setBusqueda(event.target.value)}
+            value={busquedaInput}
+            onChange={(event) => setFiltros((actuales) => ({ ...actuales, busqueda: event.target.value }))}
           />
         </div>
         <div className="col-md-2">
@@ -180,7 +182,7 @@ export default function ComprasPage() {
             id="compras-estado"
             className="form-select"
             value={filtroEstado}
-            onChange={(event) => setFiltroEstado(event.target.value)}
+            onChange={(event) => setFiltros((actuales) => ({ ...actuales, filtroEstado: event.target.value }))}
           >
             <option value="TODOS">Todos los estados</option>
             <option value="BORRADOR">Borradores</option>
@@ -196,7 +198,7 @@ export default function ComprasPage() {
             id="compras-proveedor"
             className="form-select"
             value={filtroProveedor}
-            onChange={(event) => setFiltroProveedor(event.target.value)}
+            onChange={(event) => setFiltros((actuales) => ({ ...actuales, filtroProveedor: event.target.value }))}
           >
             <option value="">Todos los proveedores</option>
             {proveedoresUnicos.map((proveedor) => (
@@ -211,7 +213,7 @@ export default function ComprasPage() {
             type="date"
             className="form-control"
             value={fechaInicio}
-            onChange={(event) => setFechaInicio(event.target.value)}
+            onChange={(event) => setFiltros((actuales) => ({ ...actuales, fechaInicio: event.target.value }))}
           />
         </div>
         <div className="col-md-2">
@@ -221,7 +223,7 @@ export default function ComprasPage() {
             type="date"
             className="form-control"
             value={fechaFin}
-            onChange={(event) => setFechaFin(event.target.value)}
+            onChange={(event) => setFiltros((actuales) => ({ ...actuales, fechaFin: event.target.value }))}
           />
         </div>
       </CatalogFilters>

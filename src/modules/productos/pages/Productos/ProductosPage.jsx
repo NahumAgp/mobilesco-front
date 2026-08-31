@@ -1,5 +1,7 @@
 import { useState } from "react";
+import useDebouncedValue from "../../../../hooks/useDebouncedValue.js";
 import { getInitialPaginationPage, usePersistedPagination } from "../../../../hooks/usePersistedPagination.js";
+import usePersistedState from "../../../../hooks/usePersistedState.js";
 import { useNavigate } from "react-router-dom";
 
 import PageHeader from "../../../../components/Sistema/PageHeader.jsx";
@@ -12,14 +14,19 @@ import ProductosTable from "./ProductosTable.jsx";
 import { useProductos } from "./useProductos";
 
 const PAGE_SIZE = 10;
+const FILTROS_DEFAULT = {
+  busqueda: "",
+  filtroEstatus: "TODOS",
+  soloActivos: false
+};
 
 export default function ProductosPage() {
   const navigate = useNavigate();
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
-  const [busqueda, setBusqueda] = useState("");
-  const [filtroEstatus, setFiltroEstatus] = useState("TODOS");
-  const [soloActivos, setSoloActivos] = useState(false);
+  const [filtros, setFiltros] = usePersistedState("productos:filtros", FILTROS_DEFAULT);
+  const { busqueda: busquedaInput, filtroEstatus, soloActivos } = filtros;
+  const busqueda = useDebouncedValue(busquedaInput, 350);
   const [page, setPage] = useState(() => getInitialPaginationPage("productos"));
   usePersistedPagination("productos", page);
   const [productoPorDesactivar, setProductoPorDesactivar] = useState(null);
@@ -43,9 +50,9 @@ export default function ProductosPage() {
   const totalPages = pageInfo.totalPages || 0;
   const paginaActual = totalPages > 0 ? Math.min(page, totalPages - 1) : 0;
 
-  const resetPage = (updater) => {
+  const actualizarFiltros = (cambios) => {
+    setFiltros((actuales) => ({ ...actuales, ...cambios }));
     setPage(0);
-    updater();
   };
 
   const confirmarDesactivacion = async () => {
@@ -93,12 +100,9 @@ export default function ProductosPage() {
 
       <CatalogFilters
         onClear={() => {
-          setBusqueda("");
-          setFiltroEstatus("TODOS");
-          setSoloActivos(false);
-          setPage(0);
+          actualizarFiltros(FILTROS_DEFAULT);
         }}
-        clearDisabled={!busqueda && filtroEstatus === "TODOS" && !soloActivos}
+        clearDisabled={!busquedaInput && filtroEstatus === "TODOS" && !soloActivos}
       >
         <div className="col-md-5">
           <label className="form-label" htmlFor="productos-busqueda">Búsqueda</label>
@@ -107,8 +111,8 @@ export default function ProductosPage() {
             type="text"
             className="form-control"
             placeholder="SKU, nombre o descripción"
-            value={busqueda}
-            onChange={(event) => resetPage(() => setBusqueda(event.target.value))}
+            value={busquedaInput}
+            onChange={(event) => actualizarFiltros({ busqueda: event.target.value })}
           />
         </div>
         <div className="col-md-3">
@@ -117,7 +121,7 @@ export default function ProductosPage() {
             id="productos-estado"
             className="form-select"
             value={filtroEstatus}
-            onChange={(event) => resetPage(() => setFiltroEstatus(event.target.value))}
+            onChange={(event) => actualizarFiltros({ filtroEstatus: event.target.value })}
           >
             <option value="TODOS">Todos</option>
             <option value="ACTIVO">Activos</option>
@@ -131,7 +135,7 @@ export default function ProductosPage() {
               className="form-check-input"
               type="checkbox"
               checked={soloActivos}
-              onChange={() => resetPage(() => setSoloActivos((actual) => !actual))}
+              onChange={() => actualizarFiltros({ soloActivos: !soloActivos })}
             />
             <label className="form-check-label" htmlFor="productos-solo-activos">
               Solo activos
