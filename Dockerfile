@@ -15,10 +15,17 @@ RUN npm run build
 # -------- PRODUCTION --------
 FROM nginx:alpine
 
+ARG BUILD_REVISION="local"
+ARG BUILD_CREATED="unknown"
+LABEL org.opencontainers.image.title="mobilesco-frontend" \
+      org.opencontainers.image.revision="${BUILD_REVISION}" \
+      org.opencontainers.image.created="${BUILD_CREATED}"
+
 RUN rm -rf /etc/nginx/conf.d/*
 
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /app/dist /usr/share/nginx/html
+RUN printf '{"app":"mobilesco-front","revision":"%s","created":"%s"}\n' "$BUILD_REVISION" "$BUILD_CREATED" > /usr/share/nginx/html/version.json
 
 EXPOSE 80
 
