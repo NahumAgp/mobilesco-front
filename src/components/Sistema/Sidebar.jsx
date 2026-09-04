@@ -184,27 +184,27 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
     can("VIEW_DASHBOARD") && { to: "/tablero", label: "Tablero", shortLabel: "Inicio", icon: "bi-speedometer2", section: "Inicio" },
     puedeGestionarUsuarios && { to: "/usuarios/accesos", label: "Usuarios y accesos", shortLabel: "Usuarios", icon: "bi-shield-check", section: "General" },
     can("VIEW_EMPLOYEES") && { to: "/empleados", label: "Empleados", icon: "bi-people", section: "General" },
-    can("VIEW_WORK_AREAS") && { to: "/areas-trabajo", label: "Areas de trabajo", shortLabel: "Areas", icon: "bi-diagram-3", section: "General" },
+    can("VIEW_WORK_AREAS") && { to: "/areas-trabajo", label: "Areas de trabajo", shortLabel: "Areas", icon: "bi-columns-gap", section: "General" },
     can("VIEW_SUPPLIERS") && { to: "/proveedores", label: "Proveedores", shortLabel: "Prov.", icon: "bi-truck", section: "General" },
     can("VIEW_PRODUCT_LINES") && { to: "/lineas-producto", label: "Lineas", icon: "bi-collection", section: "Productos" },
     can("VIEW_FAMILIES") && { to: "/familias", label: "Familias", icon: "bi-diagram-3", section: "Productos" },
     can("VIEW_SUBFAMILIES") && { to: "/subfamilias", label: "Subfamilias", shortLabel: "Subfam.", icon: "bi-diagram-2", section: "Productos" },
-    can("VIEW_MODELS") && { to: "/modelos", label: "Modelos", icon: "bi-boxes", section: "Productos" },
+    can("VIEW_MODELS") && { to: "/modelos", label: "Modelos", icon: "bi-badge-3d", section: "Productos" },
     can("VIEW_MATERIALS") && { to: "/materiales", label: "Materiales", shortLabel: "Material", icon: "bi-layers", section: "Productos" },
     can("VIEW_COLORS") && { to: "/colores", label: "Colores", icon: "bi-palette", section: "Productos" },
     can("VIEW_PRODUCTS") && { to: "/productos", label: "Productos", shortLabel: "Productos", icon: "bi-box-seam", section: "Productos" },
-    can("VIEW_PRODUCT_QUALITY") && { to: "/productos/calidad", label: "Calidad de datos", shortLabel: "Calidad", icon: "bi-clipboard-check", section: "Productos" },
+    can("VIEW_PRODUCT_QUALITY") && { to: "/productos/calidad", label: "Calidad de datos", shortLabel: "Calidad", icon: "bi-clipboard-data", section: "Productos" },
     can("VIEW_PRODUCT_CATALOG") && { to: "/productos/catalogo", label: "Catalogo visual", shortLabel: "Catalogo", icon: "bi-images", section: "Productos" },
-    can("VIEW_INVENTORY") && { to: "/insumos", label: "Insumos", icon: "bi-boxes", section: "Almacen" },
+    can("VIEW_INVENTORY") && { to: "/insumos", label: "Insumos", icon: "bi-nut", section: "Almacen" },
     can("VIEW_WAREHOUSE_RECEIPTS") && { to: "/almacen/entradas", label: "Entradas", icon: "bi-box-arrow-in-down", section: "Almacen" },
     can("VIEW_INPUT_TYPES") && { to: "/insumos/tipos", label: "Tipos de insumo", shortLabel: "Tipos", icon: "bi-tags", section: "Almacen" },
     can("VIEW_INVENTORY_OUTPUTS") && { to: "/salidas-insumos", label: "Salidas", icon: "bi-box-arrow-right", section: "Almacen" },
-    can("VIEW_WAREHOUSE_REQUISITIONS") && { to: "/almacen/requisiciones", label: "Requisiciones", shortLabel: "Req.", icon: "bi-clipboard-check", section: "Almacen" },
+    can("VIEW_WAREHOUSE_REQUISITIONS") && { to: "/almacen/requisiciones", label: "Requisiciones", shortLabel: "Req.", icon: "bi-clipboard-plus", section: "Almacen" },
     can("VIEW_MEASURE_UNITS") && { to: "/unidades-medida", label: "Unidad Medida", shortLabel: "Unidad", icon: "bi-aspect-ratio", section: "Almacen" },
     can("VIEW_WORK_CENTERS") && { to: "/centros-trabajo", label: "Centros de Trabajo", shortLabel: "Centros", icon: "bi-building", section: "Produccion" },
     can("VIEW_OPERATIONS") && { to: "/operaciones", label: "Operaciones", shortLabel: "Operacion", icon: "bi-gear", section: "Produccion" },
     can("VIEW_PRODUCTION_ORDERS") && { to: "/ordenes-produccion", label: "Ordenes de produccion", shortLabel: "Ordenes", icon: "bi-clipboard2-check", section: "Produccion" },
-    can("VIEW_CIF") && { to: "/cif", label: "CIF", icon: "bi-diagram-3", section: "Produccion" },
+    can("VIEW_CIF") && { to: "/cif", label: "CIF", icon: "bi-calculator", section: "Produccion" },
     can("VIEW_PURCHASES") && { to: "/compras", label: "Compras", icon: "bi-cart-check", section: "Compras" },
     can("VIEW_PURCHASES") && { to: "/compras/abastecimiento", label: "Abastecimiento asistido", shortLabel: "Abasto", icon: "bi-stars", section: "Compras" },
     can("VIEW_ACCOUNTS_PAYABLE") && { to: "/compras/cuentas-por-pagar", label: "Cuentas por pagar", shortLabel: "Cuentas", icon: "bi-cash-coin", section: "Compras" },
@@ -382,7 +382,7 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
 
         {puedeGestionarUsuarios && <LinkItem to="/usuarios/accesos" label="Usuarios y accesos" icon="bi-shield-check" onClick={() => handleRouteNavigation("/usuarios/accesos")} />}
         {can("VIEW_EMPLOYEES") && <LinkItem to="/empleados" label="Empleados" icon="bi-people" onClick={() => handleRouteNavigation("/empleados")} />}
-        {can("VIEW_WORK_AREAS") && <LinkItem to="/areas-trabajo" label="Areas de trabajo" icon="bi-diagram-3" onClick={() => handleRouteNavigation("/areas-trabajo")} />}
+        {can("VIEW_WORK_AREAS") && <LinkItem to="/areas-trabajo" label="Areas de trabajo" icon="bi-columns-gap" onClick={() => handleRouteNavigation("/areas-trabajo")} />}
         {can("VIEW_SUPPLIERS") && <LinkItem to="/proveedores" label="Proveedores" icon="bi-truck" onClick={() => handleRouteNavigation("/proveedores")} />}
 
         {showProductos && (
@@ -406,11 +406,11 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
               {can("VIEW_PRODUCT_LINES") && <LinkItem to="/lineas-producto" label="Lineas" icon="bi-collection" sub onClick={() => handleRouteNavigation("/lineas-producto")} />}
               {can("VIEW_FAMILIES") && <LinkItem to="/familias" label="Familias" icon="bi-diagram-3" sub onClick={() => handleRouteNavigation("/familias")} />}
               {can("VIEW_SUBFAMILIES") && <LinkItem to="/subfamilias" label="Subfamilias" icon="bi-diagram-2" sub onClick={() => handleRouteNavigation("/subfamilias")} />}
-              {can("VIEW_MODELS") && <LinkItem to="/modelos" label="Modelos" icon="bi-boxes" sub onClick={() => handleRouteNavigation("/modelos")} />}
+              {can("VIEW_MODELS") && <LinkItem to="/modelos" label="Modelos" icon="bi-badge-3d" sub onClick={() => handleRouteNavigation("/modelos")} />}
               {can("VIEW_MATERIALS") && <LinkItem to="/materiales" label="Materiales" icon="bi-layers" sub onClick={() => handleRouteNavigation("/materiales")} />}
               {can("VIEW_COLORS") && <LinkItem to="/colores" label="Colores" icon="bi-palette" sub onClick={() => handleRouteNavigation("/colores")} />}
               {can("VIEW_PRODUCTS") && <LinkItem to="/productos" label="Productos" icon="bi-box-seam" onClick={() => handleRouteNavigation("/productos")} />}
-              {can("VIEW_PRODUCT_QUALITY") && <LinkItem to="/productos/calidad" label="Calidad de datos" icon="bi-clipboard-check" sub onClick={() => handleRouteNavigation("/productos/calidad")} />}
+              {can("VIEW_PRODUCT_QUALITY") && <LinkItem to="/productos/calidad" label="Calidad de datos" icon="bi-clipboard-data" sub onClick={() => handleRouteNavigation("/productos/calidad")} />}
               {can("VIEW_PRODUCT_CATALOG") && <LinkItem to="/productos/catalogo" label="Catalogo visual" icon="bi-images" sub onClick={() => handleRouteNavigation("/productos/catalogo")} />}
             </div>
           </div>
@@ -433,11 +433,11 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
               <i className="bi bi-chevron-down sidebar-chevron"></i>
             </button>
             <div className={`collapse sidebar-submenu ${openSubmenu === "almacen" ? "show" : ""}`} id="menuAlmacen">
-              {can("VIEW_INVENTORY") && <LinkItem to="/insumos" label="Insumos" icon="bi-boxes" sub onClick={() => handleRouteNavigation("/insumos")} />}
+              {can("VIEW_INVENTORY") && <LinkItem to="/insumos" label="Insumos" icon="bi-nut" sub onClick={() => handleRouteNavigation("/insumos")} />}
               {can("VIEW_WAREHOUSE_RECEIPTS") && <LinkItem to="/almacen/entradas" label="Entradas" icon="bi-box-arrow-in-down" sub onClick={() => handleRouteNavigation("/almacen/entradas")} />}
               {can("VIEW_INPUT_TYPES") && <LinkItem to="/insumos/tipos" label="Tipos de insumo" icon="bi-tags" sub onClick={() => handleRouteNavigation("/insumos/tipos")} />}
               {can("VIEW_INVENTORY_OUTPUTS") && <LinkItem to="/salidas-insumos" label="Salidas" icon="bi-box-arrow-right" sub onClick={() => handleRouteNavigation("/salidas-insumos")} />}
-              {can("VIEW_WAREHOUSE_REQUISITIONS") && <LinkItem to="/almacen/requisiciones" label="Requisiciones" icon="bi-clipboard-check" sub onClick={() => handleRouteNavigation("/almacen/requisiciones")} />}
+              {can("VIEW_WAREHOUSE_REQUISITIONS") && <LinkItem to="/almacen/requisiciones" label="Requisiciones" icon="bi-clipboard-plus" sub onClick={() => handleRouteNavigation("/almacen/requisiciones")} />}
               {can("VIEW_MEASURE_UNITS") && <LinkItem to="/unidades-medida" label="Unidad Medida" icon="bi-aspect-ratio" sub onClick={() => handleRouteNavigation("/unidades-medida")} />}
             </div>
           </div>
@@ -446,7 +446,7 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
         {can("VIEW_WORK_CENTERS") && <LinkItem to="/centros-trabajo" label="Centros de Trabajo" icon="bi-building" onClick={() => handleRouteNavigation("/centros-trabajo")} />}
         {can("VIEW_OPERATIONS") && <LinkItem to="/operaciones" label="Operaciones" icon="bi-gear" onClick={() => handleRouteNavigation("/operaciones")} />}
         {can("VIEW_PRODUCTION_ORDERS") && <LinkItem to="/ordenes-produccion" label="Órdenes de producción" icon="bi-clipboard2-check" onClick={() => handleRouteNavigation("/ordenes-produccion")} />}
-        {can("VIEW_CIF") && <LinkItem to="/cif" label="CIF" icon="bi-diagram-3" onClick={() => handleRouteNavigation("/cif")} />}
+        {can("VIEW_CIF") && <LinkItem to="/cif" label="CIF" icon="bi-calculator" onClick={() => handleRouteNavigation("/cif")} />}
         {can("VIEW_PURCHASES") && <LinkItem to="/compras" label="Compras" icon="bi-cart-check" onClick={() => handleRouteNavigation("/compras")} />}
         {can("VIEW_PURCHASES") && <LinkItem to="/compras/abastecimiento" label="Abastecimiento asistido" icon="bi-stars" onClick={() => handleRouteNavigation("/compras/abastecimiento")} />}
         {can("VIEW_ACCOUNTS_PAYABLE") && <LinkItem to="/compras/cuentas-por-pagar" label="Cuentas por pagar" icon="bi-cash-coin" onClick={() => handleRouteNavigation("/compras/cuentas-por-pagar")} />}

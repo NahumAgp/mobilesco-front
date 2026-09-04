@@ -488,6 +488,8 @@ export default function ProductoCatalogoPage() {
     return modelos.find((modelo) => modelo.key === key) || null;
   }, [modelos, productoSeleccionado]);
 
+  const lineaActual = lineas.find((linea) => linea.key === lineaSeleccionada) || null;
+  const modeloSeleccionadoKey = modeloSeleccionado?.key || "";
   const productosDelModelo = modeloSeleccionado?.productos || [];
   const materialActual = getAtributo(productoSeleccionado, "material");
   const nivelActual = getAtributo(productoSeleccionado, "nivel");
@@ -537,6 +539,26 @@ export default function ProductoCatalogoPage() {
     setSubfamiliaSeleccionada(subfamilia.key);
     const primerProducto = subfamilia.modelos[0]?.productos?.[0] || subfamilia.productos[0];
     if (primerProducto) cambiarProducto(primerProducto);
+  };
+
+  const cambiarLineaPorKey = (key) => {
+    const linea = lineas.find((item) => item.key === key);
+    if (linea) cambiarLinea(linea);
+  };
+
+  const cambiarFamiliaPorKey = (key) => {
+    const familia = familias.find((item) => item.key === key);
+    if (familia) cambiarFamilia(familia);
+  };
+
+  const cambiarSubfamiliaPorKey = (key) => {
+    const subfamilia = subfamilias.find((item) => item.key === key);
+    if (subfamilia) cambiarSubfamilia(subfamilia);
+  };
+
+  const cambiarModeloPorKey = (key) => {
+    const modelo = modelos.find((item) => item.key === key);
+    if (modelo?.productos?.[0]) cambiarProducto(modelo.productos[0]);
   };
 
   const cambiarAtributo = (tipo, key) => {
@@ -602,29 +624,6 @@ export default function ProductoCatalogoPage() {
         </div>
       </section>
 
-      {!loading && !error && lineas.length > 0 && (
-        <nav className="producto-catalogo-lineas" aria-label="Líneas del catálogo">
-          <div className="producto-catalogo-lineas-title">
-            <span>Catálogo por línea</span>
-            <small>Selecciona una línea para consultar sus familias</small>
-          </div>
-          <div className="producto-catalogo-lineas-list">
-            {lineas.map((linea) => (
-              <button
-                key={linea.key}
-                type="button"
-                className={linea.key === lineaSeleccionada ? "is-active" : ""}
-                onClick={() => cambiarLinea(linea)}
-              >
-                <strong>{linea.nombre}</strong>
-                <span>{linea.familias} familias</span>
-                <small>{linea.subfamilias} subfamilias · {linea.modelos} modelos · {linea.productos} productos</small>
-              </button>
-            ))}
-          </div>
-        </nav>
-      )}
-
       {error && <div className="alert alert-danger">{error}</div>}
 
       {!loading && !error && !productoSeleccionado && (
@@ -637,113 +636,83 @@ export default function ProductoCatalogoPage() {
       {!loading && !error && productoSeleccionado && (
         <>
         <div className="producto-catalogo-shell">
-          <aside className="producto-catalogo-groups" aria-label="Familias de productos">
-            <div className="producto-catalogo-groups-heading">
-              <h2>Familias</h2>
-              <span>{familias.length}</span>
+          <aside className="producto-catalogo-nav" aria-label="Navegación del catálogo">
+            <div className="producto-catalogo-nav-heading">
+              <span>Catálogo</span>
+              <strong>{lineaActual?.nombre || "Sin línea"}</strong>
             </div>
-            <div className="producto-catalogo-group-list">
-              {familias.map((familia) => {
-                const activo = familia.key === familiaSeleccionada;
-                return (
-                  <button
-                    key={familia.key}
-                    type="button"
-                    className={`producto-catalogo-group ${activo ? "is-active" : ""}`}
-                    onClick={() => cambiarFamilia(familia)}
-                  >
-                    {familia.imagen?.url ? (
-                      <img src={familia.imagen.url} alt={familia.nombre} />
-                    ) : (
-                      <span className="producto-catalogo-group-fallback">
-                        {familia.nombre.charAt(0).toUpperCase()}
-                      </span>
-                    )}
-                    <span className="producto-catalogo-group-copy">
-                      <strong>{familia.nombre}</strong>
-                      <small>{familia.modelos.length} modelos</small>
-                      <small>{familia.subfamilias.length} subfamilias</small>
-                      <span>
-                        {familia.productos.length} productos
-                      </span>
-                    </span>
-                  </button>
-                );
-              })}
+
+            <div className="producto-catalogo-nav-selectors">
+              <div className="producto-catalogo-nav-field">
+                <label htmlFor="catalogo-linea">Línea</label>
+                <select id="catalogo-linea" value={lineaSeleccionada} onChange={(event) => cambiarLineaPorKey(event.target.value)}>
+                  {lineas.map((linea) => (
+                    <option key={linea.key} value={linea.key}>
+                      {linea.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="producto-catalogo-nav-field">
+                <label htmlFor="catalogo-familia">Familia</label>
+                <select id="catalogo-familia" value={familiaSeleccionada} onChange={(event) => cambiarFamiliaPorKey(event.target.value)}>
+                  {familias.map((familia) => (
+                    <option key={familia.key} value={familia.key}>
+                      {familia.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="producto-catalogo-nav-field">
+                <label htmlFor="catalogo-subfamilia">Subfamilia</label>
+                <select
+                  id="catalogo-subfamilia"
+                  value={subfamiliaSeleccionada}
+                  onChange={(event) => cambiarSubfamiliaPorKey(event.target.value)}
+                >
+                  {subfamilias.map((subfamilia) => (
+                    <option key={subfamilia.key} value={subfamilia.key}>
+                      {subfamilia.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="producto-catalogo-nav-field">
+                <label htmlFor="catalogo-modelo">Modelo</label>
+                <select id="catalogo-modelo" value={modeloSeleccionadoKey} onChange={(event) => cambiarModeloPorKey(event.target.value)}>
+                  {modelos.map((modelo) => (
+                    <option key={modelo.key} value={modelo.key}>
+                      {modelo.modelo || modelo.titulo}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="producto-catalogo-nav-summary" aria-label="Resumen de selección">
+              <div>
+                <span>Familias</span>
+                <strong>{familias.length}</strong>
+              </div>
+              <div>
+                <span>Subfamilias</span>
+                <strong>{subfamilias.length}</strong>
+              </div>
+              <div>
+                <span>Modelos</span>
+                <strong>{modelos.length}</strong>
+              </div>
+              <div>
+                <span>Productos</span>
+                <strong>{productosSubfamilia.length}</strong>
+              </div>
             </div>
           </aside>
 
           <div className="producto-catalogo-content">
-            <section className="producto-catalogo-subfamilias" aria-label={`Subfamilias de ${familiaActual?.nombre || "la familia"}`}>
-              <div className="producto-catalogo-subfamilias-heading">
-                <div>
-                  <span>Familia seleccionada</span>
-                  <h2>{familiaActual?.nombre || "Sin familia"}</h2>
-                </div>
-                <small>{subfamilias.length} subfamilias · {familiaActual?.modelos?.length || 0} modelos · {productosFamilia.length} productos</small>
-              </div>
-              <div className="producto-catalogo-subfamilias-list">
-                {subfamilias.map((subfamilia) => {
-                  const activo = subfamilia.key === subfamiliaActual?.key;
-                  return (
-                    <button
-                      key={subfamilia.key}
-                      type="button"
-                      className={activo ? "is-active" : ""}
-                      onClick={() => cambiarSubfamilia(subfamilia)}
-                    >
-                      {subfamilia.imagen?.url ? (
-                        <img src={subfamilia.imagen.url} alt={subfamilia.nombre} />
-                      ) : (
-                        <span className="producto-catalogo-subfamilia-fallback">
-                          {subfamilia.nombre.charAt(0).toUpperCase()}
-                        </span>
-                      )}
-                      <span>
-                        <strong>{subfamilia.nombre}</strong>
-                        <small>{subfamilia.modelos.length} modelos · {subfamilia.productos.length} productos</small>
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </section>
-
-            <section className="producto-catalogo-modelos" aria-label={`Modelos de ${familiaActual?.nombre || "la familia"}`}>
-              <div className="producto-catalogo-modelos-heading">
-                <div>
-                  <span>Subfamilia seleccionada</span>
-                  <h2>{subfamiliaActual?.nombre || "Sin subfamilia"}</h2>
-                </div>
-                <small>{modelos.length} modelos · {productosSubfamilia.length} productos</small>
-              </div>
-              <div className="producto-catalogo-modelos-list">
-                {modelos.map((modelo) => {
-                  const activo = modelo.key === modeloSeleccionado?.key;
-                  return (
-                    <button
-                      key={modelo.key}
-                      type="button"
-                      className={activo ? "is-active" : ""}
-                      onClick={() => cambiarProducto(modelo.productos[0])}
-                    >
-                      {modelo.imagen?.url ? (
-                        <img src={modelo.imagen.url} alt={modelo.titulo} />
-                      ) : (
-                        <span className="producto-catalogo-modelo-fallback">
-                          {(modelo.modelo || modelo.titulo).charAt(0).toUpperCase()}
-                        </span>
-                      )}
-                      <span>
-                        <strong>{modelo.modelo || modelo.titulo}</strong>
-                        <small>{modelo.productos.length} productos</small>
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </section>
-
           <main className="producto-catalogo-detail">
             <section className="producto-catalogo-model-hero">
               {modeloSeleccionado?.imagen?.url ? (

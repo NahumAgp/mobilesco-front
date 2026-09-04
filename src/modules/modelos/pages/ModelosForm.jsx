@@ -1497,6 +1497,7 @@ export default function ModeloForm({
                   modeloId={modelo?.id || modeloId}
                   categorias={categoriasSeleccionadas}
                   materiales={materialesSeleccionados}
+                  variantes={variantesModelo}
                   onCategoriasChange={setCategoriasSeleccionadas}
                 />
               </div>

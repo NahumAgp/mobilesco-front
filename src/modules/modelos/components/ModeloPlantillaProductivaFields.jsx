@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import SearchableSelect from "../../../components/ui/SearchableSelect.jsx";
 import InsumoForm from "../../insumos/pages/InsumoForm.jsx";
 import { obtenerInsumos } from "../../insumos/services/insumos.js";
-import { sincronizarInsumosVariantes } from "../services/modelos.js";
+import { sincronizarInsumosVariantes, sincronizarMedidasVariantes } from "../services/modelos.js";
 import OperacionForm from "../../operaciones/pages/OperacionForm.jsx";
 import { obtenerOperacionesActivas } from "../../operaciones/services/operaciones.js";
 
@@ -40,6 +40,45 @@ const getInsumoMaterialId = (item) => item?.materialId ?? item?.material_id ?? i
 const getInsumoScopeKey = (item) => `${getInsumoMaterialId(item) ?? "comun"}::${getId(item) ?? ""}`;
 const getSectionKey = (categoria, categoriaIndex, materialId = null) =>
   `${getCategoriaKey(categoria, categoriaIndex)}::${materialId ?? "comunes"}`;
+const getProductoNivelId = (item) => item?.nivelId ?? item?.id_nivel ?? item?.nivel_id ?? item?.nivel?.id ?? null;
+const getProductoMaterialId = (item) => item?.materialId ?? item?.id_material ?? item?.material_id ?? item?.material?.id ?? null;
+const getMedidasKey = (materialId = null) => String(materialId ?? "comunes");
+const MEDIDAS_DEFAULT = {
+  ancho: "",
+  alto: "",
+  fondo: "",
+  pesoKg: "",
+  pesoVolumetrico: "",
+  dimensiones: ""
+};
+
+const getValorMedida = (item, key) => {
+  const aliases = {
+    pesoKg: ["pesoKg", "peso_kg"],
+    pesoVolumetrico: ["pesoVolumetrico", "peso_volumetrico"]
+  };
+  const keys = aliases[key] || [key];
+  for (const alias of keys) {
+    const valor = item?.[alias];
+    if (valor !== null && valor !== undefined) return valor;
+  }
+  return "";
+};
+
+const normalizarMedidas = (item = {}) => ({
+  ancho: getValorMedida(item, "ancho"),
+  alto: getValorMedida(item, "alto"),
+  fondo: getValorMedida(item, "fondo"),
+  pesoKg: getValorMedida(item, "pesoKg"),
+  pesoVolumetrico: getValorMedida(item, "pesoVolumetrico"),
+  dimensiones: item?.dimensiones ?? ""
+});
+
+const toNumeroONull = (valor) => {
+  if (valor === "" || valor === null || valor === undefined) return null;
+  const numero = Number(valor);
+  return Number.isFinite(numero) ? numero : Number.NaN;
+};
 
 const normalizarInsumoParaCopiar = (item) => ({
   id: getId(item),
@@ -88,7 +127,7 @@ function CatalogModal({ show, title, onClose, children }) {
   );
 }
 
-export default function ModeloPlantillaProductivaFields({ modeloId, categorias = [], materiales = [], onCategoriasChange }) {
+export default function ModeloPlantillaProductivaFields({ modeloId, categorias = [], materiales = [], variantes = [], onCategoriasChange }) {
   const [catalogoInsumos, setCatalogoInsumos] = useState([]);
   const [insumosBuscados, setInsumosBuscados] = useState([]);
   const [busquedaInsumo, setBusquedaInsumo] = useState("");
@@ -102,6 +141,7 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
   const [clipboardInsumos, setClipboardInsumos] = useState(() => leerClipboardInsumos());
   const [mensajePegado, setMensajePegado] = useState({});
   const [sincronizandoCategoria, setSincronizandoCategoria] = useState(null);
+  const [sincronizandoMedidas, setSincronizandoMedidas] = useState(null);
 
   useEffect(() => {
     let activo = true;
@@ -359,6 +399,37 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
     }));
   };
 
+  const obtenerMedidasSeccion = (categoria, materialId = null) => {
+    const key = getMedidasKey(materialId);
+    const medidasGuardadas = categoria?.medidasPorMaterial?.[key];
+    if (medidasGuardadas) return { ...MEDIDAS_DEFAULT, ...medidasGuardadas };
+
+    const variante = variantes.find((item) =>
+      String(getProductoNivelId(item) ?? "") === String(categoria?.id ?? "")
+      && String(getProductoMaterialId(item) ?? "") === String(materialId ?? "")
+    );
+
+    return variante ? normalizarMedidas(variante) : MEDIDAS_DEFAULT;
+  };
+
+  const actualizarMedidaSeccion = (categoriaIndex, materialId, campo, valor) => {
+    actualizarCategoria(categoriaIndex, (categoria) => {
+      const key = getMedidasKey(materialId);
+      const actuales = obtenerMedidasSeccion(categoria, materialId);
+
+      return {
+        ...categoria,
+        medidasPorMaterial: {
+          ...(categoria.medidasPorMaterial || {}),
+          [key]: {
+            ...actuales,
+            [campo]: valor
+          }
+        }
+      };
+    });
+  };
+
   const actualizarCantidadOperacion = (categoriaIndex, operacionId, cantidad) => {
     actualizarCategoria(categoriaIndex, (categoria) => ({
       ...categoria,
@@ -455,6 +526,56 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
     }
   };
 
+  const sincronizarMedidasSeccion = async (categoria, categoriaIndex, materialId = null, titulo = "Insumos comunes") => {
+    const nivelId = categoria?.id;
+    const sectionKey = getSectionKey(categoria, categoriaIndex, materialId);
+    const medidas = obtenerMedidasSeccion(categoria, materialId);
+    const payload = {
+      ancho: toNumeroONull(medidas.ancho),
+      alto: toNumeroONull(medidas.alto),
+      fondo: toNumeroONull(medidas.fondo),
+      pesoKg: toNumeroONull(medidas.pesoKg),
+      pesoVolumetrico: toNumeroONull(medidas.pesoVolumetrico),
+      dimensiones: medidas.dimensiones?.trim() || null
+    };
+
+    const medidaInvalida = Object.entries(payload)
+      .filter(([key]) => key !== "dimensiones")
+      .find(([, value]) => Number.isNaN(value) || value < 0);
+
+    if (!modeloId || !nivelId) {
+      setMensajePegado((prev) => ({
+        ...prev,
+        [sectionKey]: "Guarda el modelo antes de sincronizar medidas con sus variantes."
+      }));
+      return;
+    }
+
+    if (medidaInvalida) {
+      setMensajePegado((prev) => ({
+        ...prev,
+        [sectionKey]: "Las medidas y pesos deben ser numeros mayores o iguales a cero."
+      }));
+      return;
+    }
+
+    try {
+      setSincronizandoMedidas(sectionKey);
+      const resultado = await sincronizarMedidasVariantes(modeloId, nivelId, payload, materialId);
+      setMensajePegado((prev) => ({
+        ...prev,
+        [sectionKey]: `Medidas sincronizadas en ${resultado.productosActualizados || 0} variante${resultado.productosActualizados === 1 ? "" : "s"} de ${titulo}.`
+      }));
+    } catch (errorSincronizacion) {
+      setMensajePegado((prev) => ({
+        ...prev,
+        [sectionKey]: errorSincronizacion.message || "No se pudieron sincronizar las medidas."
+      }));
+    } finally {
+      setSincronizandoMedidas(null);
+    }
+  };
+
   const moverOperacion = (categoriaIndex, operacionIndex, delta) => {
     actualizarCategoria(categoriaIndex, (categoria) => {
       const operaciones = [...(categoria.operaciones || [])];
@@ -479,6 +600,7 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
     const todosInsumosSeleccionados =
       insumos.length > 0 && insumos.every((item) => seleccionInsumosCategoria[getInsumoScopeKey(item)]);
     const titulo = material ? getMaterialLabel(material) : "Insumos comunes";
+    const medidas = obtenerMedidasSeccion(categoria, materialId);
     const insumosInvalidos = insumos.some((item) => {
       const cantidad = Number(item.cantidad);
       const desperdicio = Number(getDesperdicio(item) || 0);
@@ -487,6 +609,7 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
     });
     const puedeSincronizar = Boolean(modeloId && categoria.id) && !insumosInvalidos;
     const sincronizando = sincronizandoCategoria === sectionKey;
+    const sincronizandoMedidasSeccionActual = sincronizandoMedidas === sectionKey;
 
     return (
       <div key={materialKey} className="border rounded-3 p-3 bg-white" role="group" aria-label={`Material ${titulo}`}>
@@ -542,6 +665,94 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
           getOptionLabel={(item) => `${item.codigo ? `[${item.codigo}] ` : ""}${item.nombre || "-"}`}
           getOptionSearchText={(item) => [item.codigo, item.nombre, getUnidad(item)].filter(Boolean).join(" ").toLowerCase()}
         />
+
+        <div className="border rounded-3 p-3 mt-3 bg-light">
+          <div className="d-flex justify-content-between align-items-center gap-2 mb-2 flex-wrap">
+            <label className="form-label fw-semibold mb-0">Medidas y pesos</label>
+            <button
+              type="button"
+              className="btn btn-outline-success btn-sm"
+              onClick={() => sincronizarMedidasSeccion(categoria, categoriaIndex, materialId, titulo)}
+              disabled={!modeloId || !categoria.id || sincronizandoMedidasSeccionActual}
+              title={!modeloId || !categoria.id ? "Guarda el modelo antes de sincronizar medidas" : "Sincronizar medidas y pesos en variantes"}
+            >
+              <i className="bi bi-rulers me-1"></i>{sincronizandoMedidasSeccionActual ? "Sincronizando..." : "Sincronizar medidas"}
+            </button>
+          </div>
+          <div className="row g-2">
+            <div className="col-md-2 col-6">
+              <label className="form-label small text-muted mb-1">Ancho</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                className="form-control form-control-sm"
+                value={medidas.ancho ?? ""}
+                onChange={(event) => actualizarMedidaSeccion(categoriaIndex, materialId, "ancho", event.target.value)}
+                placeholder="0.00"
+              />
+            </div>
+            <div className="col-md-2 col-6">
+              <label className="form-label small text-muted mb-1">Alto</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                className="form-control form-control-sm"
+                value={medidas.alto ?? ""}
+                onChange={(event) => actualizarMedidaSeccion(categoriaIndex, materialId, "alto", event.target.value)}
+                placeholder="0.00"
+              />
+            </div>
+            <div className="col-md-2 col-6">
+              <label className="form-label small text-muted mb-1">Fondo</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                className="form-control form-control-sm"
+                value={medidas.fondo ?? ""}
+                onChange={(event) => actualizarMedidaSeccion(categoriaIndex, materialId, "fondo", event.target.value)}
+                placeholder="0.00"
+              />
+            </div>
+            <div className="col-md-2 col-6">
+              <label className="form-label small text-muted mb-1">Peso kg</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                className="form-control form-control-sm"
+                value={medidas.pesoKg ?? ""}
+                onChange={(event) => actualizarMedidaSeccion(categoriaIndex, materialId, "pesoKg", event.target.value)}
+                placeholder="0.00"
+              />
+            </div>
+            <div className="col-md-2 col-6">
+              <label className="form-label small text-muted mb-1">Peso vol.</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                className="form-control form-control-sm"
+                value={medidas.pesoVolumetrico ?? ""}
+                onChange={(event) => actualizarMedidaSeccion(categoriaIndex, materialId, "pesoVolumetrico", event.target.value)}
+                placeholder="0.00"
+              />
+            </div>
+            <div className="col-md-2 col-6">
+              <label className="form-label small text-muted mb-1">Dimensiones</label>
+              <input
+                type="text"
+                className="form-control form-control-sm"
+                value={medidas.dimensiones ?? ""}
+                onChange={(event) => actualizarMedidaSeccion(categoriaIndex, materialId, "dimensiones", event.target.value)}
+                maxLength="100"
+                placeholder="Auto"
+              />
+            </div>
+          </div>
+        </div>
 
         <div className="table-responsive mt-2">
           <table className="table table-sm align-middle mb-0">
@@ -672,7 +883,6 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
     <>
       <div className="d-flex flex-column gap-3">
         {categorias.map((categoria, categoriaIndex) => {
-          const insumos = Array.isArray(categoria.insumos) ? categoria.insumos : [];
           const operaciones = Array.isArray(categoria.operaciones) ? categoria.operaciones : [];
           const operacionesDisponibles = catalogoOperaciones.filter(
             (item) => !operaciones.some((seleccionada) => String(getId(seleccionada)) === String(getId(item)))

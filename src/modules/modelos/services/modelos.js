@@ -86,6 +86,18 @@ export function sincronizarInsumosVariantes(modeloId, nivelId, insumos, material
   });
 }
 
+export function sincronizarMedidasVariantes(modeloId, nivelId, medidas, materialId = null) {
+  const params = new URLSearchParams();
+  if (materialId !== null && materialId !== undefined && materialId !== "") {
+    params.set("materialId", String(materialId));
+  }
+  const query = params.toString();
+  return request(`${API_PATHS.MODELOS}/${modeloId}/categorias/${nivelId}/medidas/sincronizar-variantes${query ? `?${query}` : ""}`, {
+    method: "PUT",
+    body: JSON.stringify(medidas),
+  });
+}
+
 export function obtenerCodigoSugerido(nombre, familiaId, subfamiliaId) {
   const params = new URLSearchParams({ nombre });
   if (familiaId !== undefined && familiaId !== null && familiaId !== "") {

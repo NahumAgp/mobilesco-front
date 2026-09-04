@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import useDebouncedValue from "../../../hooks/useDebouncedValue.js";
 import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
 import usePersistedState from "../../../hooks/usePersistedState.js";
@@ -19,6 +19,7 @@ const PAGE_SIZE = 10;
 const FILTROS_DEFAULT = {
   busqueda: "",
   filtroLinea: "",
+  filtroFamilia: "",
   filtroEstatus: "TODOS",
   soloActivos: false
 };
@@ -28,6 +29,12 @@ const getLineaNombre = (modelo = {}) =>
 
 const getLineaId = (modelo = {}) =>
   modelo.lineaId || modelo.linea_id || modelo.linea?.id || modelo.familia?.lineaId || modelo.familia?.linea?.id || "";
+
+const getFamiliaId = (familia = {}) =>
+  familia.id || familia.familiaId || familia.familia_id || familia.familia?.id || "";
+
+const getFamiliaNombre = (familia = {}) =>
+  familia.nombre || familia.familiaNombre || familia.familia?.nombre || "";
 
 export default function ModelosPage() {
   const navigate = useNavigate();
@@ -39,9 +46,10 @@ export default function ModelosPage() {
   const [page, setPage] = useState(() => getInitialPaginationPage("modelos"));
   usePersistedPagination("modelos", page);
   const [filtros, setFiltros] = usePersistedState("modelos:filtros", FILTROS_DEFAULT);
-  const { busqueda: busquedaInput, filtroLinea, filtroEstatus, soloActivos } = filtros;
+  const { busqueda: busquedaInput, filtroLinea, filtroFamilia, filtroEstatus, soloActivos } = filtros;
   const [exportandoExcel, setExportandoExcel] = useState(false);
   const [lineasDisponibles, setLineasDisponibles] = useState([]);
+  const [familiasDisponibles, setFamiliasDisponibles] = useState([]);
   const busqueda = useDebouncedValue(busquedaInput, 350);
   const terminoBusqueda = busqueda.toLowerCase().trim().replace(/\s+/g, " ");
   const filtroActivo = soloActivos
@@ -63,13 +71,19 @@ export default function ModelosPage() {
     size: PAGE_SIZE,
     busqueda: terminoBusqueda,
     activo: filtroActivo,
+    familiaId: filtroFamilia,
     lineaId: filtroLinea
   });
 
   const totalElements = pageInfo.totalElements ?? 0;
   const totalPages = pageInfo.totalPages ?? 0;
 
-  const hayFiltrosActivos = Boolean(busquedaInput.trim()) || Boolean(filtroLinea) || filtroEstatus !== "TODOS" || soloActivos;
+  const familiasFiltradas = useMemo(
+    () => familiasDisponibles.filter((familia) => !filtroLinea || String(familia.lineaId) === String(filtroLinea)),
+    [familiasDisponibles, filtroLinea]
+  );
+
+  const hayFiltrosActivos = Boolean(busquedaInput.trim()) || Boolean(filtroLinea) || Boolean(filtroFamilia) || filtroEstatus !== "TODOS" || soloActivos;
   const mostrarVacio = !loadingLista && !error && !hayFiltrosActivos && totalElements === 0;
   const mostrarSinCoincidencias = !loadingLista && !error && hayFiltrosActivos && totalElements === 0;
 
@@ -94,15 +108,25 @@ export default function ModelosPage() {
           }
         });
 
-        const opciones = Array.from(opcionesMap.values())
+        const opcionesLineas = Array.from(opcionesMap.values())
+          .sort((a, b) => a.label.localeCompare(b.label, "es"));
+        const opcionesFamilias = lista
+          .map((familia) => ({
+            id: getFamiliaId(familia),
+            label: getFamiliaNombre(familia),
+            lineaId: getLineaId(familia)
+          }))
+          .filter((familia) => familia.id && familia.label)
           .sort((a, b) => a.label.localeCompare(b.label, "es"));
 
         if (activo) {
-          setLineasDisponibles(opciones);
+          setLineasDisponibles(opcionesLineas);
+          setFamiliasDisponibles(opcionesFamilias);
         }
       } catch {
         if (activo) {
           setLineasDisponibles([]);
+          setFamiliasDisponibles([]);
         }
       }
     };
@@ -113,6 +137,19 @@ export default function ModelosPage() {
       activo = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!filtroFamilia || !filtroLinea || familiasDisponibles.length === 0) return;
+
+    const familiaValida = familiasDisponibles.some(
+      (familia) => String(familia.id) === String(filtroFamilia) && String(familia.lineaId) === String(filtroLinea)
+    );
+
+    if (!familiaValida) {
+      setFiltros((actuales) => ({ ...actuales, filtroFamilia: "" }));
+      setPage(0);
+    }
+  }, [familiasDisponibles, filtroFamilia, filtroLinea, setFiltros]);
 
   useEffect(() => {
     if (!loadingLista && totalPages > 0 && page >= totalPages) {
@@ -151,6 +188,7 @@ export default function ModelosPage() {
         activo: filtroActivo ?? undefined,
         busqueda: busquedaInput.toLowerCase().trim().replace(/\s+/g, " ") || undefined,
         lineaId: filtroLinea || undefined,
+        familiaId: filtroFamilia || undefined,
         sortBy: "nombre",
         direction: "asc"
       });
@@ -180,7 +218,22 @@ export default function ModelosPage() {
   };
 
   const cambiarLinea = (e) => {
-    setFiltros((actuales) => ({ ...actuales, filtroLinea: e.target.value }));
+    const lineaId = e.target.value;
+    setFiltros((actuales) => {
+      const familiaActual = familiasDisponibles.find((familia) => String(familia.id) === String(actuales.filtroFamilia));
+      const conservarFamilia = !lineaId || !familiaActual || String(familiaActual.lineaId) === String(lineaId);
+
+      return {
+        ...actuales,
+        filtroLinea: lineaId,
+        filtroFamilia: conservarFamilia ? actuales.filtroFamilia : ""
+      };
+    });
+    setPage(0);
+  };
+
+  const cambiarFamilia = (e) => {
+    setFiltros((actuales) => ({ ...actuales, filtroFamilia: e.target.value }));
     setPage(0);
   };
 
@@ -234,7 +287,7 @@ export default function ModelosPage() {
       <div className="card mb-3 modelos-filters-card">
         <div className="card-body">
           <div className="row g-2 align-items-center">
-            <div className="col-md-4">
+            <div className="col-xl-3 col-lg-3 col-md-12">
               <input
                 type="text"
                 className="form-control"
@@ -244,7 +297,7 @@ export default function ModelosPage() {
               />
             </div>
 
-            <div className="col-md-3">
+            <div className="col-xl-2 col-lg-2 col-md-4">
               <select
                 className="form-select"
                 value={filtroLinea}
@@ -259,7 +312,22 @@ export default function ModelosPage() {
               </select>
             </div>
 
-            <div className="col-md-2">
+            <div className="col-xl-3 col-lg-3 col-md-4">
+              <select
+                className="form-select"
+                value={filtroFamilia}
+                onChange={cambiarFamilia}
+              >
+                <option value="">Todas las familias</option>
+                {familiasFiltradas.map((familia) => (
+                  <option key={familia.id} value={familia.id}>
+                    {familia.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="col-xl-2 col-lg-2 col-md-4">
               <select
                 className="form-select"
                 value={filtroEstatus}
@@ -271,7 +339,7 @@ export default function ModelosPage() {
               </select>
             </div>
 
-            <div className="col-md-3 d-flex align-items-center">
+            <div className="col-xl-2 col-lg-2 col-md-4 d-flex align-items-center">
               <div className="form-check form-switch">
                 <input
                   className="form-check-input"

@@ -19,7 +19,6 @@ const PROBLEMAS = [
   { key: "peso", label: "Sin peso fisico", icon: "bi-speedometer", tone: "warning" },
   { key: "volumetrico", label: "Sin peso volumetrico", icon: "bi-box-arrow-in-up", tone: "warning" },
   { key: "familia", label: "Sin familia", icon: "bi-diagram-3", tone: "danger" },
-  { key: "subfamilia", label: "Sin subfamilia", icon: "bi-diagram-2", tone: "info" },
   { key: "modelo", label: "Sin modelo", icon: "bi-boxes", tone: "danger" },
   { key: "nivel", label: "Sin nivel", icon: "bi-layers", tone: "danger" },
   { key: "material", label: "Sin material", icon: "bi-stack", tone: "danger" },
@@ -87,7 +86,6 @@ const evaluarProducto = (producto) => {
   if (!tieneNumero(producto?.pesoKg ?? producto?.peso_kg)) add("peso");
   if (!tieneNumero(producto?.pesoVolumetrico ?? producto?.peso_volumetrico)) add("volumetrico");
   if (!getTexto(producto?.familiaNombre, producto?.familia?.nombre, producto?.modelo?.familia?.nombre)) add("familia");
-  if (!getTexto(producto?.subfamiliaNombre, producto?.subfamilia?.nombre, producto?.modelo?.subfamilia?.nombre)) add("subfamilia");
   if (!getTexto(producto?.modeloNombre, producto?.nombre_modelo, producto?.productoBaseNombre, producto?.modelo?.nombre)) add("modelo");
   if (!getTexto(producto?.nivelNombre, producto?.categoriaNombre, producto?.nombre_nivel, producto?.nivel?.nombre)) add("nivel");
   if (!getTexto(producto?.materialNombre, producto?.nombre_material, producto?.material?.nombre)) add("material");
@@ -104,6 +102,12 @@ export default function ProductosCalidadPage() {
   const [error, setError] = useState("");
   const [filtros, setFiltros] = usePersistedState("productos-calidad:filtros", FILTROS_DEFAULT);
   const busquedaDebounced = useDebouncedValue(filtros.busqueda, 250);
+  const problemaActivo = useMemo(
+    () => filtros.problema === "completos" || PROBLEMAS.some((problema) => problema.key === filtros.problema)
+      ? filtros.problema
+      : "todos",
+    [filtros.problema]
+  );
 
   const cargarProductos = useCallback(async () => {
     setLoading(true);
@@ -177,9 +181,9 @@ export default function ProductosCalidadPage() {
 
     return productosEvaluados.filter((producto) => {
       const coincideProblema =
-        filtros.problema === "todos" ||
-        (filtros.problema === "completos" && producto._problemas.length === 0) ||
-        producto._problemas.some((problema) => problema.key === filtros.problema);
+        problemaActivo === "todos" ||
+        (problemaActivo === "completos" && producto._problemas.length === 0) ||
+        producto._problemas.some((problema) => problema.key === problemaActivo);
 
       if (!coincideProblema) return false;
       if (!termino) return true;
@@ -196,7 +200,7 @@ export default function ProductosCalidadPage() {
 
       return normalizar(texto).includes(termino);
     });
-  }, [busquedaDebounced, filtros.problema, productosEvaluados]);
+  }, [busquedaDebounced, problemaActivo, productosEvaluados]);
 
   const porcentajeCompleto = resumen.total ? Math.round((resumen.completos / resumen.total) * 100) : 0;
 
@@ -229,7 +233,7 @@ export default function ProductosCalidadPage() {
       <div className="productos-calidad-metrics">
         <button
           type="button"
-          className={`productos-calidad-metric ${filtros.problema === "todos" ? "is-active" : ""}`}
+          className={`productos-calidad-metric ${problemaActivo === "todos" ? "is-active" : ""}`}
           onClick={() => setFiltros((current) => ({ ...current, problema: "todos" }))}
         >
           <i className="bi bi-list-check"></i>
@@ -238,7 +242,7 @@ export default function ProductosCalidadPage() {
         </button>
         <button
           type="button"
-          className={`productos-calidad-metric ${filtros.problema === "completos" ? "is-active" : ""}`}
+          className={`productos-calidad-metric ${problemaActivo === "completos" ? "is-active" : ""}`}
           onClick={() => setFiltros((current) => ({ ...current, problema: "completos" }))}
         >
           <i className="bi bi-check2-circle"></i>
@@ -249,7 +253,7 @@ export default function ProductosCalidadPage() {
           <button
             type="button"
             key={problema.key}
-            className={`productos-calidad-metric tone-${problema.tone} ${filtros.problema === problema.key ? "is-active" : ""}`}
+            className={`productos-calidad-metric tone-${problema.tone} ${problemaActivo === problema.key ? "is-active" : ""}`}
             onClick={() => setFiltros((current) => ({ ...current, problema: problema.key }))}
           >
             <i className={`bi ${problema.icon}`}></i>
@@ -269,7 +273,7 @@ export default function ProductosCalidadPage() {
             onChange={(event) => setFiltros((current) => ({ ...current, busqueda: event.target.value }))}
           />
         </div>
-        <select className="form-select" value={filtros.problema} onChange={(event) => setFiltros((current) => ({ ...current, problema: event.target.value }))}>
+        <select className="form-select" value={problemaActivo} onChange={(event) => setFiltros((current) => ({ ...current, problema: event.target.value }))}>
           <option value="todos">Todos los productos</option>
           <option value="completos">Solo completos</option>
           {PROBLEMAS.map((problema) => (
