@@ -497,7 +497,12 @@ export default function ProductoInsumosBOMPage() {
               <tbody>
                 {insumosProducto.map((item) => (
                   <tr key={item.id}>
-                    <td>{item.insumoNombre}</td>
+                    <td>{item.insumoNombre}
+                      <div className="small text-muted">{item.conjunto ? "Conjunto de insumos" : "Insumo directo"}</div>
+                      {item.conjunto && <details className="small"><summary>Despiece</summary>
+                        <ul>{(item.componentes || []).map((c) => <li key={c.insumoId}>{c.nombre}: {c.cantidad * (item.cantidad || 0) * (1 + (item.desperdicioPorcentaje || 0) / 100)} {c.unidadMedida}</li>)}</ul>
+                      </details>}
+                    </td>
                     <td className="text-end">
                       {editandoInsumoId === item.insumoId ? (
                         <input

@@ -13,6 +13,7 @@ import {
   puedeGestionarCostosInsumos
 } from "../utils/costosPermisos.js";
 import InsumosTable from "./InsumosTable.jsx";
+import ConjuntosDialog from "../components/ConjuntosDialog.jsx";
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
 import "./InsumosPage.css";
@@ -47,6 +48,7 @@ function construirRangoPaginas(totalPages, currentPage) {
 }
 
 export default function InsumosPage() {
+  const [mostrarConjuntos, setMostrarConjuntos] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const user = getUser();
@@ -283,11 +285,15 @@ export default function InsumosPage() {
         onClose={() => setToastMessage("")}
       />
 
+      {mostrarConjuntos && <ConjuntosDialog onClose={() => setMostrarConjuntos(false)} />}
       <PageHeader
         title="Insumos"
         subtitle="Catalogo paginado de insumos y materia prima"
         actions={
           <div className="insumos-header-actions">
+            {puedeGestionarInsumos && <button type="button" className="btn btn-outline-primary" onClick={() => setMostrarConjuntos(true)}>
+              <i className="bi bi-collection me-2" aria-hidden="true" />Conjuntos de insumos
+            </button>}
             {puedeGestionarCostos && (
               <button
                 className="btn btn-outline-primary me-2"

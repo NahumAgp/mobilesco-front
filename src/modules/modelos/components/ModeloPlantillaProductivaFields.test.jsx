@@ -5,6 +5,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import ModeloPlantillaProductivaFields from "./ModeloPlantillaProductivaFields.jsx";
 import { obtenerInsumos } from "../../insumos/services/insumos.js";
+import { obtenerConjuntos } from "../../insumos/services/conjuntos.js";
+
+vi.mock("../../insumos/services/conjuntos.js", () => ({
+  obtenerConjuntos: vi.fn().mockResolvedValue([]),
+  conjuntoComoInsumo: (item) => ({ ...item, conjunto: true })
+}));
 
 vi.mock("../../insumos/services/insumos.js", () => ({
   obtenerInsumos: vi.fn().mockResolvedValue([])
@@ -88,6 +94,35 @@ function renderConMateriales(categoriasIniciales, materiales) {
 describe("ModeloPlantillaProductivaFields", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    obtenerConjuntos.mockResolvedValue([]);
+  });
+
+  it("separa el bloque de insumos de las medidas y conserva sus controles", async () => {
+    renderConEstado();
+    const bloques = await screen.findAllByRole("region", { name: /^Insumos de / });
+    expect(bloques).toHaveLength(2);
+    for (const bloque of bloques) {
+      expect(within(bloque).getByRole("heading", { name: "Insumos" })).toBeInTheDocument();
+      expect(within(bloque).getByRole("button", { name: /Nuevo insumo/ })).toBeInTheDocument();
+      expect(within(bloque).getByPlaceholderText("Buscar insumo o conjunto...")).toBeInTheDocument();
+      expect(within(bloque).getByRole("table")).toBeInTheDocument();
+      expect(within(bloque).queryByText("Medidas y pesos")).not.toBeInTheDocument();
+    }
+  });
+
+  it("muestra el conjunto vigente sin eliminar el insumo directo repetido", async () => {
+    obtenerConjuntos.mockResolvedValue([{ id: 50, nombre: "Soldadura", costoCotizacion: 26, unidadMedida: "pz",
+      componentes: [{ insumoId: 11, nombre: "Microalambre", cantidad: 1, unidadMedida: "kg" }, { insumoId: 12, nombre: "CO2", cantidad: .6, unidadMedida: "kg" }] }]);
+    const { user } = renderConEstado([{ id: 1, nombre: "Primaria", operaciones: [], insumos: [
+      { id: 50, nombre: "Soldadura anterior", conjunto: true, cantidad: 10, costoCotizacion: 1 },
+      { id: 11, nombre: "Microalambre directo", cantidad: 1 }
+    ] }]);
+    expect(await screen.findByText("Soldadura")).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Seleccionar insumo Microalambre directo" })).toBeInTheDocument();
+    await user.click(screen.getByText("Despiece"));
+    expect(screen.getByText("CO2: 6 kg")).toBeInTheDocument();
+    expect(screen.getByText("Microalambre: 10 kg")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("26")).toHaveAttribute("readonly");
   });
 
   it("selecciona insumos, los copia y los pega en otra categoria con sus cantidades", async () => {
@@ -155,14 +190,14 @@ describe("ModeloPlantillaProductivaFields", () => {
     const formica = screen.getByRole("group", { name: "Material [F] FORMICA" });
     const durango = screen.getByRole("group", { name: "Material [FD] FORMICA DURANGO" });
 
-    await user.click(await within(formica).findByPlaceholderText("Buscar y agregar insumo..."));
+    await user.click(await within(formica).findByPlaceholderText("Buscar insumo o conjunto..."));
     await user.click(within(formica).getByRole("button", { name: "[7500000002286] ADHESIVO AMARILLO" }));
 
     expect(container.querySelectorAll('[data-modelo-material-id="1"][data-modelo-insumo-id="21"]')).toHaveLength(3);
     expect(container.querySelectorAll('[data-modelo-material-id="2"][data-modelo-insumo-id="21"]')).toHaveLength(0);
     expect(container.querySelectorAll('[data-modelo-material-id="3"][data-modelo-insumo-id="21"]')).toHaveLength(0);
 
-    await user.click(await within(durango).findByPlaceholderText("Buscar y agregar insumo..."));
+    await user.click(await within(durango).findByPlaceholderText("Buscar insumo o conjunto..."));
     await user.click(within(durango).getByRole("button", { name: "[7500000002286] ADHESIVO AMARILLO" }));
     await user.click(within(formica).getByRole("button", { name: "Eliminar ADHESIVO AMARILLO de [F] FORMICA" }));
 

@@ -906,6 +906,7 @@ export default function ModeloForm({
       }
       const costosCapturados = categoriasSeleccionadas
         .flatMap((categoria) => categoria.insumos || [])
+        .filter((insumo) => !insumo.conjunto)
         .map((insumo) => ({
           id: Number(getItemId(insumo)),
           nombre: insumo.nombre || `Insumo ${getItemId(insumo)}`,

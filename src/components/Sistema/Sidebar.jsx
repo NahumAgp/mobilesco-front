@@ -224,9 +224,8 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
     });
   const compactItems = [...pinnedItems, ...automaticItems]
     .slice(0, COMPACT_VISIBLE_ITEMS);
-  const moreItems = navItems.filter((item) => !compactItems.some((compactItem) => compactItem.to === item.to));
-  const moreSections = moreItems.reduce((sections, item) => {
-    const section = item.section || "Mas";
+  const moreSections = navItems.reduce((sections, item) => {
+    const section = item.section || "General";
     if (!sections[section]) sections[section] = [];
     sections[section].push(item);
     return sections;
@@ -274,6 +273,10 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
     const handleEscape = (event) => {
       if (event.key === "Escape") {
         setPinMenu(null);
+        if (moreRef.current?.querySelector(".sidebar-more-panel")) {
+          setOpenMore(false);
+          moreRef.current.querySelector("button")?.focus();
+        }
       }
     };
     document.addEventListener("keydown", handleEscape);
@@ -339,40 +342,48 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
                 setOpenMenu(false);
                 setOpenMore((current) => !current);
               }}
-              aria-label="Mostrar mas opciones"
-              title="Mas"
+              aria-label="Mostrar todas las opciones"
+              title="Todas las opciones"
+              aria-controls="sidebar-all-options"
               aria-expanded={openMore}
             >
               <i className="bi bi-grid-3x3-gap-fill"></i>
             </button>
 
             {openMore && (
-              <div className="sidebar-more-panel">
+              <nav className="sidebar-more-panel" id="sidebar-all-options" aria-label="Todas las opciones">
                 <div className="sidebar-more-header">
-                  <strong>Mas opciones</strong>
-                  <span>Segun tus permisos</span>
+                  <strong>Todas las opciones</strong>
+                  <button type="button" className="sidebar-more-close" aria-label="Cerrar todas las opciones" title="Cerrar" onClick={() => {
+                    setOpenMore(false);
+                    moreRef.current?.querySelector("button")?.focus();
+                  }}><i className="bi bi-x-lg" aria-hidden="true"></i></button>
                 </div>
                 <div className="sidebar-more-content">
                   {Object.entries(moreSections).map(([section, items]) => (
-                    <div key={section} className="sidebar-more-section">
-                      <div className="sidebar-more-section-title">{section}</div>
+                    <section key={section} className="sidebar-more-section" aria-label={section}>
+                      <h3 className="sidebar-more-section-title">{section}</h3>
+                      <div className="sidebar-more-grid">
                       {items.map((item) => (
                         <NavLink
                           key={item.to}
                           to={item.to}
+                          end
+                          aria-label={item.label}
                           className={`sidebar-more-link ${pinnedRouteSet.has(item.to) ? "is-pinned" : ""}`}
                           onClick={() => handleRouteNavigation(item.to)}
                           onContextMenu={(event) => openPinMenu(event, item)}
                         >
-                          <i className={`bi ${item.icon}`}></i>
+                          <i className={`bi ${item.icon}`} aria-hidden="true"></i>
                           <span>{item.label}</span>
                           {pinnedRouteSet.has(item.to) && <i className="bi bi-pin-angle-fill sidebar-more-pin" aria-hidden="true"></i>}
                         </NavLink>
                       ))}
-                    </div>
+                      </div>
+                    </section>
                   ))}
                 </div>
-              </div>
+              </nav>
             )}
           </div>
         </>

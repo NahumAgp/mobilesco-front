@@ -3,6 +3,9 @@ import { createPortal } from "react-dom";
 
 import SearchableSelect from "../../../components/ui/SearchableSelect.jsx";
 import InsumoForm from "../../insumos/pages/InsumoForm.jsx";
+import ConjuntosDialog from "../../insumos/components/ConjuntosDialog.jsx";
+import DespieceResumen from "../../insumos/components/DespieceResumen.jsx";
+import { obtenerConjuntos, conjuntoComoInsumo } from "../../insumos/services/conjuntos.js";
 import { obtenerInsumos } from "../../insumos/services/insumos.js";
 import { sincronizarInsumosVariantes, sincronizarMedidasVariantes } from "../services/modelos.js";
 import OperacionForm from "../../operaciones/pages/OperacionForm.jsx";
@@ -89,7 +92,8 @@ const normalizarInsumoParaCopiar = (item) => ({
   cantidad: item?.cantidad ?? "",
   desperdicioPorcentaje: getDesperdicio(item),
   costoCotizacion: getCostoCotizacion(item),
-  costoCotizacionOriginal: item?.costoCotizacionOriginal ?? getCostoCotizacion(item)
+  costoCotizacionOriginal: item?.costoCotizacionOriginal ?? getCostoCotizacion(item),
+  ...(item?.conjunto ? { conjunto: true, componentes: item.componentes || [] } : {})
 });
 
 const leerClipboardInsumos = () => {
@@ -142,6 +146,19 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
   const [mensajePegado, setMensajePegado] = useState({});
   const [sincronizandoCategoria, setSincronizandoCategoria] = useState(null);
   const [sincronizandoMedidas, setSincronizandoMedidas] = useState(null);
+  const [conjuntos, setConjuntos] = useState([]);
+  const [modalConjuntos, setModalConjuntos] = useState(null);
+  const [errorConjuntos, setErrorConjuntos] = useState("");
+
+  useEffect(() => {
+    let vigente = true;
+    const cargar = () => obtenerConjuntos().then((items) => {
+      if (vigente) { setConjuntos(items.map(conjuntoComoInsumo)); setErrorConjuntos(""); }
+    }).catch((e) => { if (vigente) setErrorConjuntos(e.message || "No se pudieron cargar los conjuntos"); });
+    cargar();
+    window.addEventListener("focus", cargar);
+    return () => { vigente = false; window.removeEventListener("focus", cargar); };
+  }, []);
 
   useEffect(() => {
     let activo = true;
@@ -204,8 +221,8 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
   }, [busquedaInsumo]);
 
   const catalogoInsumosDisponible = useMemo(
-    () => mergePorId(catalogoInsumos, insumosBuscados),
-    [catalogoInsumos, insumosBuscados]
+    () => mergePorId(catalogoInsumos, insumosBuscados, conjuntos),
+    [catalogoInsumos, insumosBuscados, conjuntos]
   );
 
   const actualizarCategoria = (index, updater) => {
@@ -348,7 +365,7 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
           ...insumo,
           id: getId(insumo),
           materialId,
-          cantidad: insumo.cantidad ?? "",
+          cantidad: insumo.cantidad ?? (insumo.conjunto ? 1 : ""),
           desperdicioPorcentaje: getDesperdicio(insumo),
           costoCotizacion: getCostoCotizacion(insumo),
           costoCotizacionOriginal: insumo.costoCotizacionOriginal ?? getCostoCotizacion(insumo)
@@ -590,7 +607,12 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
     const materialId = material ? getMaterialId(material) : null;
     const materialKey = materialId ?? "comunes";
     const insumos = (Array.isArray(categoria.insumos) ? categoria.insumos : [])
-      .filter((item) => String(getInsumoMaterialId(item) ?? "") === String(materialId ?? ""));
+      .filter((item) => String(getInsumoMaterialId(item) ?? "") === String(materialId ?? ""))
+      .map((item) => {
+        const vigente = conjuntos.find((c) => String(c.id) === String(getId(item)));
+        return vigente ? { ...item, nombre: vigente.nombre, conjunto: true, componentes: vigente.componentes,
+          costoCotizacion: vigente.costoCotizacion, unidadMedida: vigente.unidadMedida } : item;
+      });
     const insumosDisponibles = catalogoInsumosDisponible.filter(
       (item) => !insumos.some((seleccionado) => String(getId(seleccionado)) === String(getId(item)))
     );
@@ -613,60 +635,8 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
 
     return (
       <div key={materialKey} className="border rounded-3 p-3 bg-white" role="group" aria-label={`Material ${titulo}`}>
-        <div className="d-flex justify-content-between align-items-center gap-2 mb-2 flex-wrap">
-          <label className="form-label fw-semibold mb-0">{titulo}</label>
-          <div className="d-flex align-items-center gap-2 flex-wrap">
-            {totalSeleccionados > 0 && (
-              <span className="badge text-bg-light border">{totalSeleccionados} seleccionados</span>
-            )}
-            <button
-              type="button"
-              className="btn btn-outline-secondary btn-sm"
-              onClick={() => copiarInsumosSeleccionados(categoria, categoriaIndex, materialId)}
-              disabled={!totalSeleccionados}
-            >
-              <i className="bi bi-clipboard me-1"></i>Copiar seleccionados
-            </button>
-            <button
-              type="button"
-              className="btn btn-outline-secondary btn-sm"
-              onClick={() => pegarInsumos(categoriaIndex, materialId)}
-              disabled={!clipboardInsumos.length}
-            >
-              <i className="bi bi-clipboard-plus me-1"></i>Pegar
-            </button>
-            <button type="button" className="btn btn-outline-primary btn-sm" onClick={() => setModalInsumoIndex({ categoriaIndex, materialId })}>
-              <i className="bi bi-plus-lg me-1"></i>Nuevo insumo
-            </button>
-            <button
-              type="button"
-              className="btn btn-outline-success btn-sm"
-              onClick={() => sincronizarVariantes(categoria, categoriaIndex, materialId, titulo)}
-              disabled={!puedeSincronizar || sincronizando}
-              title={!modeloId || !categoria.id ? "Guarda el modelo antes de sincronizar variantes" : insumosInvalidos ? "Corrige cantidades antes de sincronizar" : "Sincronizar insumos heredados en variantes"}
-            >
-              <i className="bi bi-arrow-repeat me-1"></i>{sincronizando ? "Sincronizando..." : "Sincronizar variantes"}
-            </button>
-          </div>
-        </div>
-        {mensajePegado[sectionKey] && <div className="form-text text-muted mb-2">{mensajePegado[sectionKey]}</div>}
-        <SearchableSelect
-          label=""
-          value={selecciones[`insumo-${categoriaIndex}-${materialKey}`] || ""}
-          options={insumosDisponibles}
-          onChange={(id, opcion) => agregarInsumo(categoriaIndex, id, opcion, materialId)}
-          onSearchChange={setBusquedaInsumo}
-          closeOnSelect={false}
-          loading={cargando || cargandoBusquedaInsumos}
-          placeholder={cargando ? "Cargando insumos..." : "Buscar y agregar insumo..."}
-          searchPlaceholder="Busca por codigo, nombre o unidad..."
-          emptyText={busquedaInsumo.trim() ? "No se encontraron coincidencias" : "Escribe para buscar en todo el catalogo"}
-          getOptionValue={getId}
-          getOptionLabel={(item) => `${item.codigo ? `[${item.codigo}] ` : ""}${item.nombre || "-"}`}
-          getOptionSearchText={(item) => [item.codigo, item.nombre, getUnidad(item)].filter(Boolean).join(" ").toLowerCase()}
-        />
-
-        <div className="border rounded-3 p-3 mt-3 bg-light">
+        <div className="fw-semibold mb-3">{titulo}</div>
+        <div className="border rounded-3 p-3 mb-3 bg-light">
           <div className="d-flex justify-content-between align-items-center gap-2 mb-2 flex-wrap">
             <label className="form-label fw-semibold mb-0">Medidas y pesos</label>
             <button
@@ -754,6 +724,67 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
           </div>
         </div>
 
+        <section
+          className="border p-3"
+          aria-label={`Insumos de ${titulo}`}
+          style={{ backgroundColor: "#f0f6f3", borderRadius: 8, minWidth: 0 }}
+        >
+        <h3 className="fs-6 fw-semibold mb-3">Insumos</h3>
+        <div className="d-flex justify-content-end align-items-center gap-2 mb-2 flex-wrap">
+          <div className="d-flex align-items-center gap-2 flex-wrap">
+            {totalSeleccionados > 0 && (
+              <span className="badge text-bg-light border">{totalSeleccionados} seleccionados</span>
+            )}
+            <button
+              type="button"
+              className="btn btn-outline-secondary btn-sm"
+              onClick={() => copiarInsumosSeleccionados(categoria, categoriaIndex, materialId)}
+              disabled={!totalSeleccionados}
+            >
+              <i className="bi bi-clipboard me-1"></i>Copiar seleccionados
+            </button>
+            <button
+              type="button"
+              className="btn btn-outline-secondary btn-sm"
+              onClick={() => pegarInsumos(categoriaIndex, materialId)}
+              disabled={!clipboardInsumos.length}
+            >
+              <i className="bi bi-clipboard-plus me-1"></i>Pegar
+            </button>
+            <button type="button" className="btn btn-outline-primary btn-sm" onClick={() => setModalInsumoIndex({ categoriaIndex, materialId })}>
+              <i className="bi bi-plus-lg me-1"></i>Nuevo insumo
+            </button>
+            <button type="button" className="btn btn-outline-primary btn-sm" onClick={() => setModalConjuntos({ categoriaIndex, materialId })}>
+              <i className="bi bi-collection me-1" />Conjuntos
+            </button>
+            <button
+              type="button"
+              className="btn btn-outline-success btn-sm"
+              onClick={() => sincronizarVariantes(categoria, categoriaIndex, materialId, titulo)}
+              disabled={!puedeSincronizar || sincronizando}
+              title={!modeloId || !categoria.id ? "Guarda el modelo antes de sincronizar variantes" : insumosInvalidos ? "Corrige cantidades antes de sincronizar" : "Sincronizar insumos heredados en variantes"}
+            >
+              <i className="bi bi-arrow-repeat me-1"></i>{sincronizando ? "Sincronizando..." : "Sincronizar variantes"}
+            </button>
+          </div>
+        </div>
+        {mensajePegado[sectionKey] && <div className="form-text text-muted mb-2">{mensajePegado[sectionKey]}</div>}
+        <SearchableSelect
+          label=""
+          value={selecciones[`insumo-${categoriaIndex}-${materialKey}`] || ""}
+          options={insumosDisponibles}
+          onChange={(id, opcion) => agregarInsumo(categoriaIndex, id, opcion, materialId)}
+          onSearchChange={setBusquedaInsumo}
+          closeOnSelect={false}
+          loading={cargando || cargandoBusquedaInsumos}
+          placeholder={cargando ? "Cargando insumos..." : "Buscar insumo o conjunto..."}
+          searchPlaceholder="Busca por codigo, nombre o unidad..."
+          emptyText={busquedaInsumo.trim() ? "No se encontraron coincidencias" : "Escribe para buscar en todo el catalogo"}
+          getOptionValue={getId}
+          getOptionLabel={(item) => `${item.conjunto ? "[Conjunto] " : item.codigo ? `[${item.codigo}] ` : ""}${item.nombre || "-"}`}
+          getOptionSearchText={(item) => [item.codigo, item.nombre, getUnidad(item)].filter(Boolean).join(" ").toLowerCase()}
+        />
+
         <div className="table-responsive mt-2">
           <table className="table table-sm align-middle mb-0">
             {insumos.length > 0 && (
@@ -761,6 +792,7 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
                 <tr>
                   <th style={{ width: 44 }}></th>
                   <th>Insumo</th>
+                  <th>Tipo</th>
                   <th className="text-end" style={{ width: 150 }}>Cantidad</th>
                   <th className="text-end" style={{ width: 135 }}>% Desperdicio</th>
                   <th className="text-end" style={{ width: 140 }}>Costo</th>
@@ -781,7 +813,7 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
                       aria-label={`Seleccionar todos los insumos de ${titulo}`}
                     />
                   </td>
-                  <td colSpan={6}>
+                  <td colSpan={7}>
                     <span className="text-muted small">Seleccionar todos</span>
                   </td>
                 </tr>
@@ -805,7 +837,15 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
                     <td>
                       <span className="fw-semibold">{item.codigo ? `[${item.codigo}] ` : ""}{item.nombre || `Insumo ${getId(item)}`}</span>
                       {getUnidad(item) && <span className="text-muted ms-2">{getUnidad(item)}</span>}
+                      {item.conjunto && <details className="small mt-1">
+                        <summary>Despiece</summary>
+                        <ul className="mb-1 ps-3">{(item.componentes || []).map((c) => <li key={c.insumoId}>
+                          {c.nombre}: {Number(c.cantidad) * cantidad * (1 + desperdicio / 100)} {c.unidadMedida}
+                        </li>)}</ul>
+                        <button type="button" className="btn btn-link btn-sm p-0" onClick={() => setModalConjuntos({ categoriaIndex, materialId, conjuntoId: getId(item) })}>Editar conjunto</button>
+                      </details>}
                     </td>
+                    <td><span className="small">{item.conjunto ? "Conjunto de insumos" : "Insumo directo"}</span></td>
                     <td style={{ width: 150 }}>
                       <input
                         type="number"
@@ -843,6 +883,8 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
                         step="0.01"
                         className="form-control form-control-sm"
                         value={getCostoCotizacion(item)}
+                        readOnly={item.conjunto}
+                        title={item.conjunto ? "Calculado desde el despiece" : undefined}
                         data-modelo-categoria-index={categoriaIndex}
                         data-modelo-insumo-id={getId(item)}
                         data-modelo-material-id={materialId ?? ""}
@@ -871,6 +913,8 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
           </table>
           {!insumos.length && <div className="form-text text-muted">Sin insumos capturados en esta seccion.</div>}
         </div>
+        <DespieceResumen asignaciones={insumos} />
+        </section>
       </div>
     );
   };
@@ -881,6 +925,21 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
 
   return (
     <>
+      {errorConjuntos && <div className="alert alert-warning" role="alert">{errorConjuntos}</div>}
+      {modalConjuntos && <ConjuntosDialog conjuntoId={modalConjuntos.conjuntoId}
+        onClose={() => setModalConjuntos(null)}
+        onSaved={(saved) => {
+          const actualizado = conjuntoComoInsumo(saved);
+          setConjuntos((actual) => mergePorId(actual, [actualizado]));
+          onCategoriasChange?.(categorias.map((categoria) => ({ ...categoria,
+            insumos: (categoria.insumos || []).map((item) => String(getId(item)) === String(saved.id)
+              ? { ...item, ...actualizado, materialId: getInsumoMaterialId(item), cantidad: item.cantidad, desperdicioPorcentaje: getDesperdicio(item) } : item)
+          })));
+        }}
+        onSelect={(item) => {
+          agregarInsumo(modalConjuntos.categoriaIndex, item.id, conjuntoComoInsumo(item), modalConjuntos.materialId);
+          setModalConjuntos(null);
+        }} />}
       <div className="d-flex flex-column gap-3">
         {categorias.map((categoria, categoriaIndex) => {
           const operaciones = Array.isArray(categoria.operaciones) ? categoria.operaciones : [];
