@@ -1,5 +1,6 @@
-// Usar variable de entorno para flexibilidad
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+function normalizeApiBaseUrl(value) {
+  const raw = (value || '').trim().replace(/\/+$/, '');
+  return raw.replace(/\/api\/v1$/i, '');
+}
 
-// O si usas process.env (React sin Vite):
-// export const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || '';
+export const API_BASE_URL = normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL);
