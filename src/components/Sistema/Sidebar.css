@@ -561,7 +561,7 @@
   bottom: 92px;
   z-index: 1095;
   display: flex;
-  width: min(680px, calc(100vw - var(--sidebar-compact-width) - 24px));
+  width: min(520px, calc(100vw - var(--sidebar-compact-width) - 24px));
   max-height: min(720px, calc(100dvh - 118px));
   flex-direction: column;
   overflow: hidden;
@@ -631,7 +631,7 @@
 
 .sidebar-more-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 
