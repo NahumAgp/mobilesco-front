@@ -9,7 +9,14 @@ const lista = (data) => Array.isArray(data) ? data : data?.content || [];
 const nuevo = () => ({ nombre: "", descripcion: "", unidadMedidaId: "", componentes: [] });
 const moneda = (valor) => Number(valor).toLocaleString("es-MX", { style: "currency", currency: "MXN" });
 
-export default function ConjuntosDialog({ onClose, onSaved, onSelect, conjuntoId }) {
+export default function ConjuntosDialog({
+  onClose,
+  onSaved,
+  onSelect,
+  conjuntoId,
+  puedeCrear = true,
+  puedeEditar = true
+}) {
   const [conjuntos, setConjuntos] = useState([]);
   const [unidades, setUnidades] = useState([]);
   const [form, setForm] = useState(null);
@@ -54,6 +61,11 @@ export default function ConjuntosDialog({ onClose, onSaved, onSelect, conjuntoId
 
   const guardar = async () => {
     setError("");
+    const puedeGuardar = form?.id ? puedeEditar : puedeCrear;
+    if (!puedeGuardar) {
+      setError("No tienes permisos para guardar este conjunto.");
+      return;
+    }
     if (!form.nombre.trim() || !form.unidadMedidaId || !form.componentes.length) {
       setError("Captura nombre, unidad y al menos un insumo."); return;
     }
@@ -82,6 +94,8 @@ export default function ConjuntosDialog({ onClose, onSaved, onSelect, conjuntoId
     } else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
   };
 
+  const puedeGuardarForm = form ? (form.id ? puedeEditar : puedeCrear) : false;
+
   return createPortal(
     <div className="modal show" style={{ display: "block", background: "rgba(0,0,0,.45)", zIndex: 1130 }}>
       <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
@@ -92,11 +106,18 @@ export default function ConjuntosDialog({ onClose, onSaved, onSelect, conjuntoId
           </div>
           <div className="modal-body">
             {error && <div className="alert alert-danger" role="alert">{error}</div>}
+            {!puedeCrear && !puedeEditar && (
+              <div className="alert alert-info" role="status">
+                Puedes consultar conjuntos, pero tu perfil no permite crearlos ni editarlos.
+              </div>
+            )}
             {cargando ? <p role="status">Cargando conjuntos...</p> : <div className="row g-3">
               <div className="col-md-4">
                 <div className="d-flex gap-2 mb-3">
                   <input className="form-control" aria-label="Buscar conjuntos" placeholder="Buscar conjunto..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
-                  <button type="button" className="btn btn-outline-primary" title="Nuevo conjunto" aria-label="Nuevo conjunto" disabled={guardando} onClick={() => { setForm(nuevo()); setError(""); }}><i className="bi bi-plus-lg" /></button>
+                  {puedeCrear && (
+                    <button type="button" className="btn btn-outline-primary" title="Nuevo conjunto" aria-label="Nuevo conjunto" disabled={guardando} onClick={() => { setForm(nuevo()); setError(""); }}><i className="bi bi-plus-lg" /></button>
+                  )}
                 </div>
                 <div className="list-group">
                   {conjuntos.filter((c) => c.nombre.toLowerCase().includes(busqueda.toLowerCase())).map((c) =>
@@ -130,7 +151,9 @@ export default function ConjuntosDialog({ onClose, onSaved, onSelect, conjuntoId
                   <div className="text-end mb-3">Costo por conjunto: <strong>{form.componentes.length && form.componentes.every((c) => c.costoCotizacion > 0) ? moneda(form.componentes.reduce((total, c) => total + Number(c.cantidad || 0) * c.costoCotizacion, 0)) : "Pendiente de costos"}</strong></div>
                   <div className="d-flex justify-content-end gap-2 flex-wrap">
                     {onSelect && form.id && <button type="button" className="btn btn-outline-primary" onClick={() => onSelect(conjuntos.find((c) => c.id === form.id))}><i className="bi bi-plus-lg me-1" />Asignar conjunto guardado</button>}
-                    <button type="button" className="btn btn-primary" onClick={guardar}><i className="bi bi-floppy me-1" aria-hidden="true" />{guardando ? "Guardando..." : form.id ? "Guardar para todos los modelos" : "Crear conjunto"}</button>
+                    {puedeGuardarForm && (
+                      <button type="button" className="btn btn-primary" onClick={guardar}><i className="bi bi-floppy me-1" aria-hidden="true" />{guardando ? "Guardando..." : form.id ? "Guardar para todos los modelos" : "Crear conjunto"}</button>
+                    )}
                   </div>
                 </fieldset> : <div className="text-muted">Ningun conjunto seleccionado.</div>}
               </div>

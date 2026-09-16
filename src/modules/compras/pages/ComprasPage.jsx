@@ -27,6 +27,7 @@ export default function ComprasPage() {
   const user = getUser();
   const puedeGestionarCompra = hasPermission(user, "ACTION_PURCHASES_CREATE");
   const puedeEliminarCompra = hasPermission(user, "ACTION_PURCHASES_DELETE");
+  const puedeVerAbastecimiento = hasPermission(user, "VIEW_ASSISTED_PROCUREMENT");
 
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
@@ -138,13 +139,15 @@ export default function ComprasPage() {
         subtitle="Gestión de compras de insumos"
         actions={
           <div className="d-flex flex-wrap gap-2">
-            <button
-              className="btn btn-outline-primary"
-              onClick={() => navigate("/compras/abastecimiento")}
-            >
-              <i className="bi bi-stars me-2" aria-hidden="true"></i>
-              Abastecimiento asistido
-            </button>
+            {puedeVerAbastecimiento && (
+              <button
+                className="btn btn-outline-primary"
+                onClick={() => navigate("/compras/abastecimiento")}
+              >
+                <i className="bi bi-stars me-2" aria-hidden="true"></i>
+                Abastecimiento asistido
+              </button>
+            )}
             <button
               className="btn btn-outline-primary"
               onClick={() => navigate("/compras/cuentas-por-pagar")}

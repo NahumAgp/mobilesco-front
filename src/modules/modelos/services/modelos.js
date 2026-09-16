@@ -98,6 +98,13 @@ export function sincronizarMedidasVariantes(modeloId, nivelId, medidas, material
   });
 }
 
+export function sincronizarOperacionesVariantes(modeloId, nivelId, operaciones) {
+  return request(`${API_PATHS.MODELOS}/${modeloId}/categorias/${nivelId}/operaciones/sincronizar-variantes`, {
+    method: "PUT",
+    body: JSON.stringify(operaciones),
+  });
+}
+
 export function obtenerCodigoSugerido(nombre, familiaId, subfamiliaId) {
   const params = new URLSearchParams({ nombre });
   if (familiaId !== undefined && familiaId !== null && familiaId !== "") {

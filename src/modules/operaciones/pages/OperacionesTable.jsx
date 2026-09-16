@@ -2,6 +2,18 @@ import CatalogRowActions from "../../../components/ui/CatalogRowActions.jsx";
 import CatalogStatusBadge from "../../../components/ui/CatalogStatusBadge.jsx";
 import CatalogTable, { CatalogEmptyState } from "../../../components/ui/CatalogTable.jsx";
 
+function formatNumber(value, suffix = "") {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number <= 0) return "-";
+  return `${number.toFixed(2)}${suffix}`;
+}
+
+function formatCurrency(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number <= 0) return "-";
+  return `$${number.toFixed(2)}`;
+}
+
 export default function OperacionesTable({ data, onEditar, onEliminar }) {
   return (
     <CatalogTable>
@@ -13,6 +25,7 @@ export default function OperacionesTable({ data, onEditar, onEliminar }) {
             <th>Nombre</th>
             <th>Descripción</th>
             <th>Centro de trabajo</th>
+            <th>Min/op.</th>
             <th>Costo/min</th>
             <th>Costo/hora</th>
             <th>Estado</th>
@@ -45,10 +58,13 @@ export default function OperacionesTable({ data, onEditar, onEliminar }) {
                   </span>
                 </td>
                 <td className="text-end">
-                  {operacion.costoMinuto ? `$${operacion.costoMinuto.toFixed(2)}` : "-"}
+                  {formatNumber(operacion.tiempoOperacion, " min")}
                 </td>
                 <td className="text-end">
-                  {operacion.costoHora ? `$${operacion.costoHora.toFixed(2)}` : "-"}
+                  {formatCurrency(operacion.costoMinuto)}
+                </td>
+                <td className="text-end">
+                  {formatCurrency(operacion.costoHora)}
                 </td>
                 <td><CatalogStatusBadge active={operacion.activo} /></td>
                 <td className="catalog-actions">
@@ -66,7 +82,7 @@ export default function OperacionesTable({ data, onEditar, onEliminar }) {
             ))
           ) : (
             <CatalogEmptyState
-              colSpan={9}
+              colSpan={10}
               icon="bi-tools"
               title="No hay operaciones registradas"
               description="Ajusta los filtros o crea una nueva operación."

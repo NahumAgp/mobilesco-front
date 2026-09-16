@@ -6,6 +6,7 @@ vi.mock('../../../services/api', () => ({ default: request }));
 
 import {
   getUser,
+  hasFullAccessRole,
   hasPermission,
   isAuthenticated,
   login,
@@ -50,6 +51,16 @@ describe('authService', () => {
 
   it('concede todos los permisos a administración', () => {
     expect(hasPermission({ roles: ['ADMIN'], permisos: [] }, 'VIEW_PURCHASES')).toBe(true);
+  });
+
+  it('concede todos los permisos a dirección general y subdirección administrativa', () => {
+    expect(hasPermission({ roles: ['DIRECTOR_GENERAL'], permisos: [] }, 'ACTION_STOCK_ADJUSTMENTS')).toBe(true);
+    expect(hasPermission({ roles: ['SUBDIRECCION_ADMINISTRATIVA'], permisos: [] }, 'ACTION_INSUMOS_COSTS')).toBe(true);
+  });
+
+  it('reconoce roles completos aunque vengan con espacios o prefijo ROLE_', () => {
+    expect(hasFullAccessRole({ roles: ['Director General'] })).toBe(true);
+    expect(hasFullAccessRole({ roles: ['ROLE_SUBDIRECCION_ADMINISTRATIVA'] })).toBe(true);
   });
 
   it('exige el permiso explícito para usuarios no administrativos', () => {

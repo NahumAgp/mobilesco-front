@@ -87,7 +87,8 @@ function findSelectedProvider(suggestion, providerId) {
 export default function AbastecimientoAsistidoPage() {
   const navigate = useNavigate();
   const currentUser = getUser();
-  const canCreatePurchases = hasPermission(currentUser, "ACTION_PURCHASES_CREATE");
+  const canGenerateDrafts = hasPermission(currentUser, "ACTION_ASSISTED_PROCUREMENT_DRAFTS");
+  const canViewPurchases = hasPermission(currentUser, "VIEW_PURCHASES");
 
   const [suggestions, setSuggestions] = useState([]);
   const [editions, setEditions] = useState({});
@@ -298,14 +299,16 @@ export default function AbastecimientoAsistidoPage() {
         subtitle="Prioriza insumos con base en su clasificación ABC, consumo, existencias y proveedores disponibles."
         actions={(
           <div className="d-flex flex-wrap gap-2">
-            <button
-              type="button"
-              className="btn btn-outline-secondary"
-              onClick={() => navigate("/compras")}
-            >
-              <i className="bi bi-arrow-left me-2" aria-hidden="true"></i>
-              Ver compras
-            </button>
+            {canViewPurchases && (
+              <button
+                type="button"
+                className="btn btn-outline-secondary"
+                onClick={() => navigate("/compras")}
+              >
+                <i className="bi bi-arrow-left me-2" aria-hidden="true"></i>
+                Ver compras
+              </button>
+            )}
             <button
               type="button"
               className="btn btn-outline-primary"
@@ -346,7 +349,7 @@ export default function AbastecimientoAsistidoPage() {
         </article>
       </section>
 
-      {!canCreatePurchases && (
+      {!canGenerateDrafts && (
         <div className="alert alert-info d-flex align-items-start gap-2" role="status">
           <i className="bi bi-eye mt-1" aria-hidden="true"></i>
           <div><strong>Vista de consulta.</strong> Puedes revisar las sugerencias, pero tu perfil no permite generar compras.</div>
@@ -478,7 +481,7 @@ export default function AbastecimientoAsistidoPage() {
               <strong>{selectedSuggestions.length} de {suggestions.length} partidas seleccionadas</strong>
               <span>{numberFormatter.format(selectedTotalQuantity)} unidades de consumo en total</span>
             </div>
-            {canCreatePurchases && (
+            {canGenerateDrafts && (
               <button
                 type="button"
                 className="btn btn-primary"
@@ -516,7 +519,7 @@ export default function AbastecimientoAsistidoPage() {
                           className="form-check-input"
                           checked={allVisibleSelected}
                           onChange={toggleAllVisible}
-                          disabled={!canCreatePurchases || selectableVisibleSuggestions.length === 0}
+                          disabled={!canGenerateDrafts || selectableVisibleSuggestions.length === 0}
                           aria-label="Seleccionar todas las sugerencias visibles"
                         />
                       </th>
@@ -547,7 +550,7 @@ export default function AbastecimientoAsistidoPage() {
                               className="form-check-input"
                               checked={Boolean(edition.selected)}
                               onChange={(event) => updateEdition(id, { selected: event.target.checked })}
-                              disabled={!canCreatePurchases || providers.length === 0}
+                              disabled={!canGenerateDrafts || providers.length === 0}
                               aria-label={`Seleccionar ${suggestion.codigo || suggestion.nombre}`}
                             />
                           </td>
@@ -583,7 +586,7 @@ export default function AbastecimientoAsistidoPage() {
                                 step="0.01"
                                 value={edition.quantity}
                                 onChange={(event) => updateEdition(id, { quantity: event.target.value })}
-                                disabled={!canCreatePurchases}
+                                disabled={!canGenerateDrafts}
                                 aria-invalid={quantityInvalid}
                               />
                               <span className="input-group-text">{unit}</span>
@@ -605,7 +608,7 @@ export default function AbastecimientoAsistidoPage() {
                                   className={`form-select form-select-sm ${providerInvalid ? "is-invalid" : ""}`}
                                   value={edition.providerId}
                                   onChange={(event) => updateEdition(id, { providerId: event.target.value })}
-                                  disabled={!canCreatePurchases}
+                                  disabled={!canGenerateDrafts}
                                   aria-invalid={providerInvalid}
                                 >
                                   <option value="">Seleccionar proveedor</option>

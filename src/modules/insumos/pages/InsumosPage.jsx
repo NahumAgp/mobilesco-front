@@ -6,7 +6,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { useInsumos } from "../hooks/useInsumos";
 import { exportarInsumosExcel } from "../services/insumos.js";
-import { getUser } from "../../auth/services/authService.js";
+import { getUser, hasPermission } from "../../auth/services/authService.js";
 import {
   puedeAjustarStockManual,
   puedeGestionarCatalogoInsumos,
@@ -55,6 +55,9 @@ export default function InsumosPage() {
   const puedeGestionarInsumos = puedeGestionarCatalogoInsumos(user);
   const puedeGestionarCostos = puedeGestionarCostosInsumos(user);
   const puedeAjustarStock = puedeAjustarStockManual(user);
+  const puedeVerConjuntos = hasPermission(user, "VIEW_INPUT_SETS");
+  const puedeCrearConjuntos = hasPermission(user, "ACTION_INPUT_SETS_CREATE");
+  const puedeEditarConjuntos = hasPermission(user, "ACTION_INPUT_SETS_EDIT");
 
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
@@ -285,13 +288,19 @@ export default function InsumosPage() {
         onClose={() => setToastMessage("")}
       />
 
-      {mostrarConjuntos && <ConjuntosDialog onClose={() => setMostrarConjuntos(false)} />}
+      {mostrarConjuntos && (
+        <ConjuntosDialog
+          onClose={() => setMostrarConjuntos(false)}
+          puedeCrear={puedeCrearConjuntos}
+          puedeEditar={puedeEditarConjuntos}
+        />
+      )}
       <PageHeader
         title="Insumos"
         subtitle="Catalogo paginado de insumos y materia prima"
         actions={
           <div className="insumos-header-actions">
-            {puedeGestionarInsumos && <button type="button" className="btn btn-outline-primary" onClick={() => setMostrarConjuntos(true)}>
+            {puedeVerConjuntos && <button type="button" className="btn btn-outline-primary" onClick={() => setMostrarConjuntos(true)}>
               <i className="bi bi-collection me-2" aria-hidden="true" />Conjuntos de insumos
             </button>}
             {puedeGestionarCostos && (

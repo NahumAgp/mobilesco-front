@@ -129,13 +129,26 @@ export function deactivateAccessUser(id) {
   });
 }
 
+const FULL_ACCESS_ROLES = new Set([
+  "ADMIN",
+  "DIRECTOR_GENERAL",
+  "SUBDIRECCION_ADMINISTRATIVA"
+]);
+
+function normalizeRole(role) {
+  return String(role || "").trim().toUpperCase().replaceAll(" ", "_").replace(/^ROLE_/, "");
+}
+
+export function hasFullAccessRole(user) {
+  return (user?.roles || []).some((role) => FULL_ACCESS_ROLES.has(normalizeRole(role)));
+}
+
 export function hasPermission(user, permission) {
   if (!permission) {
     return true;
   }
 
-  const roles = user?.roles || [];
-  if (roles.includes("ADMIN")) {
+  if (hasFullAccessRole(user)) {
     return true;
   }
 

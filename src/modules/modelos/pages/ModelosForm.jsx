@@ -194,6 +194,7 @@ const getCategoriasDelModelo = (modelo = {}) => {
               materialId: getMaterialId(insumo),
               materialCodigo: insumo?.materialCodigo ?? insumo?.material_codigo ?? insumo?.material?.codigo ?? "",
               materialNombre: insumo?.materialNombre ?? insumo?.material_nombre ?? insumo?.material?.nombre ?? "",
+              tipoInsumo: insumo?.tipoInsumo ?? insumo?.tipo_insumo ?? "",
               cantidad: insumo?.cantidad ?? "",
               desperdicioPorcentaje: getDesperdicioInsumo(insumo),
               costoCotizacion: getCostoCotizacionInsumo(insumo),
@@ -204,6 +205,8 @@ const getCategoriasDelModelo = (modelo = {}) => {
           ? categoria.operaciones.map((operacion) => ({
               ...operacion,
               id: getItemId(operacion),
+              tiempoOperacion: operacion?.tiempoOperacion ?? operacion?.tiempo_operacion ?? 0,
+              costoMinuto: operacion?.costoMinuto ?? operacion?.costo_minuto ?? 0,
               cantidad: operacion?.cantidad ?? 1,
               orden: operacion?.orden ?? 0
             }))
@@ -218,22 +221,20 @@ const getCategoriasDelModelo = (modelo = {}) => {
 const getFamiliaLineaNombre = (familia = {}) =>
   familia?.lineaNombre || familia?.linea?.nombre || "";
 
-const getFamiliaLabel = (familia = {}) => {
-  const lineaNombre = getFamiliaLineaNombre(familia);
-  const nombre = familia?.nombre || "-";
+const getFamiliaLineaCodigo = (familia = {}) =>
+  familia?.lineaCodigo || familia?.linea?.codigo || "";
+
+const getFamiliaNombreLabel = (familia = {}) => {
   const codigo = familia?.codigo ? `[${familia.codigo}] ` : "";
-  return `${codigo}${lineaNombre ? `${lineaNombre} / ` : ""}${nombre}`;
+  return `${codigo}${familia?.nombre || "-"}`;
 };
 
 const getSubfamiliaFamiliaId = (subfamilia = {}) =>
   subfamilia?.familiaId || subfamilia?.familia_id || subfamilia?.familia?.id || "";
 
-const buildRutaFamiliaValue = (familiaId, subfamiliaId = "") =>
-  [familiaId || "", subfamiliaId || ""].join("::");
-
-const parseRutaFamiliaValue = (value = "") => {
-  const [familiaId = "", subfamiliaId = ""] = String(value || "").split("::");
-  return { familiaId, subfamiliaId };
+const getSubfamiliaLabel = (subfamilia = {}) => {
+  const codigo = subfamilia?.codigo ? `[${subfamilia.codigo}] ` : "";
+  return `${codigo}${subfamilia?.nombre || "-"}`;
 };
 
 const getImagenActiva = (imagen) =>
@@ -289,6 +290,8 @@ export default function ModeloForm({
   onCancel,
   errores: erroresExternos = {}
 }) {
+  const esModal = Boolean(onSave);
+  const esEdicion = Boolean(modeloId) || Boolean(modelo);
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
   const [erroresBackend, setErroresBackend] = useState({});
@@ -305,6 +308,8 @@ export default function ModeloForm({
   const [cargandoImagen, setCargandoImagen] = useState(false);
   const [cargandoMateriales, setCargandoMateriales] = useState(false);
   const [cargandoCategorias, setCargandoCategorias] = useState(false);
+  const [mostrarSelectorMaterial, setMostrarSelectorMaterial] = useState(false);
+  const [mostrarSelectorCategoria, setMostrarSelectorCategoria] = useState(false);
   const [mostrarModalMaterial, setMostrarModalMaterial] = useState(false);
   const [mostrarModalCategoria, setMostrarModalCategoria] = useState(false);
   const [mostrarModalSubfamilia, setMostrarModalSubfamilia] = useState(false);
@@ -325,9 +330,6 @@ export default function ModeloForm({
   const fileInputRef = useRef(null);
 
   const navigate = useNavigate();
-
-  const esModal = Boolean(onSave);
-  const esEdicion = Boolean(modeloId) || Boolean(modelo);
 
   const [formData, setFormData] = useState({
     codigo: "",
@@ -516,55 +518,53 @@ export default function ModeloForm({
     }
   }
 
-  const rutasFamilia = useMemo(() => {
-    return familias.flatMap((familia) => {
-      const familiaId = familia.id ?? familia.familiaId;
-      if (!familiaId) return [];
-      const subfamiliasFamilia = subfamilias.filter(
-        (subfamilia) => String(getSubfamiliaFamiliaId(subfamilia)) === String(familiaId)
-      );
-      const rutaFamilia = {
-        id: buildRutaFamiliaValue(familiaId),
-        familiaId,
-        subfamiliaId: "",
-        label: getFamiliaLabel(familia),
-        search: [familia.codigo, getFamiliaLineaNombre(familia), familia.nombre, familia.descripcion].filter(Boolean).join(" ").toLowerCase()
-      };
+  const familiaSeleccionada = useMemo(
+    () => familias.find((familia) => String(familia.id ?? familia.familiaId) === String(formData.familiaId)) || null,
+    [familias, formData.familiaId]
+  );
 
-      if (subfamiliasFamilia.length === 0) return [rutaFamilia];
+  const subfamiliasDisponibles = useMemo(
+    () => subfamilias.filter((subfamilia) => String(getSubfamiliaFamiliaId(subfamilia)) === String(formData.familiaId)),
+    [subfamilias, formData.familiaId]
+  );
 
-      return [
-        rutaFamilia,
-        ...subfamiliasFamilia.map((subfamilia) => ({
-          id: buildRutaFamiliaValue(familiaId, subfamilia.id ?? subfamilia.subfamiliaId),
-          familiaId,
-          subfamiliaId: subfamilia.id ?? subfamilia.subfamiliaId,
-          label: `${getFamiliaLabel(familia)} / ${subfamilia.nombre || "-"}`,
-          search: [
-            familia.codigo,
-            getFamiliaLineaNombre(familia),
-            familia.nombre,
-            subfamilia.codigo,
-            subfamilia.nombre,
-            subfamilia.descripcion
-          ].filter(Boolean).join(" ").toLowerCase()
-        }))
-      ];
-    });
-  }, [familias, subfamilias]);
+  const subfamiliaSeleccionada = useMemo(
+    () => subfamiliasDisponibles.find((subfamilia) => String(subfamilia.id ?? subfamilia.subfamiliaId) === String(formData.subfamiliaId)) || null,
+    [subfamiliasDisponibles, formData.subfamiliaId]
+  );
 
-  const rutaFamiliaValue = buildRutaFamiliaValue(formData.familiaId, formData.subfamiliaId);
+  const lineaNombreSeleccionada = familiaSeleccionada
+    ? [getFamiliaLineaCodigo(familiaSeleccionada), getFamiliaLineaNombre(familiaSeleccionada)].filter(Boolean).join(" - ")
+    : "";
 
-  const cambiarRutaFamilia = (value) => {
-    const { familiaId, subfamiliaId } = parseRutaFamiliaValue(value);
+  const estructuraModelo = [
+    lineaNombreSeleccionada || "Linea",
+    familiaSeleccionada ? getFamiliaNombreLabel(familiaSeleccionada) : "Familia",
+    subfamiliaSeleccionada ? getSubfamiliaLabel(subfamiliaSeleccionada) : "Sin subfamilia",
+    formData.nombre || "Modelo"
+  ].join(" / ");
+
+  const cambiarFamilia = (value) => {
     setFormData((prev) => ({
       ...prev,
-      familiaId,
-      subfamiliaId
+      familiaId: value || "",
+      subfamiliaId: ""
     }));
     setErroresBackend((prev) => {
       const copia = { ...prev };
       delete copia.familiaId;
+      delete copia.subfamiliaId;
+      return copia;
+    });
+  };
+
+  const cambiarSubfamilia = (value) => {
+    setFormData((prev) => ({
+      ...prev,
+      subfamiliaId: value || ""
+    }));
+    setErroresBackend((prev) => {
+      const copia = { ...prev };
       delete copia.subfamiliaId;
       return copia;
     });
@@ -864,6 +864,7 @@ export default function ModeloForm({
           .map((insumo) => ({
             id: Number(getItemId(insumo)),
             materialId: getMaterialId(insumo) ? Number(getMaterialId(insumo)) : null,
+            conjunto: Boolean(insumo.conjunto),
             cantidad: Number(insumo.cantidad),
             desperdicioPorcentaje: Number(getDesperdicioInsumo(insumo) || 0),
             costoCotizacion: Number(getCostoCotizacionInsumo(insumo) || 0)
@@ -1122,6 +1123,16 @@ export default function ModeloForm({
     }
   };
 
+  const cerrarSelectorMaterial = () => {
+    setMostrarSelectorMaterial(false);
+    setMaterialSeleccionadoId("");
+  };
+
+  const cerrarSelectorCategoria = () => {
+    setMostrarSelectorCategoria(false);
+    setCategoriaSeleccionadaId("");
+  };
+
   const mostrarErrorCategorias = (mensaje) => {
     setErroresBackend((prev) => ({
       ...prev,
@@ -1188,17 +1199,48 @@ export default function ModeloForm({
                   </div>
 
                   <div className="col-md-4">
+                    <label className="form-label fw-semibold">Linea</label>
+                    <input
+                      type="text"
+                      className="form-control border-soft bg-light"
+                      value={lineaNombreSeleccionada || "Selecciona familia"}
+                      readOnly
+                    />
+                  </div>
+
+                  <div className="col-md-6">
                     <SearchableSelect
-                      label="Familia / Subfamilia"
-                      value={rutaFamiliaValue}
-                      options={rutasFamilia}
-                      onChange={cambiarRutaFamilia}
-                      placeholder="Selecciona una ruta..."
-                      searchPlaceholder="Escribe código, nombre o descripción..."
+                      label="Familia"
+                      value={formData.familiaId}
+                      options={familias}
+                      onChange={cambiarFamilia}
+                      placeholder="Selecciona familia..."
+                      searchPlaceholder="Busca por codigo, linea o nombre..."
                       error={erroresBackend.familiaId || erroresExternos.familiaId}
-                      getOptionValue={(ruta) => ruta.id}
-                      getOptionLabel={(ruta) => ruta.label}
-                      getOptionSearchText={(ruta) => ruta.search}
+                      getOptionValue={(familia) => familia.id ?? familia.familiaId}
+                      getOptionLabel={getFamiliaNombreLabel}
+                      getOptionSearchText={(familia) =>
+                        [familia.codigo, getFamiliaLineaNombre(familia), familia.nombre, familia.descripcion].filter(Boolean).join(" ").toLowerCase()
+                      }
+                    />
+                  </div>
+
+                  <div className="col-md-6">
+                    <SearchableSelect
+                      label="Subfamilia"
+                      value={formData.subfamiliaId}
+                      options={subfamiliasDisponibles}
+                      onChange={cambiarSubfamilia}
+                      placeholder={formData.familiaId ? "Selecciona subfamilia..." : "Selecciona familia primero"}
+                      searchPlaceholder="Busca por codigo, nombre o descripcion..."
+                      disabled={!formData.familiaId}
+                      error={erroresBackend.subfamiliaId || erroresExternos.subfamiliaId}
+                      emptyText="Esta familia no tiene subfamilias"
+                      getOptionValue={(subfamilia) => subfamilia.id ?? subfamilia.subfamiliaId}
+                      getOptionLabel={getSubfamiliaLabel}
+                      getOptionSearchText={(subfamilia) =>
+                        [subfamilia.codigo, subfamilia.nombre, subfamilia.descripcion].filter(Boolean).join(" ").toLowerCase()
+                      }
                       actionNode={
                         <button
                           type="button"
@@ -1213,104 +1255,38 @@ export default function ModeloForm({
                     />
                   </div>
 
-                  <div className="col-md-12">
-                    <label className="form-label fw-semibold">Descripcion corta</label>
-                    <input
-                      type="text"
-                      name="descripcionCorta"
-                      className={inputClass("descripcionCorta")}
-                      value={formData.descripcionCorta || ""}
-                      onChange={handleChange}
-                      maxLength="250"
-                      placeholder="Resumen breve que tendran todos los productos del modelo"
-                    />
-                    <div className="invalid-feedback">{erroresBackend.descripcionCorta || erroresExternos.descripcionCorta}</div>
-                    <div className="form-text text-muted">Maximo 250 caracteres</div>
-                  </div>
-
-                  <div className="col-md-12">
-                    <div className="d-flex justify-content-between align-items-center mb-2">
-                      <label className="form-label fw-semibold mb-0">Materiales del modelo</label>
-                      <small className="text-muted">
-                        Catálogo global, reutilizable en cualquier modelo
-                      </small>
+                  <div className="col-12">
+                    <div className="modelo-structure-path">
+                      <span className="text-muted small">Estructura</span>
+                      <strong>{estructuraModelo}</strong>
                     </div>
-
-                    <SearchableSelect
-                      label=""
-                      value={materialSeleccionadoId}
-                      options={materialesDisponibles}
-                      onChange={agregarMaterial}
-                      placeholder={cargandoMateriales ? "Cargando materiales..." : "Buscar y agregar material..."}
-                      searchPlaceholder="Escribe código, nombre o descripción..."
-                      loading={cargandoMateriales}
-                      emptyText="No hay materiales disponibles"
-                      getOptionValue={(material) => material.id ?? material.materialId}
-                      getOptionLabel={(material) => `${material.codigo ? `[${material.codigo}] ` : ""}${material.nombre || "-"}`}
-                      getOptionSearchText={(material) =>
-                        [material.codigo, material.nombre, material.descripcion].filter(Boolean).join(" ").toLowerCase()
-                      }
-                      renderOptionLabel={(material) =>
-                        `${material.codigo ? `[${material.codigo}] ` : ""}${material.nombre || "-"}`
-                      }
-                      helperText="Selecciona materiales para este modelo sin sacarlos del catálogo general."
-                      keepOpenOnSelect
-                      actionNode={
-                        <button
-                          type="button"
-                          className="btn btn-outline-primary px-3"
-                          onClick={() => setMostrarModalMaterial(true)}
-                          title="Crear material"
-                          aria-label="Crear material"
-                        >
-                          <i className="bi bi-plus-lg"></i>
-                        </button>
-                      }
-                      className="mb-2"
-                    />
-
-                    {materialesSeleccionados.length > 0 ? (
-                      <div className="d-flex flex-wrap gap-2">
-                        {materialesSeleccionados.map((material) => (
-                          <span
-                            key={material.id}
-                            className="badge rounded-pill text-bg-light border d-inline-flex align-items-center gap-2"
-                          >
-                            <span>
-                              {material.codigo ? `[${material.codigo}] ` : ""}
-                              {material.nombre || "-"}
-                            </span>
-                            <button
-                              type="button"
-                              className="btn btn-sm p-0 border-0 bg-transparent text-danger"
-                              onClick={() => quitarMaterial(material.id)}
-                              aria-label={`Quitar material ${material.nombre || material.codigo || material.id}`}
-                              title="Quitar material"
-                            >
-                              <i className="bi bi-x-lg"></i>
-                            </button>
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="form-text text-muted">
-                        Aún no se ha asociado ningún material a este modelo.
-                      </div>
-                    )}
                   </div>
 
                   <div className="col-md-12">
-                    <label className="form-label fw-semibold">Descripcion</label>
-                    <textarea
-                      name="descripcion"
-                      className={inputClass("descripcion")}
-                      value={formData.descripcion || ""}
-                      onChange={handleChange}
-                      rows="4"
-                      placeholder="Descripcion detallada del modelo"
-                    />
-                    <div className="invalid-feedback">{erroresBackend.descripcion || erroresExternos.descripcion}</div>
-                    <div className="form-text text-muted">Maximo 500 caracteres</div>
+                    <div className="modelo-description-group">
+                      <label className="form-label fw-semibold">Descripcion del modelo</label>
+                      <input
+                        type="text"
+                        name="descripcionCorta"
+                        className={`${inputClass("descripcionCorta")} mb-2`}
+                        value={formData.descripcionCorta || ""}
+                        onChange={handleChange}
+                        maxLength="250"
+                        placeholder="Resumen breve que tendran todos los productos del modelo"
+                      />
+                      <div className="invalid-feedback">{erroresBackend.descripcionCorta || erroresExternos.descripcionCorta}</div>
+                      <textarea
+                        name="descripcion"
+                        className={inputClass("descripcion")}
+                        value={formData.descripcion || ""}
+                        onChange={handleChange}
+                        rows="4"
+                        maxLength="500"
+                        placeholder="Descripcion detallada del modelo"
+                      />
+                      <div className="invalid-feedback">{erroresBackend.descripcion || erroresExternos.descripcion}</div>
+                      <div className="form-text text-muted">Resumen maximo 250 caracteres. Descripcion maxima 500 caracteres.</div>
+                    </div>
                   </div>
 
                   <div className="col-md-12">
@@ -1425,51 +1401,19 @@ export default function ModeloForm({
               <div className="card-body">
                 <div className="d-flex justify-content-between align-items-center border-bottom pb-3 mb-3">
                   <div>
-                    <div className="fw-semibold">Categorias del catalogo global</div>
-                    <small className="text-muted">
-                      Selecciona categorias globales y el sistema les asignara un codigo interno por modelo: 01, 02, 03...
-                    </small>
+                    <div className="fw-semibold">Categorias</div>
+                    <small className="text-muted">Categorias del producto dentro del modelo.</small>
                   </div>
+                  <button
+                    type="button"
+                    className="btn btn-outline-primary btn-sm"
+                    onClick={() => setMostrarSelectorCategoria(true)}
+                  >
+                    <i className="bi bi-plus-lg me-1"></i>Nueva categoria
+                  </button>
                 </div>
 
-                <label className="form-label fw-semibold mb-2">
-                  Buscar categoría global
-                </label>
-                <div data-modelo-categorias-search>
-                  <SearchableSelect
-                    label=""
-                    value={categoriaSeleccionadaId}
-                    options={categoriasDisponibles}
-                    onChange={agregarCategoria}
-                    placeholder={cargandoCategorias ? "Cargando categorías..." : "Buscar y agregar categoría global..."}
-                    searchPlaceholder="Escribe código, nombre o descripción..."
-                    emptyText="No hay categorías globales disponibles"
-                    getOptionValue={(categoria) => categoria.id}
-                    getOptionLabel={(categoria) => `${categoria.codigo ? `[${categoria.codigo}] ` : ""}${categoria.nombre || "-"}`}
-                    getOptionSearchText={(categoria) =>
-                      [categoria.codigo, categoria.nombre, categoria.descripcion].filter(Boolean).join(" ").toLowerCase()
-                    }
-                    renderOptionLabel={(categoria) =>
-                      `${categoria.codigo ? `[${categoria.codigo}] ` : ""}${categoria.nombre || "-"}`
-                    }
-                    helperText="Selecciona una categoría del catálogo global y se enlazará al modelo."
-                    keepOpenOnSelect
-                    actionNode={
-                      <button
-                        type="button"
-                        className="btn btn-outline-primary px-3"
-                        onClick={abrirModalCategoria}
-                        title="Crear categoria global"
-                        aria-label="Crear categoria global"
-                      >
-                        <i className="bi bi-plus-lg"></i>
-                      </button>
-                    }
-                    className="mb-3"
-                  />
-                </div>
-
-                {categoriasSeleccionadas.length > 0 && (
+                {categoriasSeleccionadas.length > 0 ? (
                   <div className="d-flex flex-wrap gap-2 mb-3">
                     {categoriasSeleccionadas.map((categoria, index) => (
                       <span
@@ -1492,8 +1436,75 @@ export default function ModeloForm({
                       </span>
                     ))}
                   </div>
+                ) : (
+                  <div className="form-text text-muted">
+                    Aun no se ha asociado ninguna categoria a este modelo.
+                  </div>
                 )}
+              </div>
+            </div>
+          </div>
 
+          <div className="col-12">
+            <div className="card shadow-sm border-0 mb-4 modelos-table-card">
+              <div className="card-body">
+                <div className="d-flex justify-content-between align-items-center border-bottom pb-3 mb-3">
+                  <div>
+                    <div className="fw-semibold">Materiales del modelo</div>
+                    <small className="text-muted">Materiales disponibles para la estructura de costos.</small>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-outline-primary btn-sm"
+                    onClick={() => setMostrarSelectorMaterial(true)}
+                  >
+                    <i className="bi bi-plus-lg me-1"></i>Nuevo material
+                  </button>
+                </div>
+
+                {materialesSeleccionados.length > 0 ? (
+                  <div className="d-flex flex-wrap gap-2 mb-3">
+                    {materialesSeleccionados.map((material) => (
+                      <span
+                        key={material.id}
+                        className="badge rounded-pill text-bg-light border d-inline-flex align-items-center gap-2"
+                      >
+                        <span className="fw-semibold">
+                          {material.codigo ? `[${material.codigo}] ` : ""}
+                          {material.nombre || "-"}
+                        </span>
+                        <button
+                          type="button"
+                          className="btn btn-sm p-0 border-0 bg-transparent text-danger"
+                          onClick={() => quitarMaterial(material.id)}
+                          aria-label={`Quitar material ${material.nombre || material.codigo || material.id}`}
+                          title="Quitar material"
+                        >
+                          <i className="bi bi-x-lg"></i>
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="form-text text-muted">
+                    Aun no se ha asociado ningun material a este modelo.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="col-12">
+            <div className="card shadow-sm border-0 mb-4 modelos-table-card">
+              <div className="card-body">
+                <div className="d-flex justify-content-between align-items-center border-bottom pb-3 mb-3">
+                  <div>
+                    <div className="fw-semibold">Estructura de costos del modelo</div>
+                    <small className="text-muted">
+                      Configura materiales, medidas, insumos y operaciones por categoria.
+                    </small>
+                  </div>
+                </div>
                 <ModeloPlantillaProductivaFields
                   modeloId={modelo?.id || modeloId}
                   categorias={categoriasSeleccionadas}
@@ -1538,6 +1549,169 @@ export default function ModeloForm({
           </div>
         </div>
       </form>
+
+      {mostrarSelectorCategoria && (
+        <div
+          className="modal fade show"
+          style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)" }}
+          tabIndex="-1"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="modal-dialog modal-lg modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Nueva categoria del modelo</h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={cerrarSelectorCategoria}
+                  aria-label="Cerrar"
+                ></button>
+              </div>
+              <div className="modal-body">
+                <div data-modelo-categorias-search>
+                  <SearchableSelect
+                    label="Categoria"
+                    value={categoriaSeleccionadaId}
+                    options={categoriasDisponibles}
+                    onChange={agregarCategoria}
+                    placeholder={cargandoCategorias ? "Cargando categorias..." : "Buscar categoria existente..."}
+                    searchPlaceholder="Escribe codigo, nombre o descripcion..."
+                    loading={cargandoCategorias}
+                    emptyText="No hay categorias globales disponibles"
+                    getOptionValue={(categoria) => categoria.id}
+                    getOptionLabel={(categoria) => `${categoria.codigo ? `[${categoria.codigo}] ` : ""}${categoria.nombre || "-"}`}
+                    getOptionSearchText={(categoria) =>
+                      [categoria.codigo, categoria.nombre, categoria.descripcion].filter(Boolean).join(" ").toLowerCase()
+                    }
+                    renderOptionLabel={(categoria) =>
+                      `${categoria.codigo ? `[${categoria.codigo}] ` : ""}${categoria.nombre || "-"}`
+                    }
+                    keepOpenOnSelect
+                    actionNode={
+                      <button
+                        type="button"
+                        className="btn btn-outline-primary px-3"
+                        onClick={abrirModalCategoria}
+                        title="Crear categoria global"
+                        aria-label="Crear categoria global"
+                      >
+                        <i className="bi bi-plus-lg"></i>
+                      </button>
+                    }
+                  />
+                </div>
+
+                {categoriasSeleccionadas.length > 0 && (
+                  <div className="d-flex flex-wrap gap-2 mt-3">
+                    {categoriasSeleccionadas.map((categoria, index) => (
+                      <span
+                        key={categoria.id || categoria.categoriaId || index}
+                        className="badge rounded-pill text-bg-light border d-inline-flex align-items-center gap-2"
+                      >
+                        <span className="fw-semibold">
+                          {categoria.codigo ? `[${categoria.codigo}] ` : `[${String(index + 1).padStart(2, "0")}] `}
+                          {categoria.nombre || "-"}
+                        </span>
+                        <button
+                          type="button"
+                          className="btn btn-sm p-0 border-0 bg-transparent text-danger"
+                          onClick={() => quitarCategoria(categoria.categoriaId ?? categoria.id)}
+                          aria-label={`Quitar categoria ${categoria.nombre || categoria.id || categoria.categoriaId}`}
+                          title="Quitar categoria"
+                        >
+                          <i className="bi bi-x-lg"></i>
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-light" onClick={cerrarSelectorCategoria}>
+                  Listo
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {mostrarSelectorMaterial && (
+        <div
+          className="modal fade show"
+          style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)" }}
+          tabIndex="-1"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="modal-dialog modal-lg modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Agregar material al modelo</h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={cerrarSelectorMaterial}
+                  aria-label="Cerrar"
+                ></button>
+              </div>
+              <div className="modal-body">
+                <SearchableSelect
+                  label="Material"
+                  value={materialSeleccionadoId}
+                  options={materialesDisponibles}
+                  onChange={agregarMaterial}
+                  placeholder={cargandoMateriales ? "Cargando materiales..." : "Buscar material existente..."}
+                  searchPlaceholder="Escribe codigo, nombre o descripcion..."
+                  loading={cargandoMateriales}
+                  emptyText="No hay materiales disponibles"
+                  getOptionValue={(material) => material.id ?? material.materialId}
+                  getOptionLabel={(material) => `${material.codigo ? `[${material.codigo}] ` : ""}${material.nombre || "-"}`}
+                  getOptionSearchText={(material) =>
+                    [material.codigo, material.nombre, material.descripcion].filter(Boolean).join(" ").toLowerCase()
+                  }
+                  renderOptionLabel={(material) =>
+                    `${material.codigo ? `[${material.codigo}] ` : ""}${material.nombre || "-"}`
+                  }
+                  keepOpenOnSelect
+                  actionNode={
+                    <button
+                      type="button"
+                      className="btn btn-outline-primary px-3"
+                      onClick={() => setMostrarModalMaterial(true)}
+                      title="Crear material"
+                      aria-label="Crear material"
+                    >
+                      <i className="bi bi-plus-lg"></i>
+                    </button>
+                  }
+                />
+
+                {materialesSeleccionados.length > 0 && (
+                  <div className="d-flex flex-wrap gap-2 mt-3">
+                    {materialesSeleccionados.map((material) => (
+                      <span
+                        key={material.id}
+                        className="badge rounded-pill text-bg-light border d-inline-flex align-items-center gap-2"
+                      >
+                        {material.codigo ? `[${material.codigo}] ` : ""}
+                        {material.nombre || "-"}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-light" onClick={cerrarSelectorMaterial}>
+                  Listo
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {mostrarModalMaterial && (
         <MaterialModal

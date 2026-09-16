@@ -183,6 +183,132 @@
   box-shadow: var(--ms-sh-md);
 }
 
+.modelo-structure-path {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border: 1px solid rgba(84, 134, 116, 0.18);
+  border-radius: 8px;
+  background: #f6faf8;
+  color: var(--modelos-brand-ink);
+}
+
+.modelo-description-group {
+  padding: 14px;
+  border: 1px solid rgba(84, 134, 116, 0.14);
+  border-radius: 8px;
+  background: #fbfcfb;
+}
+
+.modelo-categoria-panel {
+  border: 1px solid var(--categoria-border, var(--ms-line-soft));
+  border-radius: 8px;
+  background: var(--categoria-bg, var(--ms-surface));
+  color: var(--categoria-ink, var(--modelos-brand-ink));
+  overflow: hidden;
+}
+
+.modelo-categoria-body {
+  padding: 0 18px 18px;
+}
+
+.modelo-material-panel {
+  border: 1px solid var(--material-border, var(--ms-line-soft));
+  border-radius: 8px;
+  background: var(--material-bg, var(--ms-surface));
+  overflow: hidden;
+}
+
+.modelo-panel-summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 12px 16px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.modelo-panel-summary::-webkit-details-marker {
+  display: none;
+}
+
+.modelo-panel-summary:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.modelo-chevron {
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(33, 68, 59, 0.25);
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--modelos-brand-ink);
+  font-size: 0.82rem;
+  flex: 0 0 auto;
+}
+
+.modelo-chevron-up {
+  display: none;
+}
+
+details[open] > .modelo-panel-summary > .modelo-chevron-down {
+  display: none;
+}
+
+details[open] > .modelo-panel-summary > .modelo-chevron-up {
+  display: inline-flex;
+}
+
+.modelo-material-body {
+  padding: 0 16px 16px;
+}
+
+.modelo-material-body > .modelo-operaciones-section {
+  margin-top: 16px;
+}
+
+.modelo-subpanel {
+  border: 1px solid rgba(84, 134, 116, 0.2);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.58);
+  overflow: hidden;
+}
+
+.modelo-subpanel-body {
+  padding: 0 16px 16px;
+}
+
+.modelo-operaciones-section {
+  border: 1px solid #c5d4e9;
+  border-radius: 8px;
+  background: #eef4fb;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.modelo-operaciones-body {
+  padding: 0 16px 16px;
+}
+
+.modelo-drag-handle {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: #5b6874;
+  cursor: grab;
+  user-select: none;
+}
+
+.modelo-drag-handle:active {
+  cursor: grabbing;
+}
+
 @media (max-width: 576px) {
   .modelos-pagination-panel {
     padding: 12px 14px;

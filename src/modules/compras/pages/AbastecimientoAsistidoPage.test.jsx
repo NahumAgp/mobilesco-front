@@ -14,7 +14,7 @@ vi.mock("../services/abastecimiento.js", () => ({
 }));
 
 vi.mock("../../auth/services/authService.js", () => ({
-  getUser: vi.fn(() => ({ permisos: ["VIEW_PURCHASES", "ACTION_PURCHASES_CREATE"] })),
+  getUser: vi.fn(() => ({ permisos: ["VIEW_ASSISTED_PROCUREMENT", "ACTION_ASSISTED_PROCUREMENT_DRAFTS"] })),
   hasPermission: vi.fn((user, permission) => user.permisos.includes(permission)),
 }));
 
