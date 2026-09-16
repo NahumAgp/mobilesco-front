@@ -215,6 +215,10 @@
   overflow: visible;
 }
 
+.modelo-categoria-panel:focus-within {
+  z-index: 70;
+}
+
 .modelo-categoria-body {
   padding: 0 18px 18px;
 }
@@ -229,6 +233,10 @@
 
 .modelo-material-panel[open] {
   overflow: visible;
+}
+
+.modelo-material-panel:focus-within {
+  z-index: 80;
 }
 
 .modelo-panel-summary {
@@ -296,7 +304,7 @@ details[open] > .modelo-panel-summary > .modelo-chevron-up {
 }
 
 .modelo-subpanel:focus-within {
-  z-index: 30;
+  z-index: 90;
 }
 
 .modelo-subpanel-body {
@@ -317,11 +325,12 @@ details[open] > .modelo-panel-summary > .modelo-chevron-up {
 }
 
 .modelo-operaciones-section:focus-within {
-  z-index: 20;
+  z-index: 90;
 }
 
 .modelo-operaciones-body {
   padding: 0 16px 16px;
+  overflow: visible;
 }
 
 .modelo-drag-handle {
