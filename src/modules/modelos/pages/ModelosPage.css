@@ -208,6 +208,11 @@
   background: var(--categoria-bg, var(--ms-surface));
   color: var(--categoria-ink, var(--modelos-brand-ink));
   overflow: hidden;
+  position: relative;
+}
+
+.modelo-categoria-panel[open] {
+  overflow: visible;
 }
 
 .modelo-categoria-body {
@@ -219,6 +224,11 @@
   border-radius: 8px;
   background: var(--material-bg, var(--ms-surface));
   overflow: hidden;
+  position: relative;
+}
+
+.modelo-material-panel[open] {
+  overflow: visible;
 }
 
 .modelo-panel-summary {
@@ -278,6 +288,15 @@ details[open] > .modelo-panel-summary > .modelo-chevron-up {
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.58);
   overflow: hidden;
+  position: relative;
+}
+
+.modelo-subpanel[open] {
+  overflow: visible;
+}
+
+.modelo-subpanel:focus-within {
+  z-index: 30;
 }
 
 .modelo-subpanel-body {
@@ -290,6 +309,15 @@ details[open] > .modelo-panel-summary > .modelo-chevron-up {
   background: #eef4fb;
   min-width: 0;
   overflow: hidden;
+  position: relative;
+}
+
+.modelo-operaciones-section[open] {
+  overflow: visible;
+}
+
+.modelo-operaciones-section:focus-within {
+  z-index: 20;
 }
 
 .modelo-operaciones-body {
