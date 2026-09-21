@@ -20,6 +20,7 @@ import { getUser, hasPermission } from "../../auth/services/authService";
 import { obtenerResumenTablero } from "../services/tablero";
 import "./tablero.css";
 import "./tablero-analytics.css";
+import "./tablero-quick.css";
 
 const PERIODOS = [
   ["MES", "Este mes"],
@@ -67,6 +68,7 @@ export default function Tablero() {
   const navigate = useNavigate();
   const user = getUser();
   const puedeVerCotizaciones = hasPermission(user, "VIEW_QUOTES");
+  const puedeCrearCotizacion = hasPermission(user, "ACTION_QUOTES_CREATE");
   const puedeVerInventario = hasPermission(user, "VIEW_INVENTORY");
   const puedeVerCompras = hasPermission(user, "VIEW_PURCHASES");
   const puedeVerProductos = hasPermission(user, "VIEW_PRODUCTS");
@@ -209,9 +211,11 @@ export default function Tablero() {
             </select>
           </label>
           {puedeVerCotizaciones && (
-            <button className="tab-primary" onClick={() => navigate("/cotizaciones/nueva")}>
-              <Plus size={18} /> Nueva cotización
-            </button>
+            <>
+              <button className="tab-primary" onClick={() => navigate("/cotizaciones/nueva")} disabled={!puedeCrearCotizacion}>
+                <Plus size={18} /> Nueva cotización
+              </button>
+            </>
           )}
         </div>
       </header>

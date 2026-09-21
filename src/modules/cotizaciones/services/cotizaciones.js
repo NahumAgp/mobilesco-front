@@ -21,5 +21,8 @@ export const buscarProductosCotizables = (busqueda) =>
 export const crearCotizacion = (data) =>
   request(API_PATHS.COTIZACIONES, { method: "POST", body: JSON.stringify(data) });
 
+export const actualizarCotizacion = (id, data) =>
+  request(`${API_PATHS.COTIZACIONES}/${id}`, { method: "PUT", body: JSON.stringify(data) });
+
 export const cambiarEstadoCotizacion = (id, estado) =>
   request(`${API_PATHS.COTIZACIONES}/${id}/estado?estado=${estado}`, { method: "PATCH" });

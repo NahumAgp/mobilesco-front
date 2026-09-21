@@ -1,0 +1,1 @@
+.tab-secondary-action{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid #b7d0c7;border-radius:10px;padding:11px 15px;font-weight:700;cursor:pointer;background:#e8f3ef;color:#174f43}.tab-primary:disabled,.tab-secondary-action:disabled{opacity:.55;cursor:not-allowed}

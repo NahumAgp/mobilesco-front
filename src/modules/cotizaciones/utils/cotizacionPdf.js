@@ -52,8 +52,10 @@ export async function crearPdfCotizacion(cotizacion) {
     pdf.setFont(undefined, "bold");
     pdf.text("Cantidad", 16, y + 5.5);
     pdf.text("Producto", 39, y + 5.5);
-    pdf.text("Precio unitario", 148, y + 5.5);
-    pdf.text("Importe", 181, y + 5.5, { align: "right" });
+    pdf.setFontSize(9);
+    pdf.text("Precio unitario", 174, y + 5.5, { align: "right" });
+    pdf.text("Importe", 200, y + 5.5, { align: "right" });
+    pdf.setFontSize(10);
     pdf.setFont(undefined, "normal");
     y += 10;
   };

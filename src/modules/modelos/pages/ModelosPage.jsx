@@ -13,6 +13,7 @@ import PageHeader from "../../../components/Sistema/PageHeader.jsx";
 import CatalogPagination from "../../../components/ui/CatalogPagination.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
 import { getUser, hasPermission } from "../../auth/services/authService";
+import { normalizeOptionText } from "../../../utils/uniqueOptions.js";
 import "./ModelosPage.css";
 
 const PAGE_SIZE = 10;
@@ -108,15 +109,37 @@ export default function ModelosPage() {
           }
         });
 
+        const nombresFamilia = new Map();
+        lista.forEach((familia) => {
+          const nombre = getFamiliaNombre(familia);
+          const key = normalizeOptionText(nombre);
+
+          if (key) {
+            nombresFamilia.set(key, (nombresFamilia.get(key) || 0) + 1);
+          }
+        });
+
         const opcionesLineas = Array.from(opcionesMap.values())
           .sort((a, b) => a.label.localeCompare(b.label, "es"));
-        const opcionesFamilias = lista
-          .map((familia) => ({
-            id: getFamiliaId(familia),
-            label: getFamiliaNombre(familia),
-            lineaId: getLineaId(familia)
-          }))
-          .filter((familia) => familia.id && familia.label)
+        const opcionesFamiliasMap = new Map();
+        lista.forEach((familia) => {
+          const id = getFamiliaId(familia);
+          const nombre = getFamiliaNombre(familia);
+          const lineaId = getLineaId(familia);
+          const lineaNombre = getLineaNombre(familia);
+          const repetirNombre = nombresFamilia.get(normalizeOptionText(nombre)) > 1;
+          const label = repetirNombre && lineaNombre ? `${lineaNombre} / ${nombre}` : nombre;
+
+          if (id && label && !opcionesFamiliasMap.has(String(id))) {
+            opcionesFamiliasMap.set(String(id), {
+              id,
+              label,
+              lineaId
+            });
+          }
+        });
+
+        const opcionesFamilias = Array.from(opcionesFamiliasMap.values())
           .sort((a, b) => a.label.localeCompare(b.label, "es"));
 
         if (activo) {
