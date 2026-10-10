@@ -54,6 +54,8 @@ const OperacionesFormPage = lazy(() => import("./modules/operaciones/pages/Opera
 const OrdenesProduccionPage = lazy(() => import("./modules/ordenes-produccion/pages/OrdenesProduccionPage.jsx"));
 const OrdenProduccionFormPage = lazy(() => import("./modules/ordenes-produccion/pages/OrdenProduccionFormPage.jsx"));
 const OrdenProduccionDetallePage = lazy(() => import("./modules/ordenes-produccion/pages/OrdenProduccionDetallePage.jsx"));
+const PedidosVentaPage = lazy(() => import("./modules/pedidos-venta/pages/PedidosVentaPage.jsx"));
+const ProductoTerminadoPage = lazy(() => import("./modules/producto-terminado/pages/ProductoTerminadoPage.jsx"));
 const CifPage = lazy(() => import("./modules/cif/pages/CifPage.jsx"));
 const CifFormPage = lazy(() => import("./modules/cif/pages/CifFormPage.jsx"));
 const ComprasPage = lazy(() => import("./modules/compras/pages/ComprasPage.jsx"));
@@ -126,6 +128,7 @@ export default function App() {
         <Route path="/cotizaciones/formal" element={withPermission(<NuevaCotizacion />, ["VIEW_QUOTES", "ACTION_QUOTES_CREATE"])} />
         <Route path="/cotizaciones/:id/editar" element={withPermission(<NuevaCotizacion />, ["VIEW_QUOTES", "ACTION_QUOTES_EDIT"])} />
         <Route path="/cotizaciones/rapida" element={<Navigate to="/cotizaciones/nueva" replace />} />
+        <Route path="/pedidos-venta" element={withPermission(<PedidosVentaPage />, "VIEW_SALES_ORDERS")} />
 
         {/* CLIENTES */}
         <Route path="/clientes" element={withPermission(<ClientesPage />, "VIEW_CUSTOMERS")} />
@@ -204,6 +207,7 @@ export default function App() {
         <Route path="/almacen/requisiciones" element={withPermission(<RequisicionesPage />, "VIEW_WAREHOUSE_REQUISITIONS")} />
         <Route path="/almacen/requisiciones/nueva" element={withPermission(<RequisicionNuevaPage />, ["VIEW_WAREHOUSE_REQUISITIONS", "ACTION_WAREHOUSE_REQUISITIONS_CREATE"])} />
         <Route path="/almacen/requisiciones/:id" element={withPermission(<RequisicionDetallePage />, "VIEW_WAREHOUSE_REQUISITIONS")} />
+        <Route path="/almacen/producto-terminado" element={withPermission(<ProductoTerminadoPage />, "VIEW_FINISHED_GOODS")} />
         <Route
           path="/almacen/entradas"
           element={

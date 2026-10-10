@@ -179,7 +179,7 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
   const iniciales = `${nombre.trim().charAt(0)}${apellido.trim().charAt(0)}`.toUpperCase() || "U";
   const mostrarFoto = foto && failedFoto !== foto;
   const showProductos = ["VIEW_PRODUCTS", "VIEW_PRODUCT_CATALOG", "VIEW_PRODUCT_QUALITY", "VIEW_PRODUCT_LINES", "VIEW_FAMILIES", "VIEW_SUBFAMILIES", "VIEW_MODELS", "VIEW_MATERIALS", "VIEW_COLORS"].some(can);
-  const showAlmacen = ["VIEW_INVENTORY", "VIEW_INPUT_SETS", "VIEW_INPUT_TYPES", "VIEW_MEASURE_UNITS", "VIEW_INVENTORY_OUTPUTS", "VIEW_WAREHOUSE_REQUISITIONS", "VIEW_WAREHOUSE_RECEIPTS"].some(can);
+  const showAlmacen = ["VIEW_INVENTORY", "VIEW_INPUT_SETS", "VIEW_INPUT_TYPES", "VIEW_MEASURE_UNITS", "VIEW_INVENTORY_OUTPUTS", "VIEW_WAREHOUSE_REQUISITIONS", "VIEW_WAREHOUSE_RECEIPTS", "VIEW_FINISHED_GOODS"].some(can);
   const navItems = [
     can("VIEW_DASHBOARD") && { to: "/tablero", label: "Tablero", shortLabel: "Inicio", icon: "bi-speedometer2", section: "Inicio" },
     puedeGestionarUsuarios && { to: "/usuarios/accesos", label: "Usuarios y accesos", shortLabel: "Usuarios", icon: "bi-shield-check", section: "General" },
@@ -201,6 +201,7 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
     can("VIEW_INVENTORY_OUTPUTS") && { to: "/salidas-insumos", label: "Salidas", icon: "bi-box-arrow-right", section: "Almacen" },
     can("VIEW_WAREHOUSE_REQUISITIONS") && { to: "/almacen/requisiciones", label: "Requisiciones", shortLabel: "Req.", icon: "bi-clipboard-plus", section: "Almacen" },
     can("VIEW_MEASURE_UNITS") && { to: "/unidades-medida", label: "Unidad Medida", shortLabel: "Unidad", icon: "bi-aspect-ratio", section: "Almacen" },
+    can("VIEW_FINISHED_GOODS") && { to: "/almacen/producto-terminado", label: "Producto terminado", shortLabel: "P. terminado", icon: "bi-boxes", section: "Almacen" },
     can("VIEW_WORK_CENTERS") && { to: "/centros-trabajo", label: "Centros de Trabajo", shortLabel: "Centros", icon: "bi-building", section: "Produccion" },
     can("VIEW_OPERATIONS") && { to: "/operaciones", label: "Operaciones", shortLabel: "Operacion", icon: "bi-gear", section: "Produccion" },
     can("VIEW_PRODUCTION_ORDERS") && { to: "/ordenes-produccion", label: "Ordenes de produccion", shortLabel: "Ordenes", icon: "bi-clipboard2-check", section: "Produccion" },
@@ -209,7 +210,8 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
     can("VIEW_ASSISTED_PROCUREMENT") && { to: "/compras/abastecimiento", label: "Abastecimiento asistido", shortLabel: "Abasto", icon: "bi-stars", section: "Compras" },
     can("VIEW_ACCOUNTS_PAYABLE") && { to: "/compras/cuentas-por-pagar", label: "Cuentas por pagar", shortLabel: "Cuentas", icon: "bi-cash-coin", section: "Compras" },
     can("VIEW_CUSTOMERS") && { to: "/clientes", label: "Clientes", icon: "bi-person-vcard", section: "Comercial" },
-    can("VIEW_QUOTES") && { to: "/cotizaciones", label: "Cotizaciones", shortLabel: "Cotiza.", icon: "bi-file-earmark-text", section: "Comercial" }
+    can("VIEW_QUOTES") && { to: "/cotizaciones", label: "Cotizaciones", shortLabel: "Cotiza.", icon: "bi-file-earmark-text", section: "Comercial" },
+    can("VIEW_SALES_ORDERS") && { to: "/pedidos-venta", label: "Pedidos de venta", shortLabel: "Pedidos", icon: "bi-clipboard-check", section: "Comercial" }
   ].filter(Boolean);
   const pinnedItems = pinnedRoutes
     .map((route) => navItems.find((item) => item.to === route))
@@ -450,6 +452,7 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
               {can("VIEW_INVENTORY_OUTPUTS") && <LinkItem to="/salidas-insumos" label="Salidas" icon="bi-box-arrow-right" sub onClick={() => handleRouteNavigation("/salidas-insumos")} />}
               {can("VIEW_WAREHOUSE_REQUISITIONS") && <LinkItem to="/almacen/requisiciones" label="Requisiciones" icon="bi-clipboard-plus" sub onClick={() => handleRouteNavigation("/almacen/requisiciones")} />}
               {can("VIEW_MEASURE_UNITS") && <LinkItem to="/unidades-medida" label="Unidad Medida" icon="bi-aspect-ratio" sub onClick={() => handleRouteNavigation("/unidades-medida")} />}
+              {can("VIEW_FINISHED_GOODS") && <LinkItem to="/almacen/producto-terminado" label="Producto terminado" icon="bi-boxes" sub onClick={() => handleRouteNavigation("/almacen/producto-terminado")} />}
             </div>
           </div>
         )}
@@ -463,6 +466,7 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
         {can("VIEW_ACCOUNTS_PAYABLE") && <LinkItem to="/compras/cuentas-por-pagar" label="Cuentas por pagar" icon="bi-cash-coin" onClick={() => handleRouteNavigation("/compras/cuentas-por-pagar")} />}
         {can("VIEW_CUSTOMERS") && <LinkItem to="/clientes" label="Clientes" icon="bi-person-vcard" onClick={() => handleRouteNavigation("/clientes")} />}
         {can("VIEW_QUOTES") && <LinkItem to="/cotizaciones" label="Cotizaciones" icon="bi-file-earmark-text" onClick={() => handleRouteNavigation("/cotizaciones")} />}
+        {can("VIEW_SALES_ORDERS") && <LinkItem to="/pedidos-venta" label="Pedidos de venta" icon="bi-clipboard-check" onClick={() => handleRouteNavigation("/pedidos-venta")} />}
       </nav>
       )}
 

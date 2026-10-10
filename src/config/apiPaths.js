@@ -61,6 +61,8 @@ export const API_PATHS = {
   UNIDADES_MEDIDA: `${API_VERSION}/unidades-medida`,
   CLIENTES: `${API_VERSION}/clientes`,
   COTIZACIONES: `${API_VERSION}/cotizaciones`,
+  PEDIDOS_VENTA: `${API_VERSION}/pedidos-venta`,
+  INVENTARIO_PRODUCTOS_TERMINADOS: `${API_VERSION}/inventario-productos-terminados`,
   ORDENES_PRODUCCION: `${API_VERSION}/ordenes-produccion`,
   TABLERO: `${API_VERSION}/tablero`,
 

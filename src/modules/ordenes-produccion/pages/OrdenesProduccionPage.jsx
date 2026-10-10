@@ -45,13 +45,13 @@ export default function OrdenesProduccionPage() {
     <section className="op-card op-filters">
       <label className="op-search"><Search size={18} /><input value={filtros.busqueda} onChange={(e) => set("busqueda", e.target.value)} placeholder="Buscar folio, producto o cliente" /></label>
       <select value={filtros.estado} onChange={(e) => set("estado", e.target.value)}><option value="">Todos los estados</option>{Object.entries(ESTADOS).map(([v,l]) => <option key={v} value={v}>{l}</option>)}</select>
-      <select value={filtros.origen} onChange={(e) => set("origen", e.target.value)}><option value="">Todos los orígenes</option><option value="MANUAL">Manual</option><option value="COTIZACION">Cotización</option></select>
+      <select value={filtros.origen} onChange={(e) => set("origen", e.target.value)}><option value="">Todos los orígenes</option><option value="MANUAL">Manual</option><option value="PEDIDO_VENTA">Pedido de venta</option><option value="COTIZACION">Cotización (flujo anterior)</option></select>
     </section>
     {error && <div className="alert alert-danger">{error}</div>}
     <section className="op-card table-responsive"><table className="table align-middle mb-0"><thead><tr><th>Folio</th><th>Origen</th><th>Cliente</th><th>Inicio</th><th>Compromiso</th><th>Avance</th><th>Estado</th></tr></thead>
       <tbody>{items.map((item) => <tr key={item.id} className="op-row" onClick={() => navigate(`/ordenes-produccion/${item.id}`)}>
         <td><strong>{item.folio}</strong>{item.tieneFaltantes && <TriangleAlert className="text-warning ms-2" size={17} aria-label="Tiene faltantes" />}</td>
-        <td>{item.origen === "COTIZACION" ? "Cotización" : "Manual"}</td><td>{item.clienteNombre || "Sin cliente"}</td><td>{item.fechaInicioProgramada || "—"}</td><td>{item.fechaCompromiso || "—"}</td>
+        <td>{item.origen === "PEDIDO_VENTA" ? "Pedido de venta" : item.origen === "COTIZACION" ? "Cotización" : "Manual"}</td><td>{item.clienteNombre || "Sin cliente"}</td><td>{item.fechaInicioProgramada || "—"}</td><td>{item.fechaCompromiso || "—"}</td>
         <td><div className="progress" title={`${item.porcentajeAvance || 0}%`}><div className="progress-bar" style={{ width: `${Math.min(100, item.porcentajeAvance || 0)}%` }} /></div><small>{item.porcentajeAvance || 0}%</small></td>
         <td><span className={`op-status op-status-${item.estado.toLowerCase()}`}>{ESTADOS[item.estado]}</span></td>
       </tr>)}</tbody></table>

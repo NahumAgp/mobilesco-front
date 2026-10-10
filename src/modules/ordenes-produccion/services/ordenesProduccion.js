@@ -15,6 +15,7 @@ export const obtenerOrdenProduccion = (id) => request(`${API_PATHS.ORDENES_PRODU
 export const crearOrdenProduccion = (data) => request(API_PATHS.ORDENES_PRODUCCION, { method: "POST", body: JSON.stringify(data) });
 export const actualizarOrdenProduccion = (id, data) => request(`${API_PATHS.ORDENES_PRODUCCION}/${id}`, { method: "PUT", body: JSON.stringify(data) });
 export const convertirCotizacion = (cotizacionId, data = {}) => request(`${API_PATHS.ORDENES_PRODUCCION}/desde-cotizacion/${cotizacionId}`, { method: "POST", body: JSON.stringify(data) });
+export const crearOrdenDesdePedido = (pedidoId, data = {}) => request(`${API_PATHS.ORDENES_PRODUCCION}/desde-pedido/${pedidoId}`, { method: "POST", body: JSON.stringify(data) });
 export const liberarOrdenProduccion = (id) => request(`${API_PATHS.ORDENES_PRODUCCION}/${id}/liberar`, { method: "POST" });
 export const cancelarOrdenProduccion = (id, motivo) => request(`${API_PATHS.ORDENES_PRODUCCION}/${id}/cancelar`, { method: "POST", body: JSON.stringify({ motivo }) });
 export const surtirOrdenProduccion = (id, data) => request(`${API_PATHS.ORDENES_PRODUCCION}/${id}/surtidos`, { method: "POST", body: JSON.stringify(data) });

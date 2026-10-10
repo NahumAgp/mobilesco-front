@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Download, Eye, Factory, MessageCircle, Pencil, Plus, Search } from "lucide-react";
+import { ClipboardList, Download, Eye, MessageCircle, Pencil, Plus, Search } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import useDebouncedValue from "../../../hooks/useDebouncedValue.js";
 import usePersistedState from "../../../hooks/usePersistedState.js";
@@ -8,7 +8,7 @@ import { descargarPdfCotizacion, compartirCotizacionWhatsApp } from "../utils/co
 import "./cotizaciones.css";
 import "./cotizaciones-status.css";
 import { getUser, hasPermission } from "../../auth/services/authService";
-import { convertirCotizacion } from "../../ordenes-produccion/services/ordenesProduccion";
+import { crearPedidoDesdeCotizacion } from "../../pedidos-venta/services/pedidosVenta";
 
 const estados = {
   BORRADOR: "Borrador", PENDIENTE: "Pendiente", ENVIADA: "Enviada", ACEPTADA: "Aceptada",
@@ -24,7 +24,7 @@ export default function Cotizaciones() {
   const navigate = useNavigate();
   const puedeCrear = hasPermission(getUser(), "ACTION_QUOTES_CREATE");
   const puedeEditar = hasPermission(getUser(), "ACTION_QUOTES_EDIT");
-  const puedeCrearOrden = hasPermission(getUser(), "VIEW_PRODUCTION_ORDERS") && hasPermission(getUser(), "ACTION_PRODUCTION_ORDERS_CREATE");
+  const puedeCrearPedido = hasPermission(getUser(), "VIEW_SALES_ORDERS") && hasPermission(getUser(), "ACTION_SALES_ORDERS_CREATE");
   const [searchParams] = useSearchParams();
   const [items, setItems] = useState([]);
   const [filtros, setFiltros] = usePersistedState("cotizaciones:filtros", FILTROS_DEFAULT);
@@ -65,27 +65,23 @@ export default function Cotizaciones() {
     setEstadoEditando(data.estado);
   };
   const conCotizacion = async (id, accion) => accion(await obtenerCotizacion(id));
-  const crearOrden = async (cotizacionId) => {
-    if (!window.confirm("Se creará una orden de producción en borrador y la cotización pasará a completada. ¿Continuar?")) return;
+  const crearPedido = async (cotizacionId) => {
+    if (!window.confirm("Se creará un pedido de venta en borrador y la cotización pasará a completada. ¿Continuar?")) return;
     try {
       setError("");
-      const orden = await convertirCotizacion(cotizacionId, {});
-      navigate(`/ordenes-produccion/${orden.id}`);
-    } catch (e) { setError(e.message || "No fue posible crear la orden de producción"); }
+      await crearPedidoDesdeCotizacion(cotizacionId, {});
+      navigate("/pedidos-venta");
+    } catch (e) { setError(e.message || "No fue posible crear el pedido de venta"); }
   };
   const guardarEstado = async () => {
     if (!detalle || !estadoEditando || estadoEditando === detalle.estado) return;
     if (estadoEditando === "CANCELADA" && !window.confirm("La cotización quedará cancelada y conservará su historial. ¿Continuar?")) return;
-    if (estadoEditando === "ACEPTADA" && !window.confirm("La cotización se marcará como aceptada y se creará una orden de producción en borrador. ¿Continuar?")) return;
+    if (estadoEditando === "ACEPTADA" && !window.confirm("La cotización se marcará como aceptada. Después podrás convertirla en pedido de venta. ¿Continuar?")) return;
     try {
       setGuardandoEstado(true); setError("");
       const actualizada = await cambiarEstadoCotizacion(detalle.id, estadoEditando);
       setDetalle(actualizada);
       setItems((actual) => actual.map((item) => item.id === actualizada.id ? { ...item, estado: actualizada.estado, total: actualizada.total } : item));
-      if (estadoEditando === "ACEPTADA") {
-        const orden = await convertirCotizacion(detalle.id, {});
-        navigate(`/ordenes-produccion/${orden.id}`);
-      }
     } catch (e) { setError(e.message || "No fue posible cambiar el estatus"); }
     finally { setGuardandoEstado(false); }
   };
@@ -118,7 +114,7 @@ export default function Cotizaciones() {
                   {puedeEditar && !["COMPLETADA", "CANCELADA"].includes(item.estado) && <button title="Editar cotización" onClick={() => navigate(`/cotizaciones/${item.id}/editar`)}><Pencil size={17} /></button>}
                   <button title="Descargar PDF" onClick={() => conCotizacion(item.id, descargarPdfCotizacion)}><Download size={17} /></button>
                   <button title="Enviar por WhatsApp" onClick={() => conCotizacion(item.id, compartirCotizacionWhatsApp)}><MessageCircle size={17} /></button>
-                  {puedeCrearOrden && item.estado === "ACEPTADA" && <button title="Crear orden de producción" onClick={() => crearOrden(item.id)}><Factory size={17} /></button>}
+                  {puedeCrearPedido && item.estado === "ACEPTADA" && <button title="Crear pedido de venta" onClick={() => crearPedido(item.id)}><ClipboardList size={17} /></button>}
                 </div></td>
               </tr>
             ))}
@@ -138,7 +134,7 @@ export default function Cotizaciones() {
             <button onClick={() => descargarPdfCotizacion(detalle)}><Download size={17} /> PDF</button>
             <button className="cot-primary" onClick={() => compartirCotizacionWhatsApp(detalle)}><MessageCircle size={17} /> WhatsApp</button>
             {puedeEditar && !["COMPLETADA", "CANCELADA"].includes(detalle.estado) && <button onClick={() => navigate(`/cotizaciones/${detalle.id}/editar`)}><Pencil size={17} /> Editar</button>}
-            {puedeCrearOrden && detalle.estado === "ACEPTADA" && <button className="cot-primary" onClick={() => crearOrden(detalle.id)}><Factory size={17} /> Crear orden</button>}
+            {puedeCrearPedido && detalle.estado === "ACEPTADA" && <button className="cot-primary" onClick={() => crearPedido(detalle.id)}><ClipboardList size={17} /> Crear pedido</button>}
           </div>
         </article>
       </div>}

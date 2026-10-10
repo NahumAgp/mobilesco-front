@@ -18,12 +18,6 @@ function formatCurrency(value) {
   }).format(Number(value || 0));
 }
 
-function formatMonthYear(anio, mes) {
-  if (!anio || !mes) return "Sin periodo asignado";
-  const fecha = new Date(Number(anio), Number(mes) - 1, 1);
-  return new Intl.DateTimeFormat("es-MX", { month: "long", year: "numeric" }).format(fecha);
-}
-
 function CostCard({ title, value, description, icon, tone = "primary" }) {
   const palette = {
     primary: {
@@ -398,8 +392,8 @@ export default function ProductoCostosPanel({ productoId, embedded = false, summ
           </div>
         </div>
         <div className="text-end">
-          <div className="text-muted small text-uppercase fw-semibold">Periodo CIF / SIF</div>
-          <div className="fw-semibold">{formatMonthYear(estructura.anioCif, estructura.mesCif)}</div>
+          <div className="text-muted small text-uppercase fw-semibold">Configuracion CIF / SIF</div>
+          <div className="fw-semibold">Global vigente</div>
         </div>
       </div>
 
