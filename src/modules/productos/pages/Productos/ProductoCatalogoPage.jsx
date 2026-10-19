@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import PageHeader from "../../../../components/Sistema/PageHeader";
 import useDebouncedValue from "../../../../hooks/useDebouncedValue.js";
 import usePersistedState from "../../../../hooks/usePersistedState.js";
 import { API_BASE_URL } from "../../../../config/apiConfig";
+import { getUser, hasPermission } from "../../../auth/services/authService.js";
 import { obtenerProductos } from "../../services/productos";
+import { organizarFamiliasCatalogo } from "../../utils/catalogoFamilias.js";
+import { getColorHex, listarColoresModelo } from "../../utils/catalogoColores.js";
+import { descargarPdfCatalogo } from "../../utils/catalogoPdf.js";
 import "./ProductoCatalogoPage.css";
 
 const LOAD_SIZE = 100;
@@ -14,28 +18,25 @@ const FILTROS_DEFAULT = {
   soloActivos: true
 };
 
-const COLOR_FALLBACKS = [
-  { pattern: /blanco|white/i, value: "#f8fafc" },
-  { pattern: /negro|black/i, value: "#111827" },
-  { pattern: /gris|gray|grey/i, value: "#94a3b8" },
-  { pattern: /marron|cafe|chocolate/i, value: "#8b5e3c" },
-  { pattern: /marr[oó]n|cafe|caf[eé]|chocolate/i, value: "#8b5e3c" },
-  { pattern: /claro|arena|beige|natural|roble/i, value: "#c8aa7a" },
-  { pattern: /oscuro|nogal|wenge/i, value: "#5f432d" },
-  { pattern: /azul|blue/i, value: "#2563eb" },
-  { pattern: /verde|green/i, value: "#16a34a" },
-  { pattern: /rosa|pink|magenta/i, value: "#ec4899" },
-  { pattern: /rojo|red/i, value: "#dc2626" },
-  { pattern: /amarillo|yellow/i, value: "#facc15" },
-  { pattern: /naranja|orange/i, value: "#f97316" }
-];
-
 const getLista = (respuesta) => {
   if (Array.isArray(respuesta)) return respuesta;
   if (Array.isArray(respuesta?.content)) return respuesta.content;
   if (Array.isArray(respuesta?.data)) return respuesta.data;
   if (Array.isArray(respuesta?.items)) return respuesta.items;
   return [];
+};
+
+const cargarProductosCatalogo = async (parametros) => {
+  const primeraPagina = await obtenerProductos({ ...parametros, page: 0, size: LOAD_SIZE });
+  const totalPaginas = Math.max(Number(primeraPagina?.totalPages || 1), 1);
+  const paginasRestantes = totalPaginas > 1
+    ? await Promise.all(
+        Array.from({ length: totalPaginas - 1 }, (_, index) =>
+          obtenerProductos({ ...parametros, page: index + 1, size: LOAD_SIZE })
+        )
+      )
+    : [];
+  return [...getLista(primeraPagina), ...paginasRestantes.flatMap(getLista)];
 };
 
 const getProductoId = (producto) => producto?.id || producto?.productoId || producto?.id_producto || null;
@@ -97,21 +98,6 @@ const getImagenesProducto = (producto) => {
   agregar(producto?.imagenPrincipalUrl || producto?.imagenUrl || producto?.urlImagen, "directa");
 
   return imagenes;
-};
-
-const getColorHex = (producto) => {
-  const directo = producto?.colorHex || producto?.color?.hex || producto?.hexColor || "";
-  if (/^#[0-9a-f]{3,8}$/i.test(directo)) return directo;
-
-  const nombre = normalizar(getTexto(producto?.colorNombre, producto?.nombre_color, producto?.color?.nombre));
-  const match = COLOR_FALLBACKS.find((item) => item.pattern.test(nombre));
-  if (match) return match.value;
-
-  const seed = normalizar(nombre)
-    .split("")
-    .reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const hue = seed % 360;
-  return `hsl(${hue}, 42%, 62%)`;
 };
 
 const ordenarPorColor = (a, b) =>
@@ -248,7 +234,7 @@ const buscarProductoCompatible = (productos, cambios = {}, actual = {}) => {
   return productos[0] || null;
 };
 
-const getImagenModelo = (productos) => {
+const getImagenPrincipalModelo = (productos) => {
   for (const producto of productos) {
     const urlModelo = resolverUrlImagen(
       producto?.modeloUrlImagen ||
@@ -266,8 +252,11 @@ const getImagenModelo = (productos) => {
     }
   }
 
-  return getImagenesProducto(productos[0] || {})[0] || null;
+  return null;
 };
+
+const getImagenModelo = (productos) => getImagenPrincipalModelo(productos)
+  || getImagenesProducto(productos[0] || {})[0] || null;
 
 const construirModelos = (productos) => {
   const mapa = new Map();
@@ -287,7 +276,7 @@ const construirModelos = (productos) => {
         imagen: getImagenModelo(productosOrdenados),
         materiales: getOpcionesUnicas(productosOrdenados, "material"),
         niveles: getOpcionesUnicas(productosOrdenados, "nivel"),
-        colores: getOpcionesUnicas(productosOrdenados, "color")
+        colores: listarColoresModelo(productosOrdenados)
       };
     })
     .sort((a, b) => a.titulo.localeCompare(b.titulo, "es", { numeric: true, sensitivity: "base" }));
@@ -339,12 +328,232 @@ const construirFamilias = (productos) => {
     .sort((a, b) => a.nombre.localeCompare(b.nombre, "es", { numeric: true, sensitivity: "base" }));
 };
 
-export default function ProductoCatalogoPage() {
-  const { id } = useParams();
+async function generarPdfCompleto() {
+  const activos = await cargarProductosCatalogo({
+    activo: true,
+    sortBy: "modeloNombre",
+    direction: "asc"
+  });
+  const productosPdf = activos.map((producto) => ({
+    id: getProductoId(producto),
+    activo: Boolean(producto.activo),
+    sku: getTexto(producto.sku),
+    nombre: getTexto(producto.nombre, "Producto Mobilesco"),
+    descripcion: getTexto(producto.descripcionCorta, producto.descripcion),
+    linea: getTexto(producto.lineaNombre, producto.linea?.nombre, producto.modelo?.familia?.linea?.nombre),
+    familia: getFamiliaNombre(producto),
+    modeloId: producto.modeloId || producto.id_modelo || producto.modelo?.id,
+    modelo: getTexto(producto.modeloNombre, producto.modelo?.nombre),
+    modeloImagenUrl: resolverUrlImagen(producto.modeloUrlImagen || producto.modelo?.urlImagen || producto.productoBase?.urlImagen),
+    imagenUrl: getImagenesProducto(producto)[0]?.url || "",
+    colorId: producto.colorId || producto.id_color || producto.color?.id,
+    colorNombre: getTexto(producto.colorNombre, producto.nombre_color, producto.color?.nombre),
+    colorHex: producto.colorHex || producto.color?.hex || "",
+  }));
+  return descargarPdfCatalogo(productosPdf, {
+    urlCatalogo: `${window.location.origin}/productos/catalogo`,
+  });
+}
+
+const getLineaNombre = (producto) => getTexto(
+  producto?.lineaNombre, producto?.linea?.nombre,
+  producto?.modelo?.familia?.linea?.nombre, "Sin línea"
+);
+
+function CatalogoFamiliasPage() {
+  const { familiaSlug } = useParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [productos, setProductos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [generandoPdf, setGenerandoPdf] = useState(false);
+  const [mensajePdf, setMensajePdf] = useState("");
+  const [filtros, setFiltros] = usePersistedState("productos-catalogo:indice", FILTROS_DEFAULT);
+  const busqueda = normalizar(filtros.busqueda);
+
+  useEffect(() => {
+    let vigente = true;
+    cargarProductosCatalogo({ sortBy: "modeloNombre", direction: "asc" })
+      .then((lista) => { if (vigente) setProductos(lista); })
+      .catch((err) => { if (vigente) setError(err?.message || "No se pudo cargar el catálogo."); })
+      .finally(() => { if (vigente) setLoading(false); });
+    return () => { vigente = false; };
+  }, []);
+
+  const paginas = useMemo(() => organizarFamiliasCatalogo(
+    productos
+      .filter((producto) => !filtros.soloActivos || producto.activo)
+      .map((producto) => ({
+        ...producto,
+        linea: getLineaNombre(producto),
+        familia: getFamiliaNombre(producto),
+      })),
+    { incluirVacias: true }
+  ), [filtros.soloActivos, productos]);
+  const paginaActual = paginas.find((pagina) => pagina.slug === familiaSlug) || null;
+  const coincideBusqueda = (producto) => !busqueda || normalizar([
+    producto.nombre, producto.sku, producto.modeloNombre, getSubfamiliaNombre(producto),
+    producto.materialNombre, producto.colorNombre, producto.familia, producto.linea,
+  ].filter(Boolean).join(" ")).includes(busqueda);
+  const paginasVisibles = paginas.filter((pagina) =>
+    !busqueda || normalizar(pagina.titulo).includes(busqueda) || pagina.productos.some(coincideBusqueda)
+  );
+  const productosPagina = paginaActual?.productos.filter(coincideBusqueda) || [];
+  const subfamilias = construirSubfamilias(productosPagina);
+  const modelosPagina = construirModelos(productosPagina);
+  const subfamiliaKey = searchParams.get("subfamilia") || "";
+  const subfamiliasVisibles = subfamiliaKey
+    ? subfamilias.filter((subfamilia) => subfamilia.key === subfamiliaKey)
+    : subfamilias;
+
+  const descargarCatalogo = async () => {
+    setGenerandoPdf(true);
+    setMensajePdf("Preparando el catálogo PDF...");
+    try {
+      const resultado = await generarPdfCompleto();
+      setMensajePdf(`Catálogo descargado: ${resultado.paginas} páginas.${resultado.imagenesOmitidas ? ` ${resultado.imagenesOmitidas} imágenes no pudieron incluirse.` : ""}`);
+    } catch (err) {
+      setMensajePdf(err?.message || "No se pudo generar el catálogo PDF.");
+    } finally {
+      setGenerandoPdf(false);
+    }
+  };
+
+  return (
+    <>
+      <PageHeader
+        title={paginaActual?.titulo || "Catálogo visual"}
+        subtitle={paginaActual ? "Explora sus subfamilias y modelos para cotizar" : "Elige una familia para explorar sus modelos"}
+        actions={<div className="producto-catalogo-header-actions">
+          <button type="button" className="btn productos-brand-outline" disabled={generandoPdf} onClick={descargarCatalogo}>
+            <i className="bi bi-file-earmark-pdf me-2"></i>{generandoPdf ? "Generando PDF..." : "Descargar catálogo PDF"}
+          </button>
+          <button type="button" className="btn productos-brand-outline" onClick={() => navigate("/productos")}>
+            <i className="bi bi-table me-2"></i>Vista tabla
+          </button>
+        </div>}
+      />
+      <section className="producto-catalogo-editorial producto-catalogo-editorial-index">
+        <div>
+          <span>CATÁLOGO MOBILESCO / {paginaActual ? "FAMILIA" : "ÍNDICE"}</span>
+          <h2>{paginaActual?.titulo || "Encuentra tu espacio"}</h2>
+          <p>{paginaActual ? "Selecciona una subfamilia y descubre los modelos disponibles." : "Sillas, mesas, pupitres y más. Una página para cada familia."}</p>
+        </div>
+        <img src="/logo-mobilesco-firmeza.svg" alt="Mobilesco" />
+      </section>
+      <div className="producto-catalogo-index-body">
+        {familiaSlug && <button type="button" className="producto-catalogo-back" onClick={() => navigate("/productos/catalogo")}>
+          <i className="bi bi-arrow-left"></i> Todas las familias
+        </button>}
+        <section className="producto-catalogo-toolbar" aria-label="Filtros del catálogo">
+          <div className="producto-catalogo-search">
+            <i className="bi bi-search"></i>
+            <input type="search" aria-label="Buscar en el catálogo" value={filtros.busqueda}
+              onChange={(event) => setFiltros((actual) => ({ ...actual, busqueda: event.target.value }))}
+              placeholder="Buscar familia, subfamilia o modelo..." />
+          </div>
+          <select className="producto-catalogo-family-select" aria-label="Ir a familia"
+            value={familiaSlug || ""} onChange={(event) => navigate(event.target.value
+              ? `/productos/catalogo/familias/${event.target.value}` : "/productos/catalogo")}>
+            <option value="">Todas las familias</option>
+            {paginas.map((pagina) => <option key={pagina.slug} value={pagina.slug}>{pagina.titulo}</option>)}
+          </select>
+          <label className="producto-catalogo-toggle">
+            <input type="checkbox" checked={filtros.soloActivos}
+              onChange={(event) => setFiltros((actual) => ({ ...actual, soloActivos: event.target.checked }))} />
+            <span>Solo activos</span>
+          </label>
+        </section>
+        {mensajePdf && <div className="producto-catalogo-pdf-status" role="status">{mensajePdf}</div>}
+        {error && <div className="alert alert-danger" role="alert">{error}</div>}
+        {loading && <div className="producto-catalogo-empty">Cargando familias...</div>}
+        {!loading && !error && !familiaSlug && <>
+          <div className="producto-catalogo-section-heading">
+            <span>EXPLORA POR FAMILIA</span>
+            <h2>Índice del catálogo</h2>
+            <p>Primero las colecciones más buscadas; después, las demás en orden alfabético.</p>
+          </div>
+          <div className="producto-catalogo-family-grid">
+            {paginasVisibles.map((pagina, indice) => {
+              const imagen = getImagenModelo(pagina.productos);
+              const modelos = construirModelos(pagina.productos);
+              return <button type="button" key={pagina.slug} className="producto-catalogo-family-card"
+                onClick={() => navigate(`/productos/catalogo/familias/${pagina.slug}`)}>
+                <span className="producto-catalogo-family-number">{String(indice + 1).padStart(2, "0")}</span>
+                <span className="producto-catalogo-family-image">
+                  {imagen?.url ? <img src={imagen.url} alt="" /> : <i className="bi bi-image" aria-hidden="true"></i>}
+                </span>
+                <span className="producto-catalogo-family-info">
+                  <small>{pagina.linea}</small>
+                  <strong>{pagina.titulo}</strong>
+                  <em>{modelos.length ? `${modelos.length} modelo${modelos.length === 1 ? "" : "s"}` : "Sin modelos todavía"}</em>
+                  <span>Ver familia <i className="bi bi-arrow-up-right"></i></span>
+                </span>
+              </button>;
+            })}
+          </div>
+          {!paginasVisibles.length && <div className="producto-catalogo-empty">No hay familias que coincidan con la búsqueda.</div>}
+        </>}
+        {!loading && !error && familiaSlug && !paginaActual &&
+          <div className="producto-catalogo-empty">Esta familia no existe en el catálogo.</div>}
+        {!loading && !error && paginaActual && <>
+          <div className="producto-catalogo-section-heading">
+            <span>{paginaActual.linea.toUpperCase()} / {paginaActual.familia.toUpperCase()}</span>
+            <h2>Modelos de {paginaActual.titulo}</h2>
+            <p>{paginaActual.productos.length ? `${modelosPagina.length} modelo${modelosPagina.length === 1 ? "" : "s"} disponible${modelosPagina.length === 1 ? "" : "s"} en esta familia.` : "Todavía no hay productos en esta familia."}</p>
+          </div>
+          {subfamilias.length > 0 && <nav className="producto-catalogo-subfamily-tabs" aria-label="Subfamilias">
+            <button type="button" className={!subfamiliaKey ? "is-active" : ""} onClick={() => setSearchParams({})}>Todas</button>
+            {subfamilias.map((subfamilia) => <button type="button" key={subfamilia.key}
+              className={subfamilia.key === subfamiliaKey ? "is-active" : ""}
+              onClick={() => setSearchParams({ subfamilia: subfamilia.key })}>{subfamilia.nombre}</button>)}
+          </nav>}
+          {subfamiliasVisibles.map((subfamilia) => <section key={subfamilia.key} className="producto-catalogo-subfamily-section">
+            <div className="producto-catalogo-subfamily-heading">
+              <div><span>SUBFAMILIA</span><h3>{subfamilia.nombre}</h3></div>
+              <small>{subfamilia.modelos.length} modelos</small>
+            </div>
+            <div className="producto-catalogo-model-grid">
+              {subfamilia.modelos.map((modelo) => <article key={modelo.key} className="producto-catalogo-model-card">
+                <div className="producto-catalogo-model-card-image">
+                  {modelo.imagen?.url ? <img src={modelo.imagen.url} alt={modelo.modelo} /> : <i className="bi bi-image" aria-hidden="true"></i>}
+                </div>
+                <div className="producto-catalogo-model-card-info">
+                  <small>{subfamilia.nombre}</small>
+                  <h4>{modelo.modelo}</h4>
+                  <p>{modelo.materiales.length} material{modelo.materiales.length === 1 ? "" : "es"} · {modelo.colores.length} color{modelo.colores.length === 1 ? "" : "es"}</p>
+                  <div className="producto-catalogo-model-swatches" aria-label={`Colores de ${modelo.modelo}`}>
+                    {modelo.colores.map((color) => <button type="button" key={color.key}
+                      className="producto-catalogo-swatch" style={{ backgroundColor: color.hex }}
+                      title={color.nombre} aria-label={`Ver ${modelo.modelo} en ${color.nombre}`}
+                      onClick={() => navigate(`/productos/catalogo/${color.productoId}`)} />)}
+                  </div>
+                  <div>
+                    <button type="button" onClick={() => navigate(`/productos/catalogo/${getProductoId(modelo.productos[0])}`)}>Ver modelo y cotizar</button>
+                  </div>
+                </div>
+              </article>)}
+            </div>
+          </section>)}
+          {!subfamiliasVisibles.length && <div className="producto-catalogo-empty">No hay modelos para mostrar en esta selección.</div>}
+        </>}
+      </div>
+    </>
+  );
+}
+
+function ProductoCatalogoDetalle() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const user = getUser();
+  const puedeCotizar = hasPermission(user, "VIEW_QUOTES") && hasPermission(user, "ACTION_QUOTES_CREATE");
+  const [productos, setProductos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [generandoPdf, setGenerandoPdf] = useState(false);
+  const [mensajePdf, setMensajePdf] = useState("");
+  const [errorPdf, setErrorPdf] = useState("");
   const [filtros, setFiltros] = usePersistedState("productos-catalogo:filtros", FILTROS_DEFAULT);
   const busquedaDebounced = useDebouncedValue(filtros.busqueda, 350);
   const [lineaSeleccionada, setLineaSeleccionada] = useState("");
@@ -363,19 +572,7 @@ export default function ProductoCatalogoPage() {
           sortBy: "modeloNombre",
           direction: "asc"
         };
-        const primeraPagina = await obtenerProductos({ ...parametros, page: 0, size: LOAD_SIZE });
-        const totalPaginas = Math.max(Number(primeraPagina?.totalPages || 1), 1);
-        const paginasRestantes = totalPaginas > 1
-          ? await Promise.all(
-              Array.from({ length: totalPaginas - 1 }, (_, index) =>
-                obtenerProductos({ ...parametros, page: index + 1, size: LOAD_SIZE })
-              )
-            )
-          : [];
-        setProductos([
-          ...getLista(primeraPagina),
-          ...paginasRestantes.flatMap((pagina) => getLista(pagina))
-        ]);
+        setProductos(await cargarProductosCatalogo(parametros));
       } catch (err) {
         setError(err?.message || "No se pudieron cargar los productos.");
       } finally {
@@ -432,7 +629,6 @@ export default function ProductoCatalogoPage() {
     }),
     [lineaSeleccionada, productos]
   );
-
   const familias = useMemo(() => construirFamilias(productosFiltrados), [productosFiltrados]);
 
   useEffect(() => {
@@ -454,6 +650,7 @@ export default function ProductoCatalogoPage() {
     [familiaSeleccionada, familias]
   );
   const productosFamilia = useMemo(() => familiaActual?.productos || [], [familiaActual]);
+  const modelosFamilia = useMemo(() => construirModelos(productosFamilia), [productosFamilia]);
   const subfamilias = useMemo(() => familiaActual?.subfamilias || [], [familiaActual]);
 
   useEffect(() => {
@@ -488,9 +685,11 @@ export default function ProductoCatalogoPage() {
     return modelos.find((modelo) => modelo.key === key) || null;
   }, [modelos, productoSeleccionado]);
 
-  const lineaActual = lineas.find((linea) => linea.key === lineaSeleccionada) || null;
+  const paginaFamilia = productoSeleccionado ? organizarFamiliasCatalogo([{
+    linea: getLineaNombre(productoSeleccionado), familia: getFamiliaNombre(productoSeleccionado)
+  }])[0] : null;
   const modeloSeleccionadoKey = modeloSeleccionado?.key || "";
-  const productosDelModelo = modeloSeleccionado?.productos || [];
+  const productosDelModelo = useMemo(() => modeloSeleccionado?.productos || [], [modeloSeleccionado]);
   const materialActual = getAtributo(productoSeleccionado, "material");
   const nivelActual = getAtributo(productoSeleccionado, "nivel");
   const colorActualData = getAtributo(productoSeleccionado, "color");
@@ -508,7 +707,10 @@ export default function ProductoCatalogoPage() {
     "color"
   );
 
-  const imagenes = useMemo(() => getImagenesProducto(productoSeleccionado || {}), [productoSeleccionado]);
+  const imagenes = useMemo(() => {
+    const principal = getImagenPrincipalModelo(productosDelModelo);
+    return principal ? [principal] : getImagenesProducto(productoSeleccionado || {});
+  }, [productoSeleccionado, productosDelModelo]);
   const imagenActual = imagenes[imagenSeleccionada] || imagenes[0] || null;
 
   useEffect(() => {
@@ -520,35 +722,10 @@ export default function ProductoCatalogoPage() {
     if (productoId) navigate(`/productos/catalogo/${productoId}`);
   };
 
-  const cambiarLinea = (linea) => {
-    setLineaSeleccionada(linea.key);
-    const primerProducto = productos.find((producto) => {
-      const nombreLinea = normalizar(getTexto(producto?.lineaNombre, producto?.linea?.nombre, producto?.modelo?.familia?.linea?.nombre, "Sin línea"));
-      return nombreLinea === linea.key;
-    });
-    if (primerProducto) cambiarProducto(primerProducto);
-  };
-
-  const cambiarFamilia = (familia) => {
-    setFamiliaSeleccionada(familia.key);
-    const primerProducto = familia.subfamilias[0]?.modelos[0]?.productos?.[0] || familia.productos[0];
-    if (primerProducto) cambiarProducto(primerProducto);
-  };
-
   const cambiarSubfamilia = (subfamilia) => {
     setSubfamiliaSeleccionada(subfamilia.key);
     const primerProducto = subfamilia.modelos[0]?.productos?.[0] || subfamilia.productos[0];
     if (primerProducto) cambiarProducto(primerProducto);
-  };
-
-  const cambiarLineaPorKey = (key) => {
-    const linea = lineas.find((item) => item.key === key);
-    if (linea) cambiarLinea(linea);
-  };
-
-  const cambiarFamiliaPorKey = (key) => {
-    const familia = familias.find((item) => item.key === key);
-    if (familia) cambiarFamilia(familia);
   };
 
   const cambiarSubfamiliaPorKey = (key) => {
@@ -576,6 +753,21 @@ export default function ProductoCatalogoPage() {
     });
   };
 
+  const descargarCatalogo = async () => {
+    setGenerandoPdf(true);
+    setMensajePdf("Preparando el catálogo PDF con los productos activos...");
+    setErrorPdf("");
+    try {
+      const resultado = await generarPdfCompleto();
+      setMensajePdf(`Catálogo descargado: ${resultado.paginas} páginas.${resultado.imagenesOmitidas ? ` ${resultado.imagenesOmitidas} imágenes no pudieron incluirse.` : ""}`);
+    } catch (err) {
+      setMensajePdf("");
+      setErrorPdf(err?.message || "No se pudo generar el catálogo PDF.");
+    } finally {
+      setGenerandoPdf(false);
+    }
+  };
+
   const colorActual = colorActualData.nombre;
   const descripcion = getTexto(productoSeleccionado?.descripcion, "Sin descripcion capturada.");
   const sku = getTexto(productoSeleccionado?.sku, "-");
@@ -587,14 +779,26 @@ export default function ProductoCatalogoPage() {
         subtitle="Explora por línea, familia y modelo; después elige material, nivel y color"
         actions={
           <div className="producto-catalogo-header-actions">
+            <button type="button" className="btn productos-brand-outline" onClick={() => navigate("/productos/catalogo")}>
+              <i className="bi bi-grid me-2"></i>Familias
+            </button>
+            <button type="button" className="btn productos-brand-outline" disabled={generandoPdf} onClick={descargarCatalogo}>
+              <i className="bi bi-file-earmark-pdf me-2"></i>
+              {generandoPdf ? "Generando PDF..." : "Descargar catálogo PDF"}
+            </button>
             <button className="btn productos-brand-outline" onClick={() => navigate("/productos")}>
               <i className="bi bi-table me-2"></i>
               Vista tabla
             </button>
-            {productoSeleccionado && (
-              <button className="btn productos-brand-primary" onClick={() => navigate(`/productos/${productoSeleccionado.id}`)}>
-                <i className="bi bi-pencil-square me-2"></i>
-                Editar producto
+            {productoSeleccionado && puedeCotizar && (
+              <button
+                type="button"
+                className="btn productos-brand-primary producto-catalogo-quote-btn"
+                disabled={!productoSeleccionado.activo}
+                onClick={() => navigate(`/cotizaciones/nueva?productoId=${encodeURIComponent(getProductoId(productoSeleccionado))}`)}
+              >
+                <i className="bi bi-receipt me-2"></i>
+                Cotizar selección
               </button>
             )}
           </div>
@@ -625,6 +829,8 @@ export default function ProductoCatalogoPage() {
       </section>
 
       {error && <div className="alert alert-danger">{error}</div>}
+      {errorPdf && <div className="alert alert-danger" role="alert">{errorPdf}</div>}
+      {mensajePdf && <div className="producto-catalogo-pdf-status" role="status">{mensajePdf}</div>}
 
       {!loading && !error && !productoSeleccionado && (
         <div className="producto-catalogo-empty">
@@ -635,36 +841,55 @@ export default function ProductoCatalogoPage() {
 
       {!loading && !error && productoSeleccionado && (
         <>
+        <button type="button" className="producto-catalogo-back producto-catalogo-detail-back"
+          onClick={() => navigate(`/productos/catalogo/familias/${paginaFamilia.slug}`)}>
+          <i className="bi bi-arrow-left"></i> Volver a {paginaFamilia.titulo}
+        </button>
+        <section className="producto-catalogo-editorial" aria-label="Colección actual">
+          <div>
+            <span>CATÁLOGO MOBILESCO / FAMILIA</span>
+            <h2>{paginaFamilia?.titulo || "Nuestra colección"}</h2>
+            <p>Explora cada modelo, elige la variante ideal y prepara tu cotización en línea.</p>
+          </div>
+          <img src="/logo-mobilesco-firmeza.svg" alt="Mobilesco" />
+        </section>
+        <section className="producto-catalogo-overview" aria-label="Modelos de la colección">
+          <div className="producto-catalogo-overview-heading">
+            <div>
+              <span>EXPLORA LA COLECCIÓN</span>
+              <h3>Modelos de {paginaFamilia?.titulo || "Mobilesco"}</h3>
+            </div>
+            <small>{modelosFamilia.length} modelos disponibles</small>
+          </div>
+          <div className="producto-catalogo-overview-list">
+            {modelosFamilia.map((modelo) => (
+              <button
+                key={modelo.key}
+                type="button"
+                className={modelo.key === modeloSeleccionadoKey ? "is-active" : ""}
+                onClick={() => cambiarProducto(modelo.productos[0])}
+              >
+                {modelo.imagen?.url ? <img src={modelo.imagen.url} alt={modelo.modelo} /> : <span className="producto-catalogo-overview-fallback"><i className="bi bi-image"></i></span>}
+                <span className="producto-catalogo-overview-caption">
+                  <small>{modelo.familia || "Modelo Mobilesco"}</small>
+                  <strong>{modelo.modelo}</strong>
+                  <em>{modelo.colores.length} colores disponibles</em>
+                  <span className="producto-catalogo-overview-swatches" aria-hidden="true">
+                    {modelo.colores.map((color) => <span key={color.key} style={{ backgroundColor: color.hex }} />)}
+                  </span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
         <div className="producto-catalogo-shell">
           <aside className="producto-catalogo-nav" aria-label="Navegación del catálogo">
             <div className="producto-catalogo-nav-heading">
               <span>Catálogo</span>
-              <strong>{lineaActual?.nombre || "Sin línea"}</strong>
+              <strong>{paginaFamilia?.titulo || "Sin familia"}</strong>
             </div>
 
             <div className="producto-catalogo-nav-selectors">
-              <div className="producto-catalogo-nav-field">
-                <label htmlFor="catalogo-linea">Línea</label>
-                <select id="catalogo-linea" value={lineaSeleccionada} onChange={(event) => cambiarLineaPorKey(event.target.value)}>
-                  {lineas.map((linea) => (
-                    <option key={linea.key} value={linea.key}>
-                      {linea.nombre}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="producto-catalogo-nav-field">
-                <label htmlFor="catalogo-familia">Familia</label>
-                <select id="catalogo-familia" value={familiaSeleccionada} onChange={(event) => cambiarFamiliaPorKey(event.target.value)}>
-                  {familias.map((familia) => (
-                    <option key={familia.key} value={familia.key}>
-                      {familia.nombre}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
               <div className="producto-catalogo-nav-field">
                 <label htmlFor="catalogo-subfamilia">Subfamilia</label>
                 <select
@@ -888,7 +1113,6 @@ export default function ProductoCatalogoPage() {
                     );
                     const productoId = getProductoId(producto);
                     const activo = productoId === getProductoId(productoSeleccionado);
-                    const miniImagen = getImagenesProducto(producto)[0]?.url;
                     return (
                       <button
                         key={color.key}
@@ -897,11 +1121,7 @@ export default function ProductoCatalogoPage() {
                         title={color.nombre}
                         onClick={() => cambiarProducto(producto)}
                       >
-                        {miniImagen ? (
-                          <img src={miniImagen} alt={color.nombre} />
-                        ) : (
-                          <span style={{ background: getColorHex(producto) }} />
-                        )}
+                        <span style={{ background: getColorHex(producto) }} />
                         <small>{color.nombre}</small>
                       </button>
                     );
@@ -910,7 +1130,19 @@ export default function ProductoCatalogoPage() {
               </div>
 
               <div className="producto-catalogo-actions">
+                {puedeCotizar && (
+                  <button
+                    type="button"
+                    className="btn productos-brand-primary producto-catalogo-quote-btn"
+                    disabled={!productoSeleccionado.activo}
+                    onClick={() => navigate(`/cotizaciones/nueva?productoId=${encodeURIComponent(getProductoId(productoSeleccionado))}`)}
+                  >
+                    <i className="bi bi-receipt me-2"></i>
+                    Cotizar este producto
+                  </button>
+                )}
                 <button
+                  type="button"
                   className="btn productos-brand-primary"
                   onClick={() => navigate(`/productos/${getProductoId(productoSeleccionado)}`)}
                 >
@@ -926,4 +1158,9 @@ export default function ProductoCatalogoPage() {
       )}
     </>
   );
+}
+
+export default function ProductoCatalogoPage() {
+  const { id } = useParams();
+  return id ? <ProductoCatalogoDetalle /> : <CatalogoFamiliasPage />;
 }

@@ -18,6 +18,9 @@ export const obtenerCotizacion = (id) =>
 export const buscarProductosCotizables = (busqueda) =>
   request(`${API_PATHS.COTIZACIONES}/productos?${query({ busqueda })}`);
 
+export const obtenerProductoCotizable = (productoId) =>
+  request(`${API_PATHS.COTIZACIONES}/productos/${encodeURIComponent(productoId)}`);
+
 export const crearCotizacion = (data) =>
   request(API_PATHS.COTIZACIONES, { method: "POST", body: JSON.stringify(data) });
 
@@ -26,3 +29,19 @@ export const actualizarCotizacion = (id, data) =>
 
 export const cambiarEstadoCotizacion = (id, estado) =>
   request(`${API_PATHS.COTIZACIONES}/${id}/estado?estado=${estado}`, { method: "PATCH" });
+
+export const cotizarFlete = (destino) =>
+  request(`${API_PATHS.COTIZACIONES}/flete/cotizar`, {
+    method: "POST", body: JSON.stringify(destino),
+  });
+
+export const obtenerOrigenFlete = () =>
+  request(`${API_PATHS.COTIZACIONES}/flete/origen`);
+
+export const obtenerTabuladorFlete = () =>
+  request(`${API_PATHS.COTIZACIONES}/flete/tabulador`);
+
+export const guardarTabuladorFlete = (filas) =>
+  request(`${API_PATHS.COTIZACIONES}/flete/tabulador`, {
+    method: "PUT", body: JSON.stringify(filas),
+  });

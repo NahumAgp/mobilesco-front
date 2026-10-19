@@ -13,6 +13,7 @@ const UnidadMedida = lazy(() => import("./modules/unidades-medida/legacy/UnidadM
 const NuevaCotizacion = lazy(() => import("./modules/cotizaciones/pages/NuevaCotizacion.jsx"));
 const CotizacionRapida = lazy(() => import("./modules/cotizaciones/pages/CotizacionRapida.jsx"));
 const Cotizacion = lazy(() => import("./modules/cotizaciones/pages/Cotizaciones.jsx"));
+const TabuladorFlete = lazy(() => import("./modules/cotizaciones/pages/TabuladorFlete.jsx"));
 const ClientesPage = lazy(() => import("./modules/clientes/pages/ClientesPage.jsx"));
 const ClienteFormPage = lazy(() => import("./modules/clientes/pages/ClienteFormPage.jsx"));
 const EmpleadoFormPage = lazy(() => import("./modules/empleados/pages/EmpleadoFormPage.jsx"));
@@ -20,6 +21,7 @@ const EmpleadosPage = lazy(() => import("./modules/empleados/pages/EmpleadoPage.
 const AreasTrabajoPage = lazy(() => import("./modules/areas-trabajo/pages/AreasTrabajoPage.jsx"));
 const PerfilPage = lazy(() => import("./modules/perfil/pages/PerfilPage.jsx"));
 const UsuariosAccesoPage = lazy(() => import("./modules/usuarios/pages/UsuariosAccesoPage.jsx"));
+const ConfiguracionSistemaPage = lazy(() => import("./modules/configuracion/pages/ConfiguracionSistemaPage.jsx"));
 const ProveedoresPage = lazy(() => import("./modules/proveedores/pages/ProveedoresPage.jsx"));
 const ProveedorFormPage = lazy(() => import("./modules/proveedores/pages/ProveedorFormPage.jsx"));
 const UnidadesMedidaPage = lazy(() => import("./modules/unidades-medida/pages/UnidadMedidaPage.jsx"));
@@ -124,6 +126,7 @@ export default function App() {
         <Route path="/nuevaCotizacion" element={<Navigate to="/cotizaciones/nueva" replace />} />
 
         <Route path="/cotizaciones" element={withPermission(<Cotizacion />, "VIEW_QUOTES")} />
+        <Route path="/cotizaciones/fletes" element={withPermission(<TabuladorFlete />, ["VIEW_QUOTES", "ACTION_QUOTES_EDIT"])} />
         <Route path="/cotizaciones/nueva" element={withPermission(<CotizacionRapida />, ["VIEW_QUOTES", "ACTION_QUOTES_CREATE"])} />
         <Route path="/cotizaciones/formal" element={withPermission(<NuevaCotizacion />, ["VIEW_QUOTES", "ACTION_QUOTES_CREATE"])} />
         <Route path="/cotizaciones/:id/editar" element={withPermission(<NuevaCotizacion />, ["VIEW_QUOTES", "ACTION_QUOTES_EDIT"])} />
@@ -142,6 +145,7 @@ export default function App() {
         <Route path="/areas-trabajo" element={withPermission(<AreasTrabajoPage />, "VIEW_WORK_AREAS")} />
 
         <Route path="/perfil" element={<PerfilPage />} />
+        <Route path="/configuracion/sistema" element={withPermission(<ConfiguracionSistemaPage />, "VIEW_USERS")} />
 
         <Route
           path="/usuarios/accesos"
@@ -262,6 +266,7 @@ export default function App() {
         {/* Productos */}
         <Route path="/productos" element={withPermission(<ProductosCompletosPage />, "VIEW_PRODUCTS")} />
         <Route path="/productos/catalogo" element={withPermission(<ProductoCatalogoPage />, "VIEW_PRODUCT_CATALOG")} />
+        <Route path="/productos/catalogo/familias/:familiaSlug" element={withPermission(<ProductoCatalogoPage />, "VIEW_PRODUCT_CATALOG")} />
         <Route path="/productos/catalogo/:id" element={withPermission(<ProductoCatalogoPage />, "VIEW_PRODUCT_CATALOG")} />
         <Route path="/productos/calidad" element={withPermission(<ProductosCalidadPage />, "VIEW_PRODUCT_QUALITY")} />
         <Route path="/productos/nuevo" element={withPermission(<ProductosCompletosPage iniciarCreacion />, ["VIEW_PRODUCTS", "ACTION_PRODUCTS_CREATE"])} />

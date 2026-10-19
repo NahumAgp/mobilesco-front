@@ -9,6 +9,7 @@ import Toast from "../../../components/ui/Toast.jsx";
 import { getUser } from "../../auth/services/authService.js";
 import { actualizarCostoCotizacion, obtenerCostosInsumos } from "../services/insumos.js";
 import { puedeGestionarCostosInsumos } from "../utils/costosPermisos.js";
+import { evaluarAlertasCosto } from "../utils/costosAlertas.js";
 import "./InsumosPage.css";
 
 const PAGE_SIZE = 10;
@@ -243,6 +244,10 @@ export default function InsumosCostosPage() {
           Puedes consultar los costos, pero solo Dev/Admin y Subdireccion administrativa pueden modificarlos.
         </div>
       )}
+      <div className="alert alert-info">
+        Revisa los costos sin fecha o con más de 90 días, y las diferencias de al menos 15% frente a la última compra
+        (o al promedio si no hay compras). Guardar el costo, incluso sin cambiar su importe, confirma la revisión.
+      </div>
 
       <div className="insumos-page-shell">
         <div className="card insumos-filters-card mb-3">
@@ -301,6 +306,7 @@ export default function InsumosCostosPage() {
                   costos.map((item) => {
                     const estaEditando = editingId === item.id;
                     const cotizacionPendiente = !item.costoCotizacion || Number(item.costoCotizacion) <= 0;
+                    const alertasCosto = evaluarAlertasCosto(item);
 
                     return (
                       <tr key={item.id}>
@@ -352,6 +358,11 @@ export default function InsumosCostosPage() {
                                 Sin cotizacion
                               </span>
                             )}
+                            {!cotizacionPendiente && alertasCosto.map((alerta) => (
+                              <span key={alerta} className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">
+                                {alerta}
+                              </span>
+                            ))}
                           </div>
                         </td>
                         <td className="text-end text-muted small">{formatDate(item.fechaActualizacion)}</td>

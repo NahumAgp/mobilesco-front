@@ -5,6 +5,7 @@ import { useState, useRef, useEffect } from "react";
 import { API_BASE_URL } from "../../config/apiConfig";
 import { contarNotificacionesNoLeidas } from "../../modules/notificaciones/services/notificaciones";
 import ProtectedImage from "../ui/ProtectedImage";
+import { obtenerIdentidadPublica } from "../../modules/configuracion/services/configuracionSistema.js";
 
 const NAV_USAGE_PREFIX = "mobilesco:navigationUsage";
 const NAV_PINNED_PREFIX = "mobilesco:navigationPinned";
@@ -66,6 +67,7 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
   const [pinnedVersion, setPinnedVersion] = useState(0);
   const [pinMenu, setPinMenu] = useState(null);
   const [notificacionesNoLeidas, setNotificacionesNoLeidas] = useState(0);
+  const [identidadEmpresa, setIdentidadEmpresa] = useState(null);
   const [isMobile, setIsMobile] = useState(() => window.matchMedia("(max-width: 768px)").matches);
   const menuRef = useRef(null);
   const moreRef = useRef(null);
@@ -183,6 +185,7 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
   const navItems = [
     can("VIEW_DASHBOARD") && { to: "/tablero", label: "Tablero", shortLabel: "Inicio", icon: "bi-speedometer2", section: "Inicio" },
     puedeGestionarUsuarios && { to: "/usuarios/accesos", label: "Usuarios y accesos", shortLabel: "Usuarios", icon: "bi-shield-check", section: "General" },
+    puedeGestionarUsuarios && { to: "/configuracion/sistema", label: "Configuración del sistema", shortLabel: "Configuración", icon: "bi-sliders", section: "General" },
     can("VIEW_EMPLOYEES") && { to: "/empleados", label: "Empleados", icon: "bi-people", section: "General" },
     can("VIEW_WORK_AREAS") && { to: "/areas-trabajo", label: "Areas de trabajo", shortLabel: "Areas", icon: "bi-columns-gap", section: "General" },
     can("VIEW_SUPPLIERS") && { to: "/proveedores", label: "Proveedores", shortLabel: "Prov.", icon: "bi-truck", section: "General" },
@@ -241,6 +244,10 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
     }
     navigate("/login");
   };
+
+  useEffect(() => {
+    obtenerIdentidadPublica().then(setIdentidadEmpresa).catch(() => setIdentidadEmpresa(null));
+  }, []);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(max-width: 768px)");
@@ -318,8 +325,12 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
 
       {/* MARCA */}
       <div className="sidebar-brand">
-        <div className="sidebar-brand-logo">M</div>
-        <div className="sidebar-brand-name">Mobilesco</div>
+        <div className="sidebar-brand-logo">
+          {identidadEmpresa?.logoSistemaUrl
+            ? <img src={`${API_BASE_URL}${identidadEmpresa.logoSistemaUrl}`} alt="" />
+            : "M"}
+        </div>
+        <div className="sidebar-brand-name">{identidadEmpresa?.nombreEmpresa || "Mobilesco"}</div>
       </div>
 
       {!isOpen && !isMobile ? (

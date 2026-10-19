@@ -527,6 +527,7 @@ export default function AbastecimientoAsistidoPage() {
                       <th>ABC</th>
                       <th>Consumo mensual</th>
                       <th>Existencias</th>
+                      <th>Días de cobertura</th>
                       <th>Cantidad a comprar</th>
                       <th>Prioridad</th>
                       <th>Proveedor</th>
@@ -574,6 +575,12 @@ export default function AbastecimientoAsistidoPage() {
                               <strong>{numberFormatter.format(asNumber(suggestion.stockDisponible))} {unit}</strong>
                               <span>Mín. {numberFormatter.format(asNumber(suggestion.stockMinimo))} · Reorden {numberFormatter.format(asNumber(suggestion.puntoReorden))}</span>
                             </div>
+                          </td>
+                          <td data-label="Días de cobertura">
+                            <strong className="assisted-supply-number">
+                              {suggestion.diasCobertura == null ? "—" : numberFormatter.format(asNumber(suggestion.diasCobertura))}
+                            </strong>
+                            <small>{suggestion.diasCobertura == null ? "Sin consumo histórico" : "incluye compras abiertas"}</small>
                           </td>
                           <td data-label="Cantidad a comprar">
                             <label className="visually-hidden" htmlFor={`supply-quantity-${id}`}>Cantidad para {suggestion.codigo || suggestion.nombre}</label>

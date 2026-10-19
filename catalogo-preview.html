@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="es">
+  <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>Vista previa del catálogo</title></head>
+  <body>
+    <div id="root"></div>
+    <script type="module">
+      import React from "react";
+      import { createRoot } from "react-dom/client";
+      import { MemoryRouter, Route, Routes } from "react-router-dom";
+      import "bootstrap/dist/css/bootstrap.min.css";
+      import "bootstrap-icons/font/bootstrap-icons.css";
+      import "./src/styles/tokens.css";
+      import "./src/index.css";
+      import "./src/styles/catalog.css";
+      import "./src/styles/mobile.css";
+      import ProductoCatalogoPage from "./src/modules/productos/pages/Productos/ProductoCatalogoPage.jsx";
+
+      createRoot(document.getElementById("root")).render(
+        React.createElement(MemoryRouter, { initialEntries: ["/productos/catalogo"] },
+          React.createElement(Routes, null,
+            React.createElement(Route, { path: "/productos/catalogo", element: React.createElement(ProductoCatalogoPage) }),
+            React.createElement(Route, { path: "/productos/catalogo/familias/:familiaSlug", element: React.createElement(ProductoCatalogoPage) }),
+            React.createElement(Route, { path: "/productos/catalogo/:id", element: React.createElement(ProductoCatalogoPage) })
+          )
+        )
+      );
+    </script>
+  </body>
+</html>

@@ -65,6 +65,8 @@ export const API_PATHS = {
   INVENTARIO_PRODUCTOS_TERMINADOS: `${API_VERSION}/inventario-productos-terminados`,
   ORDENES_PRODUCCION: `${API_VERSION}/ordenes-produccion`,
   TABLERO: `${API_VERSION}/tablero`,
+  CONFIGURACION_SISTEMA: `${API_VERSION}/configuracion/sistema`,
+  CONFIGURACION_PUBLICA: `${API_VERSION}/configuracion/sistema/publica`,
 
   // Catalogo publico (sin autenticacion; lo consume la web publica)
   PUBLIC_CATALOGO: `${API_VERSION}/public/catalogo`,

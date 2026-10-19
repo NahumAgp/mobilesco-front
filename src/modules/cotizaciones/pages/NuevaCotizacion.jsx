@@ -1,13 +1,20 @@
-import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, CalendarDays, Download, FileText, MessageCircle, Percent, Plus, Search, StickyNote, Trash2, UserPlus, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft, CalendarDays, Download, FileText, MessageCircle, Percent, Plus, Search, StickyNote, Trash2, Truck, UserPlus, X } from "lucide-react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { crearCliente, obtenerClientesActivos } from "../../clientes/services/clientes";
-import { actualizarCotizacion, buscarProductosCotizables, crearCotizacion, obtenerCotizacion } from "../services/cotizaciones";
+import { actualizarCotizacion, buscarProductosCotizables, cotizarFlete, crearCotizacion, obtenerCotizacion } from "../services/cotizaciones";
 import { descargarPdfCotizacion, compartirCotizacionWhatsApp } from "../utils/cotizacionPdf";
+import { getUser, hasPermission } from "../../auth/services/authService";
+import FleteMapa from "../components/FleteMapa";
 import "./cotizaciones.css";
 import "./cotizacion-detalle.css";
 
 const moneda = (value) => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(Number(value || 0));
+const duracion = (segundos) => {
+  if (!segundos || Number(segundos) < 0) return "no disponible";
+  const minutos = Math.ceil(Number(segundos || 0) / 60);
+  return minutos >= 60 ? `${Math.floor(minutos / 60)} h ${minutos % 60} min` : `${minutos} min`;
+};
 const precioUnitario = (item, margen) => item.utilidad !== undefined && item.utilidad !== null
   ? Number(item.costoTotal) * (1 + Number(item.utilidad) / 100)
   : Number(item.costoTotal) / (1 - Number(margen || 0) / 100);
@@ -16,6 +23,8 @@ const clienteInicial = {
   nombreComercial: "", correo: "", telefono: "", whatsapp: "",
   diasCredito: 0, limiteCredito: 0, activo: true,
 };
+const direccionCliente = (cliente) => [cliente.calle, cliente.numeroExterior, cliente.colonia,
+  cliente.ciudad, cliente.estado, cliente.codigoPostal, "México"].filter(Boolean).join(", ");
 
 export default function NuevaCotizacion() {
   const navigate = useNavigate();
@@ -32,6 +41,13 @@ export default function NuevaCotizacion() {
   const [margen, setMargen] = useState(35);
   const [descuento, setDescuento] = useState(0);
   const [flete, setFlete] = useState(0);
+  const [destinoFlete, setDestinoFlete] = useState("");
+  const [puntoFlete, setPuntoFlete] = useState(null);
+  const [rutaFlete, setRutaFlete] = useState(null);
+  const [errorFlete, setErrorFlete] = useState("");
+  const [calculandoFlete, setCalculandoFlete] = useState(false);
+  const solicitudFlete = useRef(0);
+  const puedeConfigurarFlete = hasPermission(getUser(), "ACTION_QUOTES_EDIT");
   const [iva, setIva] = useState(16);
   const [vigencia, setVigencia] = useState(15);
   const [notas, setNotas] = useState("");
@@ -74,7 +90,10 @@ export default function NuevaCotizacion() {
     const montoDescuento = subtotal * Number(descuento || 0) / 100;
     const baseIva = subtotal - montoDescuento + Number(flete || 0);
     const montoIva = baseIva * Number(iva || 0) / 100;
-    return { subtotalCostos, subtotal, montoDescuento, baseIva, montoIva, total: baseIva + montoIva };
+    const ventaNetaProductos = subtotal - montoDescuento;
+    const margenReal = ventaNetaProductos > 0
+      ? (ventaNetaProductos - subtotalCostos) / ventaNetaProductos * 100 : 0;
+    return { subtotalCostos, subtotal, montoDescuento, baseIva, montoIva, total: baseIva + montoIva, margenReal };
   }, [carrito, margen, descuento, flete, iva]);
 
   const agregar = (producto) => {
@@ -97,6 +116,52 @@ export default function NuevaCotizacion() {
     setNuevoCliente((actual) => ({ ...actual, [name]: value }));
   };
 
+  const cambiarDestinoFlete = (valor) => {
+    solicitudFlete.current += 1;
+    setCalculandoFlete(false);
+    setDestinoFlete(valor);
+    setPuntoFlete(null);
+    if (rutaFlete?.fleteSugerido != null && Number(flete) === Number(rutaFlete.fleteSugerido)) setFlete(0);
+    setRutaFlete(null);
+    setErrorFlete("");
+  };
+
+  const seleccionarPuntoFlete = (punto) => {
+    solicitudFlete.current += 1;
+    setCalculandoFlete(false);
+    setPuntoFlete(punto);
+    setDestinoFlete(`${punto.latitud.toFixed(6)}, ${punto.longitud.toFixed(6)}`);
+    if (rutaFlete?.fleteSugerido != null && Number(flete) === Number(rutaFlete.fleteSugerido)) setFlete(0);
+    setRutaFlete(null);
+    setErrorFlete("");
+  };
+
+  const seleccionarCliente = (valor) => {
+    setClienteId(valor);
+    const cliente = clientes.find((item) => String(item.id) === valor);
+    cambiarDestinoFlete(cliente && [cliente.calle, cliente.ciudad, cliente.codigoPostal].some(Boolean)
+      ? direccionCliente(cliente) : "");
+  };
+
+  const calcularFlete = async () => {
+    if (!puntoFlete && !destinoFlete.trim()) { setErrorFlete("Selecciona un punto o ingresa la dirección de entrega."); return; }
+    const solicitud = ++solicitudFlete.current;
+    setCalculandoFlete(true); setErrorFlete("");
+    try {
+      const ruta = await cotizarFlete(puntoFlete
+        ? { latitud: puntoFlete.latitud, longitud: puntoFlete.longitud }
+        : { destino: destinoFlete.trim() });
+      if (solicitud !== solicitudFlete.current) return;
+      setRutaFlete(ruta);
+      if (ruta.fleteSugerido != null) setFlete(ruta.fleteSugerido);
+      else if (rutaFlete?.fleteSugerido != null && Number(flete) === Number(rutaFlete.fleteSugerido)) setFlete(0);
+    } catch (e) {
+      if (solicitud === solicitudFlete.current) setErrorFlete(e.message || "No fue posible calcular el flete.");
+    } finally {
+      if (solicitud === solicitudFlete.current) setCalculandoFlete(false);
+    }
+  };
+
   const guardarClienteRapido = async (event) => {
     event.preventDefault();
     setErrorCliente("");
@@ -112,7 +177,7 @@ export default function NuevaCotizacion() {
         whatsapp: null,
       });
       setClientes((actual) => [...actual, creado].sort((a, b) => a.nombreVisual.localeCompare(b.nombreVisual)));
-      setClienteId(String(creado.id));
+      seleccionarCliente(String(creado.id));
       setNuevoCliente(clienteInicial);
       setMostrarCliente(false);
     } catch (e) {
@@ -124,6 +189,8 @@ export default function NuevaCotizacion() {
 
   const guardar = async (estado) => {
     if (!carrito.length) return setError("Agrega al menos un producto cotizable.");
+    if (estado !== "BORRADOR" && resumen.margenReal <= 0)
+      return setError("El descuento deja la venta de productos sin utilidad.");
     setGuardando(true); setError("");
     try {
       const payload = {
@@ -153,13 +220,13 @@ export default function NuevaCotizacion() {
 
   return <div className="cot-page">
     <header className="cot-header"><div><button className="cot-back" onClick={() => navigate("/cotizaciones")}><ArrowLeft size={18} /> Cotizaciones</button><h1>{editando ? "Editar cotización" : "Nueva cotización"}</h1><p>{editando ? "Actualiza productos, cantidades y condiciones antes de continuar." : "Agrega productos con costos completos y calcula la propuesta."}</p></div>
-      <div className="cot-header-actions"><button disabled={guardando} onClick={() => guardar("BORRADOR")}>Guardar borrador</button><button className="cot-primary" disabled={guardando} onClick={() => guardar("PENDIENTE")}>{guardando ? "Guardando..." : "Finalizar cotización"}</button></div></header>
+      <div className="cot-header-actions"><button disabled={guardando} onClick={() => guardar("BORRADOR")}>Guardar borrador</button><button className="cot-primary" disabled={guardando || resumen.margenReal <= 0} onClick={() => guardar("PENDIENTE")}>{guardando ? "Guardando..." : "Finalizar cotización"}</button></div></header>
     {error && <div className="cot-alert cot-alert-error">{error}</div>}
     <div className="cot-form-grid"><main>
       <section className="cot-card cot-section cot-client-section">
         <div className="cot-section-title"><div><h2>1. Cliente <span>Opcional</span></h2><p>Selecciona un cliente o continúa como público general.</p></div></div>
         <div className="cot-client-picker">
-          <select value={clienteId} onChange={(e) => setClienteId(e.target.value)}>
+          <select value={clienteId} onChange={(e) => seleccionarCliente(e.target.value)}>
             <option value="">Público general / sin cliente</option>
             {clientes.map((c) => <option key={c.id} value={c.id}>{c.codigo} · {c.nombreVisual}</option>)}
           </select>
@@ -186,11 +253,30 @@ export default function NuevaCotizacion() {
         </div>
       </section>
     </main><aside className="cot-card cot-summary"><h2>Resumen</h2>
-      <div className="cot-fields compact">{!cotizacionRapida && <label>{carrito.length && carrito.every((item) => item.utilidad !== undefined && item.utilidad !== null) ? "Utilidad por producto" : "Margen real (%)"}<input type="number" min="0.01" max="95" value={margen} disabled={carrito.some((item) => item.utilidad !== undefined && item.utilidad !== null)} onChange={(e) => setMargen(e.target.value)} /></label>}<label>Descuento (%)<input type="number" min="0" max="100" value={descuento} onChange={(e) => setDescuento(e.target.value)} /></label><label>Flete<input type="number" min="0" value={flete} onChange={(e) => setFlete(e.target.value)} /></label><label>IVA (%)<input type="number" min="0" value={iva} onChange={(e) => setIva(e.target.value)} /></label></div>
+      <div className="cot-flete-box">
+        <label htmlFor="destino-flete">Dirección de entrega</label>
+        <input id="destino-flete" value={destinoFlete} onChange={(e) => cambiarDestinoFlete(e.target.value)} placeholder="Calle, número, ciudad, estado y CP" />
+        <FleteMapa punto={puntoFlete} ruta={rutaFlete} onSeleccionar={seleccionarPuntoFlete} />
+        <button type="button" disabled={calculandoFlete} onClick={calcularFlete}><Truck size={17} /> {calculandoFlete ? "Calculando..." : "Calcular flete"}</button>
+        {rutaFlete && <div className="cot-flete-resultado" role="status"><strong>Ruta óptima: {rutaFlete.distanciaKm} km · tiempo estimado {duracion(rutaFlete.duracionSegundos)}</strong>
+          <span>Salida: {rutaFlete.origen}</span>
+          {rutaFlete.fleteSugerido != null
+            ? <span>Tarifa hasta {rutaFlete.hastaKm} km: {moneda(rutaFlete.fleteSugerido)}</span>
+            : <span>No hay precio para esta distancia. Configura el tabulador o captura el flete manualmente.</span>}
+        </div>}
+        {errorFlete && <p className="cot-flete-error" role="alert">{errorFlete}</p>}
+        {puedeConfigurarFlete
+          ? <a className="cot-flete-tabulador" href="/cotizaciones/fletes" target="_blank" rel="noopener noreferrer">Configurar tabulador de flete ↗</a>
+          : <p>El tabulador lo configura un usuario con permiso para editar cotizaciones.</p>}
+      </div>
+      <div className="cot-fields compact">{!cotizacionRapida && <label>{carrito.length && carrito.every((item) => item.utilidad !== undefined && item.utilidad !== null) ? "Utilidad por producto" : "Margen real (%)"}<input type="number" min="0.01" max="95" value={margen} disabled={carrito.some((item) => item.utilidad !== undefined && item.utilidad !== null)} onChange={(e) => setMargen(e.target.value)} /></label>}<label>Descuento (%)<input type="number" min="0" max="100" value={descuento} onChange={(e) => setDescuento(e.target.value)} /></label><label>Flete (MXN)<input type="number" min="0" value={flete} onChange={(e) => { solicitudFlete.current += 1; setCalculandoFlete(false); setFlete(e.target.value); }} /></label><label>IVA (%)<input type="number" min="0" value={iva} onChange={(e) => setIva(e.target.value)} /></label></div>
       <dl><div><dt>Costo de productos</dt><dd>{moneda(resumen.subtotalCostos)}</dd></div><div><dt>Subtotal venta</dt><dd>{moneda(resumen.subtotal)}</dd></div><div><dt>Descuento</dt><dd>-{moneda(resumen.montoDescuento)}</dd></div><div><dt>Flete</dt><dd>{moneda(flete)}</dd></div><div><dt>IVA</dt><dd>{moneda(resumen.montoIva)}</dd></div></dl>
+      <p className={resumen.margenReal <= 0 && carrito.length ? "cot-alert cot-alert-error" : "cot-cost-note"}>
+        Margen real después del descuento: {resumen.margenReal.toFixed(2)}% (sin incluir flete ni IVA).
+      </p>
       <div className="cot-grand-total"><span>Total</span><strong>{moneda(resumen.total)}</strong></div>
       <p className="cot-cost-note">El precio se calcula con margen real. El servidor volverá a validar todos los costos antes de guardar.</p>
-      <button className="cot-primary cot-full" disabled={guardando} onClick={() => guardar("PENDIENTE")}>Finalizar cotización</button>
+      <button className="cot-primary cot-full" disabled={guardando || resumen.margenReal <= 0} onClick={() => guardar("PENDIENTE")}>Finalizar cotización</button>
     </aside></div>
     {mostrarCliente && <div className="cot-modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setMostrarCliente(false)}>
       <form className="cot-modal cot-client-modal" onSubmit={guardarClienteRapido}>

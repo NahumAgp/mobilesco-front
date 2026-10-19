@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Check, Plus, Search, Trash2, Zap } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { buscarProductosCotizables } from "../services/cotizaciones";
+import { useLocation, useNavigate } from "react-router-dom";
+import { buscarProductosCotizables, obtenerProductoCotizable } from "../services/cotizaciones";
 import { obtenerEstructuraCostos } from "../../productos/services/productos";
 import { construirUrlImagen } from "../../productos/services/imagenes";
 import "./cotizaciones.css";
@@ -13,6 +13,8 @@ const precioConUtilidad = (costo, utilidad) => Number(costo || 0) * (1 + Number(
 
 export default function CotizacionRapida() {
   const navigate = useNavigate();
+  const { search } = useLocation();
+  const productoInicialId = new URLSearchParams(search).get("productoId");
   const [busqueda, setBusqueda] = useState("");
   const [resultados, setResultados] = useState([]);
   const [seleccionados, setSeleccionados] = useState([]);
@@ -21,7 +23,38 @@ export default function CotizacionRapida() {
   const [estructura, setEstructura] = useState(null);
   const [cargandoEstructura, setCargandoEstructura] = useState(false);
   const [cargando, setCargando] = useState(false);
+  const [cargandoProductoInicial, setCargandoProductoInicial] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!productoInicialId) return undefined;
+    let vigente = true;
+    const cargarProducto = async () => {
+      setCargandoProductoInicial(true);
+      setEstructura(null);
+      try {
+        const producto = await obtenerProductoCotizable(productoInicialId);
+        if (!vigente) return;
+        if (!producto.cotizable) {
+          setProductoActivo(null);
+          setError(`${producto.nombre}: ${producto.faltantes?.join(", ") || "faltan datos para cotizarlo"}`);
+          return;
+        }
+        setProductoActivo(producto);
+        const costos = await obtenerEstructuraCostos(producto.id);
+        if (!vigente) return;
+        setEstructura(costos);
+        setProductoActivo({ ...producto, costoTotal: costos.costoTotal });
+        setError("");
+      } catch (e) {
+        if (vigente) setError(e.message || "No fue posible cargar el producto del catálogo.");
+      } finally {
+        if (vigente) setCargandoProductoInicial(false);
+      }
+    };
+    cargarProducto();
+    return () => { vigente = false; };
+  }, [productoInicialId]);
 
   useEffect(() => {
     if (!busqueda.trim()) { setResultados([]); return undefined; }
@@ -75,7 +108,7 @@ export default function CotizacionRapida() {
   return <div className="cot-page">
     <header className="cot-header">
       <div>
-        <button className="cot-back" onClick={() => navigate("/cotizaciones")}><ArrowLeft size={18} /> Cotizaciones</button>
+        <button className="cot-back" onClick={() => navigate(productoInicialId ? `/productos/catalogo/${productoInicialId}` : "/cotizaciones")}><ArrowLeft size={18} /> {productoInicialId ? "Catálogo visual" : "Cotizaciones"}</button>
         <h1>Nueva cotización</h1>
         <p>Elige productos, compara utilidades y prepara una cotización formal.</p>
       </div>
@@ -85,11 +118,12 @@ export default function CotizacionRapida() {
       <main className="cot-quick-builder">
         <section className="cot-card cot-section">
           <div className="cot-quick-heading"><span className="cot-section-icon"><Zap size={21} /></span><div><h2>Selecciona un producto</h2><p>Escribe el nombre para encontrarlo.</p></div></div>
-          <label className="cot-search cot-product-search"><Search size={20} /><input autoFocus value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder="Ej. Concha silla primaria" /></label>
+          <label className="cot-search cot-product-search"><Search size={20} /><input autoFocus={!productoInicialId} disabled={cargandoProductoInicial} value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder="Ej. Concha silla primaria" /></label>
+          {cargandoProductoInicial && <div className="cot-quick-status">Cargando producto del catálogo...</div>}
           {cargando && <div className="cot-quick-status">Buscando productos...</div>}
           {!!productosDisponibles.length && <div className="cot-results cot-name-results">{productosDisponibles.slice(0, 5).map((p) => <button key={p.id} type="button" onClick={() => seleccionarProducto(p)} className={`cot-name-result ${productoActivo?.id === p.id ? "selected" : ""}`}><span>{p.nombre}</span><ArrowLeft size={16} /></button>)}</div>}
           {!cargando && busqueda && !productosDisponibles.length && <div className="cot-empty">No encontramos productos cotizables con esos términos.</div>}
-          {!busqueda && <div className="cot-empty">Escribe cualquier combinación de palabras para comenzar.</div>}
+          {!busqueda && !productoActivo && !cargandoProductoInicial && <div className="cot-empty">Escribe cualquier combinación de palabras para comenzar.</div>}
         </section>
         {productoActivo && <section className="cot-card cot-section cot-cost-detail">
           <div className="cot-cost-heading"><div><span className="cot-section-kicker">Producto seleccionado</span><h2>{productoActivo.nombre}</h2><p>{productoActivo.sku}</p></div><strong>{cargandoEstructura ? "Cargando..." : estructura ? moneda(estructura.costoTotal) : ""}</strong></div>

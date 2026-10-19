@@ -5,6 +5,7 @@ vi.mock('../../../services/api', () => ({ default: request }));
 
 import {
   buscarProductosCotizables,
+  obtenerProductoCotizable,
   cambiarEstadoCotizacion,
   crearCotizacion
 } from './cotizaciones';
@@ -16,6 +17,12 @@ describe('servicio de cotizaciones', () => {
     request.mockResolvedValue([]);
     await buscarProductosCotizables('silla nogal');
     expect(request).toHaveBeenCalledWith('/api/v1/cotizaciones/productos?busqueda=silla+nogal');
+  });
+
+  it('consulta por ID la variante seleccionada en el catálogo', async () => {
+    request.mockResolvedValue({ id: 9, cotizable: true });
+    await obtenerProductoCotizable(9);
+    expect(request).toHaveBeenCalledWith('/api/v1/cotizaciones/productos/9');
   });
 
   it('envía la cotización como JSON', async () => {

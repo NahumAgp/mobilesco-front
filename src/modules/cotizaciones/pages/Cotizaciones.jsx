@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ClipboardList, Download, Eye, MessageCircle, Pencil, Plus, Search } from "lucide-react";
+import { ClipboardList, Download, Eye, MessageCircle, Pencil, Plus, Search, Truck } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import useDebouncedValue from "../../../hooks/useDebouncedValue.js";
 import usePersistedState from "../../../hooks/usePersistedState.js";
@@ -90,7 +90,10 @@ export default function Cotizaciones() {
     <div className="cot-page">
       <header className="cot-header">
         <div><h1>Cotizaciones</h1><p>Consulta, da seguimiento y comparte propuestas comerciales.</p></div>
-        {puedeCrear && <button className="cot-primary cot-new-button" onClick={() => navigate("/cotizaciones/nueva")}><span className="cot-new-button-icon"><Plus size={20} /></span><span>Nueva cotización</span></button>}
+        <div className="cot-header-actions">
+          {puedeEditar && <button onClick={() => navigate("/cotizaciones/fletes")}><Truck size={18} /> Tabulador de flete</button>}
+          {puedeCrear && <button className="cot-primary cot-new-button" onClick={() => navigate("/cotizaciones/nueva")}><span className="cot-new-button-icon"><Plus size={20} /></span><span>Nueva cotización</span></button>}
+        </div>
       </header>
       <section className="cot-card cot-filters">
         <label className="cot-search"><Search size={18} /><input value={filtros.busqueda} onChange={(e) => setFiltros((current) => ({ ...current, busqueda: e.target.value }))} placeholder="Buscar por folio o cliente..." /></label>
@@ -128,7 +131,15 @@ export default function Cotizaciones() {
           <span className={`cot-status cot-status-${detalle.estado.toLowerCase()}`}>{estados[detalle.estado]}</span>
           <h2>{detalle.folio}</h2><p>{detalle.clienteNombre}</p>
           <div className="cot-status-editor"><label>Estatus<select value={estadoEditando} disabled={!puedeEditar || ["COMPLETADA", "CANCELADA"].includes(detalle.estado)} onChange={(e) => setEstadoEditando(e.target.value)}>{Object.entries(estados).filter(([value]) => value !== "COMPLETADA" || detalle.estado === "ACEPTADA" || value === detalle.estado).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><button disabled={!puedeEditar || guardandoEstado || estadoEditando === detalle.estado || ["COMPLETADA", "CANCELADA"].includes(detalle.estado)} onClick={guardarEstado}>Guardar estatus</button></div>
-          <div className="cot-detail-list">{detalle.detalles.map((d) => <div key={d.id}><span>{d.cantidad} × {d.sku} · {d.nombre}</span><strong>{moneda(d.importe)}</strong></div>)}</div>
+          <div className="cot-detail-list">{detalle.detalles.map((d) => <div key={d.id}>
+            <span>{d.cantidad} × {d.sku} · {d.nombre}
+              {d.cifTarifaVersionId && <small className="d-block text-muted">
+                Costo unitario: insumos {moneda(d.costoInsumos)}, operaciones {moneda(d.costoOperaciones)},
+                CIF {moneda(d.costoCif)} · tasa CIF {d.tasaCifMinuto}/min · {d.mesCif}/{d.anioCif}
+              </small>}
+            </span><strong>{moneda(d.importe)}</strong>
+          </div>)}</div>
+          <p className="cot-cost-note">Margen real después del descuento: {Number(detalle.margenRealPorcentaje || 0).toFixed(2)}%</p>
           <div className="cot-modal-total"><span>Total</span><strong>{moneda(detalle.total)}</strong></div>
           <div className="cot-modal-buttons">
             <button onClick={() => descargarPdfCotizacion(detalle)}><Download size={17} /> PDF</button>
