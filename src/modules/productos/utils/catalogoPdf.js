@@ -14,6 +14,13 @@ const ALTO = 279.4;
 const PRODUCTOS_POR_PAGINA = 4;
 
 const texto = (valor, alternativa = "") => String(valor ?? "").trim() || alternativa;
+const valoresUnicos = (variantes, campo) => [...new Map(variantes
+  .map((variante) => texto(variante[campo]))
+  .filter(Boolean)
+  .map((valor) => [valor.toLocaleLowerCase("es-MX"), valor])).values()]
+  .sort((a, b) => a.localeCompare(b, "es", { numeric: true, sensitivity: "base" }));
+
+const mostrarSku = (skus = []) => skus.length > 1 ? `${skus[0]} +${skus.length - 1}` : texto(skus[0], "-");
 
 export function prepararPaginasCatalogo(productos) {
   return organizarFamiliasCatalogo(productos.filter((producto) => producto.activo && producto.id))
@@ -30,6 +37,9 @@ export function prepararPaginasCatalogo(productos) {
           descripcion: variantes.find((variante) => variante.descripcion)?.descripcion || "",
           imagenUrl: variantes.find((variante) => variante.modeloImagenUrl)?.modeloImagenUrl
             || variantes.find((variante) => variante.imagenUrl)?.imagenUrl || "",
+          skus: valoresUnicos(variantes, "sku"),
+          tamanos: valoresUnicos(variantes, "nivelNombre"),
+          materiales: valoresUnicos(variantes, "materialNombre"),
           colores: listarColoresModelo(variantes),
         }))
         .sort((a, b) => a.nombre.localeCompare(b.nombre, "es", { numeric: true, sensitivity: "base" }));
@@ -104,15 +114,14 @@ function dibujarPortada(pdf, cantidad, fecha) {
   pdf.text("Mobilesco", 23, 58);
   pdf.setFontSize(44);
   pdf.text("Catálogo", 23, 135);
-  pdf.text("visual", 23, 153);
   pdf.setFont("helvetica", "normal");
   pdf.setFontSize(12);
-  pdf.text("Mobiliario para aprender, trabajar y crear.", 24, 169);
+  pdf.text("Mobiliario para aprender, trabajar y crear.", 24, 153);
   pdf.setDrawColor(...NARANJA);
   pdf.setLineWidth(1.5);
-  pdf.line(24, 181, 87, 181);
+  pdf.line(24, 165, 87, 165);
   pdf.setFontSize(9);
-  pdf.text(`${cantidad} modelos  |  ${fecha}`, 24, 192);
+  pdf.text(`${cantidad} modelos  |  ${fecha}`, 24, 176);
   pdf.text("Edición digital del catálogo Mobilesco", 24, 258);
 }
 
@@ -177,19 +186,27 @@ function dibujarTarjeta(pdf, producto, imagen, x, y) {
   pdf.setTextColor(...NARANJA);
   pdf.setFontSize(7.5);
   pdf.text("MODELO MOBILESCO", x + 7, y + 9);
-  if (imagen) dibujarImagenContenida(pdf, imagen, x + 8, y + 13, ancho - 16, 38);
+  if (imagen) dibujarImagenContenida(pdf, imagen, x + 8, y + 13, ancho - 16, 30);
   else {
     pdf.setFillColor(246, 241, 238);
-    pdf.roundedRect(x + 8, y + 14, ancho - 16, 38, 3, 3, "F");
+    pdf.roundedRect(x + 8, y + 14, ancho - 16, 30, 3, 3, "F");
     pdf.setTextColor(136, 145, 141);
     pdf.setFontSize(8);
-    pdf.text("Imagen no disponible", x + ancho / 2, y + 36, { align: "center" });
+    pdf.text("Imagen no disponible", x + ancho / 2, y + 30, { align: "center" });
   }
   pdf.setTextColor(...TINTA);
   pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(11);
-  pdf.text(lineasLimitadas(pdf, producto.nombre, ancho - 14, 2), x + 7, y + 61);
-  dibujarColores(pdf, producto.colores, x + 7, y + 73, ancho - 14);
+  pdf.setFontSize(9.5);
+  pdf.text(lineasLimitadas(pdf, producto.nombre, ancho - 14, 2), x + 7, y + 50);
+
+  const textoAncho = ancho - 14;
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(6.1);
+  pdf.setTextColor(...GRIS);
+  pdf.text(lineasLimitadas(pdf, `SKU: ${mostrarSku(producto.skus)}`, textoAncho, 1), x + 7, y + 60);
+  pdf.text(lineasLimitadas(pdf, `TAMAÑOS: ${producto.tamanos.join(", ") || "-"}`, textoAncho, 1), x + 7, y + 66);
+  pdf.text(lineasLimitadas(pdf, `MATERIALES: ${producto.materiales.join(", ") || "-"}`, textoAncho, 1), x + 7, y + 72);
+  dibujarColores(pdf, producto.colores, x + 7, y + 78, textoAncho);
 }
 
 function dibujarTarjetaHorizontal(pdf, producto, imagen, x, y, alto) {
@@ -213,15 +230,19 @@ function dibujarTarjetaHorizontal(pdf, producto, imagen, x, y, alto) {
   }
   pdf.setTextColor(...TINTA);
   pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(alto > 100 ? 16 : 12);
-  pdf.text(lineasLimitadas(pdf, producto.nombre, textoAncho, 3), textoX,
-    y + (alto > 100 ? 45 : 31));
+  pdf.setFontSize(alto > 100 ? 16 : 11);
+  pdf.text(lineasLimitadas(pdf, producto.nombre, textoAncho, alto > 100 ? 3 : 2), textoX,
+    y + (alto > 100 ? 45 : 27));
   pdf.setTextColor(...GRIS);
   pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(alto > 100 ? 9 : 8);
-  pdf.text(lineasLimitadas(pdf, producto.descripcion, textoAncho, alto > 100 ? 5 : 2),
-    textoX, y + (alto > 100 ? 85 : 52));
-  dibujarColores(pdf, producto.colores, textoX, y + (alto > 100 ? 119 : 67), textoAncho);
+  pdf.setFontSize(alto > 100 ? 8.5 : 7);
+  pdf.text(lineasLimitadas(pdf, producto.descripcion, textoAncho, alto > 100 ? 3 : 1),
+    textoX, y + (alto > 100 ? 83 : 39));
+  pdf.setFontSize(6.8);
+  pdf.text(lineasLimitadas(pdf, `SKU: ${mostrarSku(producto.skus)}`, textoAncho, 1), textoX, y + (alto > 100 ? 118 : 48));
+  pdf.text(lineasLimitadas(pdf, `TAMAÑOS: ${producto.tamanos.join(", ") || "-"}`, textoAncho, 1), textoX, y + (alto > 100 ? 127 : 55));
+  pdf.text(lineasLimitadas(pdf, `MATERIALES: ${producto.materiales.join(", ") || "-"}`, textoAncho, 1), textoX, y + (alto > 100 ? 136 : 62));
+  dibujarColores(pdf, producto.colores, textoX, y + (alto > 100 ? 150 : 69), textoAncho);
 }
 
 function dibujarContraportada(pdf, fecha, urlCatalogo, logo) {
@@ -250,7 +271,8 @@ function dibujarContraportada(pdf, fecha, urlCatalogo, logo) {
     pdf.setTextColor(...NARANJA);
     pdf.setFontSize(10);
     pdf.text(urlCatalogo, ANCHO / 2, 186, { align: "center" });
-    pdf.link(27, 177, ANCHO - 54, 16, { url: urlCatalogo });
+    const destinoCatalogo = /^https?:\/\//i.test(urlCatalogo) ? urlCatalogo : `https://${urlCatalogo}`;
+    pdf.link(27, 177, ANCHO - 54, 16, { url: destinoCatalogo });
   }
   pdf.setTextColor(...GRIS);
   pdf.setFontSize(8);
@@ -264,7 +286,7 @@ export async function crearPdfCatalogo(productos, { urlCatalogo = "", fecha = ne
   const pdf = new jsPDF({ unit: "mm", format: "letter", compress: true });
   let identidad = { nombreEmpresa: "Mobilesco", logoCatalogoUrl: "" };
   try { identidad = { ...identidad, ...await obtenerIdentidadPublica() }; } catch { /* El PDF conserva la marca base si no hay conexión. */ }
-  pdf.setProperties({ title: `Catálogo visual ${identidad.nombreEmpresa}`, author: identidad.nombreEmpresa });
+  pdf.setProperties({ title: `Catálogo ${identidad.nombreEmpresa}`, author: identidad.nombreEmpresa });
   const fechaTexto = new Intl.DateTimeFormat("es-MX", { day: "numeric", month: "long", year: "numeric" }).format(fecha);
   const logoPersonalizado = identidad.logoCatalogoUrl || identidad.logoDocumentosUrl;
   const logoUrl = logoPersonalizado

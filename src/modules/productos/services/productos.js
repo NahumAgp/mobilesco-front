@@ -18,6 +18,21 @@ export function obtenerProductos(params = {}) {
   return request(query ? `${API_PATHS.PRODUCTOS}?${query}` : API_PATHS.PRODUCTOS);
 }
 
+export function obtenerFamiliasActivasCatalogo() {
+  return request(API_PATHS.PUBLIC_CATALOGO_FAMILIAS);
+}
+
+export function obtenerModelosCatalogoPublico(params = {}) {
+  const query = buildQuery(params);
+  return request(query
+    ? `${API_PATHS.PUBLIC_CATALOGO_MODELOS}?${query}`
+    : API_PATHS.PUBLIC_CATALOGO_MODELOS);
+}
+
+export function obtenerFichaCatalogoPublico(modeloId) {
+  return request(`${API_PATHS.PUBLIC_CATALOGO}/modelo/${modeloId}/ficha`);
+}
+
 export function obtenerProductoPorId(id) {
   return request(`${API_PATHS.PRODUCTOS}/${id}`);
 }

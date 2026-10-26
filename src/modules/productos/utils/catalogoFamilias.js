@@ -1,9 +1,10 @@
 const DESTACADAS = [
   { linea: "escolar", familia: "sillas", slug: "sillas-escolares", titulo: "Sillas escolares" },
-  { linea: "oficina", familia: "sillas", slug: "sillas-oficina", titulo: "Sillas de oficina" },
   { linea: "escolar", familia: "mesas", slug: "mesas-escolares", titulo: "Mesas escolares" },
-  { linea: "oficina", familia: "mesas", slug: "mesas-oficina", titulo: "Mesas de oficina" },
   { linea: "mixta", familia: "mesas", slug: "mesas-mixtas", titulo: "Mesas mixtas" },
+  { linea: "escolar", familia: "pupitre", slug: "pupitres-escolares", titulo: "Pupitres escolares" },
+  { linea: "oficina", familia: "sillas", slug: "sillas-oficina", titulo: "Sillas de oficina" },
+  { linea: "oficina", familia: "mesas", slug: "mesas-oficina", titulo: "Mesas de oficina" },
 ];
 
 const normalizar = (valor) => String(valor || "")
@@ -24,7 +25,7 @@ function nombreFamilia(linea, familia) {
   return `${tituloCaso(familia)} · ${tituloCaso(linea)}`;
 }
 
-export function organizarFamiliasCatalogo(productos, { incluirVacias = false } = {}) {
+export function organizarFamiliasCatalogo(productos, { incluirVacias = false, familiasActivas } = {}) {
   const grupos = new Map();
 
   productos.forEach((producto) => {
@@ -36,8 +37,14 @@ export function organizarFamiliasCatalogo(productos, { incluirVacias = false } =
   });
 
   if (incluirVacias) {
-    DESTACADAS.forEach(({ linea, familia }) => {
-      const clave = `${linea}::${familia}`;
+    const familiasParaIncluir = Array.isArray(familiasActivas)
+      ? familiasActivas.map((item) => ({
+          linea: String(item.lineaNombre || "Sin línea").trim(),
+          familia: String(item.nombre || "Sin familia").trim(),
+        }))
+      : DESTACADAS;
+    familiasParaIncluir.forEach(({ linea, familia }) => {
+      const clave = `${normalizar(linea)}::${normalizar(familia)}`;
       if (!grupos.has(clave)) grupos.set(clave, { linea, familia, productos: [] });
     });
   }

@@ -12,6 +12,18 @@ const COLUMNAS_ORDENABLES = {
   fechaRegistro: "Creado"
 };
 
+const TIPOS_INSUMO_NOMBRE = {
+  C: "CARPINTERIA",
+  E: "EMBALAJE",
+  H: "HERRERIA",
+  HE: "HERRAJES",
+  P: "PINTURA",
+  PL: "PLASTICOS",
+  S: "SOLVENTE",
+  SO: "SOLDADURA",
+  T: "TAPICERIA"
+};
+
 // Columnas (id estable) + ancho por defecto en px. El orden debe coincidir
 // con el de las celdas del <tbody>.
 const COLUMNAS = [
@@ -157,8 +169,9 @@ export default function InsumosTable({
   };
 
   const formatTipoInsumo = (value) => {
-    if (!value) return "-";
-    return String(value).replace(/_/g, " ");
+    if (!value) return "SIN TIPO";
+    const normalizado = String(value).trim().toUpperCase();
+    return TIPOS_INSUMO_NOMBRE[normalizado] || normalizado.replace(/_/g, " ");
   };
 
   const renderHeaderColumna = (columna) => {

@@ -890,6 +890,11 @@ export default function SalidasInsumosNuevaPage() {
                           >
                             <span className="text-start">
                               <strong className="d-block">{insumo.nombre}</strong>
+                              <small className="text-muted">
+                                {[insumo.codigo, insumo.unidadMedida?.simbolo || insumo.unidadMedida?.nombre, insumo.tipoInsumo, insumo.ubicacion ? `Ubic. ${insumo.ubicacion}` : null]
+                                  .filter(Boolean)
+                                  .join(" · ")}
+                              </small>
                             </span>
                           </button>
                         ))}

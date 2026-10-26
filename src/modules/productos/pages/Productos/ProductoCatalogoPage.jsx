@@ -1,12 +1,20 @@
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 
 import PageHeader from "../../../../components/Sistema/PageHeader";
 import useDebouncedValue from "../../../../hooks/useDebouncedValue.js";
 import usePersistedState from "../../../../hooks/usePersistedState.js";
 import { API_BASE_URL } from "../../../../config/apiConfig";
 import { getUser, hasPermission } from "../../../auth/services/authService.js";
-import { obtenerProductos } from "../../services/productos";
+import { obtenerProductoCotizable } from "../../../cotizaciones/services/cotizaciones.js";
+import CatalogoCotizacionProvider from "./CatalogoCotizacionCart.jsx";
+import { useCatalogoCotizacion } from "./catalogoCotizacionContext.js";
+import {
+  obtenerFamiliasActivasCatalogo,
+  obtenerFichaCatalogoPublico,
+  obtenerModelosCatalogoPublico,
+  obtenerProductos
+} from "../../services/productos";
 import { organizarFamiliasCatalogo } from "../../utils/catalogoFamilias.js";
 import { getColorHex, listarColoresModelo } from "../../utils/catalogoColores.js";
 import { descargarPdfCatalogo } from "../../utils/catalogoPdf.js";
@@ -14,8 +22,7 @@ import "./ProductoCatalogoPage.css";
 
 const LOAD_SIZE = 100;
 const FILTROS_DEFAULT = {
-  busqueda: "",
-  soloActivos: true
+  busqueda: ""
 };
 
 const getLista = (respuesta) => {
@@ -37,6 +44,60 @@ const cargarProductosCatalogo = async (parametros) => {
       )
     : [];
   return [...getLista(primeraPagina), ...paginasRestantes.flatMap(getLista)];
+};
+
+const cargarCatalogoYFamiliasActivas = async (parametros) => {
+  const [productos, familiasActivas] = await Promise.all([
+    cargarProductosCatalogo({ ...parametros, activo: true }),
+    obtenerFamiliasActivasCatalogo().then(getLista)
+  ]);
+  const idsFamiliasActivas = new Set(familiasActivas.map((familia) => String(familia.id)));
+  return {
+    familiasActivas,
+    productos: productos.filter((producto) => {
+      const familiaId = producto.familiaId || producto.id_familia;
+      return familiaId != null && idsFamiliasActivas.has(String(familiaId));
+    })
+  };
+};
+
+const cargarProductosFamiliaCatalogo = async (familia) => {
+  const modelos = getLista(await obtenerModelosCatalogoPublico({ familiaId: familia.id }));
+  const fichas = await Promise.all(modelos
+    .filter((modelo) => modelo.modeloId != null)
+    .map((modelo) => obtenerFichaCatalogoPublico(modelo.modeloId)));
+
+  return fichas.flatMap((ficha) => (ficha.variantes || [])
+    .filter((variante) => variante.activo !== false)
+    .map((variante) => ({
+      id: variante.productoId,
+      productoId: variante.productoId,
+      sku: variante.sku,
+      nombre: [ficha.nombre, variante.nivelNombre, variante.colorNombre].filter(Boolean).join(" "),
+      descripcion: ficha.descripcion || "",
+      modeloId: ficha.modeloId,
+      modeloNombre: ficha.nombre,
+      modeloUrlImagen: ficha.urlImagenModelo,
+      modelo: { id: ficha.modeloId, nombre: ficha.nombre, urlImagen: ficha.urlImagenModelo },
+      familiaId: ficha.familiaId,
+      familiaNombre: ficha.familiaNombre || familia.nombre,
+      lineaNombre: familia.lineaNombre,
+      subfamiliaId: ficha.subfamiliaId,
+      subfamiliaNombre: ficha.subfamiliaNombre,
+      colorId: variante.colorId,
+      colorNombre: variante.colorNombre,
+      colorHex: variante.colorHex,
+      nivelId: variante.nivelId,
+      nivelNombre: variante.nivelNombre,
+      materialId: variante.materialId,
+      materialNombre: variante.materialNombre,
+      dimensiones: variante.dimensiones,
+      ancho: variante.ancho,
+      alto: variante.alto,
+      fondo: variante.fondo,
+      imagenPrincipalUrl: variante.imagenPrincipalUrl,
+      activo: variante.activo !== false
+    })));
 };
 
 const getProductoId = (producto) => producto?.id || producto?.productoId || producto?.id_producto || null;
@@ -234,6 +295,21 @@ const buscarProductoCompatible = (productos, cambios = {}, actual = {}) => {
   return productos[0] || null;
 };
 
+const buscarProductoPorAtributo = (productos, tipo, key, actual) => {
+  const otrosAtributos = ["material", "nivel", "color"].filter((otroTipo) => otroTipo !== tipo);
+  return productos
+    .filter((producto) => getAtributo(producto, tipo).key === key)
+    .sort((a, b) => {
+      const coincidenciasA = otrosAtributos.filter((otroTipo) =>
+        getAtributo(a, otroTipo).key === getAtributo(actual, otroTipo).key
+      ).length;
+      const coincidenciasB = otrosAtributos.filter((otroTipo) =>
+        getAtributo(b, otroTipo).key === getAtributo(actual, otroTipo).key
+      ).length;
+      return coincidenciasB - coincidenciasA;
+    })[0] || null;
+};
+
 const getImagenPrincipalModelo = (productos) => {
   for (const producto of productos) {
     const urlModelo = resolverUrlImagen(
@@ -329,7 +405,7 @@ const construirFamilias = (productos) => {
 };
 
 async function generarPdfCompleto() {
-  const activos = await cargarProductosCatalogo({
+  const { productos: activos } = await cargarCatalogoYFamiliasActivas({
     activo: true,
     sortBy: "modeloNombre",
     direction: "asc"
@@ -346,12 +422,14 @@ async function generarPdfCompleto() {
     modelo: getTexto(producto.modeloNombre, producto.modelo?.nombre),
     modeloImagenUrl: resolverUrlImagen(producto.modeloUrlImagen || producto.modelo?.urlImagen || producto.productoBase?.urlImagen),
     imagenUrl: getImagenesProducto(producto)[0]?.url || "",
+    nivelNombre: getTexto(producto.nivelNombre, producto.nombre_nivel, producto.nivel?.nombre),
+    materialNombre: getTexto(producto.materialNombre, producto.nombre_material, producto.material?.nombre),
     colorId: producto.colorId || producto.id_color || producto.color?.id,
     colorNombre: getTexto(producto.colorNombre, producto.nombre_color, producto.color?.nombre),
     colorHex: producto.colorHex || producto.color?.hex || "",
   }));
   return descargarPdfCatalogo(productosPdf, {
-    urlCatalogo: `${window.location.origin}/productos/catalogo`,
+    urlCatalogo: "mobilesco.com.mx",
   });
 }
 
@@ -360,52 +438,365 @@ const getLineaNombre = (producto) => getTexto(
   producto?.modelo?.familia?.linea?.nombre, "Sin línea"
 );
 
+const UTILIDADES_CATALOGO = [40, 50, 60, 80];
+const monedaCatalogo = (cantidad) => new Intl.NumberFormat("es-MX", {
+  style: "currency", currency: "MXN", maximumFractionDigits: 2
+}).format(Number(cantidad || 0));
+
+function CatalogoAgregarModal({ modelo, initialProduct, onClose, onAdd, validandoIds }) {
+  const [productoSeleccionado, setProductoSeleccionado] = useState(initialProduct || modelo?.productos?.[0] || null);
+  const [cantidad, setCantidad] = useState("0");
+  const [errorCantidad, setErrorCantidad] = useState("");
+  const [utilidadManual, setUtilidadManual] = useState("");
+  const [costo, setCosto] = useState(null);
+  const [cargandoCosto, setCargandoCosto] = useState(false);
+  const [errorCosto, setErrorCosto] = useState("");
+  const [errorAgregar, setErrorAgregar] = useState("");
+  const [agregando, setAgregando] = useState(false);
+  const productos = modelo?.productos || [];
+  const productoId = getProductoId(productoSeleccionado);
+  const imagen = getImagenesProducto(productoSeleccionado || {})[0] || modelo?.imagen || null;
+  const opciones = useMemo(() => Object.fromEntries(["material", "nivel", "color"].map((tipo) => {
+    const otrosAtributos = ["material", "nivel", "color"].filter((otroTipo) => otroTipo !== tipo);
+    const compatibles = productos.filter((producto) => otrosAtributos.every((otroTipo) =>
+      getAtributo(producto, otroTipo).key === getAtributo(productoSeleccionado, otroTipo).key
+    ));
+    return [tipo, getOpcionesUnicas(compatibles, tipo)];
+  })), [productos, productoSeleccionado]);
+  const porcentajeManual = Number(utilidadManual);
+  const puedeAgregarManual = Number.isFinite(porcentajeManual) && porcentajeManual > 0 && porcentajeManual <= 95;
+  const cantidadNumerica = /^([1-9]\d{0,3})$/.test(cantidad) ? Number(cantidad) : 0;
+  const costoTotal = Number(costo?.costoTotal || 0);
+  const cotizable = Boolean(costo?.cotizable) && Number.isFinite(costoTotal) && costoTotal > 0;
+
+  useEffect(() => {
+    if (!productoId) return undefined;
+    let vigente = true;
+    setCosto(null);
+    setErrorCosto("");
+    setCargandoCosto(true);
+    obtenerProductoCotizable(productoId)
+      .then((resultado) => {
+        if (!vigente) return;
+        setCosto(resultado);
+        if (!resultado?.cotizable || !(Number(resultado?.costoTotal) > 0)) {
+          const faltantes = resultado?.faltantes?.filter(Boolean).join(", ");
+          setErrorCosto(faltantes || "Este producto todavía no tiene costos completos para cotizar.");
+        }
+      })
+      .catch((error) => {
+        if (vigente) setErrorCosto(error?.message || "No se pudieron validar los costos de este producto.");
+      })
+      .finally(() => { if (vigente) setCargandoCosto(false); });
+    return () => { vigente = false; };
+  }, [productoId]);
+
+  useEffect(() => {
+    const cerrarConEscape = (event) => { if (event.key === "Escape") onClose(); };
+    window.addEventListener("keydown", cerrarConEscape);
+    return () => window.removeEventListener("keydown", cerrarConEscape);
+  }, [onClose]);
+
+  const cambiarAtributo = (tipo, key) => {
+    const siguiente = buscarProductoPorAtributo(productos, tipo, key, productoSeleccionado);
+    if (siguiente) {
+      setProductoSeleccionado(siguiente);
+      setErrorAgregar("");
+    }
+  };
+
+  const agregarConUtilidad = async (utilidad) => {
+    if (!cotizable || agregando || validandoIds.has(String(productoId))) return;
+    if (!cantidadNumerica || cantidadNumerica > 9999) {
+      setErrorCantidad("Escribe una cantidad entera entre 1 y 9,999 piezas.");
+      return;
+    }
+    setAgregando(true);
+    setErrorAgregar("");
+    setErrorCantidad("");
+    const agregado = await onAdd(productoSeleccionado, utilidad, cantidadNumerica);
+    setAgregando(false);
+    if (agregado) onClose();
+    else setErrorAgregar("No se pudo agregar. Revisa que el producto siga activo y tenga costos completos.");
+  };
+
+  if (!modelo) return null;
+  return <div className="catalogo-add-backdrop" role="presentation" onMouseDown={(event) => {
+    if (event.target === event.currentTarget) onClose();
+  }}>
+    <section className="catalogo-add-modal" role="dialog" aria-modal="true" aria-labelledby="catalogo-add-title">
+      <header className="catalogo-add-heading">
+        <div><span>CONFIGURA TU PRODUCTO</span><h2 id="catalogo-add-title">{modelo.modelo || modelo.titulo}</h2></div>
+        <button type="button" className="catalogo-add-close" aria-label="Cerrar selector" onClick={onClose}>
+          <i className="bi bi-x-lg" aria-hidden="true"></i>
+        </button>
+      </header>
+      <div className="catalogo-add-content">
+        <div className="catalogo-add-product">
+          <div className="catalogo-add-image">
+            {imagen?.url ? <img src={imagen.url} alt={imagen.altTexto || modelo.modelo} /> : <i className="bi bi-image" aria-hidden="true"></i>}
+          </div>
+          <div className="catalogo-add-product-details">
+            <div className="catalogo-add-product-info">
+              <small>{getTexto(productoSeleccionado?.sku, "MODELO MOBILESCO")}</small>
+              <h3>{getTexto(productoSeleccionado?.nombre, modelo.modelo)}</h3>
+              <p>{getTexto(productoSeleccionado?.descripcionCorta, productoSeleccionado?.descripcion, "Selecciona las características de tu producto.")}</p>
+              <span>{[getAtributo(productoSeleccionado, "material").nombre, getAtributo(productoSeleccionado, "nivel").nombre, getAtributo(productoSeleccionado, "color").nombre].filter((item) => item && !item.startsWith("Sin ")).join(" · ")}</span>
+            </div>
+
+            <div className="catalogo-add-options" aria-label="Características del producto">
+              {["color", "nivel", "material"].map((tipo) => <fieldset key={tipo}>
+                <legend>{tipo === "nivel" ? "Nivel / tamaño" : tipo === "material" ? "Material" : `Color · ${getAtributo(productoSeleccionado, "color").nombre}`}</legend>
+                <div className={tipo === "color" ? "catalogo-add-chips is-colors" : "catalogo-add-chips is-attributes"}>
+                  {opciones[tipo].map((opcion) => {
+                    const actual = getAtributo(productoSeleccionado, tipo);
+                    const activo = opcion.key === actual.key;
+                    return <button key={opcion.key} type="button" className={activo ? "is-selected" : ""}
+                      aria-label={`${tipo === "color" ? "Color" : tipo === "nivel" ? "Nivel o tamaño" : "Material"}: ${opcion.nombre}`}
+                      title={opcion.nombre} aria-pressed={activo} onClick={() => cambiarAtributo(tipo, opcion.key)}>
+                      {tipo === "color"
+                        ? <span style={{ backgroundColor: getColorHex(productos.find((item) => getAtributo(item, "color").key === opcion.key)) }} aria-hidden="true" />
+                        : opcion.nombre}
+                    </button>;
+                  })}
+                </div>
+              </fieldset>)}
+            </div>
+
+            <div className="catalogo-add-quantity">
+              <label htmlFor="catalogo-add-quantity-input"><span>CANTIDAD</span><strong>¿Cuántas piezas necesitas?</strong></label>
+              <div className="catalogo-add-quantity-entry">
+                <button type="button" className="catalogo-add-quantity-step" aria-label="Disminuir cantidad"
+                  disabled={(Number.parseInt(cantidad, 10) || 0) <= 0}
+                  onClick={() => { setCantidad(String(Math.max(0, (Number.parseInt(cantidad, 10) || 0) - 1))); setErrorCantidad(""); }}>
+                  <i className="bi bi-dash" aria-hidden="true"></i>
+                </button>
+                <input id="catalogo-add-quantity-input" type="text" inputMode="numeric" pattern="[0-9]*"
+                  maxLength={4} autoComplete="off" aria-label="Cantidad de unidades" aria-invalid={Boolean(errorCantidad)}
+                  aria-describedby={errorCantidad ? "catalogo-add-quantity-error" : undefined}
+                  className={errorCantidad ? "is-invalid" : ""} value={cantidad}
+                  onChange={(event) => {
+                    const valor = event.target.value.replace(/\D/g, "").slice(0, 4).replace(/^0+(?=\d)/, "");
+                    setCantidad(valor);
+                    setErrorCantidad("");
+                  }} />
+                <button type="button" className="catalogo-add-quantity-step" aria-label="Aumentar cantidad"
+                  disabled={(Number.parseInt(cantidad, 10) || 0) >= 9999}
+                  onClick={() => { setCantidad(String(Math.min(9999, (Number.parseInt(cantidad, 10) || 0) + 1))); setErrorCantidad(""); }}>
+                  <i className="bi bi-plus" aria-hidden="true"></i>
+                </button>
+                <span>piezas</span>
+                {errorCantidad && <small id="catalogo-add-quantity-error" role="alert">{errorCantidad}</small>}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <section className="catalogo-add-utilities" aria-label="Opciones de utilidad">
+          <div className="catalogo-add-utility-heading"><div><span>PRECIO DE VENTA ESTIMADO</span><h3>Elige la utilidad</h3></div>
+            {cotizable && <strong>Costo {monedaCatalogo(costoTotal)}</strong>}
+          </div>
+          {cargandoCosto && <div className="catalogo-add-cost-state"><span className="catalogo-cart-spinner" />Validando costos del producto...</div>}
+          {!cargandoCosto && errorCosto && <div className="catalogo-add-cost-error" role="alert">
+            <i className="bi bi-exclamation-circle" aria-hidden="true"></i><span>{errorCosto}</span>
+          </div>}
+          {!cargandoCosto && cotizable && <>
+            <div className="catalogo-add-utility-grid">
+              {UTILIDADES_CATALOGO.map((utilidad) => <article className="catalogo-add-utility" key={utilidad}>
+                <span>{utilidad}%</span><small>Utilidad</small>
+                <strong>{monedaCatalogo(costoTotal * (1 + utilidad / 100))}</strong>
+                <button type="button" disabled={agregando || validandoIds.has(String(productoId))}
+                  onClick={() => agregarConUtilidad(utilidad)}>
+                  {agregando || validandoIds.has(String(productoId)) ? "Validando..." : "Agregar"}
+                </button>
+              </article>)}
+              <article className="catalogo-add-utility is-manual">
+                <label htmlFor="catalogo-add-manual">Utilidad manual</label>
+                <div><input id="catalogo-add-manual" type="number" min="0.01" max="95" step="0.01"
+                  value={utilidadManual} onChange={(event) => setUtilidadManual(event.target.value)} placeholder="Ej. 72.5" /><span>%</span></div>
+                <strong>{puedeAgregarManual ? monedaCatalogo(costoTotal * (1 + porcentajeManual / 100)) : "Captura un porcentaje"}</strong>
+                <button type="button" disabled={!puedeAgregarManual || agregando || validandoIds.has(String(productoId))}
+                  onClick={() => agregarConUtilidad(porcentajeManual)}>
+                  {agregando || validandoIds.has(String(productoId)) ? "Validando..." : "Agregar"}
+                </button>
+              </article>
+            </div>
+          </>}
+          {errorAgregar && <div className="catalogo-add-cost-error" role="alert">{errorAgregar}</div>}
+        </section>
+      </div>
+    </section>
+  </div>;
+}
+
 function CatalogoFamiliasPage() {
   const { familiaSlug } = useParams();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
   const [productos, setProductos] = useState([]);
+  const [familiaProductosId, setFamiliaProductosId] = useState(null);
+  const [familiasActivas, setFamiliasActivas] = useState([]);
+  const [familiasCargadas, setFamiliasCargadas] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [generandoPdf, setGenerandoPdf] = useState(false);
   const [mensajePdf, setMensajePdf] = useState("");
+  const [modeloParaAgregar, setModeloParaAgregar] = useState(null);
+  const [resultadosBusqueda, setResultadosBusqueda] = useState([]);
+  const [buscandoCatalogo, setBuscandoCatalogo] = useState(false);
+  const [busquedaAbierta, setBusquedaAbierta] = useState(false);
   const [filtros, setFiltros] = usePersistedState("productos-catalogo:indice", FILTROS_DEFAULT);
+  const cacheFamiliasRef = useRef(new Map());
+  const { agregar, validandoIds } = useCatalogoCotizacion();
+  const puedeCotizar = hasPermission(getUser(), "VIEW_QUOTES") && hasPermission(getUser(), "ACTION_QUOTES_CREATE");
   const busqueda = normalizar(filtros.busqueda);
+  const busquedaGlobalDebounced = useDebouncedValue(filtros.busqueda.trim(), 350);
 
   useEffect(() => {
     let vigente = true;
-    cargarProductosCatalogo({ sortBy: "modeloNombre", direction: "asc" })
-      .then((lista) => { if (vigente) setProductos(lista); })
-      .catch((err) => { if (vigente) setError(err?.message || "No se pudo cargar el catálogo."); })
-      .finally(() => { if (vigente) setLoading(false); });
+    obtenerFamiliasActivasCatalogo()
+      .then(getLista)
+      .then((activas) => { if (vigente) setFamiliasActivas(activas); })
+      .catch((err) => { if (vigente) setError(err?.message || "No se pudo cargar el índice del catálogo."); })
+      .finally(() => { if (vigente) setFamiliasCargadas(true); });
     return () => { vigente = false; };
   }, []);
 
   const paginas = useMemo(() => organizarFamiliasCatalogo(
-    productos
-      .filter((producto) => !filtros.soloActivos || producto.activo)
-      .map((producto) => ({
-        ...producto,
-        linea: getLineaNombre(producto),
-        familia: getFamiliaNombre(producto),
-      })),
-    { incluirVacias: true }
-  ), [filtros.soloActivos, productos]);
-  const paginaActual = paginas.find((pagina) => pagina.slug === familiaSlug) || null;
+    [],
+    { incluirVacias: true, familiasActivas }
+  ).map((pagina) => {
+    const familia = familiasActivas.find((item) =>
+      normalizar(item.nombre) === normalizar(pagina.familia)
+      && normalizar(item.lineaNombre) === normalizar(pagina.linea)
+    );
+    return { ...pagina, familiaId: familia?.id };
+  }), [familiasActivas]);
+  const paginaCatalogo = paginas.find((pagina) => pagina.slug === familiaSlug) || (!familiaSlug ? paginas[0] : null);
+  const productosDePagina = String(familiaProductosId) === String(paginaCatalogo?.familiaId) ? productos : [];
+  const paginaActual = paginaCatalogo ? { ...paginaCatalogo, productos: productosDePagina } : null;
+  const cargandoPagina = loading || Boolean(paginaCatalogo?.familiaId
+    && String(familiaProductosId) !== String(paginaCatalogo.familiaId) && !error);
+  const indicePaginaActual = paginaActual ? paginas.findIndex((pagina) => pagina.slug === paginaActual.slug) : -1;
+  const paginaAnterior = indicePaginaActual > 0 ? paginas[indicePaginaActual - 1] : null;
+  const paginaSiguiente = indicePaginaActual >= 0 && indicePaginaActual < paginas.length - 1
+    ? paginas[indicePaginaActual + 1]
+    : null;
   const coincideBusqueda = (producto) => !busqueda || normalizar([
     producto.nombre, producto.sku, producto.modeloNombre, getSubfamiliaNombre(producto),
-    producto.materialNombre, producto.colorNombre, producto.familia, producto.linea,
+    producto.materialNombre, producto.colorNombre, producto.nivelNombre,
+    producto.familiaNombre, producto.lineaNombre, producto.familia, producto.linea,
   ].filter(Boolean).join(" ")).includes(busqueda);
-  const paginasVisibles = paginas.filter((pagina) =>
-    !busqueda || normalizar(pagina.titulo).includes(busqueda) || pagina.productos.some(coincideBusqueda)
-  );
   const productosPagina = paginaActual?.productos.filter(coincideBusqueda) || [];
   const subfamilias = construirSubfamilias(productosPagina);
-  const modelosPagina = construirModelos(productosPagina);
-  const subfamiliaKey = searchParams.get("subfamilia") || "";
-  const subfamiliasVisibles = subfamiliaKey
-    ? subfamilias.filter((subfamilia) => subfamilia.key === subfamiliaKey)
-    : subfamilias;
+
+  useEffect(() => {
+    const termino = busquedaGlobalDebounced.trim();
+    if (termino.length < 2 || !familiasCargadas) {
+      setResultadosBusqueda([]);
+      setBuscandoCatalogo(false);
+      return undefined;
+    }
+
+    let vigente = true;
+    const idsFamiliasActivas = new Set(familiasActivas.map((familia) => String(familia.id)));
+    setBuscandoCatalogo(true);
+    cargarProductosCatalogo({ activo: true, busqueda: termino, sortBy: "sku", direction: "asc" })
+      .then((lista) => {
+        if (!vigente) return;
+        const terminoNormalizado = normalizar(termino);
+        const resultados = lista
+          .filter((producto) => idsFamiliasActivas.has(String(producto.familiaId || producto.id_familia)))
+          .map((producto) => {
+            const sku = normalizar(producto.sku);
+            const modelo = normalizar(getTexto(producto.modeloNombre, producto.nombre_modelo, producto.nombre));
+            const familia = normalizar(getTexto(producto.familiaNombre, producto.familia?.nombre));
+            const linea = normalizar(getTexto(producto.lineaNombre, producto.linea?.nombre));
+            const camposPrincipales = [sku, modelo, familia, linea];
+            const relevancia = camposPrincipales.some((campo) => campo.startsWith(terminoNormalizado))
+              ? 0
+              : camposPrincipales.some((campo) => campo.includes(terminoNormalizado)) ? 1 : 2;
+            return { producto, relevancia };
+          })
+          .sort((a, b) => a.relevancia - b.relevancia
+            || getTexto(a.producto.sku).localeCompare(getTexto(b.producto.sku), "es", { numeric: true, sensitivity: "base" }))
+          .slice(0, 8)
+          .map(({ producto }) => producto);
+        setResultadosBusqueda(resultados);
+      })
+      .catch(() => { if (vigente) setResultadosBusqueda([]); })
+      .finally(() => { if (vigente) setBuscandoCatalogo(false); });
+
+    return () => { vigente = false; };
+  }, [busquedaGlobalDebounced, familiasActivas, familiasCargadas]);
+
+  const abrirResultadoBusqueda = (producto) => {
+    const pagina = paginas.find((item) => String(item.familiaId) === String(producto.familiaId || producto.id_familia));
+    if (!pagina) return;
+    setBusquedaAbierta(false);
+    navigate(`/productos/catalogo/familias/${pagina.slug}`);
+  };
+
+  useEffect(() => {
+    if (familiasCargadas && !familiaSlug && paginas.length) {
+      navigate(`/productos/catalogo/familias/${paginas[0].slug}`, { replace: true });
+    }
+  }, [familiaSlug, familiasCargadas, navigate, paginas]);
+
+  useEffect(() => {
+    if (!familiasCargadas) return undefined;
+    if (!familiaSlug) {
+      setLoading(false);
+      return undefined;
+    }
+
+    const pagina = paginas.find((item) => item.slug === familiaSlug);
+    if (!pagina?.familiaId) {
+      setProductos([]);
+      setFamiliaProductosId(null);
+      setLoading(false);
+      return undefined;
+    }
+
+    const cacheKey = String(pagina.familiaId);
+    const productosEnCache = cacheFamiliasRef.current.get(cacheKey);
+    if (Array.isArray(productosEnCache)) {
+      setProductos(productosEnCache);
+      setFamiliaProductosId(pagina.familiaId);
+      setError("");
+      setLoading(false);
+      return undefined;
+    }
+
+    let vigente = true;
+    setLoading(true);
+    setError("");
+    setProductos([]);
+    let solicitud = productosEnCache;
+    if (!solicitud) {
+      solicitud = cargarProductosFamiliaCatalogo({
+        id: pagina.familiaId,
+        nombre: pagina.familia,
+        lineaNombre: pagina.linea
+      });
+      cacheFamiliasRef.current.set(cacheKey, solicitud);
+    }
+
+    solicitud
+      .then((lista) => {
+        cacheFamiliasRef.current.set(cacheKey, lista);
+        if (vigente) {
+          setProductos(lista);
+          setFamiliaProductosId(pagina.familiaId);
+        }
+      })
+      .catch((err) => {
+        if (cacheFamiliasRef.current.get(cacheKey) === solicitud) cacheFamiliasRef.current.delete(cacheKey);
+        if (vigente) setError(err?.message || "No se pudo cargar esta familia del catálogo.");
+      })
+      .finally(() => { if (vigente) setLoading(false); });
+
+    return () => { vigente = false; };
+  }, [familiaSlug, familiasActivas, familiasCargadas, paginas]);
 
   const descargarCatalogo = async () => {
     setGenerandoPdf(true);
@@ -424,7 +815,7 @@ function CatalogoFamiliasPage() {
     <>
       <PageHeader
         title={paginaActual?.titulo || "Catálogo visual"}
-        subtitle={paginaActual ? "Explora sus subfamilias y modelos para cotizar" : "Elige una familia para explorar sus modelos"}
+        subtitle={paginaActual ? `Página ${String(indicePaginaActual + 1).padStart(2, "0")} · Explora sus modelos` : "Explora nuestras familias de muebles"}
         actions={<div className="producto-catalogo-header-actions">
           <button type="button" className="btn productos-brand-outline" disabled={generandoPdf} onClick={descargarCatalogo}>
             <i className="bi bi-file-earmark-pdf me-2"></i>{generandoPdf ? "Generando PDF..." : "Descargar catálogo PDF"}
@@ -434,111 +825,133 @@ function CatalogoFamiliasPage() {
           </button>
         </div>}
       />
-      <section className="producto-catalogo-editorial producto-catalogo-editorial-index">
-        <div>
-          <span>CATÁLOGO MOBILESCO / {paginaActual ? "FAMILIA" : "ÍNDICE"}</span>
-          <h2>{paginaActual?.titulo || "Encuentra tu espacio"}</h2>
-          <p>{paginaActual ? "Selecciona una subfamilia y descubre los modelos disponibles." : "Sillas, mesas, pupitres y más. Una página para cada familia."}</p>
-        </div>
-        <img src="/logo-mobilesco-firmeza.svg" alt="Mobilesco" />
-      </section>
       <div className="producto-catalogo-index-body">
-        {familiaSlug && <button type="button" className="producto-catalogo-back" onClick={() => navigate("/productos/catalogo")}>
-          <i className="bi bi-arrow-left"></i> Todas las familias
-        </button>}
-        <section className="producto-catalogo-toolbar" aria-label="Filtros del catálogo">
+        <section className="producto-catalogo-toolbar" aria-label="Búsqueda general e índice del catálogo">
           <div className="producto-catalogo-search">
             <i className="bi bi-search"></i>
             <input type="search" aria-label="Buscar en el catálogo" value={filtros.busqueda}
+              onFocus={() => setBusquedaAbierta(true)}
+              onBlur={() => setBusquedaAbierta(false)}
+              onKeyDown={(event) => { if (event.key === "Escape") setBusquedaAbierta(false); }}
               onChange={(event) => setFiltros((actual) => ({ ...actual, busqueda: event.target.value }))}
-              placeholder="Buscar familia, subfamilia o modelo..." />
+              placeholder="Buscar en todo el catálogo: modelo, SKU, familia, color..." />
+            {filtros.busqueda && <button type="button" className="producto-catalogo-search-clear"
+              aria-label="Limpiar búsqueda" onClick={() => setFiltros((actual) => ({ ...actual, busqueda: "" }))}>
+              <i className="bi bi-x-lg" aria-hidden="true"></i>
+            </button>}
+            {busquedaAbierta && busquedaGlobalDebounced.trim().length >= 2 && <div className="producto-catalogo-search-results" role="listbox" aria-label="Resultados de todo el catálogo">
+              {buscandoCatalogo && <div className="producto-catalogo-search-message"><span className="catalogo-cart-spinner" />Buscando en todo el catálogo...</div>}
+              {!buscandoCatalogo && resultadosBusqueda.map((producto) => <button type="button" role="option" key={getProductoId(producto)}
+                className="producto-catalogo-search-result" onMouseDown={(event) => event.preventDefault()}
+                onClick={() => abrirResultadoBusqueda(producto)}>
+                <span className="producto-catalogo-search-result-copy">
+                  <strong>{getTexto(producto.modeloNombre, producto.nombre_modelo, producto.nombre, producto.sku)}</strong>
+                  <small>{[producto.sku, producto.colorNombre || producto.nombre_color, producto.nivelNombre || producto.nombre_nivel, producto.materialNombre || producto.nombre_material].filter(Boolean).join(" · ")}</small>
+                </span>
+                <span className="producto-catalogo-search-result-family">{getTexto(producto.familiaNombre, producto.familia?.nombre, "Catálogo")}</span>
+              </button>)}
+              {!buscandoCatalogo && !resultadosBusqueda.length && <div className="producto-catalogo-search-message">No encontramos coincidencias activas en el catálogo.</div>}
+            </div>}
           </div>
-          <select className="producto-catalogo-family-select" aria-label="Ir a familia"
-            value={familiaSlug || ""} onChange={(event) => navigate(event.target.value
-              ? `/productos/catalogo/familias/${event.target.value}` : "/productos/catalogo")}>
-            <option value="">Todas las familias</option>
-            {paginas.map((pagina) => <option key={pagina.slug} value={pagina.slug}>{pagina.titulo}</option>)}
-          </select>
-          <label className="producto-catalogo-toggle">
-            <input type="checkbox" checked={filtros.soloActivos}
-              onChange={(event) => setFiltros((actual) => ({ ...actual, soloActivos: event.target.checked }))} />
-            <span>Solo activos</span>
-          </label>
+          <div className="producto-catalogo-index-picker">
+            <i className="bi bi-list-nested" aria-hidden="true"></i>
+            <label htmlFor="producto-catalogo-index-select">Índice rápido</label>
+            <select id="producto-catalogo-index-select" className="producto-catalogo-family-select" aria-label="Ir a familia"
+              value={paginaActual?.slug || ""} onChange={(event) => navigate(`/productos/catalogo/familias/${event.target.value}`)}>
+              {paginas.map((pagina, indice) => <option key={pagina.slug} value={pagina.slug}>
+                {String(indice + 1).padStart(2, "0")} · {pagina.titulo}
+              </option>)}
+            </select>
+            <i className="bi bi-chevron-down producto-catalogo-index-chevron" aria-hidden="true"></i>
+          </div>
+        </section>
+        <section className="producto-catalogo-editorial producto-catalogo-editorial-index">
+          <div>
+            <span>CATÁLOGO MOBILESCO / PÁGINA {String(Math.max(indicePaginaActual + 1, 1)).padStart(2, "0")}</span>
+            <h2>{paginaActual?.titulo || "Encuentra tu espacio"}</h2>
+            <p>{paginaActual ? "Explora los modelos de esta familia. Usa las flechas laterales para pasar de página." : "Sillas, mesas, pupitres y más. Una página para cada familia."}</p>
+          </div>
+          <img src="/logo-mobilesco-firmeza.svg" alt="Mobilesco" />
         </section>
         {mensajePdf && <div className="producto-catalogo-pdf-status" role="status">{mensajePdf}</div>}
         {error && <div className="alert alert-danger" role="alert">{error}</div>}
-        {loading && <div className="producto-catalogo-empty">Cargando familias...</div>}
-        {!loading && !error && !familiaSlug && <>
-          <div className="producto-catalogo-section-heading">
-            <span>EXPLORA POR FAMILIA</span>
-            <h2>Índice del catálogo</h2>
-            <p>Primero las colecciones más buscadas; después, las demás en orden alfabético.</p>
-          </div>
-          <div className="producto-catalogo-family-grid">
-            {paginasVisibles.map((pagina, indice) => {
-              const imagen = getImagenModelo(pagina.productos);
-              const modelos = construirModelos(pagina.productos);
-              return <button type="button" key={pagina.slug} className="producto-catalogo-family-card"
-                onClick={() => navigate(`/productos/catalogo/familias/${pagina.slug}`)}>
-                <span className="producto-catalogo-family-number">{String(indice + 1).padStart(2, "0")}</span>
-                <span className="producto-catalogo-family-image">
-                  {imagen?.url ? <img src={imagen.url} alt="" /> : <i className="bi bi-image" aria-hidden="true"></i>}
-                </span>
-                <span className="producto-catalogo-family-info">
-                  <small>{pagina.linea}</small>
-                  <strong>{pagina.titulo}</strong>
-                  <em>{modelos.length ? `${modelos.length} modelo${modelos.length === 1 ? "" : "s"}` : "Sin modelos todavía"}</em>
-                  <span>Ver familia <i className="bi bi-arrow-up-right"></i></span>
-                </span>
-              </button>;
-            })}
-          </div>
-          {!paginasVisibles.length && <div className="producto-catalogo-empty">No hay familias que coincidan con la búsqueda.</div>}
-        </>}
-        {!loading && !error && familiaSlug && !paginaActual &&
+        {cargandoPagina && <div className="producto-catalogo-empty">Cargando esta familia...</div>}
+        {!cargandoPagina && !error && familiaSlug && !paginaActual &&
           <div className="producto-catalogo-empty">Esta familia no existe en el catálogo.</div>}
-        {!loading && !error && paginaActual && <>
-          <div className="producto-catalogo-section-heading">
-            <span>{paginaActual.linea.toUpperCase()} / {paginaActual.familia.toUpperCase()}</span>
-            <h2>Modelos de {paginaActual.titulo}</h2>
-            <p>{paginaActual.productos.length ? `${modelosPagina.length} modelo${modelosPagina.length === 1 ? "" : "s"} disponible${modelosPagina.length === 1 ? "" : "s"} en esta familia.` : "Todavía no hay productos en esta familia."}</p>
-          </div>
-          {subfamilias.length > 0 && <nav className="producto-catalogo-subfamily-tabs" aria-label="Subfamilias">
-            <button type="button" className={!subfamiliaKey ? "is-active" : ""} onClick={() => setSearchParams({})}>Todas</button>
-            {subfamilias.map((subfamilia) => <button type="button" key={subfamilia.key}
-              className={subfamilia.key === subfamiliaKey ? "is-active" : ""}
-              onClick={() => setSearchParams({ subfamilia: subfamilia.key })}>{subfamilia.nombre}</button>)}
-          </nav>}
-          {subfamiliasVisibles.map((subfamilia) => <section key={subfamilia.key} className="producto-catalogo-subfamily-section">
+        {!cargandoPagina && !error && paginaActual && <>
+          {subfamilias.map((subfamilia) => <section key={subfamilia.key} className="producto-catalogo-subfamily-section">
             <div className="producto-catalogo-subfamily-heading">
               <div><span>SUBFAMILIA</span><h3>{subfamilia.nombre}</h3></div>
               <small>{subfamilia.modelos.length} modelos</small>
             </div>
             <div className="producto-catalogo-model-grid">
-              {subfamilia.modelos.map((modelo) => <article key={modelo.key} className="producto-catalogo-model-card">
+              {subfamilia.modelos.map((modelo) => {
+                const productoCarrito = modelo.productos[0];
+                const imagenTarjeta = getImagenesProducto(productoCarrito)[0] || modelo.imagen;
+                const productoIdCarrito = getProductoId(productoCarrito);
+                const agregando = validandoIds.has(String(productoIdCarrito));
+                return <article key={modelo.key} className="producto-catalogo-model-card">
                 <div className="producto-catalogo-model-card-image">
-                  {modelo.imagen?.url ? <img src={modelo.imagen.url} alt={modelo.modelo} /> : <i className="bi bi-image" aria-hidden="true"></i>}
+                  {imagenTarjeta?.url ? <img src={imagenTarjeta.url} alt={modelo.modelo} loading="lazy" /> : <i className="bi bi-image" aria-hidden="true"></i>}
                 </div>
                 <div className="producto-catalogo-model-card-info">
-                  <small>{subfamilia.nombre}</small>
                   <h4>{modelo.modelo}</h4>
-                  <p>{modelo.materiales.length} material{modelo.materiales.length === 1 ? "" : "es"} · {modelo.colores.length} color{modelo.colores.length === 1 ? "" : "es"}</p>
-                  <div className="producto-catalogo-model-swatches" aria-label={`Colores de ${modelo.modelo}`}>
-                    {modelo.colores.map((color) => <button type="button" key={color.key}
-                      className="producto-catalogo-swatch" style={{ backgroundColor: color.hex }}
-                      title={color.nombre} aria-label={`Ver ${modelo.modelo} en ${color.nombre}`}
-                      onClick={() => navigate(`/productos/catalogo/${color.productoId}`)} />)}
+                  <div className="producto-catalogo-model-options" aria-label={`Variantes disponibles de ${modelo.modelo}`}>
+                    <div className="producto-catalogo-model-option">
+                      <span className="producto-catalogo-model-option-label">Colores</span>
+                      <div className="producto-catalogo-model-option-values producto-catalogo-model-color-values">
+                        {modelo.colores.map((color) => <span className="producto-catalogo-model-color" key={color.key}
+                          title={color.nombre} aria-label={color.nombre}>
+                          <i aria-hidden="true" style={{ backgroundColor: color.hex }}></i>
+                        </span>)}
+                      </div>
+                    </div>
+                    <div className="producto-catalogo-model-option">
+                      <span className="producto-catalogo-model-option-label">Tamaños / niveles</span>
+                      <div className="producto-catalogo-model-option-values">
+                        {modelo.niveles.length ? modelo.niveles.map((nivel) => <span className="producto-catalogo-model-chip" key={nivel.key}>{nivel.nombre}</span>) : <span className="producto-catalogo-model-option-empty">Sin opciones</span>}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <button type="button" onClick={() => navigate(`/productos/catalogo/${getProductoId(modelo.productos[0])}`)}>Ver modelo y cotizar</button>
-                  </div>
+                  {puedeCotizar && <button type="button" className="producto-catalogo-add-cart"
+                    disabled={!productoCarrito?.activo || !productoIdCarrito || agregando}
+                    onClick={() => setModeloParaAgregar(modelo)}>
+                    <i className={`bi ${agregando ? "bi-hourglass-split" : "bi-bag-plus"}`} aria-hidden="true"></i>
+                    {agregando ? "Validando costos..." : "Agregar"}
+                  </button>}
                 </div>
-              </article>)}
+              </article>;
+              })}
             </div>
           </section>)}
-          {!subfamiliasVisibles.length && <div className="producto-catalogo-empty">No hay modelos para mostrar en esta selección.</div>}
+          {!subfamilias.length && <div className="producto-catalogo-empty">No hay modelos coincidentes en esta familia.</div>}
         </>}
       </div>
+      {!cargandoPagina && !error && paginaActual && <nav className="producto-catalogo-page-turns" aria-label="Navegación por páginas del catálogo">
+        <button type="button" className="producto-catalogo-page-turn is-previous" disabled={!paginaAnterior}
+          aria-label={paginaAnterior ? `Sección anterior: ${paginaAnterior.titulo}` : "Primera sección"}
+          onClick={() => paginaAnterior && navigate(`/productos/catalogo/familias/${paginaAnterior.slug}`)}>
+          <i className="bi bi-arrow-left" aria-hidden="true"></i>
+          <span><small>Anterior</small><strong>{paginaAnterior?.titulo || "Inicio"}</strong></span>
+        </button>
+        <span className="producto-catalogo-page-count" aria-live="polite">
+          {String(indicePaginaActual + 1).padStart(2, "0")} <i>/</i> {String(paginas.length).padStart(2, "0")}
+        </span>
+        <button type="button" className="producto-catalogo-page-turn is-next" disabled={!paginaSiguiente}
+          aria-label={paginaSiguiente ? `Sección siguiente: ${paginaSiguiente.titulo}` : "Última sección"}
+          onClick={() => paginaSiguiente && navigate(`/productos/catalogo/familias/${paginaSiguiente.slug}`)}>
+          <span><small>Siguiente</small><strong>{paginaSiguiente?.titulo || "Fin"}</strong></span>
+          <i className="bi bi-arrow-right" aria-hidden="true"></i>
+        </button>
+      </nav>}
+      {puedeCotizar && modeloParaAgregar && <CatalogoAgregarModal
+        key={modeloParaAgregar.key}
+        modelo={modeloParaAgregar}
+        initialProduct={modeloParaAgregar.productos[0]}
+        onClose={() => setModeloParaAgregar(null)}
+        onAdd={agregar}
+        validandoIds={validandoIds}
+      />}
     </>
   );
 }
@@ -548,6 +961,7 @@ function ProductoCatalogoDetalle() {
   const navigate = useNavigate();
   const user = getUser();
   const puedeCotizar = hasPermission(user, "VIEW_QUOTES") && hasPermission(user, "ACTION_QUOTES_CREATE");
+  const { agregar, validandoIds, items: carrito } = useCatalogoCotizacion();
   const [productos, setProductos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -560,6 +974,7 @@ function ProductoCatalogoDetalle() {
   const [familiaSeleccionada, setFamiliaSeleccionada] = useState("");
   const [subfamiliaSeleccionada, setSubfamiliaSeleccionada] = useState("");
   const [imagenSeleccionada, setImagenSeleccionada] = useState(0);
+  const [configurarCotizacion, setConfigurarCotizacion] = useState(false);
 
   useEffect(() => {
     const cargarProductos = async () => {
@@ -568,11 +983,12 @@ function ProductoCatalogoDetalle() {
         setError("");
         const parametros = {
           busqueda: busquedaDebounced,
-          activo: filtros.soloActivos ? true : undefined,
+          activo: true,
           sortBy: "modeloNombre",
           direction: "asc"
         };
-        setProductos(await cargarProductosCatalogo(parametros));
+        const { productos: productosActivos } = await cargarCatalogoYFamiliasActivas(parametros);
+        setProductos(productosActivos);
       } catch (err) {
         setError(err?.message || "No se pudieron cargar los productos.");
       } finally {
@@ -581,7 +997,7 @@ function ProductoCatalogoDetalle() {
     };
 
     cargarProductos();
-  }, [busquedaDebounced, filtros.soloActivos]);
+  }, [busquedaDebounced]);
 
   const lineas = useMemo(() => {
     const mapa = new Map();
@@ -771,6 +1187,7 @@ function ProductoCatalogoDetalle() {
   const colorActual = colorActualData.nombre;
   const descripcion = getTexto(productoSeleccionado?.descripcion, "Sin descripcion capturada.");
   const sku = getTexto(productoSeleccionado?.sku, "-");
+  const productoEnCarrito = carrito.some((item) => String(item.id) === String(getProductoId(productoSeleccionado)));
 
   return (
     <>
@@ -790,17 +1207,6 @@ function ProductoCatalogoDetalle() {
               <i className="bi bi-table me-2"></i>
               Vista tabla
             </button>
-            {productoSeleccionado && puedeCotizar && (
-              <button
-                type="button"
-                className="btn productos-brand-primary producto-catalogo-quote-btn"
-                disabled={!productoSeleccionado.activo}
-                onClick={() => navigate(`/cotizaciones/nueva?productoId=${encodeURIComponent(getProductoId(productoSeleccionado))}`)}
-              >
-                <i className="bi bi-receipt me-2"></i>
-                Cotizar selección
-              </button>
-            )}
           </div>
         }
       />
@@ -815,14 +1221,6 @@ function ProductoCatalogoDetalle() {
             placeholder="Buscar por SKU, modelo, familia, color o material..."
           />
         </div>
-        <label className="producto-catalogo-toggle">
-          <input
-            type="checkbox"
-            checked={filtros.soloActivos}
-            onChange={(event) => setFiltros((current) => ({ ...current, soloActivos: event.target.checked }))}
-          />
-          <span>Solo activos</span>
-        </label>
         <div className="producto-catalogo-count">
           {familias.length} familias / {subfamilias.length} subfamilias / {modelos.length} modelos / {productosSubfamilia.length} productos
         </div>
@@ -1133,12 +1531,12 @@ function ProductoCatalogoDetalle() {
                 {puedeCotizar && (
                   <button
                     type="button"
-                    className="btn productos-brand-primary producto-catalogo-quote-btn"
+                    className="btn productos-brand-primary producto-catalogo-add-cart"
                     disabled={!productoSeleccionado.activo}
-                    onClick={() => navigate(`/cotizaciones/nueva?productoId=${encodeURIComponent(getProductoId(productoSeleccionado))}`)}
+                    onClick={() => setConfigurarCotizacion(true)}
                   >
-                    <i className="bi bi-receipt me-2"></i>
-                    Cotizar este producto
+                    <i className="bi bi-bag-plus me-2"></i>
+                    {productoEnCarrito ? "Agregar otra pieza" : "Agregar a mi cotización"}
                   </button>
                 )}
                 <button
@@ -1156,11 +1554,23 @@ function ProductoCatalogoDetalle() {
         </div>
         </>
       )}
+      {puedeCotizar && configurarCotizacion && modeloSeleccionado && <CatalogoAgregarModal
+        key={`${modeloSeleccionado.key}-${getProductoId(productoSeleccionado)}`}
+        modelo={modeloSeleccionado}
+        initialProduct={productoSeleccionado}
+        onClose={() => setConfigurarCotizacion(false)}
+        onAdd={agregar}
+        validandoIds={validandoIds}
+      />}
     </>
   );
 }
 
 export default function ProductoCatalogoPage() {
   const { id } = useParams();
-  return id ? <ProductoCatalogoDetalle /> : <CatalogoFamiliasPage />;
+  const user = getUser();
+  const puedeCotizar = hasPermission(user, "VIEW_QUOTES") && hasPermission(user, "ACTION_QUOTES_CREATE");
+  return <CatalogoCotizacionProvider enabled={puedeCotizar}>
+    {id ? <ProductoCatalogoDetalle /> : <CatalogoFamiliasPage />}
+  </CatalogoCotizacionProvider>;
 }

@@ -232,7 +232,18 @@
   align-items: center;
   gap: 10px;
   min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
   cursor: pointer;
+}
+
+.sidebar-profile-button:focus-visible {
+  outline: 2px solid #f1b77c;
+  outline-offset: 4px;
+  border-radius: 999px;
 }
 
 .sidebar-profile-avatar {
@@ -468,7 +479,7 @@
   width: var(--sidebar-compact-width);
   padding: 10px 10px;
   gap: 8px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .app-sidebar--compact .sidebar-brand {
@@ -763,9 +774,24 @@
   justify-content: center;
 }
 
-.app-sidebar--compact .sidebar-profile-text,
-.app-sidebar--compact .sidebar-user-menu {
+.app-sidebar--compact .sidebar-profile-text {
   display: none;
+}
+
+.app-sidebar--compact .sidebar-user-menu { display: none; }
+
+.app-sidebar--compact .sidebar-profile.is-open .sidebar-user-menu {
+  display: block;
+  position: absolute;
+  left: calc(100% + 10px);
+  bottom: 0;
+  width: 220px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .28);
+}
+
+.app-sidebar--compact .sidebar-profile.is-open .sidebar-profile-button {
+  background: rgba(255, 255, 255, .12);
+  border-radius: 999px;
 }
 
 .app-sidebar--compact .sidebar-menu-list > div {

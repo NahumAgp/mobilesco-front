@@ -345,10 +345,13 @@ export default function InsumosPage() {
               <input
                 type="text"
                 className="form-control"
-                placeholder="Buscar por nombre, unidad o ubicacion..."
+                placeholder="Buscar por nombre, codigo, tipo, unidad o ubicacion..."
                 value={busquedaInput}
                 onChange={cambiarBusqueda}
               />
+              <small className="form-text text-muted d-block mt-1">
+                NOMENCLATURA SUGERIDA: FAMILIA · MATERIAL · MEDIDA · CALIBRE · LARGO/ACABADO. EJ.: TUBO REDONDO · ACERO · Ø 1/2″ · CAL. 18.
+              </small>
             </div>
 
             <div className="col-md-2">

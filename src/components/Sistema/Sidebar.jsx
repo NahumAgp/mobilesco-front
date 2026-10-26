@@ -282,6 +282,10 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
     const handleEscape = (event) => {
       if (event.key === "Escape") {
         setPinMenu(null);
+        if (openMenu) {
+          setOpenMenu(false);
+          menuRef.current?.querySelector(".sidebar-profile-button")?.focus();
+        }
         if (moreRef.current?.querySelector(".sidebar-more-panel")) {
           setOpenMore(false);
           moreRef.current.querySelector("button")?.focus();
@@ -293,7 +297,7 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
       document.removeEventListener("mousedown", handleClickOutside);
       document.removeEventListener("keydown", handleEscape);
     };
-  }, []);
+  }, [openMenu]);
 
   useEffect(() => {
     const cargarNotificaciones = async () => {
@@ -507,13 +511,17 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
       </button>
 
       {/* PERFIL (al fondo) */}
-      <div ref={menuRef} className="sidebar-profile">
-        <div
+      <div ref={menuRef} className={`sidebar-profile${openMenu ? " is-open" : ""}`}>
+        <button
+          type="button"
           onClick={() => {
             setOpenSubmenu(null);
             setOpenMenu((current) => !current);
           }}
           className="sidebar-profile-button"
+          aria-haspopup="true"
+          aria-expanded={openMenu}
+          aria-label={`${nombre} ${apellido}, menú de cuenta${notificacionesNoLeidas > 0 ? `, ${notificacionesNoLeidas} notificaciones sin leer` : ""}`}
         >
           <div className="sidebar-profile-avatar">
             {mostrarFoto ? (
@@ -522,19 +530,12 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
               <span>{iniciales}</span>
             )}
             {notificacionesNoLeidas > 0 && (
-              <button
-                type="button"
+              <span
                 className="sidebar-profile-notification-count"
-                aria-label={`${notificacionesNoLeidas} notificaciones sin leer`}
-                title={`${notificacionesNoLeidas} notificaciones sin leer`}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  handleNavigation();
-                  navigate("/notificaciones");
-                }}
+                aria-hidden="true"
               >
                 {notificacionesNoLeidas > 99 ? "99+" : notificacionesNoLeidas}
-              </button>
+              </span>
             )}
           </div>
 
@@ -542,7 +543,7 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
             <strong>{nombre} {apellido}</strong>
             <div>{rol}</div>
           </div>
-        </div>
+        </button>
 
         {openMenu && (
           <div className="sidebar-user-menu">
