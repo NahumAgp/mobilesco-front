@@ -26,11 +26,11 @@ describe("páginas del catálogo PDF", () => {
     expect(paginas.flatMap((pagina) => pagina.productos).map((producto) => producto.nombre)).not.toContain("No mostrar");
   });
 
-  it("continúa la misma familia en otra página cuando hay más de cuatro modelos", () => {
+  it("continúa la misma familia en otra página después de dos modelos", () => {
     const productos = Array.from({ length: 5 }, (_, indice) => ({
       id: indice + 1, activo: true, linea: "ESCOLAR", familia: "SILLAS",
       modeloId: indice + 1, modelo: `Modelo ${indice + 1}`,
     }));
-    expect(prepararPaginasCatalogo(productos).map((pagina) => pagina.productos.length)).toEqual([4, 1]);
+    expect(prepararPaginasCatalogo(productos).map((pagina) => pagina.productos.length)).toEqual([2, 2, 1]);
   });
 });

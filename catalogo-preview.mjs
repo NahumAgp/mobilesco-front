@@ -19,24 +19,20 @@ const errors = [];
 page.on("pageerror", (error) => errors.push(error.message));
 await page.addInitScript(() => localStorage.setItem("user", JSON.stringify({ permisos: ["VIEW_PRODUCT_CATALOG", "VIEW_QUOTES", "ACTION_QUOTES_CREATE"] })));
 await page.route("**/api/v1/productos?**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ content: products, totalPages: 1 }) }));
+await page.route("**/api/v1/public/catalogo/familias", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([
+  { id: 6, nombre: "SILLAS", lineaNombre: "ESCOLAR" },
+  { id: 11, nombre: "SILLAS", lineaNombre: "OFICINA" },
+  { id: 10, nombre: "MESAS", lineaNombre: "ESCOLAR" },
+  { id: 12, nombre: "MESAS", lineaNombre: "MIXTA" },
+  { id: 9, nombre: "PUPITRE", lineaNombre: "ESCOLAR" },
+]) }));
 await page.route("**/uploads/**", (route) => route.fulfill({ status: 200, contentType: "image/jpeg", body: chair }));
 await page.goto("http://127.0.0.1:5180/catalogo-preview.html");
-await page.getByRole("heading", { name: "Índice del catálogo" }).waitFor();
-await page.getByRole("button", { name: /Sillas escolares.*Ver familia/ }).waitFor();
-await page.screenshot({ path: resolve(outputDir, "browser-catalogo-index.png"), fullPage: true });
-await page.getByRole("button", { name: /Sillas escolares.*Ver familia/ }).click();
-await page.getByRole("heading", { name: "Modelos de Sillas escolares" }).waitFor();
-await page.screenshot({ path: resolve(outputDir, "browser-catalogo-familia.png"), fullPage: true });
-await page.setViewportSize({ width: 390, height: 844 });
-await page.screenshot({ path: resolve(outputDir, "browser-catalogo-familia-mobile.png"), fullPage: true });
-await page.getByRole("button", { name: "Todas las familias" }).click();
-await page.screenshot({ path: resolve(outputDir, "browser-catalogo-index-mobile.png"), fullPage: true });
-const downloadPromise = page.waitForEvent("download");
-await page.getByRole("button", { name: "Descargar catálogo PDF" }).click();
-const download = await downloadPromise;
-await download.saveAs(resolve(outputDir, "browser-catalogo.pdf"));
-await page.getByRole("status").filter({ hasText: "Catálogo descargado" }).waitFor();
+await page.getByRole("button", { name: "Vista previa para imprimir" }).click();
+await page.getByRole("dialog", { name: "Vista previa del catálogo" }).waitFor();
+await page.screenshot({ path: resolve(outputDir, "browser-catalogo-vista-previa.png"), fullPage: true });
+await page.pdf({ path: resolve(outputDir, "browser-catalogo.pdf"), printBackground: true, preferCSSPageSize: true });
 await browser.close();
 const relevantErrors = errors.filter((error) => !error.includes("WebSocket closed without opened"));
 if (relevantErrors.length) throw new Error(relevantErrors.join("\n"));
-process.stdout.write(`Downloaded ${download.suggestedFilename()}\n`);
+process.stdout.write("Vista previa e impresión verificadas\n");

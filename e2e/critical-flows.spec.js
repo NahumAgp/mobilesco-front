@@ -12,20 +12,23 @@ test('login: autentica y abre el tablero', async ({ page }) => {
   await page.getByRole('button', { name: 'Entrar' }).click();
 
   await expect(page).toHaveURL(/\/tablero$/);
-  await expect(page.getByRole('heading', { name: 'Tablero Principal' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Tablero principal' })).toBeVisible();
   await expect.poll(() => page.evaluate(() => localStorage.getItem('token'))).toBe('e2e-access');
 });
 
 test('permisos: bloquea compras sin rol ni permiso', async ({ page }) => {
-  await seedSession(page, {
+  const restrictedUser = {
     ...adminUser,
     roles: ['VENTAS'],
     permisos: ['VIEW_QUOTES']
-  });
+  };
+  await page.route('**/api/v1/auth/me', (route) => route.fulfill({ json: restrictedUser }));
+  await seedSession(page, restrictedUser);
   await page.goto('/compras');
 
-  await expect(page).toHaveURL(/\/tablero$/);
-  await expect(page.getByRole('heading', { name: 'Tablero Principal' })).toBeVisible();
+  await expect(page).toHaveURL(/\/compras$/);
+  await expect(page.getByRole('heading', { name: 'Sin permiso para esta vista' })).toBeVisible();
+  await expect(page.getByText('CMP-E2E-001')).not.toBeVisible();
 });
 
 test('compras: lista la compra controlada y expone acciones autorizadas', async ({ page }) => {
@@ -51,9 +54,12 @@ test('cotizaciones: busca producto, calcula y guarda la propuesta', async ({ pag
   await seedSession(page);
   await page.goto('/cotizaciones/nueva');
 
-  await page.getByPlaceholder(/Buscar por nombre/).fill('mesa');
-  await page.getByRole('button', { name: /PROD-E2E-001/ }).click();
-  await expect(page.getByText('Mesa escolar determinista')).toBeVisible();
+  await page.getByPlaceholder('Ej. Concha silla primaria').fill('mesa');
+  await page.getByRole('button', { name: 'Mesa escolar determinista' }).click();
+  await expect(page.getByRole('heading', { name: 'Mesa escolar determinista' })).toBeVisible();
+  await page.getByRole('button', { name: 'Agregar a borrador' }).first().click();
+  await page.getByRole('button', { name: /Mandar a cotización/ }).click();
+  await expect(page).toHaveURL(/\/cotizaciones\/formal$/);
   await page.getByRole('button', { name: /Finalizar cotizaci/ }).first().click();
 
   await expect(page.getByRole('heading', { name: /Cotizaci.n creada/ })).toBeVisible();

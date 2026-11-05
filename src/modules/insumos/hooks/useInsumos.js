@@ -37,7 +37,10 @@ export function useInsumos({
   direction = "asc",
   busqueda,
   activo,
-  stockBajo
+  stockBajo,
+  tipoInsumo,
+  unidadMedidaId,
+  ubicacion
 } = {}) {
   const [insumos, setInsumos] = useState([]);
   const [pageInfo, setPageInfo] = useState(PAGE_INFO_DEFAULT);
@@ -52,7 +55,10 @@ export function useInsumos({
       const data =
         page === undefined || page === null
           ? await obtenerInsumos()
-          : await obtenerInsumos({ page, size, sortBy, direction, busqueda, activo, stockBajo });
+          : await obtenerInsumos({
+              page, size, sortBy, direction, busqueda, activo, stockBajo,
+              tipoInsumo, unidadMedidaId, ubicacion
+            });
 
       if (data?.content) {
         setInsumos(data.content);
@@ -76,7 +82,7 @@ export function useInsumos({
     } finally {
       setLoadingLista(false);
     }
-  }, [direction, page, size, sortBy, busqueda, activo, stockBajo]);
+  }, [direction, page, size, sortBy, busqueda, activo, stockBajo, tipoInsumo, unidadMedidaId, ubicacion]);
 
   useEffect(() => {
     cargar();

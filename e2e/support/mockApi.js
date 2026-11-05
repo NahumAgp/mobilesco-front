@@ -75,6 +75,34 @@ export async function installMockApi(page) {
     }
     if (path.endsWith('/auth/me')) return route.fulfill({ json: adminUser });
     if (path.includes('/notificaciones')) return route.fulfill({ json: [] });
+    if (path.endsWith('/tablero/resumen')) {
+      return route.fulfill({ json: {
+        desde: '2026-07-01',
+        hasta: '2026-07-31',
+        indicadores: {
+          cotizacionesActivas: 0,
+          cotizacionesPeriodo: 0,
+          montoCotizado: 0,
+          tasaCierrePorcentaje: 0,
+          variacionMontoPorcentaje: null,
+        },
+        indicadoresOperativos: {
+          insumosStockBajo: 0,
+          requisicionesPendientes: 0,
+          comprasPendientesRecepcion: 0,
+          cuentasPorPagarPendientes: 0,
+          saldoPorPagar: 0,
+          productosActivos: 0,
+        },
+        indicadoresInventario: {
+          valorTotalInventario: 0,
+          consumoMensual: 0,
+          rotacionMensual: 0,
+        },
+        cotizacionesRecientes: [],
+        alertas: [],
+      } });
+    }
 
     if (path.endsWith('/compras')) return route.fulfill({ json: pageOf([compra]) });
     if (path.endsWith('/compras/101')) return route.fulfill({ json: compra });
@@ -89,6 +117,14 @@ export async function installMockApi(page) {
     }
 
     if (path.endsWith('/insumos')) return route.fulfill({ json: pageOf([insumo]) });
+    if (path.endsWith('/productos/701/estructura-costos')) {
+      return route.fulfill({ json: {
+        costoInsumosConDesperdicio: 600,
+        costoOperaciones: 300,
+        costoCif: 100,
+        costoTotal: 1000,
+      } });
+    }
     if (path.includes('/cotizaciones/productos')) {
       return route.fulfill({
         json: [{

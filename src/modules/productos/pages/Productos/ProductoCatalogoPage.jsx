@@ -17,7 +17,8 @@ import {
 } from "../../services/productos";
 import { organizarFamiliasCatalogo } from "../../utils/catalogoFamilias.js";
 import { getColorHex, listarColoresModelo } from "../../utils/catalogoColores.js";
-import { descargarPdfCatalogo } from "../../utils/catalogoPdf.js";
+import { prepararPaginasCatalogo } from "../../utils/catalogoPdf.js";
+import CatalogoImprimible from "./CatalogoImprimible.jsx";
 import "./ProductoCatalogoPage.css";
 
 const LOAD_SIZE = 100;
@@ -404,7 +405,7 @@ const construirFamilias = (productos) => {
     .sort((a, b) => a.nombre.localeCompare(b.nombre, "es", { numeric: true, sensitivity: "base" }));
 };
 
-async function generarPdfCompleto() {
+async function prepararVistaCatalogo() {
   const { productos: activos } = await cargarCatalogoYFamiliasActivas({
     activo: true,
     sortBy: "modeloNombre",
@@ -428,9 +429,9 @@ async function generarPdfCompleto() {
     colorNombre: getTexto(producto.colorNombre, producto.nombre_color, producto.color?.nombre),
     colorHex: producto.colorHex || producto.color?.hex || "",
   }));
-  return descargarPdfCatalogo(productosPdf, {
-    urlCatalogo: "mobilesco.com.mx",
-  });
+  const paginas = prepararPaginasCatalogo(productosPdf);
+  if (!paginas.length) throw new Error("No hay productos activos para incluir en el catálogo.");
+  return paginas;
 }
 
 const getLineaNombre = (producto) => getTexto(
@@ -640,6 +641,7 @@ function CatalogoFamiliasPage() {
   const [error, setError] = useState("");
   const [generandoPdf, setGenerandoPdf] = useState(false);
   const [mensajePdf, setMensajePdf] = useState("");
+  const [vistaPrevia, setVistaPrevia] = useState(null);
   const [modeloParaAgregar, setModeloParaAgregar] = useState(null);
   const [resultadosBusqueda, setResultadosBusqueda] = useState([]);
   const [buscandoCatalogo, setBuscandoCatalogo] = useState(false);
@@ -800,12 +802,12 @@ function CatalogoFamiliasPage() {
 
   const descargarCatalogo = async () => {
     setGenerandoPdf(true);
-    setMensajePdf("Preparando el catálogo PDF...");
+    setMensajePdf("Preparando la vista previa del catálogo...");
     try {
-      const resultado = await generarPdfCompleto();
-      setMensajePdf(`Catálogo descargado: ${resultado.paginas} páginas.${resultado.imagenesOmitidas ? ` ${resultado.imagenesOmitidas} imágenes no pudieron incluirse.` : ""}`);
+      setVistaPrevia(await prepararVistaCatalogo());
+      setMensajePdf("");
     } catch (err) {
-      setMensajePdf(err?.message || "No se pudo generar el catálogo PDF.");
+      setMensajePdf(err?.message || "No se pudo preparar la vista previa del catálogo.");
     } finally {
       setGenerandoPdf(false);
     }
@@ -818,7 +820,7 @@ function CatalogoFamiliasPage() {
         subtitle={paginaActual ? `Página ${String(indicePaginaActual + 1).padStart(2, "0")} · Explora sus modelos` : "Explora nuestras familias de muebles"}
         actions={<div className="producto-catalogo-header-actions">
           <button type="button" className="btn productos-brand-outline" disabled={generandoPdf} onClick={descargarCatalogo}>
-            <i className="bi bi-file-earmark-pdf me-2"></i>{generandoPdf ? "Generando PDF..." : "Descargar catálogo PDF"}
+            <i className="bi bi-printer me-2"></i>{generandoPdf ? "Preparando vista..." : "Vista previa para imprimir"}
           </button>
           <button type="button" className="btn productos-brand-outline" onClick={() => navigate("/productos")}>
             <i className="bi bi-table me-2"></i>Vista tabla
@@ -874,6 +876,7 @@ function CatalogoFamiliasPage() {
           <img src="/logo-mobilesco-firmeza.svg" alt="Mobilesco" />
         </section>
         {mensajePdf && <div className="producto-catalogo-pdf-status" role="status">{mensajePdf}</div>}
+        {vistaPrevia && <CatalogoImprimible paginas={vistaPrevia} onClose={() => setVistaPrevia(null)} />}
         {error && <div className="alert alert-danger" role="alert">{error}</div>}
         {cargandoPagina && <div className="producto-catalogo-empty">Cargando esta familia...</div>}
         {!cargandoPagina && !error && familiaSlug && !paginaActual &&
@@ -967,6 +970,7 @@ function ProductoCatalogoDetalle() {
   const [error, setError] = useState("");
   const [generandoPdf, setGenerandoPdf] = useState(false);
   const [mensajePdf, setMensajePdf] = useState("");
+  const [vistaPrevia, setVistaPrevia] = useState(null);
   const [errorPdf, setErrorPdf] = useState("");
   const [filtros, setFiltros] = usePersistedState("productos-catalogo:filtros", FILTROS_DEFAULT);
   const busquedaDebounced = useDebouncedValue(filtros.busqueda, 350);
@@ -1171,14 +1175,14 @@ function ProductoCatalogoDetalle() {
 
   const descargarCatalogo = async () => {
     setGenerandoPdf(true);
-    setMensajePdf("Preparando el catálogo PDF con los productos activos...");
+    setMensajePdf("Preparando la vista previa del catálogo...");
     setErrorPdf("");
     try {
-      const resultado = await generarPdfCompleto();
-      setMensajePdf(`Catálogo descargado: ${resultado.paginas} páginas.${resultado.imagenesOmitidas ? ` ${resultado.imagenesOmitidas} imágenes no pudieron incluirse.` : ""}`);
+      setVistaPrevia(await prepararVistaCatalogo());
+      setMensajePdf("");
     } catch (err) {
       setMensajePdf("");
-      setErrorPdf(err?.message || "No se pudo generar el catálogo PDF.");
+      setErrorPdf(err?.message || "No se pudo preparar la vista previa del catálogo.");
     } finally {
       setGenerandoPdf(false);
     }
@@ -1200,8 +1204,8 @@ function ProductoCatalogoDetalle() {
               <i className="bi bi-grid me-2"></i>Familias
             </button>
             <button type="button" className="btn productos-brand-outline" disabled={generandoPdf} onClick={descargarCatalogo}>
-              <i className="bi bi-file-earmark-pdf me-2"></i>
-              {generandoPdf ? "Generando PDF..." : "Descargar catálogo PDF"}
+              <i className="bi bi-printer me-2"></i>
+              {generandoPdf ? "Preparando vista..." : "Vista previa para imprimir"}
             </button>
             <button className="btn productos-brand-outline" onClick={() => navigate("/productos")}>
               <i className="bi bi-table me-2"></i>
@@ -1229,6 +1233,7 @@ function ProductoCatalogoDetalle() {
       {error && <div className="alert alert-danger">{error}</div>}
       {errorPdf && <div className="alert alert-danger" role="alert">{errorPdf}</div>}
       {mensajePdf && <div className="producto-catalogo-pdf-status" role="status">{mensajePdf}</div>}
+      {vistaPrevia && <CatalogoImprimible paginas={vistaPrevia} onClose={() => setVistaPrevia(null)} />}
 
       {!loading && !error && !productoSeleccionado && (
         <div className="producto-catalogo-empty">

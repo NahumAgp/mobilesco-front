@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import useDebouncedValue from "../../../hooks/useDebouncedValue.js";
 import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
 import usePersistedState from "../../../hooks/usePersistedState.js";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { useInsumos } from "../hooks/useInsumos";
-import { exportarInsumosExcel } from "../services/insumos.js";
+import { exportarInsumosExcel, obtenerInsumosActivos } from "../services/insumos.js";
+import { obtenerTiposInsumo as obtenerCatalogoTipos } from "../services/tiposInsumo.js";
+import { obtenerUnidadesMedida } from "../../unidades-medida/services/unidadMedidas.js";
 import { getUser, hasPermission } from "../../auth/services/authService.js";
 import {
   puedeAjustarStockManual,
@@ -24,6 +26,9 @@ const FILTROS_DEFAULT = {
   filtroEstatus: "TODOS",
   soloActivos: false,
   filtroStockBajo: false,
+  tipoInsumo: "",
+  unidadMedidaId: "",
+  ubicacion: "",
   sortField: "nombre",
   sortDirection: "asc"
 };
@@ -47,8 +52,106 @@ function construirRangoPaginas(totalPages, currentPage) {
   return paginas;
 }
 
+function FiltroDropdown({ icono, etiqueta, valor, opciones, alCambiar, placeholder }) {
+  const [abierto, setAbierto] = useState(false);
+  const [busqueda, setBusqueda] = useState("");
+  const contenedorRef = useRef(null);
+  const busquedaRef = useRef(null);
+  const opcionActiva = opciones.find((opcion) => String(opcion.valor) === String(valor));
+  const opcionesVisibles = opciones.filter((opcion) =>
+    opcion.etiqueta.toLocaleLowerCase().includes(busqueda.trim().toLocaleLowerCase())
+  );
+
+  useEffect(() => {
+    if (!abierto) return undefined;
+
+    const cerrarAlHacerClickAfuera = (event) => {
+      if (!contenedorRef.current?.contains(event.target)) setAbierto(false);
+    };
+    const cerrarConEscape = (event) => {
+      if (event.key === "Escape") setAbierto(false);
+    };
+
+    document.addEventListener("pointerdown", cerrarAlHacerClickAfuera);
+    document.addEventListener("keydown", cerrarConEscape);
+    busquedaRef.current?.focus();
+
+    return () => {
+      document.removeEventListener("pointerdown", cerrarAlHacerClickAfuera);
+      document.removeEventListener("keydown", cerrarConEscape);
+    };
+  }, [abierto]);
+
+  const seleccionar = (opcion) => {
+    alCambiar(opcion.valor);
+    setBusqueda("");
+    setAbierto(false);
+  };
+
+  return (
+    <div className="insumos-filter-field">
+      <span className="insumos-filter-field-label"><i className={`bi ${icono}`} aria-hidden="true" /> {etiqueta}</span>
+      <div className={`insumos-filter-dropdown ${abierto ? "is-open" : ""}`} ref={contenedorRef}>
+        <button
+          type="button"
+          className={`insumos-filter-dropdown-trigger ${opcionActiva && String(opcionActiva.valor) !== "" ? "has-value" : ""}`}
+          aria-haspopup="listbox"
+          aria-expanded={abierto}
+          onClick={() => setAbierto((actual) => !actual)}
+        >
+          <span>{opcionActiva?.etiqueta || placeholder}</span>
+          <i className={`bi bi-chevron-${abierto ? "up" : "down"}`} aria-hidden="true" />
+        </button>
+        {abierto && (
+          <div className="insumos-filter-dropdown-menu">
+            <label className="insumos-filter-dropdown-search">
+              <i className="bi bi-search" aria-hidden="true" />
+              <input
+                ref={busquedaRef}
+                type="search"
+                value={busqueda}
+                onChange={(event) => setBusqueda(event.target.value)}
+                placeholder={`Buscar ${etiqueta.toLocaleLowerCase()}...`}
+                aria-label={`Buscar ${etiqueta.toLocaleLowerCase()}`}
+              />
+              {busqueda && (
+                <button type="button" aria-label="Limpiar búsqueda" onClick={() => setBusqueda("")}>
+                  <i className="bi bi-x-lg" aria-hidden="true" />
+                </button>
+              )}
+            </label>
+            <div className="insumos-filter-dropdown-options" role="listbox" aria-label={etiqueta}>
+              {opcionesVisibles.map((opcion) => {
+                const seleccionada = String(opcion.valor) === String(valor);
+                return (
+                  <button
+                    type="button"
+                    key={opcion.valor || "todos"}
+                    className={`insumos-filter-dropdown-option ${seleccionada ? "is-selected" : ""}`}
+                    role="option"
+                    aria-selected={seleccionada}
+                    onClick={() => seleccionar(opcion)}
+                  >
+                    <span>{opcion.etiqueta}</span>
+                    {seleccionada && <i className="bi bi-check2" aria-hidden="true" />}
+                  </button>
+                );
+              })}
+              {opcionesVisibles.length === 0 && <span className="insumos-filter-dropdown-empty">Sin coincidencias</span>}
+            </div>
+            <div className="insumos-filter-dropdown-hint">{opcionesVisibles.length} opciones disponibles</div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function InsumosPage() {
   const [mostrarConjuntos, setMostrarConjuntos] = useState(false);
+  const [mostrarPanelFiltros, setMostrarPanelFiltros] = useState(false);
+  const [tiposDisponibles, setTiposDisponibles] = useState([]);
+  const [unidadesDisponibles, setUnidadesDisponibles] = useState([]);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const user = getUser();
@@ -73,11 +176,15 @@ export default function InsumosPage() {
     filtroEstatus,
     soloActivos,
     filtroStockBajo,
+    tipoInsumo,
+    unidadMedidaId,
+    ubicacion,
     sortField,
     sortDirection
   } = filtros;
   const busqueda = useDebouncedValue(busquedaInput, 350);
   const [exportandoExcel, setExportandoExcel] = useState(false);
+  const [generandoCatalogoPdf, setGenerandoCatalogoPdf] = useState(false);
   const [ajusteStock, setAjusteStock] = useState(null);
   const [guardandoAjuste, setGuardandoAjuste] = useState(false);
 
@@ -86,6 +193,27 @@ export default function InsumosPage() {
       setFiltros((actuales) => ({ ...actuales, filtroStockBajo: true }));
     }
   }, [setFiltros, stockBajoDesdeUrl]);
+
+  useEffect(() => {
+    let activo = true;
+    Promise.allSettled([
+      obtenerCatalogoTipos({ soloActivos: true, size: 100 }),
+      obtenerUnidadesMedida()
+    ]).then(([tiposResult, unidadesResult]) => {
+      if (!activo) return;
+      if (tiposResult.status === "fulfilled") {
+        const data = tiposResult.value;
+        const tipos = Array.isArray(data) ? data : data?.content || [];
+        setTiposDisponibles(tipos.filter((tipo) => tipo?.codigo && tipo?.nombre));
+      }
+      if (unidadesResult.status === "fulfilled") {
+        const data = unidadesResult.value;
+        const unidades = Array.isArray(data) ? data : data?.content || [];
+        setUnidadesDisponibles(unidades.filter((unidad) => unidad?.id));
+      }
+    });
+    return () => { activo = false; };
+  }, []);
 
   // Derivar el filtro de estatus para el backend
   const activoBackend =
@@ -111,7 +239,10 @@ export default function InsumosPage() {
     direction: sortDirection,
     busqueda: terminoBusqueda || undefined,
     activo: activoBackend,
-    stockBajo: stockBajoBackend
+    stockBajo: stockBajoBackend,
+    tipoInsumo: tipoInsumo || undefined,
+    unidadMedidaId: unidadMedidaId || undefined,
+    ubicacion: ubicacion.trim() || undefined
   });
 
   const totalElements = pageInfo.totalElements ?? 0;
@@ -122,7 +253,13 @@ export default function InsumosPage() {
   const hasta = totalElements > 0 ? page * PAGE_SIZE + insumos.length : 0;
 
   const hayFiltrosActivos =
-    Boolean(terminoBusqueda) || filtroEstatus !== "TODOS" || soloActivos || filtroStockBajo;
+    Boolean(terminoBusqueda) || filtroEstatus !== "TODOS" || soloActivos || filtroStockBajo
+      || Boolean(tipoInsumo) || Boolean(unidadMedidaId) || Boolean(ubicacion.trim());
+  const filtrosAdicionalesActivos = [tipoInsumo, unidadMedidaId, ubicacion.trim()].filter(Boolean).length;
+  const totalFiltrosActivos = filtrosAdicionalesActivos
+    + (filtroEstatus !== "TODOS" || soloActivos ? 1 : 0)
+    + (filtroStockBajo ? 1 : 0)
+    + (terminoBusqueda ? 1 : 0);
   const mostrarVacio = !loadingLista && !error && totalElements === 0 && !hayFiltrosActivos;
   const mostrarSinCoincidencias =
     !loadingLista && !error && totalElements === 0 && hayFiltrosActivos;
@@ -222,6 +359,9 @@ export default function InsumosPage() {
         activo: activoBackend,
         stockBajo: stockBajoBackend,
         busqueda: terminoBusqueda || undefined,
+      tipoInsumo: tipoInsumo || undefined,
+      unidadMedidaId: unidadMedidaId || undefined,
+      ubicacion: ubicacion.trim() || undefined,
         sortBy: sortField,
         direction: sortDirection
       });
@@ -245,6 +385,23 @@ export default function InsumosPage() {
     }
   };
 
+  const descargarCatalogoPdf = async () => {
+    try {
+      setGenerandoCatalogoPdf(true);
+      const insumosActivos = await obtenerInsumosActivos();
+      const { crearCatalogoInsumosPdf } = await import("../utils/catalogoInsumosPdf.js");
+      const resultado = await crearCatalogoInsumosPdf(insumosActivos, tiposDisponibles);
+      resultado.pdf.save("catalogo-insumos-codigos-barras.pdf");
+      setToastType("success");
+      setToastMessage(`Catálogo generado: ${resultado.totalInsumos} insumos en ${resultado.totalSecciones} secciones.`);
+    } catch (err) {
+      setToastType("danger");
+      setToastMessage(err?.message || "No se pudo generar el catálogo PDF.");
+    } finally {
+      setGenerandoCatalogoPdf(false);
+    }
+  };
+
   const irAPagina = (nuevaPagina) => {
     if (nuevaPagina < 0) return;
     if (totalPages > 0 && nuevaPagina >= totalPages) return;
@@ -265,20 +422,37 @@ export default function InsumosPage() {
     setPage(0);
   };
 
-  const cambiarEstatus = (e) => {
-    setFiltros((actuales) => ({ ...actuales, filtroEstatus: e.target.value }));
+  const aplicarEstadoRapido = (estado) => {
+    setFiltros((actuales) => ({ ...actuales, filtroEstatus: estado, soloActivos: false }));
     setPage(0);
   };
 
-  const cambiarSoloActivos = (e) => {
-    setFiltros((actuales) => ({ ...actuales, soloActivos: e.target.checked }));
+  const alternarStockBajo = () => {
+    setFiltros((actuales) => ({ ...actuales, filtroStockBajo: !actuales.filtroStockBajo }));
     setPage(0);
   };
 
-  const cambiarStockBajo = (e) => {
-    setFiltros((actuales) => ({ ...actuales, filtroStockBajo: e.target.checked }));
+  const actualizarFiltro = (campo, valor) => {
+    setFiltros((actuales) => ({ ...actuales, [campo]: valor }));
     setPage(0);
   };
+
+  const limpiarFiltros = () => {
+    setFiltros((actuales) => ({
+      ...actuales,
+      busquedaInput: "",
+      filtroEstatus: "TODOS",
+      soloActivos: false,
+      filtroStockBajo: false,
+      tipoInsumo: "",
+      unidadMedidaId: "",
+      ubicacion: ""
+    }));
+    setPage(0);
+  };
+
+  const nombreTipoActivo = tiposDisponibles.find((tipo) => tipo.codigo === tipoInsumo)?.nombre || tipoInsumo;
+  const nombreUnidadActiva = unidadesDisponibles.find((unidad) => String(unidad.id) === String(unidadMedidaId));
 
   return (
     <>
@@ -320,6 +494,16 @@ export default function InsumosPage() {
               <i className="bi bi-file-earmark-excel me-1"></i>
               {exportandoExcel ? "Generando..." : "Reporte Excel"}
             </button>
+            <button
+              type="button"
+              className="btn btn-outline-primary me-2"
+              onClick={descargarCatalogoPdf}
+              disabled={generandoCatalogoPdf}
+              title="Descargar todos los insumos activos, agrupados por tipo"
+            >
+              <i className="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>
+              {generandoCatalogoPdf ? "Generando PDF..." : "Catálogo PDF con códigos de barras"}
+            </button>
             {puedeGestionarInsumos && (
               <button
                 className="btn insumos-brand-primary"
@@ -338,67 +522,147 @@ export default function InsumosPage() {
         </div>
       )}
 
-      <div className="card mb-3 insumos-filters-card">
-        <div className="card-body">
-          <div className="row g-2 align-items-center">
-            <div className="col-md-4">
-              <input
-                type="text"
-                className="form-control"
-                placeholder="Buscar por nombre, codigo, tipo, unidad o ubicacion..."
-                value={busquedaInput}
-                onChange={cambiarBusqueda}
-              />
-              <small className="form-text text-muted d-block mt-1">
-                NOMENCLATURA SUGERIDA: FAMILIA · MATERIAL · MEDIDA · CALIBRE · LARGO/ACABADO. EJ.: TUBO REDONDO · ACERO · Ø 1/2″ · CAL. 18.
-              </small>
-            </div>
+      <section className="insumos-filter-card" aria-label="Filtros de insumos">
+        <div className="insumos-filter-toolbar">
+          <label className="insumos-filter-search">
+            <i className="bi bi-search" aria-hidden="true" />
+            <input
+              type="search"
+              placeholder="Buscar insumos por nombre, código o ubicación..."
+              value={busquedaInput}
+              onChange={cambiarBusqueda}
+              aria-label="Buscar insumos"
+            />
+            {busquedaInput && (
+              <button type="button" aria-label="Limpiar búsqueda" onClick={() => cambiarBusqueda({ target: { value: "" } })}>
+                <i className="bi bi-x-lg" aria-hidden="true" />
+              </button>
+            )}
+          </label>
 
-            <div className="col-md-2">
-              <select
-                className="form-select"
-                value={filtroEstatus}
-                onChange={cambiarEstatus}
-              >
-                <option value="TODOS">Todos</option>
-                <option value="ACTIVO">Activos</option>
-                <option value="INACTIVO">Inactivos</option>
-              </select>
-            </div>
+          <div className="insumos-filter-views" role="group" aria-label="Vistas rápidas">
+            <button
+              type="button"
+              className={filtroEstatus === "TODOS" && !soloActivos ? "is-active" : ""}
+              onClick={() => aplicarEstadoRapido("TODOS")}
+            >Todos</button>
+            <button
+              type="button"
+              className={filtroEstatus === "ACTIVO" || soloActivos ? "is-active" : ""}
+              onClick={() => aplicarEstadoRapido("ACTIVO")}
+            ><i className="bi bi-check-circle" aria-hidden="true" /> Activos</button>
+            <button
+              type="button"
+              className={filtroEstatus === "INACTIVO" ? "is-active" : ""}
+              onClick={() => aplicarEstadoRapido("INACTIVO")}
+            >Inactivos</button>
+          </div>
 
-            <div className="col-md-3 d-flex align-items-center">
-              <div className="form-check form-switch">
-                <input
-                  className="form-check-input"
-                  type="checkbox"
-                  id="soloActivosInsumos"
-                  checked={soloActivos}
-                  onChange={cambiarSoloActivos}
+          <div className="insumos-filter-actions">
+            <details
+              className="insumos-filter-builder"
+              open={mostrarPanelFiltros}
+              onToggle={(event) => setMostrarPanelFiltros(event.currentTarget.open)}
+            >
+              <summary className={filtrosAdicionalesActivos ? "has-filters" : ""}>
+                <i className="bi bi-sliders2" aria-hidden="true" />
+                <span>Filtros</span>
+                {filtrosAdicionalesActivos > 0 && <b>{filtrosAdicionalesActivos}</b>}
+                <i className="bi bi-chevron-down filter-chevron" aria-hidden="true" />
+              </summary>
+              <div className="insumos-filter-popover">
+                <div className="insumos-filter-popover-heading">
+                  <div>
+                    <strong>Filtrar insumos</strong>
+                    <span>Combina criterios para afinar resultados</span>
+                  </div>
+                  <i className="bi bi-sliders2-vertical" aria-hidden="true" />
+                </div>
+                <FiltroDropdown
+                  icono="bi-tag"
+                  etiqueta="Tipo de insumo"
+                  valor={tipoInsumo}
+                  placeholder="Cualquier tipo"
+                  opciones={[
+                    { valor: "", etiqueta: "Cualquier tipo" },
+                    ...tiposDisponibles.map((tipo) => ({ valor: tipo.codigo, etiqueta: tipo.nombre }))
+                  ]}
+                  alCambiar={(valor) => actualizarFiltro("tipoInsumo", valor)}
                 />
-                <label className="form-check-label" htmlFor="soloActivosInsumos">
-                  Solo activos
-                </label>
-              </div>
-            </div>
-
-            <div className="col-md-3 d-flex align-items-center justify-content-end insumos-filters-switch-col">
-              <div className="form-check form-switch">
-                <input
-                  className="form-check-input"
-                  type="checkbox"
-                  id="stockBajoInsumos"
-                  checked={filtroStockBajo}
-                  onChange={cambiarStockBajo}
+                <FiltroDropdown
+                  icono="bi-rulers"
+                  etiqueta="Unidad de medida"
+                  valor={unidadMedidaId}
+                  placeholder="Cualquier unidad"
+                  opciones={[
+                    { valor: "", etiqueta: "Cualquier unidad" },
+                    ...unidadesDisponibles.map((unidad) => ({
+                      valor: unidad.id,
+                      etiqueta: `${unidad.nombre}${unidad.simbolo ? ` (${unidad.simbolo})` : ""}`
+                    }))
+                  ]}
+                  alCambiar={(valor) => actualizarFiltro("unidadMedidaId", valor)}
                 />
-                <label className="form-check-label text-warning" htmlFor="stockBajoInsumos">
-                  <i className="bi bi-exclamation-triangle me-1"></i>
-                  Stock bajo
+                <label className="insumos-filter-field">
+                  <span><i className="bi bi-geo-alt" aria-hidden="true" /> Ubicación</span>
+                  <input
+                    type="text"
+                    placeholder="Ej. Almacén A, estante 2..."
+                    value={ubicacion}
+                    onChange={(event) => actualizarFiltro("ubicacion", event.target.value)}
+                  />
                 </label>
+                <div className="insumos-filter-popover-footer">
+                  <span>Los filtros se aplican al instante</span>
+                  <button type="button" onClick={() => setMostrarPanelFiltros(false)}>Listo</button>
+                </div>
               </div>
-            </div>
+            </details>
+
+            <button
+              type="button"
+              className={`insumos-filter-stock ${filtroStockBajo ? "is-active" : ""}`}
+              onClick={alternarStockBajo}
+              aria-pressed={filtroStockBajo}
+            >
+              <i className="bi bi-exclamation-triangle" aria-hidden="true" /> Stock bajo
+            </button>
           </div>
         </div>
-      </div>
+
+        {(hayFiltrosActivos || totalFiltrosActivos > 0) && (
+          <div className="insumos-active-filters">
+            <span className="insumos-active-label"><i className="bi bi-funnel" aria-hidden="true" /> Aplicados</span>
+            {terminoBusqueda && <span className="insumos-filter-chip"><b>Búsqueda</b> {terminoBusqueda}</span>}
+            {(filtroEstatus !== "TODOS" || soloActivos) && (
+              <button type="button" className="insumos-filter-chip" onClick={() => aplicarEstadoRapido("TODOS")}>
+                <b>Estado</b> {soloActivos || filtroEstatus === "ACTIVO" ? "Activo" : "Inactivo"}<i className="bi bi-x" aria-hidden="true" />
+              </button>
+            )}
+            {nombreTipoActivo && (
+              <button type="button" className="insumos-filter-chip" onClick={() => actualizarFiltro("tipoInsumo", "")}>
+                <b>Tipo</b> {nombreTipoActivo}<i className="bi bi-x" aria-hidden="true" />
+              </button>
+            )}
+            {nombreUnidadActiva && (
+              <button type="button" className="insumos-filter-chip" onClick={() => actualizarFiltro("unidadMedidaId", "")}>
+                <b>Unidad</b> {nombreUnidadActiva.simbolo || nombreUnidadActiva.nombre}<i className="bi bi-x" aria-hidden="true" />
+              </button>
+            )}
+            {ubicacion.trim() && (
+              <button type="button" className="insumos-filter-chip" onClick={() => actualizarFiltro("ubicacion", "")}>
+                <b>Ubicación</b> {ubicacion.trim()}<i className="bi bi-x" aria-hidden="true" />
+              </button>
+            )}
+            {filtroStockBajo && (
+              <button type="button" className="insumos-filter-chip" onClick={alternarStockBajo}>
+                <b>Inventario</b> Stock bajo<i className="bi bi-x" aria-hidden="true" />
+              </button>
+            )}
+            <button type="button" className="insumos-clear-filters" onClick={limpiarFiltros}>Limpiar todo</button>
+          </div>
+        )}
+      </section>
 
       {mostrarVacio ? (
         <div className="card shadow-sm border-0 insumos-empty-card">

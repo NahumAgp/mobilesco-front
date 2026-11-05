@@ -11,7 +11,7 @@ const TINTA = [43, 73, 67];
 const GRIS = [91, 99, 97];
 const ANCHO = 215.9;
 const ALTO = 279.4;
-const PRODUCTOS_POR_PAGINA = 4;
+const PRODUCTOS_POR_PAGINA = 2;
 
 const texto = (valor, alternativa = "") => String(valor ?? "").trim() || alternativa;
 const valoresUnicos = (variantes, campo) => [...new Map(variantes

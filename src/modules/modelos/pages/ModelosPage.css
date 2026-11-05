@@ -239,6 +239,24 @@
   z-index: 80;
 }
 
+.modelo-material-costo-estado {
+  flex: 0 0 auto;
+  border: 1px solid #d4ded9;
+  border-radius: 999px;
+  background: #fff;
+  color: #52645e;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.2;
+  padding: 3px 8px;
+}
+
+.modelo-material-costo-estado-inicial {
+  border-color: #accbbd;
+  background: #e8f3ed;
+  color: #214f3d;
+}
+
 .modelo-panel-summary {
   display: flex;
   align-items: center;

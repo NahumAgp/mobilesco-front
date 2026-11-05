@@ -167,7 +167,7 @@ const getMaterialesDelModelo = (modelo = {}) => {
 const getItemId = (item) => item?.id ?? item?.insumoId ?? item?.operacionId ?? item?.insumo_id ?? item?.operacion_id ?? null;
 const getMaterialId = (item) => item?.materialId ?? item?.material_id ?? item?.id_material ?? item?.material?.id ?? null;
 const getDesperdicioInsumo = (item) => item?.desperdicioPorcentaje ?? item?.desperdicio_porcentaje ?? item?.desperdicio ?? 0;
-const getCostoCotizacionInsumo = (item) => item?.costoCotizacion ?? item?.costo_cotizacion ?? item?.costo_cotizar ?? item?.costo ?? 0;
+const getCostoCotizacionInsumo = (item) => item?.costoUnitarioInicial ?? item?.costoCotizacion ?? item?.costo_cotizacion ?? item?.costo_cotizar ?? item?.costo ?? 0;
 
 const getCategoriasDelModelo = (modelo = {}) => {
   const candidatos = [
@@ -338,7 +338,8 @@ export default function ModeloForm({
     descripcionCorta: "",
     familiaId: "",
     subfamiliaId: "",
-    activo: true
+    activo: true,
+    costoInicialPendiente: false
   });
   const obtenerCodigoSugeridoPorClasificacion = useCallback(
     (nombre) => obtenerCodigoSugerido(nombre, formData.familiaId, formData.subfamiliaId),
@@ -466,7 +467,8 @@ export default function ModeloForm({
           descripcionCorta: modelo.descripcionCorta || "",
           familiaId: modelo.familiaId || modelo.familia_id || modelo.familia?.id || "",
           subfamiliaId: modelo.subfamiliaId || modelo.subfamilia_id || modelo.subfamilia?.id || "",
-          activo: modelo.activo ?? true
+          activo: modelo.activo ?? true,
+          costoInicialPendiente: modelo.costoInicialPendiente ?? false
         });
         setMaterialesSeleccionados(getMaterialesDelModelo(modelo));
         setCategoriasSeleccionadas(getCategoriasDelModelo(modelo));
@@ -485,7 +487,8 @@ export default function ModeloForm({
             descripcionCorta: data.descripcionCorta || "",
             familiaId: data.familiaId || data.familia_id || data.familia?.id || "",
             subfamiliaId: data.subfamiliaId || data.subfamilia_id || data.subfamilia?.id || "",
-            activo: data.activo ?? true
+            activo: data.activo ?? true,
+            costoInicialPendiente: data.costoInicialPendiente ?? false
           });
           setMaterialesSeleccionados(getMaterialesDelModelo(data));
           setCategoriasSeleccionadas(getCategoriasDelModelo(data));
@@ -661,6 +664,7 @@ export default function ModeloForm({
           nombre: categoriaCompleta.nombre || "",
           descripcion: categoriaCompleta.descripcion || "",
           activo: categoriaCompleta.activo ?? true,
+          costoInicialPendiente: false,
           insumos: [],
           operaciones: []
         }
@@ -859,6 +863,7 @@ export default function ModeloForm({
         nombre: categoria.nombre?.trim() || "",
         descripcion: categoria.descripcion?.trim() || "",
         activo: categoria.activo !== false,
+        costoInicialPendiente: Boolean(categoria.costoInicialPendiente),
         orden: index + 1,
         insumos: (categoria.insumos || [])
           .map((insumo) => ({
@@ -867,12 +872,18 @@ export default function ModeloForm({
             conjunto: Boolean(insumo.conjunto),
             cantidad: Number(insumo.cantidad),
             desperdicioPorcentaje: Number(getDesperdicioInsumo(insumo) || 0),
-            costoCotizacion: Number(getCostoCotizacionInsumo(insumo) || 0)
+            costoCotizacion: Number(getCostoCotizacionInsumo(insumo) || 0),
+            costoUnitarioInicial: insumo.costoUnitarioInicial == null ? null : Number(insumo.costoUnitarioInicial),
+            costoInicial: Boolean(insumo.costoInicial)
           }))
           .filter((insumo) => Number.isFinite(insumo.id)),
         operaciones: (categoria.operaciones || [])
           .map((operacion, operacionIndex) => ({
             id: Number(getItemId(operacion)),
+            materialId: operacion.materialId ?? null,
+            tiempoMinutosInicial: operacion.tiempoMinutosInicial == null ? null : Number(operacion.tiempoMinutosInicial),
+            costoMinutoInicial: operacion.costoMinutoInicial == null ? null : Number(operacion.costoMinutoInicial),
+            costoInicial: Boolean(operacion.costoInicial),
             cantidad: Number(operacion.cantidad ?? 1),
             orden: operacionIndex + 1
           }))
@@ -907,7 +918,7 @@ export default function ModeloForm({
       }
       const costosCapturados = categoriasSeleccionadas
         .flatMap((categoria) => categoria.insumos || [])
-        .filter((insumo) => !insumo.conjunto)
+        .filter((insumo) => !insumo.conjunto && insumo.costoUnitarioInicial == null)
         .map((insumo) => ({
           id: Number(getItemId(insumo)),
           nombre: insumo.nombre || `Insumo ${getItemId(insumo)}`,
@@ -964,6 +975,7 @@ export default function ModeloForm({
         familia_id: familiaIdNormalizado,
         subfamilia_id: subfamiliaIdNormalizado,
         activo: Boolean(formData.activo),
+        costoInicialPendiente: Boolean(formData.costoInicialPendiente),
         categorias: categorias.map((categoria) => Object.fromEntries(Object.entries(categoria).filter(([key]) => key !== "orden"))),
         materiales: materialesSeleccionados
           .map((material) => Number(material.id))
@@ -1424,6 +1436,17 @@ export default function ModeloForm({
                           {categoria.codigo ? `[${categoria.codigo}] ` : `[${String(index + 1).padStart(2, "0")}] `}
                           {categoria.nombre || "-"}
                         </span>
+                        <label className="d-inline-flex align-items-center gap-1 text-dark fw-normal">
+                          <input
+                            type="checkbox"
+                            className="form-check-input m-0"
+                            checked={Boolean(categoria.costoInicialPendiente)}
+                            onChange={(event) => setCategoriasSeleccionadas((prev) => prev.map((item, itemIndex) =>
+                              itemIndex === index ? { ...item, costoInicialPendiente: event.target.checked } : item
+                            ))}
+                          />
+                          Costo inicial pendiente
+                        </label>
                         <button
                           type="button"
                           className="btn btn-sm p-0 border-0 bg-transparent text-danger"
@@ -1441,6 +1464,19 @@ export default function ModeloForm({
                     Aun no se ha asociado ninguna categoria a este modelo.
                   </div>
                 )}
+                <div className="form-check form-switch mt-3">
+                  <input
+                    className="form-check-input"
+                    type="checkbox"
+                    id="modeloCostoInicialPendiente"
+                    name="costoInicialPendiente"
+                    checked={Boolean(formData.costoInicialPendiente)}
+                    onChange={handleChange}
+                  />
+                  <label className="form-check-label" htmlFor="modeloCostoInicialPendiente">
+                    Costo inicial del modelo pendiente de actualización
+                  </label>
+                </div>
               </div>
             </div>
           </div>

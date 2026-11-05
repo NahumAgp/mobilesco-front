@@ -158,6 +158,36 @@ describe("ModeloPlantillaProductivaFields", () => {
     }
   });
 
+  it("muestra costos iniciales en las tablas reales del material", async () => {
+    const { user } = renderConEstado([{
+      id: 101, categoriaId: 1, nombre: "Primaria", costoInicialPendiente: true,
+      insumos: [{ id: 11, materialId: 7, codigo: "T-01", nombre: "Tubo de 1",
+        cantidad: 2.2, costoCotizacion: 20, costoUnitarioInicial: 28, costoInicial: true }],
+      operaciones: [{ id: 12, materialId: 7, codigo: "CORTE", nombre: "Corte",
+        tiempoOperacion: 0.3, costoMinuto: 0.5, tiempoMinutosInicial: 3,
+        costoMinutoInicial: 0.833333, costoInicial: true, cantidad: 1 }]
+    }], { modeloId: 55, materiales: [{ id: 7, codigo: "P", nombre: "Polipropileno" }] });
+
+    const categoria = await abrirCategoria(user);
+    const material = within(categoria).getByRole("group", { name: "Material [P] Polipropileno" });
+    expect(within(material.querySelector("summary")).getByText("Costo inicial")).toBeInTheDocument();
+    await user.click(material.querySelector("summary"));
+
+    expect(within(material).getByText("1 insumos")).toBeInTheDocument();
+    expect(within(material).getByText("1 operaciones")).toBeInTheDocument();
+    expect(within(material).queryByText(/ficha Excel/i)).not.toBeInTheDocument();
+    await user.click(within(material).getByText("Insumos", { selector: ".modelo-subpanel-summary .fw-semibold" }));
+    expect(within(material).getByText(/Tubo de 1/)).toBeInTheDocument();
+    expect(within(material).getByDisplayValue("28")).toBeInTheDocument();
+    expect(within(material).getByRole("checkbox", { name: "Costo inicial de insumo Tubo de 1" })).toBeChecked();
+    await user.click(within(material).getByText("Operaciones", { selector: ".modelo-operaciones-summary .fw-semibold" }));
+    expect(within(material).getByText(/Corte/)).toBeInTheDocument();
+    expect(within(material).getAllByText("3.00 min")).toHaveLength(2);
+    expect(within(material).getByRole("spinbutton", { name: "Minutos de Corte" })).toHaveValue(3);
+    expect(within(material).getByRole("spinbutton", { name: "Costo por minuto de Corte" })).toHaveValue(0.833333);
+    expect(within(material).getByRole("checkbox", { name: "Costo inicial de operacion Corte" })).toBeChecked();
+  });
+
   it("muestra el total de insumos de la seccion con desperdicio", async () => {
     const { user } = renderConEstado([
       {
@@ -178,14 +208,14 @@ describe("ModeloPlantillaProductivaFields", () => {
     expect(within(bloque).getByText("TOTAL INSUMOS:")).toBeInTheDocument();
   });
 
-  it("muestra el tipo real del insumo en la columna Tipo", async () => {
-    const { user } = renderConEstado([
+  it("muestra y permite cambiar la flag de costo inicial por insumo", async () => {
+    const { user, onCategoriasChange } = renderConEstado([
       {
         id: 101,
         categoriaId: 1,
         nombre: "Primaria",
         insumos: [
-          { id: 11, codigo: "INS-11", nombre: "Tubo", unidadMedida: "m", tipoInsumo: "HERRERIA", cantidad: "2", costoCotizacion: "10" },
+          { id: 11, codigo: "INS-11", nombre: "Tubo", unidadMedida: "m", tipoInsumo: "COSTOS_2026", cantidad: "2", costoCotizacion: "10", costoInicial: true },
           { id: 12, codigo: "INS-12", nombre: "Madera", unidadMedida: "pz", tipoInsumo: "CARPINTERIA", cantidad: "1", costoCotizacion: "5" }
         ],
         operaciones: []
@@ -194,9 +224,15 @@ describe("ModeloPlantillaProductivaFields", () => {
 
     const categoria = await abrirCategoria(user);
     const bloque = await abrirInsumosComunes(user, categoria);
-    expect(within(bloque).getByText("Herreria")).toBeInTheDocument();
-    expect(within(bloque).getByText("Carpinteria")).toBeInTheDocument();
-    expect(within(bloque).queryByText("Insumo directo")).not.toBeInTheDocument();
+    expect(within(bloque).getByRole("columnheader", { name: "Costo inicial" })).toBeInTheDocument();
+    expect(within(bloque).queryByRole("columnheader", { name: "Tipo" })).not.toBeInTheDocument();
+    expect(within(bloque).queryByText("Costos 2026")).not.toBeInTheDocument();
+    const flag = within(bloque).getByRole("checkbox", { name: "Costo inicial de insumo Tubo" });
+    expect(flag).toBeChecked();
+    expect(within(bloque).getByRole("checkbox", { name: "Costo inicial de insumo Madera" })).not.toBeChecked();
+    await user.click(flag);
+    expect(flag).not.toBeChecked();
+    expect(onCategoriasChange.mock.lastCall[0][0].insumos[0].costoInicial).toBe(false);
   });
 
   it("muestra minutos, costo por minuto y subtotal de operaciones", async () => {
@@ -233,8 +269,8 @@ describe("ModeloPlantillaProductivaFields", () => {
     const operaciones = await abrirOperaciones(user, categoria);
     expect(within(operaciones).getByText("Min/op.")).toBeInTheDocument();
     expect(within(operaciones).getByText("Costo/min")).toBeInTheDocument();
-    expect(within(operaciones).getByText("6.00 min")).toBeInTheDocument();
-    expect(within(operaciones).getByText("$2.50")).toBeInTheDocument();
+    expect(within(operaciones).getByRole("spinbutton", { name: "Minutos de Corte tubular" })).toHaveValue(6);
+    expect(within(operaciones).getByRole("spinbutton", { name: "Costo por minuto de Corte tubular" })).toHaveValue(2.5);
     expect(within(operaciones).getByText("$30.00")).toBeInTheDocument();
     expect(within(operaciones).getByText("$15.00")).toBeInTheDocument();
     expect(within(operaciones).getByText("TOTAL MINUTOS:")).toBeInTheDocument();

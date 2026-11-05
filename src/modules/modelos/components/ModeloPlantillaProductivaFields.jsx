@@ -24,9 +24,9 @@ const getMaterialLabel = (item) => `${item?.codigo ? `[${item.codigo}] ` : ""}${
 const getUnidad = (item) => item?.unidadMedida?.simbolo ?? item?.unidadMedida ?? item?.unidad_medida ?? "";
 const getTipoInsumo = (item) => item?.tipoInsumo ?? item?.tipo_insumo ?? item?.tipo ?? "";
 const getDesperdicio = (item) => item?.desperdicioPorcentaje ?? item?.desperdicio_porcentaje ?? item?.desperdicio ?? 0;
-const getCostoCotizacion = (item) => item?.costoCotizacion ?? item?.costo_cotizacion ?? item?.costo_cotizar ?? item?.costo ?? 0;
-const getTiempoOperacion = (item) => item?.tiempoOperacion ?? item?.tiempo_operacion ?? item?.minutos ?? 0;
-const getCostoMinutoOperacion = (item) => item?.costoMinuto ?? item?.costo_minuto ?? 0;
+const getCostoCotizacion = (item) => item?.costoUnitarioInicial ?? item?.costoCotizacion ?? item?.costo_cotizacion ?? item?.costo_cotizar ?? item?.costo ?? 0;
+const getTiempoOperacion = (item) => item?.tiempoMinutosInicial ?? item?.tiempoOperacion ?? item?.tiempo_operacion ?? item?.minutos ?? 0;
+const getCostoMinutoOperacion = (item) => item?.costoMinutoInicial ?? item?.costoMinuto ?? item?.costo_minuto ?? 0;
 const INSUMOS_CLIPBOARD_KEY = "mobilesco:modelos:insumosClipboard";
 const OPERACIONES_CLIPBOARD_KEY = "mobilesco:modelos:operacionesClipboard";
 
@@ -132,28 +132,6 @@ const calcularMinutosOperacion = (item) => {
   return tiempoOperacion * cantidad;
 };
 
-const formatTipoInsumo = (item) => {
-  if (item?.conjunto) return "Conjunto";
-  const tipo = String(getTipoInsumo(item) || "").trim();
-  if (!tipo) return "-";
-
-  const labels = {
-    HERRAJES: "Herrajes",
-    HERRERIA: "Herreria",
-    PLASTICOS: "Plasticos",
-    CARPINTERIA: "Carpinteria",
-    PINTURA: "Pintura",
-    TAPICERIA: "Tapiceria"
-  };
-  const key = tipo.toUpperCase().replaceAll(" ", "_");
-  if (labels[key]) return labels[key];
-
-  return tipo
-    .replaceAll("_", " ")
-    .toLowerCase()
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
-};
-
 const normalizarInsumoParaCopiar = (item) => ({
   id: getId(item),
   codigo: item?.codigo ?? "",
@@ -164,6 +142,8 @@ const normalizarInsumoParaCopiar = (item) => ({
   cantidad: item?.cantidad ?? "",
   desperdicioPorcentaje: getDesperdicio(item),
   costoCotizacion: getCostoCotizacion(item),
+  costoUnitarioInicial: item?.costoUnitarioInicial ?? null,
+  costoInicial: Boolean(item?.costoInicial),
   costoCotizacionOriginal: item?.costoCotizacionOriginal ?? getCostoCotizacion(item),
   ...(item?.conjunto ? { conjunto: true, componentes: item.componentes || [] } : {})
 });
@@ -175,6 +155,9 @@ const normalizarOperacionParaCopiar = (item) => ({
   centroTrabajoNombre: item?.centroTrabajoNombre ?? item?.centro_trabajo_nombre ?? "",
   tiempoOperacion: getTiempoOperacion(item),
   costoMinuto: getCostoMinutoOperacion(item),
+  tiempoMinutosInicial: item?.tiempoMinutosInicial ?? null,
+  costoMinutoInicial: item?.costoMinutoInicial ?? null,
+  costoInicial: Boolean(item?.costoInicial),
   cantidad: item?.cantidad ?? 1
 });
 
@@ -356,15 +339,15 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
     });
   };
 
-  const getOperacionesKey = (categoria, categoriaIndex) => getCategoriaKey(categoria, categoriaIndex);
+  const getOperacionesKey = (categoria, categoriaIndex, materialId = null) => getSectionKey(categoria, categoriaIndex, materialId);
 
-  const getSeleccionOperaciones = (categoria, categoriaIndex) => {
-    const sectionKey = getOperacionesKey(categoria, categoriaIndex);
+  const getSeleccionOperaciones = (categoria, categoriaIndex, materialId = null) => {
+    const sectionKey = getOperacionesKey(categoria, categoriaIndex, materialId);
     return operacionesSeleccionadas[sectionKey] || {};
   };
 
-  const limpiarSeleccionOperaciones = (categoria, categoriaIndex) => {
-    const sectionKey = getOperacionesKey(categoria, categoriaIndex);
+  const limpiarSeleccionOperaciones = (categoria, categoriaIndex, materialId = null) => {
+    const sectionKey = getOperacionesKey(categoria, categoriaIndex, materialId);
     setOperacionesSeleccionadas((prev) => {
       if (!prev[sectionKey]) return prev;
       const siguiente = { ...prev };
@@ -406,8 +389,8 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
     }));
   };
 
-  const toggleOperacionSeleccionada = (categoria, categoriaIndex, item) => {
-    const sectionKey = getOperacionesKey(categoria, categoriaIndex);
+  const toggleOperacionSeleccionada = (categoria, categoriaIndex, item, materialId = null) => {
+    const sectionKey = getOperacionesKey(categoria, categoriaIndex, materialId);
     const operacionKey = String(getId(item));
 
     setOperacionesSeleccionadas((prev) => {
@@ -425,8 +408,8 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
     });
   };
 
-  const toggleTodasOperaciones = (categoria, categoriaIndex, operaciones) => {
-    const sectionKey = getOperacionesKey(categoria, categoriaIndex);
+  const toggleTodasOperaciones = (categoria, categoriaIndex, operaciones, materialId = null) => {
+    const sectionKey = getOperacionesKey(categoria, categoriaIndex, materialId);
     const seleccionCategoria = operacionesSeleccionadas[sectionKey] || {};
     const todasSeleccionadas =
       operaciones.length > 0 && operaciones.every((item) => seleccionCategoria[String(getId(item))]);
@@ -488,7 +471,8 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
           cantidad: item.cantidad ?? "",
           desperdicioPorcentaje: getDesperdicio(item),
           costoCotizacion: getCostoCotizacion(item),
-          costoCotizacionOriginal: item.costoCotizacionOriginal ?? getCostoCotizacion(item)
+          costoCotizacionOriginal: item.costoCotizacionOriginal ?? getCostoCotizacion(item),
+          costoInicial: false
         }));
 
       agregados = nuevos.length;
@@ -513,9 +497,10 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
     }
   };
 
-  const copiarOperacionesSeleccionadas = (categoria, categoriaIndex) => {
-    const seleccionCategoria = getSeleccionOperaciones(categoria, categoriaIndex);
-    const operaciones = Array.isArray(categoria.operaciones) ? categoria.operaciones : [];
+  const copiarOperacionesSeleccionadas = (categoria, categoriaIndex, materialId = null) => {
+    const seleccionCategoria = getSeleccionOperaciones(categoria, categoriaIndex, materialId);
+    const operaciones = (Array.isArray(categoria.operaciones) ? categoria.operaciones : []).filter((item) =>
+      String(item.materialId ?? "") === String(materialId ?? ""));
     const copiados = operaciones
       .filter((item) => seleccionCategoria[String(getId(item))])
       .map(normalizarOperacionParaCopiar);
@@ -535,7 +520,7 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
     }));
   };
 
-  const pegarOperaciones = (categoriaIndex) => {
+  const pegarOperaciones = (categoriaIndex, materialId = null) => {
     const copiados = clipboardOperaciones.length ? clipboardOperaciones : leerClipboardOperaciones();
     const categoriaActual = categorias[categoriaIndex];
 
@@ -544,16 +529,19 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
     let agregadas = 0;
     actualizarCategoria(categoriaIndex, (categoria) => {
       const actuales = Array.isArray(categoria.operaciones) ? categoria.operaciones : [];
-      const idsActuales = new Set(actuales.map((item) => String(getId(item))));
+      const idsActuales = new Set(actuales.filter((item) => String(item.materialId ?? "") === String(materialId ?? ""))
+        .map((item) => String(getId(item))));
       const nuevas = copiados
         .filter((item) => !idsActuales.has(String(getId(item))))
         .map((item) => ({
           ...item,
           id: getId(item),
+          materialId,
           centroTrabajoNombre: item.centroTrabajoNombre ?? item.centro_trabajo_nombre ?? "",
           tiempoOperacion: getTiempoOperacion(item),
           costoMinuto: getCostoMinutoOperacion(item),
-          cantidad: item.cantidad ?? 1
+          cantidad: item.cantidad ?? 1,
+          costoInicial: false
         }));
 
       agregadas = nuevas.length;
@@ -574,7 +562,7 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
     }));
 
     if (agregadas) {
-      limpiarSeleccionOperaciones(categoriaActual, categoriaIndex);
+      limpiarSeleccionOperaciones(categoriaActual, categoriaIndex, materialId);
     }
   };
 
@@ -597,6 +585,7 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
           cantidad: insumo.cantidad ?? (insumo.conjunto ? 1 : ""),
           desperdicioPorcentaje: getDesperdicio(insumo),
           costoCotizacion: getCostoCotizacion(insumo),
+          costoInicial: false,
           costoCotizacionOriginal: insumo.costoCotizacionOriginal ?? getCostoCotizacion(insumo)
         }]
       };
@@ -604,15 +593,16 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
     setSelecciones((prev) => ({ ...prev, [`insumo-${categoriaIndex}-${materialId ?? "comunes"}`]: "" }));
   };
 
-  const agregarOperacion = (categoriaIndex, id, opcion) => {
+  const agregarOperacion = (categoriaIndex, id, opcion, materialId = null) => {
     if (categoriaIndex === null || categoriaIndex === undefined || !id) return;
     const operacion = opcion || catalogoOperaciones.find((item) => String(getId(item)) === String(id)) || { id };
     actualizarCategoria(categoriaIndex, (categoria) => {
       const actuales = Array.isArray(categoria.operaciones) ? categoria.operaciones : [];
-      if (actuales.some((item) => String(getId(item)) === String(getId(operacion)))) return categoria;
+      if (actuales.some((item) => String(getId(item)) === String(getId(operacion))
+        && String(item.materialId ?? "") === String(materialId ?? ""))) return categoria;
       return {
         ...categoria,
-        operaciones: [...actuales, { ...operacion, id: getId(operacion), cantidad: operacion.cantidad ?? 1 }]
+        operaciones: [...actuales, { ...operacion, id: getId(operacion), materialId, cantidad: operacion.cantidad ?? 1, costoInicial: false }]
       };
     });
     setSelecciones((prev) => ({ ...prev, [`operacion-${categoriaIndex}`]: "" }));
@@ -640,7 +630,10 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
     actualizarCategoria(categoriaIndex, (categoria) => ({
       ...categoria,
       insumos: (categoria.insumos || []).map((item) =>
-        String(getId(item)) === String(insumoId) && String(getInsumoMaterialId(item) ?? "") === String(materialId ?? "") ? { ...item, costoCotizacion } : item
+        String(getId(item)) === String(insumoId) && String(getInsumoMaterialId(item) ?? "") === String(materialId ?? "")
+          ? (item.costoUnitarioInicial == null
+            ? { ...item, costoCotizacion, costoInicial: false }
+            : { ...item, costoUnitarioInicial: costoCotizacion, costoInicial: false }) : item
       )
     }));
   };
@@ -676,12 +669,33 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
     });
   };
 
-  const actualizarCantidadOperacion = (categoriaIndex, operacionId, cantidad) => {
+  const actualizarCantidadOperacion = (categoriaIndex, operacionId, cantidad, materialId = null) => {
     actualizarCategoria(categoriaIndex, (categoria) => ({
       ...categoria,
       operaciones: (categoria.operaciones || []).map((item) =>
-        String(getId(item)) === String(operacionId) ? { ...item, cantidad } : item
+        String(getId(item)) === String(operacionId) && String(item.materialId ?? "") === String(materialId ?? "")
+          ? { ...item, cantidad } : item
       )
+    }));
+  };
+
+  const actualizarCostoOperacion = (categoriaIndex, operacionId, campo, valor, materialId = null) => {
+    actualizarCategoria(categoriaIndex, (categoria) => ({
+      ...categoria,
+      operaciones: (categoria.operaciones || []).map((item) =>
+        String(getId(item)) === String(operacionId) && String(item.materialId ?? "") === String(materialId ?? "")
+          ? { ...item, [campo]: valor, costoInicial: false } : item)
+    }));
+  };
+
+  const actualizarFlagCosto = (categoriaIndex, tipo, itemId, costoInicial, materialId = null) => {
+    const campo = tipo === "insumo" ? "insumos" : "operaciones";
+    actualizarCategoria(categoriaIndex, (categoria) => ({
+      ...categoria,
+      [campo]: (categoria[campo] || []).map((item) =>
+        String(getId(item)) === String(itemId)
+          && String((tipo === "insumo" ? getInsumoMaterialId(item) : item.materialId) ?? "") === String(materialId ?? "")
+          ? { ...item, costoInicial } : item)
     }));
   };
 
@@ -706,12 +720,13 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
     });
   };
 
-  const quitarOperacion = (categoriaIndex, operacionId) => {
+  const quitarOperacion = (categoriaIndex, operacionId, materialId = null) => {
     const categoriaActual = categorias[categoriaIndex];
-    const sectionKey = getOperacionesKey(categoriaActual, categoriaIndex);
+    const sectionKey = getOperacionesKey(categoriaActual, categoriaIndex, materialId);
     actualizarCategoria(categoriaIndex, (categoria) => ({
       ...categoria,
-      operaciones: (categoria.operaciones || []).filter((item) => String(getId(item)) !== String(operacionId))
+      operaciones: (categoria.operaciones || []).filter((item) =>
+        !(String(getId(item)) === String(operacionId) && String(item.materialId ?? "") === String(materialId ?? "")))
     }));
     setOperacionesSeleccionadas((prev) => {
       if (!prev[sectionKey]?.[String(operacionId)]) return prev;
@@ -882,36 +897,40 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
     }
   };
 
-  const reordenarOperacion = (categoriaIndex, origenIndex, destinoIndex) => {
+  const reordenarOperacion = (categoriaIndex, origenIndex, destinoIndex, materialId = null) => {
     actualizarCategoria(categoriaIndex, (categoria) => {
       const operaciones = [...(categoria.operaciones || [])];
+      const indices = operaciones.map((item, index) =>
+        String(item.materialId ?? "") === String(materialId ?? "") ? index : null).filter((index) => index !== null);
       if (
         origenIndex === destinoIndex
         || origenIndex < 0
         || destinoIndex < 0
-        || origenIndex >= operaciones.length
-        || destinoIndex >= operaciones.length
+        || origenIndex >= indices.length
+        || destinoIndex >= indices.length
       ) {
         return categoria;
       }
-      const [movida] = operaciones.splice(origenIndex, 1);
-      operaciones.splice(destinoIndex, 0, movida);
+      const seccion = indices.map((index) => operaciones[index]);
+      const [movida] = seccion.splice(origenIndex, 1);
+      seccion.splice(destinoIndex, 0, movida);
+      indices.forEach((index, posicion) => { operaciones[index] = seccion[posicion]; });
       return { ...categoria, operaciones };
     });
   };
 
-  const handleOperacionDragStart = (event, categoriaIndex, operacionIndex) => {
-    setOperacionArrastrada({ categoriaIndex, operacionIndex });
+  const handleOperacionDragStart = (event, categoriaIndex, operacionIndex, materialId = null) => {
+    setOperacionArrastrada({ categoriaIndex, operacionIndex, materialId });
     event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("text/plain", `${categoriaIndex}:${operacionIndex}`);
+    event.dataTransfer.setData("text/plain", `${categoriaIndex}:${materialId ?? ""}:${operacionIndex}`);
   };
 
-  const handleOperacionDrop = (event, categoriaIndex, destinoIndex) => {
+  const handleOperacionDrop = (event, categoriaIndex, destinoIndex, materialId = null) => {
     event.preventDefault();
-    const [origenCategoria, origenOperacion] = event.dataTransfer.getData("text/plain").split(":").map(Number);
-    const origen = operacionArrastrada || { categoriaIndex: origenCategoria, operacionIndex: origenOperacion };
-    if (origen.categoriaIndex === categoriaIndex) {
-      reordenarOperacion(categoriaIndex, origen.operacionIndex, destinoIndex);
+    const [origenCategoria, origenMaterial, origenOperacion] = event.dataTransfer.getData("text/plain").split(":");
+    const origen = operacionArrastrada || { categoriaIndex: Number(origenCategoria), materialId: origenMaterial || null, operacionIndex: Number(origenOperacion) };
+    if (origen.categoriaIndex === categoriaIndex && String(origen.materialId ?? "") === String(materialId ?? "")) {
+      reordenarOperacion(categoriaIndex, origen.operacionIndex, destinoIndex, materialId);
     }
     setOperacionArrastrada(null);
   };
@@ -921,8 +940,9 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
     setPanelesAbiertos((actual) => ({ ...actual, [panelKey]: !actual[panelKey] }));
   };
 
-  const renderOperacionesSection = (categoria, categoriaIndex, panelScopeKey) => {
-    const operaciones = Array.isArray(categoria.operaciones) ? categoria.operaciones : [];
+  const renderOperacionesSection = (categoria, categoriaIndex, panelScopeKey, materialId = null) => {
+    const operaciones = (Array.isArray(categoria.operaciones) ? categoria.operaciones : []).filter((item) =>
+      String(item.materialId ?? "") === String(materialId ?? ""));
     const operacionesDisponibles = catalogoOperaciones.filter(
       (item) => !operaciones.some((seleccionada) => String(getId(seleccionada)) === String(getId(item)))
     );
@@ -932,7 +952,9 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
       const cantidad = Number(item.cantidad ?? 1);
       return !Number.isInteger(cantidad) || cantidad < 1;
     });
-    const seleccionOperacionesCategoria = getSeleccionOperaciones(categoria, categoriaIndex);
+    const operacionesConTarifaPorMaterial = operaciones.some((item) =>
+      item.tiempoMinutosInicial != null || item.costoMinutoInicial != null);
+    const seleccionOperacionesCategoria = getSeleccionOperaciones(categoria, categoriaIndex, materialId);
     const totalOperacionesSeleccionadas = operaciones.filter((item) => seleccionOperacionesCategoria[String(getId(item))]).length;
     const todasOperacionesSeleccionadas =
       operaciones.length > 0 && operaciones.every((item) => seleccionOperacionesCategoria[String(getId(item))]);
@@ -962,7 +984,7 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
               <button
                 type="button"
                 className="btn btn-outline-secondary btn-sm"
-                onClick={() => copiarOperacionesSeleccionadas(categoria, categoriaIndex)}
+                onClick={() => copiarOperacionesSeleccionadas(categoria, categoriaIndex, materialId)}
                 disabled={!totalOperacionesSeleccionadas}
                 aria-label="Copiar operaciones seleccionadas"
               >
@@ -971,7 +993,7 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
               <button
                 type="button"
                 className="btn btn-outline-secondary btn-sm"
-                onClick={() => pegarOperaciones(categoriaIndex)}
+                onClick={() => pegarOperaciones(categoriaIndex, materialId)}
                 disabled={!clipboardOperaciones.length}
                 aria-label="Pegar operaciones"
               >
@@ -981,12 +1003,12 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
                 type="button"
                 className="btn btn-outline-success btn-sm"
                 onClick={() => sincronizarOperacionesCategoria(categoria, categoriaIndex)}
-                disabled={!modeloId || !categoria.id || operacionesInvalidas || sincronizandoOperacionesActual}
-                title={!modeloId || !categoria.id ? "Guarda el modelo antes de sincronizar operaciones" : operacionesInvalidas ? "Corrige cantidades antes de sincronizar" : "Sincronizar operaciones en variantes"}
+                disabled={!modeloId || !categoria.id || operacionesInvalidas || operacionesConTarifaPorMaterial || sincronizandoOperacionesActual}
+                title={operacionesConTarifaPorMaterial ? "Las tarifas por material requieren costos propios en las variantes" : !modeloId || !categoria.id ? "Guarda el modelo antes de sincronizar operaciones" : operacionesInvalidas ? "Corrige cantidades antes de sincronizar" : "Sincronizar operaciones en variantes"}
               >
                 <i className="bi bi-arrow-repeat me-1"></i>{sincronizandoOperacionesActual ? "Sincronizando..." : "Sincronizar variantes"}
               </button>
-              <button type="button" className="btn btn-outline-primary btn-sm" onClick={() => setModalOperacionIndex(categoriaIndex)}>
+              <button type="button" className="btn btn-outline-primary btn-sm" onClick={() => setModalOperacionIndex({ categoriaIndex, materialId })}>
                 <i className="bi bi-plus-lg me-1"></i>Nueva operacion
               </button>
             </div>
@@ -995,7 +1017,7 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
             label=""
             value={selecciones[`operacion-${categoriaIndex}`] || ""}
             options={operacionesDisponibles}
-            onChange={(id, opcion) => agregarOperacion(categoriaIndex, id, opcion)}
+            onChange={(id, opcion) => agregarOperacion(categoriaIndex, id, opcion, materialId)}
             closeOnSelect={false}
             loading={cargando}
             placeholder={cargando ? "Cargando operaciones..." : "Buscar y agregar operacion..."}
@@ -1014,6 +1036,7 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
                     <th style={{ width: 44 }}></th>
                     <th style={{ width: 44 }}></th>
                     <th>Operacion</th>
+                    <th style={{ width: 110 }}>Costo inicial</th>
                     <th className="text-end" style={{ width: 125 }}>Min/op.</th>
                     <th className="text-end" style={{ width: 125 }}>Costo/min</th>
                     <th className="text-end" style={{ width: 135 }}>Cantidad</th>
@@ -1030,11 +1053,11 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
                         type="checkbox"
                         className="form-check-input"
                         checked={todasOperacionesSeleccionadas}
-                        onChange={() => toggleTodasOperaciones(categoria, categoriaIndex, operaciones)}
+                        onChange={() => toggleTodasOperaciones(categoria, categoriaIndex, operaciones, materialId)}
                         aria-label={`Seleccionar todas las operaciones de ${categoria.nombre || categoriaIndex + 1}`}
                       />
                     </td>
-                    <td colSpan={7}>
+                    <td colSpan={8}>
                       <span className="text-muted small">Seleccionar todas</span>
                     </td>
                   </tr>
@@ -1050,16 +1073,16 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
                           type="checkbox"
                           className="form-check-input"
                           checked={Boolean(seleccionOperacionesCategoria[String(getId(item))])}
-                          onChange={() => toggleOperacionSeleccionada(categoria, categoriaIndex, item)}
+                          onChange={() => toggleOperacionSeleccionada(categoria, categoriaIndex, item, materialId)}
                           aria-label={`Seleccionar operacion ${item.nombre || getId(item)}`}
                         />
                       </td>
                       <td
                         style={{ width: 44 }}
                         draggable
-                        onDragStart={(event) => handleOperacionDragStart(event, categoriaIndex, index)}
+                        onDragStart={(event) => handleOperacionDragStart(event, categoriaIndex, index, materialId)}
                         onDragOver={(event) => event.preventDefault()}
-                        onDrop={(event) => handleOperacionDrop(event, categoriaIndex, index)}
+                        onDrop={(event) => handleOperacionDrop(event, categoriaIndex, index, materialId)}
                         onDragEnd={() => setOperacionArrastrada(null)}
                       >
                         <span
@@ -1075,8 +1098,27 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
                         <span className="fw-semibold">{item.codigo ? `[${item.codigo}] ` : ""}{item.nombre || `Operacion ${getId(item)}`}</span>
                         {item.centroTrabajoNombre && <span className="text-muted ms-2">{item.centroTrabajoNombre}</span>}
                       </td>
-                      <td className="text-end" style={{ width: 125 }}>{formatNumero(tiempoOperacion)} min</td>
-                      <td className="text-end" style={{ width: 125 }}>{formatCurrency(costoMinuto)}</td>
+                      <td>
+                        <label className="d-inline-flex align-items-center gap-1 small">
+                          <input type="checkbox" className="form-check-input m-0"
+                            checked={Boolean(item.costoInicial)}
+                            onChange={(event) => actualizarFlagCosto(categoriaIndex, "operacion", getId(item), event.target.checked, materialId)}
+                            aria-label={`Costo inicial de operacion ${item.nombre || getId(item)}`} />
+                          {item.costoInicial ? "Inicial" : "Nuevo"}
+                        </label>
+                      </td>
+                      <td style={{ width: 125 }}>
+                        <input type="number" min="0" step="0.000001" className="form-control form-control-sm text-end"
+                          value={item.tiempoMinutosInicial ?? tiempoOperacion}
+                          aria-label={`Minutos de ${item.nombre || getId(item)}`}
+                          onChange={(event) => actualizarCostoOperacion(categoriaIndex, getId(item), "tiempoMinutosInicial", event.target.value, materialId)} />
+                      </td>
+                      <td style={{ width: 125 }}>
+                        <input type="number" min="0" step="0.000001" className="form-control form-control-sm text-end"
+                          value={item.costoMinutoInicial ?? costoMinuto}
+                          aria-label={`Costo por minuto de ${item.nombre || getId(item)}`}
+                          onChange={(event) => actualizarCostoOperacion(categoriaIndex, getId(item), "costoMinutoInicial", event.target.value, materialId)} />
+                      </td>
                       <td style={{ width: 135 }}>
                         <input
                           type="number"
@@ -1087,13 +1129,13 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
                           data-modelo-categoria-index={categoriaIndex}
                           data-modelo-operacion-id={getId(item)}
                           data-modelo-operacion-campo="cantidad"
-                          onChange={(event) => actualizarCantidadOperacion(categoriaIndex, getId(item), event.target.value)}
+                          onChange={(event) => actualizarCantidadOperacion(categoriaIndex, getId(item), event.target.value, materialId)}
                           placeholder="Cantidad"
                         />
                       </td>
                       <td className="text-end fw-semibold" style={{ width: 125 }}>{formatCurrency(subtotal)}</td>
                       <td className="text-end" style={{ width: 78 }}>
-                        <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => quitarOperacion(categoriaIndex, getId(item))}>
+                        <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => quitarOperacion(categoriaIndex, getId(item), materialId)}>
                           <i className="bi bi-x-lg"></i>
                         </button>
                       </td>
@@ -1138,7 +1180,8 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
     const totalSeleccionados = insumos.filter((item) => seleccionInsumosCategoria[getInsumoScopeKey(item)]).length;
     const todosInsumosSeleccionados =
       insumos.length > 0 && insumos.every((item) => seleccionInsumosCategoria[getInsumoScopeKey(item)]);
-    const operaciones = Array.isArray(categoria.operaciones) ? categoria.operaciones : [];
+    const operaciones = (Array.isArray(categoria.operaciones) ? categoria.operaciones : []).filter((item) =>
+      String(item.materialId ?? "") === String(materialId ?? ""));
     const titulo = material ? getMaterialLabel(material) : "Insumos comunes";
     const medidas = obtenerMedidasSeccion(categoria, materialId);
     const insumosInvalidos = insumos.some((item) => {
@@ -1147,7 +1190,8 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
       return !Number.isFinite(cantidad) || cantidad <= 0
         || !Number.isFinite(desperdicio) || desperdicio < 0;
     });
-    const puedeSincronizar = Boolean(modeloId && categoria.id) && !insumosInvalidos;
+    const insumosConCostoPorMaterial = insumos.some((item) => item.costoUnitarioInicial != null);
+    const puedeSincronizar = Boolean(modeloId && categoria.id) && !insumosInvalidos && !insumosConCostoPorMaterial;
     const sincronizando = sincronizandoCategoria === sectionKey;
     const sincronizandoMedidasSeccionActual = sincronizandoMedidas === sectionKey;
     const totalInsumosId = `total-insumos-${sectionKey.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
@@ -1174,9 +1218,19 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
           <i className="bi bi-chevron-down modelo-chevron modelo-chevron-down" aria-hidden="true"></i>
           <i className="bi bi-chevron-up modelo-chevron modelo-chevron-up" aria-hidden="true"></i>
           <span className="fw-semibold">{titulo}</span>
-          <span className="text-muted small">{insumos.length} insumos</span>
-          <span className="text-muted small">{operaciones.length} operaciones</span>
-          <span className="fw-semibold ms-auto">{totalInsumosFormateado}</span>
+          <span
+            className={`modelo-material-costo-estado ${categoria.costoInicialPendiente ? "modelo-material-costo-estado-inicial" : ""}`}
+            aria-label={`Estado del costo de ${titulo}: ${categoria.costoInicialPendiente ? "inicial" : "nuevo"}`}
+          >
+            {categoria.costoInicialPendiente ? "Costo inicial" : "Costo nuevo"}
+          </span>
+          <span className="text-muted small">
+            {insumos.length} insumos
+          </span>
+          <span className="text-muted small">
+            {operaciones.length} operaciones
+          </span>
+          <span className="fw-semibold ms-auto">{formatCurrency(totalInsumosSeccion + operaciones.reduce((total, item) => total + calcularSubtotalOperacion(item), 0))}</span>
         </summary>
         <div className="modelo-material-body">
         <div className="border rounded-3 p-3 mb-3 bg-light">
@@ -1334,7 +1388,7 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
               className="btn btn-outline-success btn-sm"
               onClick={() => sincronizarVariantes(categoria, categoriaIndex, materialId, titulo)}
               disabled={!puedeSincronizar || sincronizando}
-              title={!modeloId || !categoria.id ? "Guarda el modelo antes de sincronizar variantes" : insumosInvalidos ? "Corrige cantidades antes de sincronizar" : "Sincronizar insumos heredados en variantes"}
+              title={insumosConCostoPorMaterial ? "Los costos por material requieren costos propios en las variantes" : !modeloId || !categoria.id ? "Guarda el modelo antes de sincronizar variantes" : insumosInvalidos ? "Corrige cantidades antes de sincronizar" : "Sincronizar insumos heredados en variantes"}
             >
               <i className="bi bi-arrow-repeat me-1"></i>{sincronizando ? "Sincronizando..." : "Sincronizar variantes"}
             </button>
@@ -1364,7 +1418,7 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
                 <tr>
                   <th style={{ width: 44 }}></th>
                   <th>Insumo</th>
-                  <th>Tipo</th>
+                  <th>Costo inicial</th>
                   <th className="text-end" style={{ width: 150 }}>Cantidad</th>
                   <th className="text-end" style={{ width: 135 }}>% Desperdicio</th>
                   <th className="text-end" style={{ width: 140 }}>Costo</th>
@@ -1420,7 +1474,15 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
                         )}
                       </details>}
                     </td>
-                    <td><span className="small">{formatTipoInsumo(item)}</span></td>
+                    <td>
+                      <label className="d-inline-flex align-items-center gap-1 small">
+                        <input type="checkbox" className="form-check-input m-0"
+                          checked={Boolean(item.costoInicial)}
+                          onChange={(event) => actualizarFlagCosto(categoriaIndex, "insumo", getId(item), event.target.checked, materialId)}
+                          aria-label={`Costo inicial de insumo ${item.nombre || getId(item)}`} />
+                        {item.costoInicial ? "Inicial" : "Nuevo"}
+                      </label>
+                    </td>
                     <td style={{ width: 150 }}>
                       <input
                         type="number"
@@ -1501,7 +1563,7 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
         </section>
           </div>
         </details>
-        {renderOperacionesSection(categoria, categoriaIndex, sectionKey)}
+        {renderOperacionesSection(categoria, categoriaIndex, sectionKey, materialId)}
         </div>
       </details>
     );
@@ -1591,7 +1653,7 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
           onCancel={() => setModalOperacionIndex(null)}
           onSave={(creada) => {
             setCatalogoOperaciones((actual) => mergePorId(actual, [creada]));
-            agregarOperacion(modalOperacionIndex, getId(creada), creada);
+            agregarOperacion(modalOperacionIndex?.categoriaIndex, getId(creada), creada, modalOperacionIndex?.materialId ?? null);
             setModalOperacionIndex(null);
           }}
         />
