@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { obtenerLogoDocumentoUrl } from "../../../utils/documentLogo.js";
 import {
   obtenerInsumoPorId,
   crearInsumo,
@@ -379,7 +380,7 @@ export default function InsumoForm({
     }
   };
 
-  const imprimirEtiqueta = () => {
+  const imprimirEtiqueta = async () => {
     const bits = obtenerBitsEan13(formData.codigoBarras);
     if (!bits) return;
 
@@ -397,6 +398,7 @@ export default function InsumoForm({
 
     const ventana = window.open("", "_blank", "width=420,height=360");
     if (!ventana) return;
+    const logo = (await obtenerLogoDocumentoUrl()).replaceAll("&", "&amp;").replaceAll('"', "&quot;");
 
     ventana.document.write(`
       <!doctype html>
@@ -406,14 +408,16 @@ export default function InsumoForm({
           <style>
             @page { size: 76mm 38mm; margin: 0; }
             body { margin: 0; font-family: Arial, sans-serif; color: #111827; }
-            .label { width: 76mm; min-height: 38mm; box-sizing: border-box; padding: 4mm 5mm; text-align: center; }
+            .label { width: 76mm; min-height: 38mm; box-sizing: border-box; padding: 2mm 5mm; text-align: center; }
+            .logo { width: 28mm; height: 5mm; object-fit: contain; margin-bottom: 1mm; }
             .name { font-size: 12px; font-weight: 700; margin-bottom: 2mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
             .code { font-family: monospace; font-size: 11px; letter-spacing: 1.4px; margin-top: 1mm; }
-            svg { width: 100%; height: 20mm; }
+            svg { width: 100%; height: 18mm; }
           </style>
         </head>
         <body>
           <div class="label">
+            <img class="logo" src="${logo}" alt="Mobilesco" />
             <div class="name">${formData.nombre || "Insumo"}</div>
             <svg viewBox="0 0 ${barcodeWidth} ${barcodeHeight}" role="img">
               <rect width="${barcodeWidth}" height="${barcodeHeight}" fill="#ffffff"></rect>

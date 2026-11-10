@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { useProveedores } from "../hooks/useProveedores";
 
 import ProveedoresTable from "../components/ProveedoresTable.jsx";
+import CargaMasivaProveedoresDialog from "../components/CargaMasivaProveedoresDialog.jsx";
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
 import CatalogPagination from "../../../components/ui/CatalogPagination.jsx";
 import CatalogFilters from "../../../components/ui/CatalogFilters.jsx";
@@ -41,6 +42,7 @@ export default function ProveedoresPage() {
   const [tiposInsumo, setTiposInsumo] = useState([]);
   const [proveedorPorCambiar, setProveedorPorCambiar] = useState(null);
   const [cambiandoEstado, setCambiandoEstado] = useState(false);
+  const [mostrarCarga, setMostrarCarga] = useState(false);
 
   const activoFiltro = useMemo(() => (soloActivos ? true : undefined), [soloActivos]);
   const busqueda = useDebouncedValue(busquedaInput, 350);
@@ -51,7 +53,8 @@ export default function ProveedoresPage() {
     proveedores,
     pageInfo,
     error,
-    cambiarEstadoProveedor
+    cambiarEstadoProveedor,
+    recargar
   } = useProveedores({
     activo: activoFiltro,
     busqueda: busquedaGeneral,
@@ -156,6 +159,7 @@ export default function ProveedoresPage() {
         onCancel={() => setProveedorPorCambiar(null)}
         onConfirm={confirmarCambioEstado}
       />
+      {mostrarCarga && <CargaMasivaProveedoresDialog onClose={() => setMostrarCarga(false)} onImport={() => { setPage(0); void recargar(); }} />}
 
       <PageHeader
         eyebrow="Abastecimiento"
@@ -163,6 +167,7 @@ export default function ProveedoresPage() {
         subtitle="Base de datos centralizada de proveedores"
         actions={
           <div className="d-flex gap-2">
+            {puedeCrear && <button className="btn btn-outline-primary" onClick={() => setMostrarCarga(true)}>Carga masiva</button>}
             {puedeExportar && <button
               className="btn btn-outline-success"
               onClick={exportarExcel}

@@ -1,9 +1,10 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useCallback, useEffect, useState } from "react";
-import { obtenerCompraPorId } from "../services/compras.js";
+import { obtenerCompraPorId, obtenerComprobanteCompra } from "../services/compras.js";
 import Card from "../../../components/ui/Card.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
 import { getUser, hasPermission } from "../../auth/services/authService.js";
+import { formatMoney } from "../utils/money.js";
 
 export default function CompraDetallePage() {
   const { id } = useParams();
@@ -16,6 +17,9 @@ export default function CompraDetallePage() {
   const [error, setError] = useState("");
   const [toastMessage, setToastMessage] = useState("");
   const [toastType] = useState("success");
+  const [comprobanteUrl, setComprobanteUrl] = useState("");
+  const [comprobanteTipo, setComprobanteTipo] = useState("");
+  const [comprobanteError, setComprobanteError] = useState("");
 
   const cargarCompra = useCallback(async () => {
     try {
@@ -34,13 +38,26 @@ export default function CompraDetallePage() {
     cargarCompra();
   }, [cargarCompra]);
 
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('es-MX', { 
-      style: 'currency', 
-      currency: 'MXN',
-      minimumFractionDigits: 2
-    }).format(value || 0);
-  };
+  useEffect(() => {
+    if (!compra?.comprobanteId) return undefined;
+    let activo = true;
+    let url = "";
+    obtenerComprobanteCompra(id).then((blob) => {
+      if (!activo) return;
+      url = URL.createObjectURL(blob);
+      setComprobanteUrl(url);
+      setComprobanteTipo(blob.type);
+      setComprobanteError("");
+    }).catch((error) => {
+      if (activo) setComprobanteError(error.message || "No se pudo abrir el comprobante");
+    });
+    return () => {
+      activo = false;
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [compra?.comprobanteId, id]);
+
+  const formatCurrency = formatMoney;
 
   const formatDate = (dateString) => {
     if (!dateString) return '-';
@@ -194,6 +211,22 @@ export default function CompraDetallePage() {
       )}
 
       <div className="row">
+        <div className="col-12 mb-4">
+          <Card title="Comprobante de compra" icon="bi-file-earmark-text">
+            {compra.comprobanteId ? (
+              <>
+                <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                  <span>{compra.comprobanteNombre || "Comprobante asociado"}</span>
+                  {comprobanteUrl && <a href={comprobanteUrl} target="_blank" rel="noopener noreferrer">Abrir comprobante</a>}
+                </div>
+                {comprobanteError && <div className="alert alert-danger">{comprobanteError}</div>}
+                {comprobanteUrl && (comprobanteTipo === "application/pdf"
+                  ? <iframe title="Comprobante de compra" src={comprobanteUrl} className="w-100 border rounded" style={{ height: "32rem" }} />
+                  : <img src={comprobanteUrl} alt="Comprobante de compra" className="img-fluid border rounded" />)}
+              </>
+            ) : <span className="text-muted">Sin comprobante asociado</span>}
+          </Card>
+        </div>
         <div className="col-md-6">
           <Card title="Información General" icon="bi-info-circle">
             <table className="table table-sm">
@@ -211,6 +244,15 @@ export default function CompraDetallePage() {
                 <tr>
                   <th>Metodo de pago:</th>
                   <td>{compra.metodoPago || '-'}</td>
+                </tr>
+                <tr>
+                  <th>Realizado por:</th>
+                  <td>
+                    {compra.realizadoPorNombre || compra.realizadoPor || '-'}
+                    {compra.realizadoPorNombre && compra.realizadoPor && (
+                      <small className="text-muted d-block">{compra.realizadoPor}</small>
+                    )}
+                  </td>
                 </tr>
                 <tr>
                   <th>Observaciones:</th>

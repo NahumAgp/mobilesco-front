@@ -66,7 +66,8 @@
 .catalogo-imp-contraportada a { color: #b9652c; font-size: 13pt; }
 
 .catalogo-imp-interior { display: grid; grid-template-rows: 31mm minmax(0, 1fr) 6mm; gap: 5mm; }
-.catalogo-imp-interior header { min-height: 0; }
+.catalogo-imp-interior header { min-height: 0; display: flex; justify-content: space-between; gap: 4mm; align-items: flex-start; }
+.catalogo-imp-interior header img { width: 36mm; height: 13mm; object-fit: contain; object-position: right center; }
 .catalogo-imp-interior header span { color: #b9652c; font-size: 8pt; font-weight: 700; letter-spacing: .14em; }
 .catalogo-imp-interior h2 { color: #24463f; font-size: 24pt; line-height: 1.1; margin: 4mm 0 0; }
 .catalogo-imp-lista { display: grid; grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 6mm; min-height: 0; }

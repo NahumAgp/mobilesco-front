@@ -1,11 +1,12 @@
-import React, { useCallback, useState, useEffect } from "react";
+import React, { useCallback, useState, useEffect, useRef } from "react";
 import usePersistedState from "../../../hooks/usePersistedState.js";
 import { getInitialPaginationPage, usePersistedPagination } from "../../../hooks/usePersistedPagination.js";
 import { useLocation, useNavigate } from "react-router-dom";
 import { obtenerInsumos } from "../../insumos/services/insumos.js";
 import { obtenerCompraPorId } from "../../compras/services/compras.js";
-import { obtenerHistorialInsumo, obtenerCostoPromedio } from "../services/kardex.js";
+import { obtenerHistorialInsumo, obtenerCostoPromedio, obtenerHistorialPreciosInsumo } from "../services/kardex.js";
 import KardexTable from "./KardexTable.jsx";
+import PriceHistoryChart from "./PriceHistoryChart.jsx";
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
 import Card from "../../../components/ui/Card.jsx";
@@ -58,6 +59,8 @@ export default function KardexPage() {
   const [pageInfo, setPageInfo] = useState(PAGE_INFO_DEFAULT);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [historialPrecios, setHistorialPrecios] = useState({ insumoId: "", prices: [], loading: false, error: "" });
+  const priceRequestRef = useRef(0);
   
   // Filtros de fecha
   const [fechaInicio, setFechaInicio] = usePersistedState("kardex:fecha-inicio", getDefaultFechaInicio());
@@ -121,7 +124,22 @@ export default function KardexPage() {
     }
   }, [location.search, setInsumoSeleccionado]);
 
-  const handleConsultar = useCallback(async ({ mostrarAviso = true, pageOverride = 0 } = {}) => {
+  const consultarPrecios = useCallback(async (insumoId) => {
+    const requestId = ++priceRequestRef.current;
+    setHistorialPrecios({ insumoId: String(insumoId), prices: [], loading: true, error: "" });
+    try {
+      const prices = await obtenerHistorialPreciosInsumo(insumoId);
+      if (requestId === priceRequestRef.current) {
+        setHistorialPrecios({ insumoId: String(insumoId), prices: Array.isArray(prices) ? prices : [], loading: false, error: "" });
+      }
+    } catch {
+      if (requestId === priceRequestRef.current) {
+        setHistorialPrecios({ insumoId: String(insumoId), prices: [], loading: false, error: "No se pudo cargar el historial de precios." });
+      }
+    }
+  }, []);
+
+  const handleConsultar = useCallback(async ({ mostrarAviso = true, pageOverride = 0, refreshPrices = true } = {}) => {
     if (!insumoSeleccionado) {
       if (mostrarAviso) {
         setToastType("warning");
@@ -132,6 +150,7 @@ export default function KardexPage() {
 
     setLoading(true);
     setError("");
+    if (refreshPrices) consultarPrecios(insumoSeleccionado);
 
     try {
       let data;
@@ -177,7 +196,7 @@ export default function KardexPage() {
     } finally {
       setLoading(false);
     }
-  }, [completarDatosCompras, fechaFin, fechaInicio, insumoSeleccionado, usarFiltroFechas]);
+  }, [completarDatosCompras, consultarPrecios, fechaFin, fechaInicio, insumoSeleccionado, usarFiltroFechas]);
 
   useEffect(() => {
     setPage(0);
@@ -199,7 +218,7 @@ export default function KardexPage() {
 
   const handlePageChange = (nextPage) => {
     setPage(nextPage);
-    handleConsultar({ mostrarAviso: false, pageOverride: nextPage });
+    handleConsultar({ mostrarAviso: false, pageOverride: nextPage, refreshPrices: false });
   };
 
   const insumoInfo = insumos.find(i => i.id === parseInt(insumoSeleccionado));
@@ -444,6 +463,15 @@ export default function KardexPage() {
 
       {error && (
         <div className="alert alert-danger">{error}</div>
+      )}
+
+      {insumoSeleccionado && historialPrecios.insumoId === String(insumoSeleccionado) && (
+        <PriceHistoryChart
+          prices={historialPrecios.prices}
+          loading={historialPrecios.loading}
+          error={historialPrecios.error}
+          unit={insumoInfo?.unidadMedida?.simbolo}
+        />
       )}
 
       <KardexTable 

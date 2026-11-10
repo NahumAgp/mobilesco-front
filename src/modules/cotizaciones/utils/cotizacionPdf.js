@@ -1,32 +1,15 @@
+import { obtenerLogoDocumentoPng } from "../../../utils/documentLogo.js";
+
 const moneda = (valor) =>
   new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(Number(valor || 0));
-
-async function logoDataUrl() {
-  const response = await fetch("/logo-mobilesco-firmeza.svg");
-  const svg = await response.text();
-  const blob = new Blob([svg], { type: "image/svg+xml" });
-  const url = URL.createObjectURL(blob);
-  try {
-    const image = new Image();
-    image.src = url;
-    await image.decode();
-    const canvas = document.createElement("canvas");
-    canvas.width = 900;
-    canvas.height = Math.max(240, Math.round(900 * image.height / image.width));
-    canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
-    return canvas.toDataURL("image/png");
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
 
 export async function crearPdfCotizacion(cotizacion) {
   const { jsPDF } = await import("jspdf");
   const pdf = new jsPDF({ unit: "mm", format: "letter" });
   const verde = [21, 79, 67];
-  try {
-    pdf.addImage(await logoDataUrl(), "PNG", 14, 10, 54, 18);
-  } catch {
+  const logo = await obtenerLogoDocumentoPng();
+  if (logo) pdf.addImage(logo, "PNG", 14, 10, 54, 18);
+  else {
     pdf.setFontSize(18);
     pdf.setTextColor(...verde);
     pdf.text("MOBILESCO", 14, 20);
@@ -64,7 +47,8 @@ export async function crearPdfCotizacion(cotizacion) {
   cotizacion.detalles.forEach((item) => {
     if (y > 238) {
       pdf.addPage();
-      y = 18;
+      if (logo) pdf.addImage(logo, "PNG", 14, 8, 42, 14);
+      y = 29;
       encabezado();
     }
     const nombre = `${item.sku} · ${item.nombre}`;
@@ -81,7 +65,8 @@ export async function crearPdfCotizacion(cotizacion) {
   y = Math.max(y + 8, 170);
   if (y > 226) {
     pdf.addPage();
-    y = 25;
+    if (logo) pdf.addImage(logo, "PNG", 14, 8, 42, 14);
+    y = 29;
   }
   const total = (label, valor, bold = false) => {
     pdf.setFont(undefined, bold ? "bold" : "normal");

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
   ArrowRight,
@@ -17,7 +17,8 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { getUser, hasPermission } from "../../auth/services/authService";
-import { obtenerResumenTablero } from "../services/tablero";
+import { conectarEventosTablero, obtenerResumenTablero } from "../services/tablero";
+import AlmacenInicioPage from "../../almacen/pages/AlmacenInicioPage";
 import "./tablero.css";
 import "./tablero-analytics.css";
 import "./tablero-quick.css";
@@ -41,7 +42,7 @@ const ESTADOS = {
 };
 
 const moneda = (valor) =>
-  new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 })
+  new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", minimumFractionDigits: 2, maximumFractionDigits: 2 })
     .format(Number(valor) || 0);
 
 const relativo = (valor) => {
@@ -65,6 +66,14 @@ function Cargando() {
 }
 
 export default function Tablero() {
+  const usuario = getUser();
+  if (usuario?.roles?.some((rol) => String(rol).trim().toUpperCase().replaceAll(" ", "_").replace(/^ROLE_/, "") === "JEFE_ALMACEN")) {
+    return <AlmacenInicioPage />;
+  }
+  return <TableroGeneral />;
+}
+
+function TableroGeneral() {
   const navigate = useNavigate();
   const user = getUser();
   const puedeVerCotizaciones = hasPermission(user, "VIEW_QUOTES");
@@ -73,26 +82,57 @@ export default function Tablero() {
   const puedeVerCompras = hasPermission(user, "VIEW_PURCHASES");
   const puedeVerProductos = hasPermission(user, "VIEW_PRODUCTS");
   const puedeVerRequisiciones = hasPermission(user, "VIEW_WAREHOUSE_REQUISITIONS");
+  const puedeVerSalidas = hasPermission(user, "VIEW_INVENTORY_OUTPUTS");
   const [periodo, setPeriodo] = useState("MES");
   const [resumen, setResumen] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
+  const [conexion, setConexion] = useState("conectando");
+  const [actualizado, setActualizado] = useState(null);
+  const solicitudActual = useRef(0);
 
   const cargar = useCallback(async () => {
+    const solicitud = ++solicitudActual.current;
     setCargando(true);
     try {
-      setResumen(await obtenerResumenTablero(periodo));
+      const datos = await obtenerResumenTablero(periodo);
+      if (solicitud !== solicitudActual.current) return;
+      setResumen(datos);
+      setActualizado(new Date());
       setError("");
     } catch (e) {
-      setError(e.message || "No fue posible cargar el tablero.");
+      if (solicitud === solicitudActual.current) setError(e.message || "No fue posible cargar el tablero.");
     } finally {
-      setCargando(false);
+      if (solicitud === solicitudActual.current) setCargando(false);
     }
   }, [periodo]);
+
+  const cargarActual = useRef(cargar);
+  cargarActual.current = cargar;
 
   useEffect(() => {
     cargar();
   }, [cargar]);
+
+  useEffect(() => {
+    let refresco;
+    let conectado = false;
+    const actualizar = () => {
+      clearTimeout(refresco);
+      refresco = setTimeout(() => cargarActual.current(), 300);
+    };
+    const desconectar = conectarEventosTablero({
+      onConnect: () => {
+        setConexion("conectado");
+        if (conectado) actualizar();
+        conectado = true;
+      },
+      onChange: actualizar,
+      onDisconnect: () => setConexion("reconectando"),
+    });
+    const respaldo = setInterval(() => cargarActual.current(), 60000);
+    return () => { desconectar(); clearTimeout(refresco); clearInterval(respaldo); };
+  }, []);
 
   const abrirAlerta = (alerta) => {
     if (alerta.tipo === "STOCK_BAJO" && puedeVerInventario) navigate(alerta.ruta);
@@ -101,6 +141,30 @@ export default function Tablero() {
 
   const variacion = resumen?.indicadores?.variacionMontoPorcentaje;
   const stats = resumen ? [
+    ...(puedeVerCompras ? [{
+      titulo: "Compras del periodo",
+      valor: resumen.indicadoresOperativos.comprasPeriodo,
+      nota: `${resumen.desde} al ${resumen.hasta}`,
+      color: "primary",
+    }, {
+      titulo: "Monto comprado",
+      valor: moneda(resumen.indicadoresOperativos.montoCompradoPeriodo),
+      nota: "Compras activas confirmadas",
+      color: "success",
+    }] : []),
+    ...(puedeVerCompras && hasPermission(user, "VIEW_ACCOUNTS_PAYABLE") ? [{
+      titulo: "Cuentas vencidas",
+      valor: resumen.indicadoresOperativos.cuentasPorPagarVencidas,
+      nota: "Con saldo pendiente",
+      color: "warning",
+    }] : []),
+    ...(puedeVerSalidas ? [{
+      titulo: "Salidas del periodo",
+      valor: resumen.indicadoresOperativos.salidasPeriodo,
+      nota: `${resumen.desde} al ${resumen.hasta}`,
+      color: "secondary",
+    }] : []),
+    ...(puedeVerCotizaciones ? [
     {
       titulo: "Cotizaciones activas",
       valor: resumen.indicadores.cotizacionesActivas,
@@ -125,6 +189,7 @@ export default function Tablero() {
       nota: "Aceptadas o completadas sobre decisiones",
       color: "secondary",
     },
+    ] : []),
   ] : [];
   const operacion = resumen?.indicadoresOperativos;
   const indicadoresOperativos = operacion ? [
@@ -161,7 +226,7 @@ export default function Tablero() {
       nota: `${moneda(operacion.saldoPorPagar)} por pagar`,
       icono: CreditCard,
       ruta: "/compras/cuentas-por-pagar",
-      permitido: puedeVerCompras,
+      permitido: puedeVerCompras && hasPermission(user, "VIEW_ACCOUNTS_PAYABLE"),
       tono: "danger",
     },
     {
@@ -173,7 +238,7 @@ export default function Tablero() {
       permitido: puedeVerProductos,
       tono: "success",
     },
-  ] : [];
+  ].filter((indicador) => indicador.permitido) : [];
   const inventario = resumen?.indicadoresInventario;
   const indicadoresInventario = inventario ? [
     {
@@ -204,6 +269,10 @@ export default function Tablero() {
           <p>Resumen actualizado de actividad comercial y alertas operativas.</p>
         </div>
         <div className="tab-header-actions">
+          <div className={`tab-connection tab-connection-${conexion}`} role="status">
+            <span>{conexion === "conectado" ? "En vivo" : conexion === "reconectando" ? "Reconectando…" : "Conectando…"}</span>
+            {actualizado && <small>Actualizado {actualizado.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</small>}
+          </div>
           <label>
             <span>Periodo</span>
             <select value={periodo} onChange={(event) => setPeriodo(event.target.value)} disabled={cargando}>
@@ -295,7 +364,8 @@ export default function Tablero() {
             </section>
           )}
 
-          <div className={`tab-content ${cargando ? "tab-refreshing" : ""}`}>
+          <div className={`tab-content ${!puedeVerCotizaciones ? "tab-content-solo" : ""} ${cargando ? "tab-refreshing" : ""}`}>
+            {puedeVerCotizaciones && (
             <section className="tab-card tab-recent">
               <div className="tab-section-title">
                 <div><h2>Cotizaciones recientes</h2><p>Últimos movimientos registrados en el sistema.</p></div>
@@ -321,12 +391,13 @@ export default function Tablero() {
                 </button>
               ))}
             </section>
+            )}
 
             <aside className="tab-card tab-alerts">
               <div className="tab-section-title"><div><h2>Alertas del sistema</h2><p>Acciones basadas en datos actuales.</p></div></div>
               {!resumen?.alertas?.length ? (
                 <div className="tab-empty"><PackageSearch size={30} /><strong>Todo en orden</strong><span>No hay alertas pendientes.</span></div>
-              ) : resumen.alertas.map((alerta) => {
+              ) : resumen.alertas.filter((alerta) => alerta.tipo === "STOCK_BAJO" ? puedeVerInventario : puedeVerCotizaciones).map((alerta) => {
                 const navegable = alerta.tipo === "STOCK_BAJO" ? puedeVerInventario : puedeVerCotizaciones;
                 return (
                   <article className={`tab-alert tab-alert-${alerta.severidad}`} key={alerta.tipo}>

@@ -51,6 +51,10 @@ const getSectionKey = (categoria, categoriaIndex, materialId = null) =>
 const getProductoNivelId = (item) => item?.nivelId ?? item?.id_nivel ?? item?.nivel_id ?? item?.nivel?.id ?? null;
 const getProductoMaterialId = (item) => item?.materialId ?? item?.id_material ?? item?.material_id ?? item?.material?.id ?? null;
 const getMedidasKey = (materialId = null) => String(materialId ?? "comunes");
+const marcaCostoGrupo = (categoria, tipo, materialId, items) => {
+  const guardada = categoria?.costoInicialGrupos?.[getMedidasKey(materialId)]?.[tipo];
+  return typeof guardada === "boolean" ? guardada : items.length > 0 && items.every((item) => Boolean(item.costoInicial));
+};
 const TONES_CATEGORIA = [
   { bg: "#f4f8f6", border: "#bfd6cc", ink: "#21443b" },
   { bg: "#fff8f1", border: "#efd0ad", ink: "#5b3b1f" },
@@ -472,7 +476,8 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
           desperdicioPorcentaje: getDesperdicio(item),
           costoCotizacion: getCostoCotizacion(item),
           costoCotizacionOriginal: item.costoCotizacionOriginal ?? getCostoCotizacion(item),
-          costoInicial: false
+          costoInicial: categoria.costoInicialGrupos?.[getMedidasKey(materialId)]?.insumos
+            ?? actuales.some((item) => String(getInsumoMaterialId(item) ?? "") === String(materialId ?? "") && item.costoInicial)
         }));
 
       agregados = nuevos.length;
@@ -541,7 +546,8 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
           tiempoOperacion: getTiempoOperacion(item),
           costoMinuto: getCostoMinutoOperacion(item),
           cantidad: item.cantidad ?? 1,
-          costoInicial: false
+          costoInicial: categoria.costoInicialGrupos?.[getMedidasKey(materialId)]?.operaciones
+            ?? actuales.some((item) => String(item.materialId ?? "") === String(materialId ?? "") && item.costoInicial)
         }));
 
       agregadas = nuevas.length;
@@ -585,7 +591,8 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
           cantidad: insumo.cantidad ?? (insumo.conjunto ? 1 : ""),
           desperdicioPorcentaje: getDesperdicio(insumo),
           costoCotizacion: getCostoCotizacion(insumo),
-          costoInicial: false,
+          costoInicial: categoria.costoInicialGrupos?.[getMedidasKey(materialId)]?.insumos
+            ?? actuales.some((item) => String(getInsumoMaterialId(item) ?? "") === String(materialId ?? "") && item.costoInicial),
           costoCotizacionOriginal: insumo.costoCotizacionOriginal ?? getCostoCotizacion(insumo)
         }]
       };
@@ -602,7 +609,9 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
         && String(item.materialId ?? "") === String(materialId ?? ""))) return categoria;
       return {
         ...categoria,
-        operaciones: [...actuales, { ...operacion, id: getId(operacion), materialId, cantidad: operacion.cantidad ?? 1, costoInicial: false }]
+        operaciones: [...actuales, { ...operacion, id: getId(operacion), materialId, cantidad: operacion.cantidad ?? 1,
+          costoInicial: categoria.costoInicialGrupos?.[getMedidasKey(materialId)]?.operaciones
+            ?? actuales.some((item) => String(item.materialId ?? "") === String(materialId ?? "") && item.costoInicial) }]
       };
     });
     setSelecciones((prev) => ({ ...prev, [`operacion-${categoriaIndex}`]: "" }));
@@ -632,8 +641,8 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
       insumos: (categoria.insumos || []).map((item) =>
         String(getId(item)) === String(insumoId) && String(getInsumoMaterialId(item) ?? "") === String(materialId ?? "")
           ? (item.costoUnitarioInicial == null
-            ? { ...item, costoCotizacion, costoInicial: false }
-            : { ...item, costoUnitarioInicial: costoCotizacion, costoInicial: false }) : item
+            ? { ...item, costoCotizacion }
+            : { ...item, costoUnitarioInicial: costoCotizacion }) : item
       )
     }));
   };
@@ -684,17 +693,23 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
       ...categoria,
       operaciones: (categoria.operaciones || []).map((item) =>
         String(getId(item)) === String(operacionId) && String(item.materialId ?? "") === String(materialId ?? "")
-          ? { ...item, [campo]: valor, costoInicial: false } : item)
+          ? { ...item, [campo]: valor } : item)
     }));
   };
 
-  const actualizarFlagCosto = (categoriaIndex, tipo, itemId, costoInicial, materialId = null) => {
+  const actualizarFlagCosto = (categoriaIndex, tipo, costoInicial, materialId = null) => {
     const campo = tipo === "insumo" ? "insumos" : "operaciones";
     actualizarCategoria(categoriaIndex, (categoria) => ({
       ...categoria,
+      costoInicialGrupos: {
+        ...(categoria.costoInicialGrupos || {}),
+        [getMedidasKey(materialId)]: {
+          ...(categoria.costoInicialGrupos?.[getMedidasKey(materialId)] || {}),
+          [campo]: costoInicial
+        }
+      },
       [campo]: (categoria[campo] || []).map((item) =>
-        String(getId(item)) === String(itemId)
-          && String((tipo === "insumo" ? getInsumoMaterialId(item) : item.materialId) ?? "") === String(materialId ?? "")
+        String((tipo === "insumo" ? getInsumoMaterialId(item) : item.materialId) ?? "") === String(materialId ?? "")
           ? { ...item, costoInicial } : item)
     }));
   };
@@ -1036,7 +1051,6 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
                     <th style={{ width: 44 }}></th>
                     <th style={{ width: 44 }}></th>
                     <th>Operacion</th>
-                    <th style={{ width: 110 }}>Costo inicial</th>
                     <th className="text-end" style={{ width: 125 }}>Min/op.</th>
                     <th className="text-end" style={{ width: 125 }}>Costo/min</th>
                     <th className="text-end" style={{ width: 135 }}>Cantidad</th>
@@ -1057,7 +1071,7 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
                         aria-label={`Seleccionar todas las operaciones de ${categoria.nombre || categoriaIndex + 1}`}
                       />
                     </td>
-                    <td colSpan={8}>
+                    <td colSpan={7}>
                       <span className="text-muted small">Seleccionar todas</span>
                     </td>
                   </tr>
@@ -1097,15 +1111,6 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
                       <td>
                         <span className="fw-semibold">{item.codigo ? `[${item.codigo}] ` : ""}{item.nombre || `Operacion ${getId(item)}`}</span>
                         {item.centroTrabajoNombre && <span className="text-muted ms-2">{item.centroTrabajoNombre}</span>}
-                      </td>
-                      <td>
-                        <label className="d-inline-flex align-items-center gap-1 small">
-                          <input type="checkbox" className="form-check-input m-0"
-                            checked={Boolean(item.costoInicial)}
-                            onChange={(event) => actualizarFlagCosto(categoriaIndex, "operacion", getId(item), event.target.checked, materialId)}
-                            aria-label={`Costo inicial de operacion ${item.nombre || getId(item)}`} />
-                          {item.costoInicial ? "Inicial" : "Nuevo"}
-                        </label>
                       </td>
                       <td style={{ width: 125 }}>
                         <input type="number" min="0" step="0.000001" className="form-control form-control-sm text-end"
@@ -1233,6 +1238,22 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
           <span className="fw-semibold ms-auto">{formatCurrency(totalInsumosSeccion + operaciones.reduce((total, item) => total + calcularSubtotalOperacion(item), 0))}</span>
         </summary>
         <div className="modelo-material-body">
+        <div className="d-flex flex-wrap gap-4 border rounded-3 p-3 mb-3 bg-light" aria-label={`Costo inicial de ${titulo}`}>
+          <label className="d-inline-flex align-items-center gap-2 mb-0">
+            <input type="checkbox" className="form-check-input m-0"
+              checked={marcaCostoGrupo(categoria, "insumos", materialId, insumos)}
+              onChange={(event) => actualizarFlagCosto(categoriaIndex, "insumo", event.target.checked, materialId)}
+              aria-label={`Costo inicial de insumos de ${titulo}`} />
+            Costo inicial de Insumos
+          </label>
+          <label className="d-inline-flex align-items-center gap-2 mb-0">
+            <input type="checkbox" className="form-check-input m-0"
+              checked={marcaCostoGrupo(categoria, "operaciones", materialId, operaciones)}
+              onChange={(event) => actualizarFlagCosto(categoriaIndex, "operacion", event.target.checked, materialId)}
+              aria-label={`Costo inicial de operaciones de ${titulo}`} />
+            Costo inicial de Operaciones
+          </label>
+        </div>
         <div className="border rounded-3 p-3 mb-3 bg-light">
           <div className="d-flex justify-content-between align-items-center gap-2 mb-2 flex-wrap">
             <label className="form-label fw-semibold mb-0">Medidas y pesos</label>
@@ -1418,7 +1439,6 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
                 <tr>
                   <th style={{ width: 44 }}></th>
                   <th>Insumo</th>
-                  <th>Costo inicial</th>
                   <th className="text-end" style={{ width: 150 }}>Cantidad</th>
                   <th className="text-end" style={{ width: 135 }}>% Desperdicio</th>
                   <th className="text-end" style={{ width: 140 }}>Costo</th>
@@ -1439,7 +1459,7 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
                       aria-label={`Seleccionar todos los insumos de ${titulo}`}
                     />
                   </td>
-                  <td colSpan={7}>
+                  <td colSpan={6}>
                     <span className="text-muted small">Seleccionar todos</span>
                   </td>
                 </tr>
@@ -1473,15 +1493,6 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
                           </button>
                         )}
                       </details>}
-                    </td>
-                    <td>
-                      <label className="d-inline-flex align-items-center gap-1 small">
-                        <input type="checkbox" className="form-check-input m-0"
-                          checked={Boolean(item.costoInicial)}
-                          onChange={(event) => actualizarFlagCosto(categoriaIndex, "insumo", getId(item), event.target.checked, materialId)}
-                          aria-label={`Costo inicial de insumo ${item.nombre || getId(item)}`} />
-                        {item.costoInicial ? "Inicial" : "Nuevo"}
-                      </label>
                     </td>
                     <td style={{ width: 150 }}>
                       <input
@@ -1550,7 +1561,7 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
             {insumos.length > 0 && (
               <tfoot className="table-light">
                 <tr>
-                  <td colSpan={6} className="text-end fw-bold">TOTAL INSUMOS:</td>
+                  <td colSpan={5} className="text-end fw-bold">TOTAL INSUMOS:</td>
                   <td className="text-end fw-bold">{totalInsumosFormateado}</td>
                   <td></td>
                 </tr>

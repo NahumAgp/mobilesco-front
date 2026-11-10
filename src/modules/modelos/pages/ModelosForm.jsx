@@ -187,6 +187,7 @@ const getCategoriasDelModelo = (modelo = {}) => {
         nombre: categoria?.nombre ?? categoria?.categoriaNombre ?? categoria?.categoria?.nombre ?? "",
         descripcion: categoria?.descripcion ?? categoria?.categoria?.descripcion ?? "",
         activo: categoria?.activo ?? true,
+        costoInicialGrupos: categoria?.costoInicialGrupos || {},
         insumos: Array.isArray(categoria?.insumos)
           ? categoria.insumos.map((insumo) => ({
               ...insumo,
@@ -864,6 +865,7 @@ export default function ModeloForm({
         descripcion: categoria.descripcion?.trim() || "",
         activo: categoria.activo !== false,
         costoInicialPendiente: Boolean(categoria.costoInicialPendiente),
+        costoInicialGrupos: categoria.costoInicialGrupos || {},
         orden: index + 1,
         insumos: (categoria.insumos || [])
           .map((insumo) => ({

@@ -74,3 +74,15 @@ export function exportarProveedoresExcel(filtros = {}) {
 
   return request(endpoint, { responseType: "blob" });
 }
+
+export const descargarPlantillaProveedores = () =>
+  request(`${API_PATHS.PROVEEDORES}/importacion/plantilla`, { responseType: "blob" });
+
+export function procesarImportacionProveedores(archivo, confirmar = false) {
+  const datos = new FormData();
+  datos.append("archivo", archivo);
+  return request(`${API_PATHS.PROVEEDORES}/importacion${confirmar ? "" : "/vista-previa"}`, {
+    method: "POST",
+    body: datos,
+  });
+}

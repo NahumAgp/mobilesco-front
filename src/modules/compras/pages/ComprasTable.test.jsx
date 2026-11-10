@@ -88,4 +88,16 @@ describe("ComprasTable", () => {
     await user.click(screen.getByRole("button", { name: "Eliminar" }));
     expect(onEliminar).toHaveBeenCalledWith(draft);
   });
+
+  it("muestra el nombre de quien realizó la compra", () => {
+    render(<MemoryRouter><ComprasTable data={[{
+      id: 45, folio: "COMP-45", fechaCompra: "2026-11-09", proveedorRazonSocial: "Proveedor Uno",
+      total: 500, estado: "RECIBIDA", realizadoPorNombre: "Ana María López Ruiz",
+      realizadoPor: "ana@example.com",
+    }]} /></MemoryRouter>);
+
+    expect(screen.getByRole("columnheader", { name: "Realizado por" })).toBeInTheDocument();
+    expect(screen.getByText("Ana María López Ruiz")).toBeInTheDocument();
+    expect(screen.queryByText("ana@example.com")).not.toBeInTheDocument();
+  });
 });

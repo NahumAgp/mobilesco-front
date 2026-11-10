@@ -1,4 +1,5 @@
 import CatalogTable, { CatalogEmptyState } from "../../../components/ui/CatalogTable.jsx";
+import { formatMoney } from "../utils/money.js";
 
 const ESTADO_TONO = {
   BORRADOR: "secondary",
@@ -16,12 +17,7 @@ const ESTADO_TEXTO = {
   CANCELADA: "Cancelada"
 };
 
-const formatCurrency = (value) =>
-  new Intl.NumberFormat("es-MX", {
-    style: "currency",
-    currency: "MXN",
-    minimumFractionDigits: 2
-  }).format(value || 0);
+const formatCurrency = formatMoney;
 
 const formatDate = (dateString) =>
   dateString
@@ -49,6 +45,7 @@ export default function ComprasTable({
             <th>Folio</th>
             <th>Fecha</th>
             <th>Proveedor</th>
+            <th>Realizado por</th>
             <th>Método de pago</th>
             <th>Total</th>
             <th>Estado</th>
@@ -77,6 +74,7 @@ export default function ComprasTable({
                     <span className="fw-semibold">{compra.proveedorRazonSocial}</span>
                     <small className="text-muted d-block">{compra.proveedorRfc}</small>
                   </td>
+                  <td>{compra.realizadoPorNombre || compra.realizadoPor || "-"}</td>
                   <td><small>{compra.metodoPago || "-"}</small></td>
                   <td className="text-end fw-bold">{formatCurrency(compra.total)}</td>
                   <td>
@@ -132,7 +130,7 @@ export default function ComprasTable({
             })
           ) : (
             <CatalogEmptyState
-              colSpan={8}
+              colSpan={9}
               icon="bi-cart"
               title="No hay compras registradas"
               description="Ajusta los filtros o registra una nueva compra."

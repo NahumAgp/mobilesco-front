@@ -1,0 +1,122 @@
+.daily-notifications-backdrop {
+  position: fixed;
+  z-index: 2000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(16, 35, 30, .58);
+}
+
+.daily-notifications-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 560px);
+  max-height: min(85vh, 720px);
+  overflow: hidden;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgba(12, 35, 28, .3);
+}
+
+.daily-notifications-header,
+.daily-notifications-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 24px;
+}
+
+.daily-notifications-header {
+  border-bottom: 1px solid #e6ede8;
+}
+
+.daily-notifications-eyebrow {
+  color: #53836d;
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.daily-notifications-header h2 {
+  margin: 4px 0 0;
+  color: #23463e;
+  font-size: 1.5rem;
+}
+
+.daily-notifications-close {
+  display: grid;
+  flex: 0 0 38px;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 10px;
+  background: #edf3ee;
+  color: #23463e;
+}
+
+.daily-notifications-close:hover,
+.daily-notifications-close:focus-visible {
+  background: #dce9de;
+}
+
+.daily-notifications-content {
+  min-height: 120px;
+  overflow-y: auto;
+  padding: 8px 24px;
+}
+
+.daily-notifications-content > p,
+.daily-notifications-content > div[role="alert"] {
+  margin: 24px 0;
+  color: #5b6d66;
+}
+
+.daily-notifications-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  padding: 14px 10px;
+  border: 0;
+  border-bottom: 1px solid #edf1ed;
+  background: #fff;
+  color: #23463e;
+  text-align: left;
+}
+
+.daily-notifications-item:hover,
+.daily-notifications-item:focus-visible {
+  background: #f5f9f5;
+}
+
+.daily-notifications-item.is-unread {
+  border-left: 3px solid #368364;
+  background: #f1f8f2;
+}
+
+.daily-notifications-item span {
+  display: grid;
+  gap: 3px;
+}
+
+.daily-notifications-item small {
+  color: #60736a;
+  line-height: 1.4;
+}
+
+.daily-notifications-footer {
+  justify-content: flex-end;
+  border-top: 1px solid #e6ede8;
+}
+
+@media (max-width: 600px) {
+  .daily-notifications-backdrop { padding: 12px; }
+  .daily-notifications-header,
+  .daily-notifications-footer { padding: 16px; }
+  .daily-notifications-content { padding: 8px 16px; }
+}

@@ -1,5 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { obtenerLogoDocumentoUrl } from "../../../../utils/documentLogo.js";
 import "./CatalogoImprimible.css";
 
 const totalModelos = (paginas) => paginas.reduce((total, pagina) => total + pagina.productos.length, 0);
@@ -38,6 +39,9 @@ function TarjetaModelo({ producto }) {
 }
 
 export default function CatalogoImprimible({ paginas, onClose }) {
+  const [logo, setLogo] = useState("/logo-mobilesco-firmeza.svg");
+  useEffect(() => { let vigente = true; obtenerLogoDocumentoUrl().then((url) => { if (vigente) setLogo(url); });
+    return () => { vigente = false; }; }, []);
   useEffect(() => {
     const anterior = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -63,20 +67,20 @@ export default function CatalogoImprimible({ paginas, onClose }) {
     </div>
     <div className="catalogo-imp-paginas">
       <section className="catalogo-imp-pagina catalogo-imp-portada" aria-label="Portada">
-        <img src="/logo-mobilesco-firmeza.svg" alt="Mobilesco" />
+        <img src={logo} alt="Mobilesco" />
         <div><span>CATÁLOGO MOBILESCO</span><h1>Espacios para aprender, trabajar y crear.</h1>
           <p>{totalModelos(paginas)} modelos · {fecha}</p></div>
         <small>Edición digital del catálogo Mobilesco</small>
       </section>
       {paginas.map((pagina, indice) => <section className="catalogo-imp-pagina catalogo-imp-interior" key={`${pagina.linea}-${indice}`} aria-label={`${pagina.linea}, página ${indice + 2}`}>
-        <header><span>CATÁLOGO MOBILESCO</span><h2>{pagina.linea}</h2></header>
+        <header><div><span>CATÁLOGO MOBILESCO</span><h2>{pagina.linea}</h2></div><img src={logo} alt="Mobilesco" /></header>
         <div className={`catalogo-imp-lista${pagina.productos.length === 1 ? " catalogo-imp-lista-unica" : ""}`}>
           {pagina.productos.map((producto) => <TarjetaModelo key={`${producto.nombre}-${producto.skus[0]}`} producto={producto} />)}
         </div>
         <footer><span>Mobilesco · Catálogo visual</span><span>{indice + 2} / {paginasTotales}</span></footer>
       </section>)}
       <section className="catalogo-imp-pagina catalogo-imp-contraportada" aria-label="Contraportada">
-        <img src="/logo-mobilesco-firmeza.svg" alt="Mobilesco" />
+        <img src={logo} alt="Mobilesco" />
         <div><h2>Elige tu modelo.<br />Cotiza en línea.</h2><p>Explora materiales, niveles y colores en nuestro catálogo visual.</p>
           <a href="https://mobilesco.com.mx">mobilesco.com.mx</a></div>
         <small>Generado el {fecha}</small>

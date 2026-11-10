@@ -9,7 +9,7 @@ const { syncCurrentUser } = vi.hoisted(() => ({
 vi.mock('../components/Sistema/Sidebar', () => ({
   default: () => <aside>Menu de prueba</aside>
 }));
-vi.mock('../modules/auth/services/authService', () => ({ syncCurrentUser }));
+vi.mock('../modules/auth/services/authService', () => ({ syncCurrentUser, getUser: () => null }));
 
 import AppLayout from './AppLayout';
 

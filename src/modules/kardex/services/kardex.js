@@ -34,6 +34,10 @@ export function obtenerCostoPromedio(insumoId) {
   return request(`${BASE_URL}/insumo/${insumoId}/costo-promedio`);
 }
 
+export function obtenerHistorialPreciosInsumo(insumoId) {
+  return request(`${BASE_URL}/insumo/${insumoId}/precios`);
+}
+
 export function obtenerConsumoEnPeriodo(insumoId, fechaInicio, fechaFin) {
   return request(`${BASE_URL}/insumo/${insumoId}/consumo${buildQuery({
     fechaInicio,

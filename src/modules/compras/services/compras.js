@@ -25,10 +25,41 @@ export function obtenerCompras(params = {}) {
   return request(url);
 }
 
+export function obtenerDatosReporteCompras(params = {}) {
+  return request(`${API_PATHS.COMPRAS}/reporte/datos${buildQuery(params)}`);
+}
+
+export function exportarComprasExcel(params = {}) {
+  return request(`${API_PATHS.COMPRAS}/reporte/excel${buildQuery(params)}`, {
+    responseType: "blob"
+  });
+}
+
 export function obtenerCompraPorId(id) {
   const url = `${API_PATHS.COMPRAS}/${id}`;
   console.log("🌐 GET Compra by ID - URL:", url);
   return request(url);
+}
+
+export function subirComprobanteCompra(archivo) {
+  const formData = new FormData();
+  formData.append("archivo", archivo);
+  return request(`${API_PATHS.COMPRAS}/comprobante`, {
+    method: "POST",
+    body: formData
+  });
+}
+
+export function obtenerComprobanteCompra(id) {
+  return request(`${API_PATHS.COMPRAS}/${id}/comprobante`, {
+    responseType: "blob"
+  });
+}
+
+export function obtenerPreciosAnterioresCompra(insumoIds) {
+  const params = new URLSearchParams();
+  [...new Set(insumoIds)].forEach((id) => params.append("insumoIds", String(id)));
+  return request(`${API_PATHS.COMPRAS}/precios-anteriores?${params}`);
 }
 
 export function obtenerCuentasPorPagar(params = {}) {

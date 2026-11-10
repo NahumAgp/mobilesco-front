@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   obtenerCompraPorId, 
   crearCompra, 
-  actualizarCompra 
+  actualizarCompra,
+  obtenerPreciosAnterioresCompra,
+  subirComprobanteCompra,
 } from "../services/compras.js";
 import { obtenerProveedores } from "../../proveedores/services/proveedores.js";
 import ProveedorModal from "../../proveedores/pages/ProveedorModal.jsx";
@@ -12,6 +14,10 @@ import InsumoForm from "../../insumos/pages/InsumoForm.jsx";
 import { obtenerUnidadesMedida } from "../../unidades-medida/services/unidadMedidas.js";
 import SearchableSelect from "../../../components/ui/SearchableSelect.jsx";
 import Toast from "../../../components/ui/Toast.jsx";
+import ConfirmationDialog from "../../../components/ui/ConfirmationDialog.jsx";
+import CurrencyInput from "../components/CurrencyInput.jsx";
+import { formatMoney, formatMoneyAmount } from "../utils/money.js";
+import { detectarCambiosPrecio } from "../utils/preciosCompra.js";
 
 const ESTADOS_EDITABLES = new Set(["BORRADOR", "PENDIENTE"]);
 
@@ -82,6 +88,17 @@ export default function CompraForm({
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
   const [erroresBackend, setErroresBackend] = useState({});
+  const [confirmacionPrecio, setConfirmacionPrecio] = useState(null);
+  const [consultandoPrecios, setConsultandoPrecios] = useState(false);
+  const [consultandoPrecioDetalle, setConsultandoPrecioDetalle] = useState(false);
+  const [advertenciaPrecioDetalle, setAdvertenciaPrecioDetalle] = useState(null);
+  const [guardando, setGuardando] = useState(false);
+  const [comprobante, setComprobante] = useState(() =>
+    compra?.comprobanteId ? { id: compra.comprobanteId, nombre: compra.comprobanteNombre, vinculado: true } : null
+  );
+  const [subiendoComprobante, setSubiendoComprobante] = useState(false);
+  const [errorComprobante, setErrorComprobante] = useState("");
+  const comprobanteInputRef = useRef(null);
   
   const [proveedores, setProveedores] = useState([]);
   const [mostrarModalProveedor, setMostrarModalProveedor] = useState(false);
@@ -97,6 +114,12 @@ export default function CompraForm({
   
   const esModal = Boolean(onSave);
   const esEdicion = Boolean(compraId) || Boolean(compra);
+
+  useEffect(() => {
+    if (esEdicion) return undefined;
+    const timer = window.setTimeout(() => comprobanteInputRef.current?.click(), 0);
+    return () => window.clearTimeout(timer);
+  }, [esEdicion]);
 
   const [formData, setFormData] = useState({
     folio: "",
@@ -208,6 +231,9 @@ export default function CompraForm({
       setFormData(normalizada.formData);
       setDetalles(normalizada.detalles);
       setEstadoCompraCargada(normalizada.formData.estado);
+      setComprobante(data?.comprobanteId
+        ? { id: data.comprobanteId, nombre: data.comprobanteNombre, vinculado: true }
+        : null);
     };
 
     const cargar = async () => {
@@ -294,6 +320,29 @@ export default function CompraForm({
     }
   }
 
+  const seleccionarComprobante = async (event) => {
+    const archivo = event.target.files?.[0];
+    event.target.value = "";
+    if (!archivo) return;
+    setComprobante(null);
+    setErrorComprobante("");
+    if (!(["application/pdf", "image/jpeg", "image/png", "image/webp"].includes(archivo.type))
+      || archivo.size > 10 * 1024 * 1024) {
+      setErrorComprobante("Selecciona una imagen JPG, PNG o WebP, o un PDF de hasta 10 MB.");
+      return;
+    }
+    try {
+      setSubiendoComprobante(true);
+      const cargado = await subirComprobanteCompra(archivo);
+      if (!cargado?.id) throw new Error("No se confirmó la carga del comprobante. Inténtalo de nuevo.");
+      setComprobante({ id: cargado.id, nombre: cargado.nombre, vinculado: false });
+    } catch (error) {
+      setErrorComprobante(error.message || "No se pudo cargar el comprobante. Vuelve a seleccionarlo.");
+    } finally {
+      setSubiendoComprobante(false);
+    }
+  };
+
   function handleDetalleChange(e) {
     const { name, value } = e.target;
     
@@ -375,7 +424,8 @@ export default function CompraForm({
 
   const prepararDetalle = (detalleBase) => recalcularDetalle(detalleBase);
 
-  function agregarDetalle() {
+  async function agregarDetalle() {
+    if (consultandoPrecioDetalle) return;
     const cantidad = Number(nuevoDetalle.cantidad);
     const precioUnitario = Number(nuevoDetalle.precioUnitario);
     const factorConversion = nuevoDetalle.requiereConversion ? Number(nuevoDetalle.factorConversion) : 1;
@@ -417,6 +467,18 @@ export default function CompraForm({
       observaciones: ""
     });
 
+    setConsultandoPrecioDetalle(true);
+    setAdvertenciaPrecioDetalle(null);
+    if (!esEdicion) {
+      try {
+        const anteriores = await obtenerPreciosAnterioresCompra([insumo.id]);
+        const cambios = detectarCambiosPrecio([nuevoDetalleCompleto], anteriores);
+        setAdvertenciaPrecioDetalle(cambios[0] || null);
+      } catch {
+        setAdvertenciaPrecioDetalle({ error: "No se pudo consultar el precio anterior. Se verificará de nuevo al guardar." });
+      }
+    }
+    setConsultandoPrecioDetalle(false);
     setDetalles((prev) => [...prev, nuevoDetalleCompleto]);
     setErroresBackend((prev) => {
       if (!prev.detalles) return prev;
@@ -485,10 +547,47 @@ export default function CompraForm({
     }
   }
 
+  async function guardarCompra(dataToSend) {
+    setGuardando(true);
+    try {
+      setErroresBackend({});
+
+      let respuesta;
+      if (esEdicion) {
+        const id = compra?.id || compraId;
+        respuesta = await actualizarCompra(id, dataToSend);
+      } else {
+        respuesta = await crearCompra(dataToSend);
+      }
+
+      if (esModal) {
+        onSave(respuesta);
+      } else {
+        setToastType("success");
+        setToastMessage(esEdicion ? "¡Compra actualizada con éxito!" : "¡Compra registrada con éxito!");
+        setTimeout(() => navigate("/compras"), 1500);
+      }
+    } catch (error) {
+      if (error.errors) {
+        setErroresBackend(error.errors);
+      } else {
+        setToastType("danger");
+        setToastMessage(error.message || "Error al guardar los datos");
+      }
+    } finally {
+      setGuardando(false);
+    }
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
+    if (consultandoPrecios || consultandoPrecioDetalle || guardando || confirmacionPrecio) return;
 
     const erroresValidacion = {};
+
+    if (!comprobante?.id || subiendoComprobante) {
+      erroresValidacion.comprobanteId = "Carga el comprobante antes de guardar la compra";
+    }
 
     if (!formData.folio?.trim()) {
       erroresValidacion.folio = "El folio es obligatorio";
@@ -532,6 +631,7 @@ export default function CompraForm({
 
     const dataToSend = {
       ...formData,
+      comprobanteId: comprobante.id,
       subtotal: subtotalCalculado,
       total: totalCalculado,
       detalles: detalles.map((detalle) => ({
@@ -545,33 +645,24 @@ export default function CompraForm({
       }))
     };
 
-    try {
-      setErroresBackend({});
-
-      let respuesta;
-      if (esEdicion) {
-        const id = compra?.id || compraId;
-        respuesta = await actualizarCompra(id, dataToSend);
-      } else {
-        respuesta = await crearCompra(dataToSend);
-      }
-
-      if (esModal) {
-        onSave(respuesta);
-      } else {
-        setToastType("success");
-        setToastMessage(esEdicion ? "¡Compra actualizada con éxito!" : "¡Compra registrada con éxito!");
-        setTimeout(() => navigate("/compras"), 1500);
-      }
-
-    } catch (error) {
-      if (error.errors) {
-        setErroresBackend(error.errors);
-      } else {
-        setToastType("danger");
-        setToastMessage(error.message || "Error al guardar los datos");
+    if (!esEdicion) {
+      setConsultandoPrecios(true);
+      try {
+        const anteriores = await obtenerPreciosAnterioresCompra(detalles.map((detalle) => detalle.insumoId));
+        if (!anteriores || typeof anteriores !== "object") throw new Error("Respuesta de precios no válida");
+        const cambios = detectarCambiosPrecio(detalles, anteriores);
+        if (cambios.length) {
+          setConfirmacionPrecio({ cambios, dataToSend });
+          return;
+        }
+      } catch {
+        setErroresBackend({ detalles: "No se pudo verificar el precio anterior. Reintenta antes de guardar." });
+        return;
+      } finally {
+        setConsultandoPrecios(false);
       }
     }
+    await guardarCompra(dataToSend);
   }
 
   const inputClass = (field) => `form-control ${(erroresBackend[field] || erroresExternos[field]) ? "is-invalid" : "border-soft"}`;
@@ -643,6 +734,32 @@ export default function CompraForm({
     );
   }
 
+  if (!comprobante?.id) {
+    return (
+      <div className={esModal ? "" : "container py-4"}>
+        {!esModal && <Toast message={toastMessage} type={toastType} onClose={() => setToastMessage("")} />}
+        <div className="card shadow-sm border-0">
+          <div className="card-body p-4">
+            <h2 className="h4">Comprobante de compra</h2>
+            <p className="text-muted">Selecciona una imagen o un PDF. La captura se habilitará cuando termine la carga.</p>
+            <label className="form-label fw-semibold" htmlFor="compra-comprobante">Imagen o PDF del comprobante *</label>
+            <input
+              id="compra-comprobante"
+              ref={comprobanteInputRef}
+              className="form-control"
+              type="file"
+              accept="image/jpeg,image/png,image/webp,application/pdf,.pdf"
+              onChange={seleccionarComprobante}
+              disabled={subiendoComprobante}
+            />
+            {subiendoComprobante && <div className="text-muted mt-2" role="status">Cargando comprobante...</div>}
+            {errorComprobante && <div className="alert alert-danger mt-3" role="alert">{errorComprobante}</div>}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={esModal ? "" : "container py-4"}>
       {!esModal && (
@@ -654,6 +771,25 @@ export default function CompraForm({
           <h2 className="fw-bold text-primary">{esEdicion ? 'Editar Compra' : 'Nueva Compra'}</h2>
         </div>
       )}
+
+      <div className="alert alert-success d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <span><strong>Comprobante cargado:</strong> {comprobante.nombre || "Archivo asociado"}</span>
+        {!comprobante.vinculado && (
+          <>
+            <input
+              ref={comprobanteInputRef}
+              className="d-none"
+              type="file"
+              accept="image/jpeg,image/png,image/webp,application/pdf,.pdf"
+              onChange={seleccionarComprobante}
+              aria-label="Cambiar comprobante de compra"
+            />
+            <button type="button" className="btn btn-sm btn-outline-success" onClick={() => comprobanteInputRef.current?.click()}>
+              Cambiar archivo
+            </button>
+          </>
+        )}
+      </div>
 
       <form onSubmit={handleSubmit} noValidate>
         <div className="row">
@@ -801,6 +937,20 @@ export default function CompraForm({
                     {erroresBackend.detalles}
                   </div>
                 )}
+                {advertenciaPrecioDetalle && (
+                  <div className="alert alert-warning d-flex justify-content-between align-items-start gap-2" role="alert">
+                    <div>
+                      {advertenciaPrecioDetalle.error || <>
+                        <strong>El precio de {advertenciaPrecioDetalle.insumoNombre} cambió.</strong>{" "}
+                        Anterior: {formatMoney(advertenciaPrecioDetalle.precioAnterior)}{advertenciaPrecioDetalle.unidadAnterior ? ` / ${advertenciaPrecioDetalle.unidadAnterior}` : ""};{" "}
+                        nuevo: {formatMoney(advertenciaPrecioDetalle.precioNuevo)}{advertenciaPrecioDetalle.unidadNueva ? ` / ${advertenciaPrecioDetalle.unidadNueva}` : ""}.
+                        {" "}Confirma el cambio al guardar la compra.
+                      </>}
+                    </div>
+                    <button type="button" className="btn-close" aria-label="Cerrar advertencia de precio"
+                      onClick={() => setAdvertenciaPrecioDetalle(null)} />
+                  </div>
+                )}
                 <div className="table-responsive mb-3">
                   <table className="table table-sm align-middle">
                     <thead className="table-light">
@@ -878,17 +1028,14 @@ export default function CompraForm({
                             </td>
                             <td className="text-end" style={{ minWidth: "130px" }}>
                               {enEdicion ? (
-                                <input
-                                  type="number"
-                                  step="0.01"
-                                  min="0.01"
+                                <CurrencyInput
                                   className="form-control form-control-sm text-end"
                                   value={detalle.precioUnitario}
-                                  onChange={(e) => actualizarDetalle(detalle.id, { precioUnitario: Number(e.target.value) || 0 })}
+                                  onValueChange={(value) => actualizarDetalle(detalle.id, { precioUnitario: value })}
                                   aria-label={`Precio unitario de ${detalle.insumoNombre}`}
                                 />
                               ) : (
-                                `$${Number(detalle.precioUnitario || 0).toFixed(2)}`
+                                formatMoney(detalle.precioUnitario)
                               )}
                             </td>
                             <td className="text-end" style={{ minWidth: "110px" }}>
@@ -906,10 +1053,10 @@ export default function CompraForm({
                               )}
                             </td>
                             <td className="text-end text-info">
-                              ${Number(detalle.costoPorUnidadConsumo || 0).toFixed(2)}
+                              {formatMoney(detalle.costoPorUnidadConsumo)}
                             </td>
                             <td className="text-end fw-bold">
-                              ${Number(detalle.subtotal || 0).toFixed(2)}
+                              {formatMoney(detalle.subtotal)}
                             </td>
                             <td className="text-end">
                               <div className="d-inline-flex gap-1">
@@ -1021,6 +1168,7 @@ export default function CompraForm({
                       inputMode="decimal"
                       className="form-control form-control-sm"
                       name="cantidad"
+                      aria-label="Cantidad del nuevo detalle"
                       value={nuevoDetalle.cantidad}
                       onChange={handleDetalleChange}
                       placeholder="0.00"
@@ -1045,15 +1193,13 @@ export default function CompraForm({
                     </select>
                   </div>
 
-                  <div className="col-auto" style={{ width: "95px" }}>
+                  <div className="col-auto" style={{ width: "130px" }}>
                     <label className="form-label fw-semibold small">Precio $</label>
-                    <input
-                      type="text"
-                      inputMode="decimal"
+                    <CurrencyInput
                       className="form-control form-control-sm"
-                      name="precioUnitario"
+                      aria-label="Precio unitario del nuevo detalle"
                       value={nuevoDetalle.precioUnitario}
-                      onChange={handleDetalleChange}
+                      onValueChange={(value) => setNuevoDetalle((prev) => ({ ...prev, precioUnitario: value }))}
                       placeholder="0.00"
                     />
                   </div>
@@ -1077,8 +1223,9 @@ export default function CompraForm({
                       type="button"
                       className="btn btn-sm btn-success w-100"
                       onClick={agregarDetalle}
+                      disabled={consultandoPrecioDetalle}
                     >
-                      <i className="bi bi-plus-lg me-1"></i>Agregar
+                      <i className="bi bi-plus-lg me-1"></i>{consultandoPrecioDetalle ? "Verificando..." : "Agregar"}
                     </button>
                   </div>
                 </div>
@@ -1116,10 +1263,9 @@ export default function CompraForm({
                   <div className="input-group">
                     <span className="input-group-text">$</span>
                     <input
-                      type="number"
-                      step="0.01"
+                      type="text"
                       className="form-control bg-light"
-                      value={subtotalCalculado.toFixed(2)}
+                      value={formatMoneyAmount(subtotalCalculado)}
                       readOnly
                     />
                   </div>
@@ -1129,14 +1275,11 @@ export default function CompraForm({
                   <label className="form-label fw-semibold">Impuesto</label>
                   <div className="input-group">
                     <span className="input-group-text">$</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      name="impuesto"
+                    <CurrencyInput
                       className={inputClass("impuesto")}
                       value={formData.impuesto}
-                      onChange={handleChange}
+                      onValueChange={(value) => handleChange({ target: { name: "impuesto", type: "number", value: String(value) } })}
+                      aria-label="Impuesto"
                     />
                   </div>
                 </div>
@@ -1146,10 +1289,9 @@ export default function CompraForm({
                   <div className="input-group">
                     <span className="input-group-text">$</span>
                     <input
-                      type="number"
-                      step="0.01"
+                      type="text"
                       className="form-control bg-light fw-bold text-primary"
-                      value={totalCalculado.toFixed(2)}
+                      value={formatMoneyAmount(totalCalculado)}
                       readOnly
                     />
                   </div>
@@ -1173,7 +1315,7 @@ export default function CompraForm({
                       {d.cantidad} {d.unidadCompraSimbolo} × {d.factorConversion} = {d.cantidadEnUnidadConsumo.toFixed(2)} {d.unidadConsumoSimbolo}
                       <br />
                       <small className="text-muted">
-                        Costo x UC: ${d.costoPorUnidadConsumo.toFixed(2)} / {d.unidadConsumoSimbolo}
+                        Costo x UC: {formatMoney(d.costoPorUnidadConsumo)} / {d.unidadConsumoSimbolo}
                       </small>
                     </div>
                   ))}
@@ -1194,11 +1336,35 @@ export default function CompraForm({
           <button 
             type="submit" 
             className="btn btn-primary px-5 fw-bold"
+            disabled={consultandoPrecios || guardando}
           >
-            {esEdicion ? 'Guardar Cambios' : 'Guardar Compra'}
+            {consultandoPrecios ? "Verificando precios..." : guardando ? "Guardando..." : esEdicion ? 'Guardar Cambios' : 'Guardar Compra'}
           </button>
         </div>
       </form>
+
+      <ConfirmationDialog
+        open={Boolean(confirmacionPrecio)}
+        title="Confirmar cambio de precio"
+        message={<>
+          {confirmacionPrecio?.cambios.map((cambio, index) => (
+            <span className="d-block mb-2" key={`${cambio.insumoNombre}-${index}`}>
+              <strong>{cambio.insumoNombre}:</strong> anterior {formatMoney(cambio.precioAnterior)}{cambio.unidadAnterior ? ` / ${cambio.unidadAnterior}` : ""}; nuevo {formatMoney(cambio.precioNuevo)}{cambio.unidadNueva ? ` / ${cambio.unidadNueva}` : ""}.
+            </span>
+          ))}
+          ¿Deseas guardar la compra con los nuevos precios?
+        </>}
+        confirmLabel="Confirmar y guardar"
+        cancelLabel="Corregir compra"
+        variant="primary"
+        loading={guardando}
+        onCancel={() => setConfirmacionPrecio(null)}
+        onConfirm={() => {
+          const payload = confirmacionPrecio.dataToSend;
+          setConfirmacionPrecio(null);
+          guardarCompra(payload);
+        }}
+      />
 
       <ProveedorModal
         show={mostrarModalProveedor}

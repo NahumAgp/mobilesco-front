@@ -136,7 +136,8 @@ export function useProveedores({
     loadingLista,
     error,
     eliminarProveedor,
-    cambiarEstadoProveedor
+    cambiarEstadoProveedor,
+    recargar: cargar
   };
 }
 

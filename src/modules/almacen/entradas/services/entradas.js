@@ -10,7 +10,7 @@ export function obtenerEntradaPorId(id) {
   return obtenerCompraPorId(id);
 }
 
-export function recepcionarDetalleCompra(detalleId, { cantidadRecibida, entregadoPor, motivoNoRecepcion }) {
+export function recepcionarDetalleCompra(detalleId, { cantidadRecibida, entregadoPor, motivoNoRecepcion, recibidoPor, recepcionId }) {
   const params = new URLSearchParams({
     cantidadRecibida: String(cantidadRecibida)
   });
@@ -21,6 +21,12 @@ export function recepcionarDetalleCompra(detalleId, { cantidadRecibida, entregad
 
   if (motivoNoRecepcion) {
     params.set("motivoNoRecepcion", motivoNoRecepcion);
+  }
+  if (recibidoPor) {
+    params.set("recibidoPor", recibidoPor);
+  }
+  if (recepcionId) {
+    params.set("recepcionId", recepcionId);
   }
 
   return request(`${API_PATHS.DETALLES_COMPRA}/${detalleId}/recibir?${params.toString()}`, {

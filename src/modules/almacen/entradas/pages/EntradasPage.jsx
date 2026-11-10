@@ -9,6 +9,7 @@ import CatalogPagination from "../../../../components/ui/CatalogPagination.jsx";
 import Toast from "../../../../components/ui/Toast.jsx";
 import { obtenerMovimientosPorCompra } from "../../../kardex/services/kardex.js";
 import { obtenerEntradas } from "../services/entradas.js";
+import { agruparMovimientosPorVisita } from "../utils/historialRecepciones.js";
 
 function formatoFecha(valor) {
   if (!valor) return "--";
@@ -111,38 +112,6 @@ function getEstadoOperativo(entrada) {
 
 function etiquetaEstado(estado) {
   return estado === "POR_CERRAR" ? "POR CERRAR" : estado;
-}
-
-function getLlaveVisita(movimiento) {
-  const fecha = new Date(movimiento.fechaRegistro || movimiento.fecha || 0);
-  if (Number.isNaN(fecha.getTime())) {
-    return `mov-${movimiento.id}`;
-  }
-
-  fecha.setSeconds(0, 0);
-  return fecha.toISOString();
-}
-
-function agruparMovimientosPorVisita(movimientos) {
-  const grupos = new Map();
-
-  movimientos.forEach((movimiento) => {
-    const llave = getLlaveVisita(movimiento);
-    const existente = grupos.get(llave) || {
-      llave,
-      fecha: movimiento.fechaRegistro || movimiento.fecha,
-      movimientos: []
-    };
-
-    existente.movimientos.push(movimiento);
-    grupos.set(llave, existente);
-  });
-
-  return Array.from(grupos.values()).sort((a, b) => {
-    const fechaA = new Date(a.fecha || 0).getTime();
-    const fechaB = new Date(b.fecha || 0).getTime();
-    return fechaB - fechaA;
-  });
 }
 
 export default function EntradasPage() {
@@ -430,6 +399,10 @@ export default function EntradasPage() {
                                       <span className="badge text-bg-light border">
                                         {visita.movimientos.length} material{visita.movimientos.length === 1 ? "" : "es"}
                                       </span>
+                                    </div>
+                                    <div className="d-flex flex-wrap gap-3 text-muted small mb-2">
+                                      <span>Entregado por: <strong>{visita.movimientos[0]?.entregadoPor || "--"}</strong></span>
+                                      <span>Recibido por: <strong>{visita.movimientos[0]?.recibidoPor || "--"}</strong></span>
                                     </div>
                                     <div className="table-responsive">
                                       <table className="table table-sm mb-0">

@@ -633,6 +633,7 @@ function CatalogoAgregarModal({ modelo, initialProduct, onClose, onAdd, validand
 function CatalogoFamiliasPage() {
   const { familiaSlug } = useParams();
   const navigate = useNavigate();
+  const categoriaActivaRef = useRef(null);
   const [productos, setProductos] = useState([]);
   const [familiaProductosId, setFamiliaProductosId] = useState(null);
   const [familiasActivas, setFamiliasActivas] = useState([]);
@@ -679,6 +680,9 @@ function CatalogoFamiliasPage() {
   const cargandoPagina = loading || Boolean(paginaCatalogo?.familiaId
     && String(familiaProductosId) !== String(paginaCatalogo.familiaId) && !error);
   const indicePaginaActual = paginaActual ? paginas.findIndex((pagina) => pagina.slug === paginaActual.slug) : -1;
+  useEffect(() => {
+    categoriaActivaRef.current?.scrollIntoView?.({ block: "nearest", inline: "center" });
+  }, [paginaActual?.slug]);
   const paginaAnterior = indicePaginaActual > 0 ? paginas[indicePaginaActual - 1] : null;
   const paginaSiguiente = indicePaginaActual >= 0 && indicePaginaActual < paginas.length - 1
     ? paginas[indicePaginaActual + 1]
@@ -855,17 +859,16 @@ function CatalogoFamiliasPage() {
               {!buscandoCatalogo && !resultadosBusqueda.length && <div className="producto-catalogo-search-message">No encontramos coincidencias activas en el catálogo.</div>}
             </div>}
           </div>
-          <div className="producto-catalogo-index-picker">
-            <i className="bi bi-list-nested" aria-hidden="true"></i>
-            <label htmlFor="producto-catalogo-index-select">Índice rápido</label>
-            <select id="producto-catalogo-index-select" className="producto-catalogo-family-select" aria-label="Ir a familia"
-              value={paginaActual?.slug || ""} onChange={(event) => navigate(`/productos/catalogo/familias/${event.target.value}`)}>
-              {paginas.map((pagina, indice) => <option key={pagina.slug} value={pagina.slug}>
-                {String(indice + 1).padStart(2, "0")} · {pagina.titulo}
-              </option>)}
-            </select>
-            <i className="bi bi-chevron-down producto-catalogo-index-chevron" aria-hidden="true"></i>
-          </div>
+          <nav className="producto-catalogo-categories" aria-label="Categorías del catálogo">
+            {paginas.map((pagina) => <button
+              key={pagina.slug}
+              type="button"
+              className={`producto-catalogo-category${pagina.slug === paginaActual?.slug ? " is-active" : ""}`}
+              aria-current={pagina.slug === paginaActual?.slug ? "page" : undefined}
+              ref={pagina.slug === paginaActual?.slug ? categoriaActivaRef : undefined}
+              onClick={() => navigate(`/productos/catalogo/familias/${pagina.slug}`)}
+            >{pagina.titulo}</button>)}
+          </nav>
         </section>
         <section className="producto-catalogo-editorial producto-catalogo-editorial-index">
           <div>

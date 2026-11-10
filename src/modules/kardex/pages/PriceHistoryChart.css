@@ -1,0 +1,33 @@
+.price-history-card {
+  margin-bottom: 24px;
+  overflow: hidden;
+  border: 1px solid #dce7df;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(36, 70, 63, .06);
+}
+
+.price-history-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 22px 8px;
+}
+
+.price-history-header h2 {
+  margin: 0 0 4px;
+  color: #23463e;
+  font-size: 1.25rem;
+}
+
+.price-history-header p { margin: 0; color: #63766b; }
+.price-history-header > span { flex: 0 0 auto; color: #527965; font-size: .85rem; font-weight: 700; }
+.price-history-state { margin: 0; padding: 26px 22px; color: #63766b; }
+.price-history-scroll { overflow-x: auto; padding: 4px 10px 0; }
+.price-history-axis { fill: #667a6d; font-size: 11px; }
+.price-history-records { display: flex; gap: 8px; overflow-x: auto; padding: 10px 22px 20px; }
+.price-history-records > div { display: grid; flex: 0 0 auto; gap: 2px; min-width: 150px; padding: 10px 12px; border-radius: 10px; background: #f2f7f2; }
+.price-history-records time,
+.price-history-records span { color: #60736a; font-size: .75rem; }
+.price-history-records strong { color: #23463e; }

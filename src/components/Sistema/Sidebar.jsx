@@ -198,6 +198,7 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
     can("VIEW_PRODUCTS") && { to: "/productos", label: "Productos", shortLabel: "Productos", icon: "bi-box-seam", section: "Productos" },
     can("VIEW_PRODUCT_QUALITY") && { to: "/productos/calidad", label: "Calidad de datos", shortLabel: "Calidad", icon: "bi-clipboard-data", section: "Productos" },
     can("VIEW_PRODUCT_CATALOG") && { to: "/productos/catalogo", label: "Catalogo visual", shortLabel: "Catalogo", icon: "bi-images", section: "Productos" },
+    showAlmacen && { to: "/almacen", label: "Almacén", icon: "bi-archive", section: "Almacen" },
     can("VIEW_INVENTORY") && { to: "/insumos", label: "Insumos", icon: "bi-nut", section: "Almacen" },
     can("VIEW_WAREHOUSE_RECEIPTS") && { to: "/almacen/entradas", label: "Entradas", icon: "bi-box-arrow-in-down", section: "Almacen" },
     can("VIEW_INPUT_TYPES") && { to: "/insumos/tipos", label: "Tipos de insumo", shortLabel: "Tipos", icon: "bi-tags", section: "Almacen" },
@@ -461,6 +462,7 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
               <i className="bi bi-chevron-down sidebar-chevron"></i>
             </button>
             <div className={`collapse sidebar-submenu ${openSubmenu === "almacen" ? "show" : ""}`} id="menuAlmacen">
+              <LinkItem to="/almacen" label="Inicio de Almacén" icon="bi-house-door" sub onClick={() => handleRouteNavigation("/almacen")} />
               {can("VIEW_INVENTORY") && <LinkItem to="/insumos" label="Insumos" icon="bi-nut" sub onClick={() => handleRouteNavigation("/insumos")} />}
               {can("VIEW_WAREHOUSE_RECEIPTS") && <LinkItem to="/almacen/entradas" label="Entradas" icon="bi-box-arrow-in-down" sub onClick={() => handleRouteNavigation("/almacen/entradas")} />}
               {can("VIEW_INPUT_TYPES") && <LinkItem to="/insumos/tipos" label="Tipos de insumo" icon="bi-tags" sub onClick={() => handleRouteNavigation("/insumos/tipos")} />}

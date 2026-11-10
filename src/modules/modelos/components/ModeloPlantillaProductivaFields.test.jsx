@@ -179,13 +179,13 @@ describe("ModeloPlantillaProductivaFields", () => {
     await user.click(within(material).getByText("Insumos", { selector: ".modelo-subpanel-summary .fw-semibold" }));
     expect(within(material).getByText(/Tubo de 1/)).toBeInTheDocument();
     expect(within(material).getByDisplayValue("28")).toBeInTheDocument();
-    expect(within(material).getByRole("checkbox", { name: "Costo inicial de insumo Tubo de 1" })).toBeChecked();
+    expect(within(material).getByRole("checkbox", { name: "Costo inicial de insumos de [P] Polipropileno" })).toBeChecked();
     await user.click(within(material).getByText("Operaciones", { selector: ".modelo-operaciones-summary .fw-semibold" }));
     expect(within(material).getByText(/Corte/)).toBeInTheDocument();
     expect(within(material).getAllByText("3.00 min")).toHaveLength(2);
     expect(within(material).getByRole("spinbutton", { name: "Minutos de Corte" })).toHaveValue(3);
     expect(within(material).getByRole("spinbutton", { name: "Costo por minuto de Corte" })).toHaveValue(0.833333);
-    expect(within(material).getByRole("checkbox", { name: "Costo inicial de operacion Corte" })).toBeChecked();
+    expect(within(material).getByRole("checkbox", { name: "Costo inicial de operaciones de [P] Polipropileno" })).toBeChecked();
   });
 
   it("muestra el total de insumos de la seccion con desperdicio", async () => {
@@ -208,7 +208,7 @@ describe("ModeloPlantillaProductivaFields", () => {
     expect(within(bloque).getByText("TOTAL INSUMOS:")).toBeInTheDocument();
   });
 
-  it("muestra y permite cambiar la flag de costo inicial por insumo", async () => {
+  it("aplica la marca inicial a todos los insumos del grupo", async () => {
     const { user, onCategoriasChange } = renderConEstado([
       {
         id: 101,
@@ -224,15 +224,38 @@ describe("ModeloPlantillaProductivaFields", () => {
 
     const categoria = await abrirCategoria(user);
     const bloque = await abrirInsumosComunes(user, categoria);
-    expect(within(bloque).getByRole("columnheader", { name: "Costo inicial" })).toBeInTheDocument();
+    expect(within(bloque).queryByRole("columnheader", { name: "Costo inicial" })).not.toBeInTheDocument();
     expect(within(bloque).queryByRole("columnheader", { name: "Tipo" })).not.toBeInTheDocument();
     expect(within(bloque).queryByText("Costos 2026")).not.toBeInTheDocument();
-    const flag = within(bloque).getByRole("checkbox", { name: "Costo inicial de insumo Tubo" });
-    expect(flag).toBeChecked();
-    expect(within(bloque).getByRole("checkbox", { name: "Costo inicial de insumo Madera" })).not.toBeChecked();
-    await user.click(flag);
+    const flag = within(categoria).getByRole("checkbox", { name: "Costo inicial de insumos de Insumos comunes" });
     expect(flag).not.toBeChecked();
-    expect(onCategoriasChange.mock.lastCall[0][0].insumos[0].costoInicial).toBe(false);
+    await user.click(flag);
+    expect(flag).toBeChecked();
+    expect(onCategoriasChange.mock.lastCall[0][0].insumos.every((item) => item.costoInicial)).toBe(true);
+  });
+
+  it("conserva marcas independientes por categoría, material y tipo", async () => {
+    const categorias = [
+      { id: 101, categoriaId: 1, nombre: "Primaria", insumos: [
+        { id: 11, materialId: 7, nombre: "Tubo", cantidad: 2, costoInicial: false },
+        { id: 12, materialId: 8, nombre: "Madera", cantidad: 3, costoInicial: false }
+      ], operaciones: [
+        { id: 21, materialId: 7, nombre: "Corte", cantidad: 1, costoInicial: false }
+      ] },
+      { id: 102, categoriaId: 2, nombre: "Secundaria", insumos: [
+        { id: 13, materialId: 7, nombre: "Tornillo", cantidad: 4, costoInicial: false }
+      ], operaciones: [] }
+    ];
+    const { user, onCategoriasChange } = renderConEstado(categorias, { materiales: [
+      { id: 7, nombre: "Acero" }, { id: 8, nombre: "Madera" }
+    ] });
+    const primaria = await abrirCategoria(user, "Primaria");
+    await user.click(within(primaria).getByRole("checkbox", { name: "Costo inicial de insumos de Acero" }));
+    const actual = onCategoriasChange.mock.lastCall[0];
+    expect(actual[0].costoInicialGrupos["7"]).toEqual({ insumos: true });
+    expect(actual[0].insumos.map((item) => item.costoInicial)).toEqual([true, false]);
+    expect(actual[0].operaciones[0].costoInicial).toBe(false);
+    expect(actual[1].insumos[0].costoInicial).toBe(false);
   });
 
   it("muestra minutos, costo por minuto y subtotal de operaciones", async () => {

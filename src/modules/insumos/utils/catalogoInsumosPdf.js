@@ -1,4 +1,5 @@
 import { obtenerBitsEan13 } from "../components/barcode/ean13Utils.js";
+import { obtenerLogoDocumentoPng } from "../../../utils/documentLogo.js";
 
 const COLUMNAS = 2;
 const FILAS = 5;
@@ -11,6 +12,7 @@ const INICIO_FICHAS = 44;
 const ANCHO_MODULO = 0.69;
 
 const limpiarTexto = (value) => String(value ?? "")
+  // eslint-disable-next-line no-control-regex
   .replace(/[\u0000-\u001f\u007f]/g, " ")
   .replace(/\s+/g, " ")
   .trim();
@@ -63,7 +65,7 @@ function textoAjustado(pdf, value, anchoMaximo) {
   return `${texto.trimEnd()}...`;
 }
 
-function dibujarEncabezado(pdf, grupo, paginaSeccion, totalSeccion, totalCatalogo) {
+function dibujarEncabezado(pdf, grupo, paginaSeccion, totalSeccion, totalCatalogo, logo) {
   const ancho = pdf.internal.pageSize.getWidth();
   pdf.setFillColor(35, 75, 68);
   pdf.rect(0, 0, ancho, 8, "F");
@@ -77,6 +79,7 @@ function dibujarEncabezado(pdf, grupo, paginaSeccion, totalSeccion, totalCatalog
   pdf.setFontSize(8);
   pdf.setTextColor(82, 96, 95);
   pdf.text(`${grupo.insumos.length} insumos  |  ${totalCatalogo} en el catálogo  |  Sección ${paginaSeccion} de ${totalSeccion}`, MARGEN, 34);
+  if (logo) pdf.addImage(logo, "PNG", ancho - 58, 11, 46, 16);
   pdf.setDrawColor(203, 216, 213);
   pdf.line(MARGEN, 38, ancho - MARGEN, 38);
 }
@@ -128,6 +131,7 @@ export async function crearCatalogoInsumosPdf(insumos, tipos = []) {
 
   const { jsPDF } = await import("jspdf");
   const pdf = new jsPDF({ unit: "mm", format: "letter", compress: true });
+  const logo = await obtenerLogoDocumentoPng();
   pdf.setProperties({ title: "Catálogo de insumos con códigos de barras", subject: "Insumos activos por tipo" });
   const anchoPagina = pdf.internal.pageSize.getWidth();
   const anchoFicha = (anchoPagina - 2 * MARGEN - SEPARACION) / COLUMNAS;
@@ -137,7 +141,7 @@ export async function crearCatalogoInsumosPdf(insumos, tipos = []) {
     for (let paginaSeccion = 0; paginaSeccion < paginasSeccion; paginaSeccion += 1) {
       if (pagina > 0) pdf.addPage();
       pagina += 1;
-      dibujarEncabezado(pdf, grupo, paginaSeccion + 1, paginasSeccion, incluidos.length);
+      dibujarEncabezado(pdf, grupo, paginaSeccion + 1, paginasSeccion, incluidos.length, logo);
       const items = grupo.insumos.slice(paginaSeccion * POR_PAGINA, (paginaSeccion + 1) * POR_PAGINA);
       items.forEach((insumo, index) => {
         const columna = index % COLUMNAS;

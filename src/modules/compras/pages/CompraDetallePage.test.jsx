@@ -48,4 +48,19 @@ describe("CompraDetallePage para borradores", () => {
     expect(screen.queryByRole("button", { name: "Ir a Entradas" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Abrir recepción" })).not.toBeInTheDocument();
   });
+
+  it("muestra el nombre del comprador junto a su correo en el detalle", async () => {
+    getPurchase.mockResolvedValue({
+      id: 11, folio: "COMP-11", estado: "RECIBIDA", total: 500, subtotal: 500, impuesto: 0,
+      fechaCompra: "2026-11-09", proveedorRazonSocial: "Proveedor Uno", detalles: [],
+      realizadoPor: "ana@example.com", realizadoPorNombre: "Ana María López Ruiz",
+    });
+
+    render(<MemoryRouter initialEntries={["/compras/11/ver"]}><Routes>
+      <Route path="/compras/:id/ver" element={<CompraDetallePage />} />
+    </Routes></MemoryRouter>);
+
+    expect(await screen.findByText("Ana María López Ruiz")).toBeInTheDocument();
+    expect(screen.getByText("ana@example.com")).toBeInTheDocument();
+  });
 });

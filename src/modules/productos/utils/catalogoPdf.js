@@ -97,7 +97,7 @@ function lineasLimitadas(pdf, contenido, ancho, maximo) {
   return visibles;
 }
 
-function dibujarPortada(pdf, cantidad, fecha) {
+function dibujarPortada(pdf, cantidad, fecha, logo) {
   pdf.setFillColor(...VERDE);
   pdf.rect(0, 0, ANCHO, ALTO, "F");
   pdf.setDrawColor(...VERDE_CLARO);
@@ -109,9 +109,15 @@ function dibujarPortada(pdf, cantidad, fecha) {
   pdf.setFillColor(...NARANJA);
   pdf.circle(29, 45, 3, "F");
   pdf.setTextColor(255, 255, 255);
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(25);
-  pdf.text("Mobilesco", 23, 58);
+  if (logo) {
+    pdf.setFillColor(255, 255, 255);
+    pdf.roundedRect(22, 35, 83, 30, 2, 2, "F");
+    dibujarImagenContenida(pdf, logo, 24, 37, 79, 26);
+  } else {
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(25);
+    pdf.text("Mobilesco", 23, 58);
+  }
   pdf.setFontSize(44);
   pdf.text("Catálogo", 23, 135);
   pdf.setFont("helvetica", "normal");
@@ -288,15 +294,17 @@ export async function crearPdfCatalogo(productos, { urlCatalogo = "", fecha = ne
   try { identidad = { ...identidad, ...await obtenerIdentidadPublica() }; } catch { /* El PDF conserva la marca base si no hay conexión. */ }
   pdf.setProperties({ title: `Catálogo ${identidad.nombreEmpresa}`, author: identidad.nombreEmpresa });
   const fechaTexto = new Intl.DateTimeFormat("es-MX", { day: "numeric", month: "long", year: "numeric" }).format(fecha);
-  const logoPersonalizado = identidad.logoCatalogoUrl || identidad.logoDocumentosUrl;
-  const logoUrl = logoPersonalizado
-    ? `${API_BASE_URL}${logoPersonalizado}`
+  const logoUrl = identidad.logoDocumentosUrl
+    ? (/^https?:\/\//i.test(identidad.logoDocumentosUrl) ? identidad.logoDocumentosUrl
+      : `${API_BASE_URL}${identidad.logoDocumentosUrl.startsWith("/") ? "" : "/"}${identidad.logoDocumentosUrl}`)
     : "/logo-mobilesco-firmeza.svg";
-  const logo = await cargarImagen(logoUrl, false).catch(() => null);
+  const logo = await cargarImagen(logoUrl, false)
+    .catch(() => logoUrl === "/logo-mobilesco-firmeza.svg"
+      ? null : cargarImagen("/logo-mobilesco-firmeza.svg", false).catch(() => null));
   const imagenes = new Map();
   let imagenesOmitidas = 0;
 
-  dibujarPortada(pdf, paginas.reduce((total, pagina) => total + pagina.productos.length, 0), fechaTexto);
+  dibujarPortada(pdf, paginas.reduce((total, pagina) => total + pagina.productos.length, 0), fechaTexto, logo);
   for (let indice = 0; indice < paginas.length; indice += 1) {
     const pagina = paginas[indice];
     pdf.addPage();

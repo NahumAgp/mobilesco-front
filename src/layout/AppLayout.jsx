@@ -2,13 +2,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from '../components/Sistema/Sidebar';
-import { syncCurrentUser } from '../modules/auth/services/authService';
+import { getUser, syncCurrentUser } from '../modules/auth/services/authService';
+import DailyNotificationsModal from '../modules/notificaciones/components/DailyNotificationsModal';
 import './AppLayout.css';
 
 const AppLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [authRevision, setAuthRevision] = useState(0);
   const outletContext = useMemo(() => ({ authRevision }), [authRevision]);
+  const currentUser = getUser();
+  const notificationUserId = currentUser?.id || currentUser?.usuarioId || currentUser?.email || currentUser?.username || currentUser?.nombreUsuario;
 
   const toggleSidebar = () => {
     setSidebarOpen((current) => !current);
@@ -62,6 +65,7 @@ const AppLayout = () => {
         toggleSidebar={toggleSidebar}
         closeSidebar={() => setSidebarOpen(false)}
       />
+      <DailyNotificationsModal key={`${notificationUserId || "anonymous"}:${authRevision}`} userId={notificationUserId} />
       <button
         type="button"
         className="mobile-menu-button"

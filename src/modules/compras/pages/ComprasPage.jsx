@@ -5,6 +5,8 @@ import usePersistedState from "../../../hooks/usePersistedState.js";
 import { useNavigate } from "react-router-dom";
 
 import { useCompras } from "../hooks/useCompras";
+import { exportarComprasExcel, obtenerDatosReporteCompras } from "../services/compras.js";
+import { crearPdfReporteCompras } from "../utils/reporteComprasPdf.js";
 import ComprasTable from "./ComprasTable.jsx";
 import PageHeader from "../../../components/Sistema/PageHeader.jsx";
 import CatalogFilters from "../../../components/ui/CatalogFilters.jsx";
@@ -40,6 +42,7 @@ export default function ComprasPage() {
   const [compraPorConfirmar, setCompraPorConfirmar] = useState(null);
   const [eliminando, setEliminando] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
+  const [exportando, setExportando] = useState("");
 
   const { compras, pageInfo, error, eliminarCompra, confirmarBorrador } = useCompras({
     page,
@@ -101,6 +104,42 @@ export default function ComprasPage() {
     (proveedor) => proveedor
   );
 
+  const filtrosReporte = {
+    busqueda: busquedaInput.trim(),
+    estado: filtroEstado,
+    proveedor: filtroProveedor,
+    fechaInicio,
+    fechaFin
+  };
+
+  const descargar = (blob, filename) => {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  const exportarReporte = async (formato) => {
+    try {
+      setExportando(formato);
+      const blob = formato === "pdf"
+        ? await crearPdfReporteCompras(await obtenerDatosReporteCompras(filtrosReporte))
+        : await exportarComprasExcel(filtrosReporte);
+      descargar(blob, `reporte-compras.${formato === "pdf" ? "pdf" : "xlsx"}`);
+      setToastType("success");
+      setToastMessage(`Reporte ${formato.toUpperCase()} generado correctamente`);
+    } catch (caughtError) {
+      setToastType("danger");
+      setToastMessage(caughtError.message || `No se pudo generar el reporte ${formato.toUpperCase()}`);
+    } finally {
+      setExportando("");
+    }
+  };
+
   useEffect(() => {
     setPage(0);
   }, [busqueda, filtroEstado, filtroProveedor, fechaInicio, fechaFin]);
@@ -139,6 +178,22 @@ export default function ComprasPage() {
         subtitle="Gestión de compras de insumos"
         actions={
           <div className="d-flex flex-wrap gap-2">
+            <button
+              className="btn btn-outline-danger"
+              onClick={() => exportarReporte("pdf")}
+              disabled={Boolean(exportando)}
+            >
+              <i className="bi bi-file-earmark-pdf me-2" aria-hidden="true"></i>
+              {exportando === "pdf" ? "Generando PDF..." : "Exportar PDF"}
+            </button>
+            <button
+              className="btn btn-outline-success"
+              onClick={() => exportarReporte("excel")}
+              disabled={Boolean(exportando)}
+            >
+              <i className="bi bi-file-earmark-excel me-2" aria-hidden="true"></i>
+              {exportando === "excel" ? "Generando Excel..." : "Exportar Excel"}
+            </button>
             {puedeVerAbastecimiento && (
               <button
                 className="btn btn-outline-primary"

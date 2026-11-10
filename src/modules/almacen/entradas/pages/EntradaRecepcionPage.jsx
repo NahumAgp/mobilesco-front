@@ -6,6 +6,7 @@ import { obtenerUnidadesMedida } from "../../../unidades-medida/services/unidadM
 import { crearInsumo } from "../../../insumos/services/insumos.js";
 import { actualizarCompra } from "../../../compras/services/compras.js";
 import { obtenerEntradaPorId, recepcionarDetalleCompra } from "../services/entradas.js";
+import { getUser } from "../../../auth/services/authService.js";
 
 function formatoFecha(valor) {
   if (!valor) return "--";
@@ -42,6 +43,11 @@ export default function EntradaRecepcionPage() {
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
   const [entregadoPor, setEntregadoPor] = useState("");
+  const [recibidoPor, setRecibidoPor] = useState(() => {
+    const usuario = getUser();
+    return [usuario?.nombre, usuario?.apellidoPaterno, usuario?.apellidoMaterno]
+      .filter(Boolean).join(" ") || usuario?.username || usuario?.nombreUsuario || "";
+  });
   const [recepciones, setRecepciones] = useState([]);
   const [ajusteActivoId, setAjusteActivoId] = useState(null);
   const [mostrarPopupInsumo, setMostrarPopupInsumo] = useState(false);
@@ -273,13 +279,22 @@ export default function EntradaRecepcionPage() {
       return;
     }
 
+    if (!recibidoPor.trim()) {
+      setToastType("danger");
+      setToastMessage("Captura quién recibió físicamente los insumos");
+      return;
+    }
+
     try {
       setGuardando(true);
+      const recepcionId = window.crypto.randomUUID();
       for (const item of itemsARecibir) {
         await recepcionarDetalleCompra(item.detalleId, {
           cantidadRecibida: item.cantidadRecibirAhora,
           entregadoPor: entregadoPor.trim() || null,
-          motivoNoRecepcion: item.motivoNoRecepcion?.trim() || null
+          motivoNoRecepcion: item.motivoNoRecepcion?.trim() || null,
+          recibidoPor: recibidoPor.trim(),
+          recepcionId
         });
       }
 
@@ -395,6 +410,23 @@ export default function EntradaRecepcionPage() {
                 value={entregadoPor}
                 onChange={(e) => setEntregadoPor(e.target.value)}
                 placeholder="Nombre de quien entrega (opcional)"
+              />
+            </div>
+          </div>
+        </div>
+        <div className="col-md-4">
+          <div className="card shadow-sm border-0 h-100">
+            <div className="card-body">
+              <label className="text-muted small" htmlFor="entrada-recibido-por">Recibido por</label>
+              <input
+                id="entrada-recibido-por"
+                type="text"
+                className="form-control"
+                maxLength={150}
+                required
+                value={recibidoPor}
+                onChange={(event) => setRecibidoPor(event.target.value)}
+                placeholder="Nombre de quien recibe los insumos"
               />
             </div>
           </div>

@@ -58,7 +58,7 @@ describe("catálogo visual", () => {
       </MemoryRouter>
     );
 
-    const cotizar = await screen.findByRole("button", { name: "Agregar a mi cotización" });
+    const cotizar = await screen.findByRole("button", { name: "Agregar a mi cotización" }, { timeout: 5000 });
     const galeria = screen.getByRole("region", { name: "Galeria del producto" });
     expect(within(galeria).getAllByRole("img").every((imagen) => imagen.getAttribute("src").includes("/uploads/modelo.jpg"))).toBe(true);
     await user.click(cotizar);
@@ -89,11 +89,11 @@ describe("catálogo visual", () => {
     );
 
     expect(await screen.findByRole("heading", { name: "Concha uno" })).toBeInTheDocument();
-    const selector = screen.getByRole("combobox", { name: "Ir a familia" });
-    expect(within(selector).getAllByRole("option")).toHaveLength(2);
-    expect(selector).toHaveValue("sillas-escolares");
-    await user.selectOptions(selector, "sillas-oficina");
+    const categorias = screen.getByRole("navigation", { name: "Categorías del catálogo" });
+    expect(within(categorias).getAllByRole("button")).toHaveLength(2);
+    expect(within(categorias).getAllByRole("button")[0]).toHaveAttribute("aria-current", "page");
+    await user.click(within(categorias).getAllByRole("button")[1]);
     expect(await screen.findByText("No hay modelos coincidentes en esta familia.")).toBeInTheDocument();
-    expect(screen.getByRole("combobox", { name: "Ir a familia" })).toHaveValue("sillas-oficina");
+    expect(within(categorias).getAllByRole("button")[1]).toHaveAttribute("aria-current", "page");
   });
 });

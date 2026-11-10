@@ -44,6 +44,7 @@ const InsumosFormPage = lazy(() => import("./modules/insumos/pages/InsumoFormPag
 const TiposInsumoPage = lazy(() => import("./modules/insumos/pages/TiposInsumoPage.jsx"));
 const SalidasInsumosPage = lazy(() => import("./modules/salidas-insumos/pages/SalidasInsumosPage.jsx"));
 const SalidasInsumosNuevaPage = lazy(() => import("./modules/salidas-insumos/pages/SalidasInsumosNuevaPage.jsx"));
+const AlmacenInicioPage = lazy(() => import("./modules/almacen/pages/AlmacenInicioPage.jsx"));
 const RequisicionesPage = lazy(() => import("./modules/almacen/requisiciones/pages/RequisicionesPage.jsx"));
 const RequisicionNuevaPage = lazy(() => import("./modules/almacen/requisiciones/pages/RequisicionNuevaPage.jsx"));
 const RequisicionDetallePage = lazy(() => import("./modules/almacen/requisiciones/pages/RequisicionDetallePage.jsx"));
@@ -121,7 +122,7 @@ export default function App() {
 
 
         <Route path="/unidadMedida" element={withPermission(<UnidadMedida />, "VIEW_INVENTORY")} />
-        <Route path="/almacen" element={<Navigate to="/insumos" replace />} />
+        <Route path="/almacen" element={<AlmacenInicioPage />} />
 
         <Route path="/nuevaCotizacion" element={<Navigate to="/cotizaciones/nueva" replace />} />
 
