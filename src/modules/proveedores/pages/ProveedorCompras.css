@@ -1,0 +1,118 @@
+.proveedor-compras {
+  overflow: hidden;
+  border: 1px solid #dce8e4;
+  border-radius: 20px;
+  background: #f8faf9;
+  box-shadow: 0 14px 36px rgba(20, 61, 52, .07);
+  color: #24483f;
+}
+
+.proveedor-compras-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 24px 28px;
+  border-bottom: 1px solid #e2ece8;
+  background: #edf5f1;
+}
+
+.proveedor-compras-kicker {
+  color: #b55c29;
+  font-size: .7rem;
+  font-weight: 800;
+  letter-spacing: .13em;
+}
+
+.proveedor-compras-cabecera h2 { margin: 4px 0; font-size: 1.5rem; font-weight: 750; }
+.proveedor-compras-cabecera p { margin: 0; color: #61746d; }
+.proveedor-compras-aviso { padding: 36px 28px; color: #61746d; }
+
+.proveedor-compras-indicadores {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  padding: 20px 24px 12px;
+}
+
+.proveedor-compras-indicadores > div,
+.proveedor-compras-grafica {
+  border: 1px solid #e2eae6;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.proveedor-compras-indicadores > div { display: grid; gap: 7px; padding: 16px 18px; }
+.proveedor-compras-indicadores span { color: #667a73; font-size: .78rem; }
+.proveedor-compras-indicadores strong { overflow-wrap: anywhere; font-size: 1.18rem; }
+
+.proveedor-compras-graficas {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(250px, 1fr);
+  gap: 12px;
+  padding: 0 24px 20px;
+}
+
+.proveedor-compras-grafica { min-width: 0; padding: 18px; }
+.proveedor-compras-grafica-titulo,
+.proveedor-compras-lista-titulo { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.proveedor-compras-grafica-titulo h3,
+.proveedor-compras-lista-titulo h3 { margin: 0; font-size: 1rem; font-weight: 750; }
+.proveedor-compras-grafica-titulo span,
+.proveedor-compras-lista-titulo span { color: #71847d; font-size: .75rem; }
+
+.proveedor-compras-barras {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  align-items: end;
+  gap: 12px;
+  min-height: 165px;
+  padding-top: 22px;
+}
+
+.proveedor-compras-columna { display: grid; gap: 8px; text-align: center; color: #71847d; font-size: .72rem; }
+.proveedor-compras-barra-pista {
+  display: flex;
+  align-items: end;
+  height: 122px;
+  border-radius: 8px 8px 3px 3px;
+  background: #f0f4f2;
+  overflow: hidden;
+}
+.proveedor-compras-barra { width: 100%; border-radius: 8px 8px 3px 3px; background: linear-gradient(180deg, #5c9b7f, #24594b); }
+.proveedor-compras-nota { margin: 14px 0 0; color: #71847d; font-size: .72rem; }
+
+.proveedor-compras-estado-barra { display: flex; height: 22px; margin: 38px 0 28px; overflow: hidden; border-radius: 999px; background: #edf2ef; }
+.proveedor-compras-estado-recibidas { background: #3d8b69; }
+.proveedor-compras-estado-proceso { background: #e9a64c; }
+.proveedor-compras-estado-canceladas { background: #c96f65; }
+.proveedor-compras-leyenda { display: grid; gap: 13px; }
+.proveedor-compras-leyenda > div { display: grid; grid-template-columns: 10px 1fr auto; gap: 9px; align-items: center; color: #536b61; font-size: .82rem; }
+.proveedor-compras-leyenda strong { color: #24483f; }
+.proveedor-compras-punto { width: 10px; height: 10px; border-radius: 50%; }
+
+.proveedor-compras-lista { padding: 20px 24px 24px; border-top: 1px solid #e2ece8; }
+.proveedor-compras-lista-titulo { margin-bottom: 14px; }
+.proveedor-compras-tabla { max-height: 430px; border: 1px solid #e2eae6; border-radius: 12px; background: #fff; }
+.proveedor-compras-tabla thead { position: sticky; top: 0; z-index: 1; background: #f2f7f4; }
+.proveedor-compras-tabla th { color: #526a60; font-size: .75rem; }
+.proveedor-compras-vacio { display: grid; justify-items: center; gap: 10px; padding: 35px 15px; color: #6d7d76; text-align: center; }
+.proveedor-compras-vacio i { font-size: 2rem; }
+.proveedor-compras-vacio p { margin: 0; }
+.proveedor-compras-mas { display: block; margin: 14px auto 0; padding: 4px 8px; border: 0; background: transparent; color: #24594b; font-weight: 700; }
+.proveedor-compras-mas:hover { text-decoration: underline; }
+
+@media (max-width: 900px) {
+  .proveedor-compras-indicadores { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .proveedor-compras-graficas { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 576px) {
+  .proveedor-compras-cabecera { align-items: start; flex-direction: column; padding: 20px; }
+  .proveedor-compras-indicadores { gap: 8px; padding: 14px 14px 8px; }
+  .proveedor-compras-indicadores > div { padding: 12px; }
+  .proveedor-compras-graficas { padding: 0 14px 14px; }
+  .proveedor-compras-lista { padding: 18px 14px; }
+  .proveedor-compras-grafica-titulo,
+  .proveedor-compras-lista-titulo { align-items: start; flex-direction: column; gap: 3px; }
+}

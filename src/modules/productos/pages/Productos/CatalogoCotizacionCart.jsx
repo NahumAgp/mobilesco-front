@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { obtenerProductoCotizable } from "../../../cotizaciones/services/cotizaciones.js";
+import { getUser, hasPermission } from "../../../auth/services/authService.js";
 import { CatalogoCotizacionContext } from "./catalogoCotizacionContext.js";
 import "./catalogo-cotizacion-cart.css";
 
@@ -41,6 +42,9 @@ export default function CatalogoCotizacionProvider({ children, enabled }) {
   const [validandoCarrito, setValidandoCarrito] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [problemas, setProblemas] = useState({});
+  const [modo, setModo] = useState("cotizacion");
+  const puedeCrearPedido = hasPermission(getUser(), "VIEW_SALES_ORDERS")
+    && hasPermission(getUser(), "ACTION_SALES_ORDERS_CREATE");
 
   useEffect(() => {
     try {
@@ -128,7 +132,7 @@ export default function CatalogoCotizacionProvider({ children, enabled }) {
     });
   };
 
-  const cotizar = async () => {
+  const continuar = async () => {
     if (!items.length || validandoCarrito) return;
     setValidandoCarrito(true);
     setMensaje("");
@@ -160,10 +164,8 @@ export default function CatalogoCotizacionProvider({ children, enabled }) {
       utilidad: item.utilidad ?? null,
     }));
     setAbierto(false);
-    setItems([]);
-    try { localStorage.removeItem(STORAGE_KEY); } catch { /* El carrito también se limpia del estado local. */ }
     navigate("/cotizaciones/formal", {
-      state: { carritoInicial, cotizacionRapida: true, origenCatalogo: true },
+      state: { carritoInicial, cotizacionRapida: true, origenCatalogo: true, flujoCatalogo: modo },
     });
   };
 
@@ -183,10 +185,10 @@ export default function CatalogoCotizacionProvider({ children, enabled }) {
         <button type="button" aria-label="Cerrar mensaje" onClick={() => setMensaje("")}><i className="bi bi-x-lg" aria-hidden="true"></i></button>
       </div>}
       <button type="button" className="catalogo-cart-launcher" onClick={() => setAbierto(true)}
-        aria-label={`Abrir cotización: ${modelos} modelos distintos, ${unidades} piezas totales`}>
+        aria-label={`Abrir selección: ${modelos} modelos distintos, ${unidades} piezas totales`}>
         <i className="bi bi-bag-check" aria-hidden="true"></i>
         <span className="catalogo-cart-launcher-copy">
-          <strong>Mi cotización</strong>
+          <strong>Mi selección</strong>
           <small>{modelos} {modelos === 1 ? "modelo" : "modelos"} · {unidades} {unidades === 1 ? "pieza" : "piezas"}</small>
         </span>
       </button>
@@ -195,15 +197,25 @@ export default function CatalogoCotizacionProvider({ children, enabled }) {
       }}>
         <aside className="catalogo-cart-drawer" role="dialog" aria-modal="true" aria-labelledby="catalogo-cart-title">
           <header className="catalogo-cart-heading">
-            <div><span>CATÁLOGO MOBILESCO</span><h2 id="catalogo-cart-title">Tu cotización</h2></div>
+            <div><span>CATÁLOGO MOBILESCO</span><h2 id="catalogo-cart-title">{modo === "pedido" ? "Tu pedido" : "Tu cotización"}</h2></div>
             <button type="button" className="catalogo-cart-close" aria-label="Cerrar carrito" onClick={() => setAbierto(false)}>
               <i className="bi bi-x-lg" aria-hidden="true"></i>
             </button>
           </header>
+          {puedeCrearPedido && <div className="catalogo-cart-mode" role="group" aria-label="¿Qué deseas crear?">
+            <button type="button" className={modo === "cotizacion" ? "is-active" : ""}
+              aria-pressed={modo === "cotizacion"} disabled={validandoCarrito}
+              onClick={() => setModo("cotizacion")}><i className="bi bi-file-earmark-text" aria-hidden="true"></i> Cotización</button>
+            <button type="button" className={modo === "pedido" ? "is-active" : ""}
+              aria-pressed={modo === "pedido"} disabled={validandoCarrito}
+              onClick={() => setModo("pedido")}><i className="bi bi-clipboard-check" aria-hidden="true"></i> Pedido</button>
+          </div>}
           <p className="catalogo-cart-validation-note"><i className="bi bi-shield-check" aria-hidden="true"></i>
-            Solo agregamos productos con costos completos y vigentes.
+            {modo === "pedido"
+              ? "El pedido requiere cliente. Se generará en borrador al confirmar los datos comerciales."
+              : "La cotización se guardará como pendiente para dar seguimiento a su estado."}
           </p>
-          <div className="catalogo-cart-summary" aria-label="Resumen de la cotización">
+          <div className="catalogo-cart-summary" aria-label="Resumen de la selección">
             <div><strong>{modelos}</strong><span>{modelos === 1 ? "Modelo" : "Modelos"} (modelo + color)</span></div>
             <div><strong>{unidades}</strong><span>Piezas totales</span></div>
           </div>
@@ -235,14 +247,14 @@ export default function CatalogoCotizacionProvider({ children, enabled }) {
             </article>)}
             {!items.length && <div className="catalogo-cart-empty">
               <i className="bi bi-bag" aria-hidden="true"></i><strong>Tu carrito está vacío</strong>
-              <span>Agrega productos del catálogo para empezar tu cotización.</span>
+              <span>Agrega productos del catálogo para empezar.</span>
             </div>}
           </div>
           <footer className="catalogo-cart-footer">
-            <div><small>El precio final se calcula al preparar la cotización.</small></div>
-            <button type="button" disabled={!items.length || validandoCarrito || validandoIds.size > 0} onClick={cotizar}>
+            <div><small>El precio final se calcula al confirmar los datos comerciales.</small></div>
+            <button type="button" disabled={!items.length || validandoCarrito || validandoIds.size > 0} onClick={continuar}>
               {validandoCarrito ? <><span className="catalogo-cart-spinner"></span>Validando costos...</>
-                : <>Continuar a cotizar <i className="bi bi-arrow-right" aria-hidden="true"></i></>}
+                : <>{modo === "pedido" ? "Continuar a pedido" : "Continuar a cotizar"} <i className="bi bi-arrow-right" aria-hidden="true"></i></>}
             </button>
           </footer>
         </aside>

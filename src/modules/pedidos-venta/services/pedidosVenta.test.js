@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import request from "../../../services/api";
-import { cancelarPedidoVenta, confirmarPedidoVenta, crearPedidoDesdeCotizacion, listarPedidosVenta } from "./pedidosVenta";
+import { cancelarPedidoVenta, confirmarPedidoVenta, crearPedidoDesdeCatalogo, crearPedidoDesdeCotizacion, listarPedidosVenta } from "./pedidosVenta";
 
 vi.mock("../../../services/api", () => ({ default: vi.fn() }));
 
@@ -16,6 +16,14 @@ describe("servicio de pedidos de venta", () => {
     await crearPedidoDesdeCotizacion(7, { fechaCompromiso: "2026-10-30" });
     expect(request).toHaveBeenCalledWith("/api/v1/pedidos-venta/desde-cotizacion/7", {
       method: "POST", body: JSON.stringify({ fechaCompromiso: "2026-10-30" })
+    });
+  });
+
+  it("crea un pedido desde el catálogo con los datos comerciales", async () => {
+    const cotizacion = { clienteId: 2, detalles: [{ productoId: 3, cantidad: 1 }] };
+    await crearPedidoDesdeCatalogo(cotizacion);
+    expect(request).toHaveBeenCalledWith("/api/v1/pedidos-venta/desde-catalogo", {
+      method: "POST", body: JSON.stringify(cotizacion),
     });
   });
 

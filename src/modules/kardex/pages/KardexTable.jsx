@@ -43,6 +43,8 @@ export default function KardexTable({ movimientos, loading, insumoNombre, pagina
         return <span className="badge bg-primary-subtle text-primary border border-primary-subtle">COMPRA</span>;
       case 'PRODUCCION':
         return <span className="badge bg-warning-subtle text-warning border border-warning-subtle">PRODUCCIÓN</span>;
+      case 'SALIDA_ALMACEN':
+        return <span className="badge bg-danger-subtle text-danger border border-danger-subtle">SALIDA ALMACÉN</span>;
       case 'AJUSTE':
         return <span className="badge bg-info-subtle text-info border border-info-subtle">AJUSTE</span>;
       default:

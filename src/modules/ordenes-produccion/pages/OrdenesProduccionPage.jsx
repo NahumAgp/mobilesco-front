@@ -52,7 +52,7 @@ export default function OrdenesProduccionPage() {
       <tbody>{items.map((item) => <tr key={item.id} className="op-row" onClick={() => navigate(`/ordenes-produccion/${item.id}`)}>
         <td><strong>{item.folio}</strong>{item.tieneFaltantes && <TriangleAlert className="text-warning ms-2" size={17} aria-label="Tiene faltantes" />}</td>
         <td>{item.origen === "PEDIDO_VENTA" ? "Pedido de venta" : item.origen === "COTIZACION" ? "Cotización" : "Manual"}</td><td>{item.clienteNombre || "Sin cliente"}</td><td>{item.fechaInicioProgramada || "—"}</td><td>{item.fechaCompromiso || "—"}</td>
-        <td><div className="progress" title={`${item.porcentajeAvance || 0}%`}><div className="progress-bar" style={{ width: `${Math.min(100, item.porcentajeAvance || 0)}%` }} /></div><small>{item.porcentajeAvance || 0}%</small></td>
+        <td><div className="progress" title={`${item.porcentajeFabricacion || 0}% fabricado`}><div className="progress-bar" style={{ width: `${Math.min(100, item.porcentajeFabricacion || 0)}%` }} /></div><small>{item.porcentajeFabricacion || 0}% fabricación · {item.porcentajeAvance || 0}% producto terminado</small></td>
         <td><span className={`op-status op-status-${item.estado.toLowerCase()}`}>{ESTADOS[item.estado]}</span></td>
       </tr>)}</tbody></table>
       {!cargando && !items.length && <div className="op-empty">No hay órdenes con estos filtros.</div>}

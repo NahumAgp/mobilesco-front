@@ -64,3 +64,22 @@ export function organizarFamiliasCatalogo(productos, { incluirVacias = false, fa
     })
     .sort((a, b) => a.orden - b.orden || a.titulo.localeCompare(b.titulo, "es", { sensitivity: "base" }));
 }
+
+export function agruparPaginasCatalogo(paginas) {
+  const grupos = new Map();
+  const nombres = { silla: "Sillas", sillas: "Sillas", mesa: "Mesas", mesas: "Mesas", pupitre: "Pupitres", pupitres: "Pupitres", banco: "Bancos", bancos: "Bancos", escritorio: "Escritorios", escritorios: "Escritorios", librero: "Libreros", libreros: "Libreros" };
+
+  paginas.forEach((pagina) => {
+    const clave = normalizar(pagina.familia);
+    if (!grupos.has(clave)) {
+      grupos.set(clave, {
+        clave,
+        titulo: nombres[clave] || tituloCaso(pagina.familia),
+        paginas: [],
+      });
+    }
+    grupos.get(clave).paginas.push(pagina);
+  });
+
+  return [...grupos.values()];
+}

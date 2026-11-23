@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ClipboardList, Eye, Factory, Search, ShieldCheck, XCircle } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import useDebouncedValue from "../../../hooks/useDebouncedValue";
 import usePersistedState from "../../../hooks/usePersistedState";
 import { getUser, hasPermission } from "../../auth/services/authService";
@@ -18,6 +18,8 @@ const cantidad = (value) => new Intl.NumberFormat("es-MX", { maximumFractionDigi
 
 export default function PedidosVentaPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const pedidoInicial = searchParams.get("pedido");
   const puedeEditar = hasPermission(getUser(), "ACTION_SALES_ORDERS_EDIT");
   const puedeCrearOrden = hasPermission(getUser(), "VIEW_PRODUCTION_ORDERS") && hasPermission(getUser(), "ACTION_PRODUCTION_ORDERS_CREATE");
   const [filtros, setFiltros] = usePersistedState("pedidos-venta:filtros", FILTROS);
@@ -42,6 +44,7 @@ export default function PedidosVentaPage() {
     try { setDetalle(await obtenerPedidoVenta(id)); setError(""); }
     catch (e) { setError(e.message || "No fue posible abrir el pedido"); }
   };
+  useEffect(() => { if (pedidoInicial) abrir(pedidoInicial); }, [pedidoInicial]);
   const ejecutar = async (accion) => {
     try { setProcesando(true); const actualizado = await accion(); setDetalle(actualizado); await cargar(); }
     catch (e) { setError(e.message || "No fue posible actualizar el pedido"); }
@@ -61,17 +64,19 @@ export default function PedidosVentaPage() {
       <select value={filtros.estado} onChange={(e) => setFiltros((v) => ({ ...v, estado: e.target.value }))}><option value="">Todos los estados</option>{Object.entries(ESTADOS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
     </section>
     {error && <div className="alert alert-danger">{error}</div>}
-    <section className="pv-card table-responsive"><table className="table align-middle mb-0"><thead><tr><th>Pedido</th><th>Cotización</th><th>Cliente</th><th>Fecha</th><th>Compromiso</th><th>Total</th><th>Estado</th><th></th></tr></thead>
-      <tbody>{items.map((item) => <tr key={item.id}><td><strong>{item.folio}</strong></td><td>{item.cotizacionFolio || "—"}</td><td>{item.clienteNombre || "—"}</td><td>{item.fechaPedido}</td><td>{item.fechaCompromiso || "Por definir"}</td><td>{moneda(item.total)}</td><td><span className={`pv-status pv-status-${item.estado.toLowerCase()}`}>{ESTADOS[item.estado]}</span></td><td><button className="btn btn-sm btn-outline-primary" onClick={() => abrir(item.id)}><Eye size={16} /> Ver</button></td></tr>)}</tbody>
+    <section className="pv-card table-responsive"><table className="table align-middle mb-0"><thead><tr><th>Pedido</th><th>Cotización</th><th>Cliente</th><th>Fecha</th><th>Compromiso</th><th>Fabricación</th><th>Total</th><th>Estado</th><th></th></tr></thead>
+      <tbody>{items.map((item) => <tr key={item.id}><td><strong>{item.folio}</strong></td><td>{item.cotizacionFolio || "—"}</td><td>{item.clienteNombre || "—"}</td><td>{item.fechaPedido}</td><td>{item.fechaCompromiso || "Por definir"}</td><td>{item.ordenProduccionId ? <><div className="progress" style={{ minWidth: 90 }}><div className="progress-bar" style={{ width: `${Math.min(100, Number(item.porcentajeFabricacion || 0))}%` }} /></div><small>{cantidad(item.porcentajeFabricacion)}%</small></> : "—"}</td><td>{moneda(item.total)}</td><td><span className={`pv-status pv-status-${item.estado.toLowerCase()}`}>{ESTADOS[item.estado]}</span></td><td><button className="btn btn-sm btn-outline-primary" onClick={() => abrir(item.id)}><Eye size={16} /> Ver</button></td></tr>)}</tbody>
     </table>{!cargando && !items.length && <div className="pv-empty">No hay pedidos con estos filtros.</div>}</section>
     {detalle && <div className="pv-modal-backdrop" onClick={() => setDetalle(null)}><article className="pv-modal" onClick={(e) => e.stopPropagation()}>
       <button className="pv-close" onClick={() => setDetalle(null)}>×</button><span className={`pv-status pv-status-${detalle.estado.toLowerCase()}`}>{ESTADOS[detalle.estado]}</span>
       <h2>{detalle.folio}</h2><p>{detalle.clienteNombre} · {detalle.cotizacionFolio}</p>
+      {detalle.ordenProduccionId && <div className="mb-3"><strong>Avance de fabricación: {cantidad(detalle.porcentajeFabricacion)}%</strong><div className="progress mt-1"><div className="progress-bar" style={{ width: `${Math.min(100, Number(detalle.porcentajeFabricacion || 0))}%` }} /></div><small>Las piezas disponibles y entregadas se muestran por separado abajo.</small></div>}
       <div className="pv-progress-grid"><span>Producto</span><span>Pedido</span><span>Producido</span><span>Reservado</span><span>Entregado</span>{detalle.detalles.map((d) => <div className="pv-progress-row" key={d.id}><strong>{d.sku}<small>{d.nombre}</small></strong><span>{cantidad(d.cantidadSolicitada)}</span><span>{cantidad(d.cantidadProducida)}</span><span>{cantidad(d.cantidadReservada)}</span><span>{cantidad(d.cantidadEntregada)}</span></div>)}</div>
       <div className="pv-total"><span>Total</span><strong>{moneda(detalle.total)}</strong></div>
       <div className="pv-actions">
         {puedeEditar && detalle.estado === "BORRADOR" && <button disabled={procesando} className="btn btn-primary" onClick={() => ejecutar(() => confirmarPedidoVenta(detalle.id))}><ShieldCheck size={17} /> Confirmar pedido</button>}
-        {puedeCrearOrden && ["CONFIRMADO", "EN_PRODUCCION"].includes(detalle.estado) && detalle.detalles.some((d) => Number(d.pendienteProduccion) > 0) && <button disabled={procesando} className="btn btn-primary" onClick={crearOrden}><Factory size={17} /> Crear orden de producción</button>}
+        {puedeCrearOrden && detalle.ordenProduccionId && <button className="btn btn-primary" onClick={() => navigate(`/ordenes-produccion/${detalle.ordenProduccionId}`)}><Factory size={17} /> Ver orden de producción</button>}
+        {puedeCrearOrden && !detalle.ordenProduccionId && ["CONFIRMADO", "EN_PRODUCCION"].includes(detalle.estado) && detalle.detalles.some((d) => Number(d.pendienteProduccion) > 0) && <button disabled={procesando} className="btn btn-primary" onClick={crearOrden}><Factory size={17} /> Crear orden de producción</button>}
         {puedeEditar && !["CANCELADO", "ENTREGADO"].includes(detalle.estado) && <button disabled={procesando} className="btn btn-outline-danger" onClick={() => window.confirm("¿Cancelar este pedido y liberar sus reservas?") && ejecutar(() => cancelarPedidoVenta(detalle.id))}><XCircle size={17} /> Cancelar</button>}
       </div>
     </article></div>}

@@ -1,10 +1,12 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import CompraForm from "./CompraForm.jsx";
 
 export default function CompraFormPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const esEdicion = Boolean(id);
+  const proveedorInicialId = esEdicion ? "" : new URLSearchParams(location.search).get("proveedorId") || "";
 
   return (
     <div className="container-fluid mt-4">
@@ -16,7 +18,7 @@ export default function CompraFormPage() {
         </button>
       </div>
 
-      <CompraForm compraId={id} />
+      <CompraForm compraId={id} proveedorInicialId={proveedorInicialId} />
     </div>
   );
 }

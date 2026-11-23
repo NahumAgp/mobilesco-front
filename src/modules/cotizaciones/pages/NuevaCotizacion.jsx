@@ -5,6 +5,7 @@ import { crearCliente, obtenerClientesActivos } from "../../clientes/services/cl
 import { actualizarCotizacion, buscarProductosCotizables, cotizarFlete, crearCotizacion, obtenerCotizacion } from "../services/cotizaciones";
 import { descargarPdfCotizacion, compartirCotizacionWhatsApp } from "../utils/cotizacionPdf";
 import { getUser, hasPermission } from "../../auth/services/authService";
+import { crearPedidoDesdeCatalogo } from "../../pedidos-venta/services/pedidosVenta";
 import FleteMapa from "../components/FleteMapa";
 import "./cotizaciones.css";
 import "./cotizacion-detalle.css";
@@ -32,6 +33,8 @@ export default function NuevaCotizacion() {
   const { id: cotizacionId } = useParams();
   const editando = Boolean(cotizacionId);
   const cotizacionRapida = Boolean(location.state?.cotizacionRapida);
+  const origenCatalogo = Boolean(location.state?.origenCatalogo && !editando);
+  const flujoPedido = Boolean(origenCatalogo && location.state?.flujoCatalogo === "pedido");
   const [clientes, setClientes] = useState([]);
   const [clienteId, setClienteId] = useState("");
   const [busqueda, setBusqueda] = useState("");
@@ -41,6 +44,7 @@ export default function NuevaCotizacion() {
   const [margen, setMargen] = useState(35);
   const [descuento, setDescuento] = useState(0);
   const [flete, setFlete] = useState(0);
+  const [unidadesFlete, setUnidadesFlete] = useState(1);
   const [destinoFlete, setDestinoFlete] = useState("");
   const [puntoFlete, setPuntoFlete] = useState(null);
   const [rutaFlete, setRutaFlete] = useState(null);
@@ -54,7 +58,9 @@ export default function NuevaCotizacion() {
   const [condiciones, setCondiciones] = useState("Precios sujetos a la vigencia indicada y disponibilidad.");
   const [error, setError] = useState("");
   const [guardando, setGuardando] = useState(false);
+  const guardandoRef = useRef(false);
   const [guardada, setGuardada] = useState(null);
+  const [estadoOriginal, setEstadoOriginal] = useState(null);
   const [mostrarCliente, setMostrarCliente] = useState(false);
   const [nuevoCliente, setNuevoCliente] = useState(clienteInicial);
   const [guardandoCliente, setGuardandoCliente] = useState(false);
@@ -65,11 +71,14 @@ export default function NuevaCotizacion() {
   useEffect(() => {
     if (!editando) return;
     obtenerCotizacion(cotizacionId).then((data) => {
+      setEstadoOriginal(data.estado);
       setClienteId(data.clienteId ? String(data.clienteId) : "");
       setCarrito((data.detalles || []).map((d) => ({ id: d.productoId, sku: d.sku, nombre: d.nombre, costoTotal: d.costoUnitario, cantidad: d.cantidad, utilidad: d.utilidadPorcentaje })));
       setMargen(data.margenPorcentaje ?? 35);
       setDescuento(data.descuentoPorcentaje ?? 0);
-      setFlete(data.flete ?? 0);
+      const unidades = data.unidadesFlete ?? 1;
+      setUnidadesFlete(unidades);
+      setFlete((Number(data.flete ?? 0) / unidades).toFixed(2));
       setIva(data.ivaPorcentaje ?? 16);
       setVigencia(Math.max(1, Math.round((new Date(data.fechaVencimiento) - new Date(data.fechaEmision)) / 86400000)));
       setNotas(data.notas || "");
@@ -88,13 +97,14 @@ export default function NuevaCotizacion() {
     const subtotalCostos = carrito.reduce((s, item) => s + Number(item.costoTotal) * item.cantidad, 0);
     const subtotal = divisor > 0 ? carrito.reduce((s, item) => s + precioUnitario(item, margen) * item.cantidad, 0) : 0;
     const montoDescuento = subtotal * Number(descuento || 0) / 100;
-    const baseIva = subtotal - montoDescuento + Number(flete || 0);
+    const fleteTotal = Number(flete || 0) * Number(unidadesFlete || 0);
+    const baseIva = subtotal - montoDescuento + fleteTotal;
     const montoIva = baseIva * Number(iva || 0) / 100;
     const ventaNetaProductos = subtotal - montoDescuento;
     const margenReal = ventaNetaProductos > 0
       ? (ventaNetaProductos - subtotalCostos) / ventaNetaProductos * 100 : 0;
-    return { subtotalCostos, subtotal, montoDescuento, baseIva, montoIva, total: baseIva + montoIva, margenReal };
-  }, [carrito, margen, descuento, flete, iva]);
+    return { subtotalCostos, subtotal, montoDescuento, fleteTotal, baseIva, montoIva, total: baseIva + montoIva, margenReal };
+  }, [carrito, margen, descuento, flete, unidadesFlete, iva]);
 
   const agregar = (producto) => {
     if (!producto.cotizable) return;
@@ -188,22 +198,39 @@ export default function NuevaCotizacion() {
   };
 
   const guardar = async (estado) => {
+    if (guardandoRef.current) return;
+    if (editando && ["ACEPTADA", "COMPLETADA", "CANCELADA"].includes(estadoOriginal))
+      return setError("Esta cotización ya no admite edición.");
     if (!carrito.length) return setError("Agrega al menos un producto cotizable.");
+    if (flujoPedido && !clienteId) return setError("Selecciona un cliente para generar el pedido.");
+    if (!Number.isInteger(Number(unidadesFlete)) || Number(unidadesFlete) < 1)
+      return setError("Ingresa al menos una unidad para el flete.");
     if (estado !== "BORRADOR" && resumen.margenReal <= 0)
       return setError("El descuento deja la venta de productos sin utilidad.");
+    guardandoRef.current = true;
     setGuardando(true); setError("");
     try {
       const payload = {
         clienteId: clienteId ? Number(clienteId) : null, estado, vigenciaDias: Number(vigencia),
         descuentoPorcentaje: Number(descuento),
-        flete: Number(flete), ivaPorcentaje: Number(iva), notas, condiciones,
+        flete: Number(flete), unidadesFlete: Number(unidadesFlete), ivaPorcentaje: Number(iva), notas, condiciones,
         margenPorcentaje: carrito.every((item) => item.utilidad !== undefined && item.utilidad !== null) ? null : Number(margen),
         detalles: carrito.map((item) => ({ productoId: item.id, cantidad: item.cantidad, utilidadPorcentaje: item.utilidad ?? null })),
       };
-      const creada = editando ? await actualizarCotizacion(cotizacionId, payload) : await crearCotizacion(payload);
-      if (editando) navigate("/cotizaciones", { state: { mensaje: `Cotización ${creada.folio} actualizada.` } });
-      else setGuardada(creada);
-    } catch (e) { setError(e.message); } finally { setGuardando(false); }
+      if (flujoPedido) {
+        const pedido = await crearPedidoDesdeCatalogo(payload);
+        try { localStorage.removeItem("catalogo:carrito-cotizacion"); } catch { /* La operación ya quedó guardada. */ }
+        navigate(`/pedidos-venta?pedido=${pedido.id}`);
+      } else {
+        const creada = editando ? await actualizarCotizacion(cotizacionId, payload) : await crearCotizacion(payload);
+        if (origenCatalogo) {
+          try { localStorage.removeItem("catalogo:carrito-cotizacion"); } catch { /* La operación ya quedó guardada. */ }
+        }
+        if (editando) navigate("/cotizaciones", { state: { mensaje: `Cotización ${creada.folio} actualizada.` } });
+        else if (origenCatalogo && estado === "PENDIENTE") navigate(`/cotizaciones?cotizacion=${creada.id}`);
+        else setGuardada(creada);
+      }
+    } catch (e) { setError(e.message); } finally { guardandoRef.current = false; setGuardando(false); }
   };
 
   if (guardada) return <div className="cot-page">
@@ -217,17 +244,21 @@ export default function NuevaCotizacion() {
   </div>;
 
   if (cargandoEdicion) return <div className="cot-page"><div className="cot-card cot-empty">Cargando cotización...</div></div>;
+  if (editando && ["ACEPTADA", "COMPLETADA", "CANCELADA"].includes(estadoOriginal))
+    return <div className="cot-page"><div className="cot-card cot-empty">Esta cotización ya no admite edición.</div></div>;
 
   return <div className="cot-page">
-    <header className="cot-header"><div><button className="cot-back" onClick={() => navigate("/cotizaciones")}><ArrowLeft size={18} /> Cotizaciones</button><h1>{editando ? "Editar cotización" : "Nueva cotización"}</h1><p>{editando ? "Actualiza productos, cantidades y condiciones antes de continuar." : "Agrega productos con costos completos y calcula la propuesta."}</p></div>
-      <div className="cot-header-actions"><button disabled={guardando} onClick={() => guardar("BORRADOR")}>Guardar borrador</button><button className="cot-primary" disabled={guardando || resumen.margenReal <= 0} onClick={() => guardar("PENDIENTE")}>{guardando ? "Guardando..." : "Finalizar cotización"}</button></div></header>
+    <header className="cot-header"><div><button className="cot-back" onClick={() => navigate(origenCatalogo ? "/productos/catalogo" : "/cotizaciones")}><ArrowLeft size={18} /> {origenCatalogo ? "Catálogo" : "Cotizaciones"}</button><h1>{editando ? "Editar cotización" : flujoPedido ? "Generar pedido" : "Nueva cotización"}</h1><p>{editando ? "Actualiza productos, cantidades y condiciones antes de continuar." : flujoPedido ? "Selecciona un cliente y confirma los productos y condiciones del pedido." : "Agrega productos con costos completos y calcula la propuesta."}</p></div>
+      <div className="cot-header-actions">{!flujoPedido && (!editando || estadoOriginal === "BORRADOR") && <button disabled={guardando} onClick={() => guardar("BORRADOR")}>Guardar borrador</button>}{(!editando || estadoOriginal === "BORRADOR")
+        ? <button className="cot-primary" disabled={guardando || resumen.margenReal <= 0} onClick={() => guardar("PENDIENTE")}>{guardando ? "Guardando..." : flujoPedido ? "Generar pedido" : "Finalizar cotización"}</button>
+        : <button className="cot-primary" disabled={guardando || resumen.margenReal <= 0} onClick={() => guardar(estadoOriginal)}>{guardando ? "Guardando..." : "Guardar cambios"}</button>}</div></header>
     {error && <div className="cot-alert cot-alert-error">{error}</div>}
     <div className="cot-form-grid"><main>
       <section className="cot-card cot-section cot-client-section">
-        <div className="cot-section-title"><div><h2>1. Cliente <span>Opcional</span></h2><p>Selecciona un cliente o continúa como público general.</p></div></div>
+        <div className="cot-section-title"><div><h2>1. Cliente <span>{flujoPedido ? "Obligatorio" : "Opcional"}</span></h2><p>{flujoPedido ? "El pedido de venta debe estar asociado a un cliente." : "Selecciona un cliente o continúa como público general."}</p></div></div>
         <div className="cot-client-picker">
           <select value={clienteId} onChange={(e) => seleccionarCliente(e.target.value)}>
-            <option value="">Público general / sin cliente</option>
+            <option value="">{flujoPedido ? "Selecciona un cliente" : "Público general / sin cliente"}</option>
             {clientes.map((c) => <option key={c.id} value={c.id}>{c.codigo} · {c.nombreVisual}</option>)}
           </select>
           <button type="button" className="cot-add-client" title="Crear cliente" onClick={() => setMostrarCliente(true)}><Plus size={22} /><span>Nuevo cliente</span></button>
@@ -244,7 +275,7 @@ export default function NuevaCotizacion() {
       <section className="cot-card cot-section cot-conditions">
         <div className="cot-section-title">
           <div className="cot-section-icon"><FileText size={21} /></div>
-          <div><h2>3. Condiciones comerciales</h2><p>Define la vigencia y los detalles que aparecerán en la cotización.</p></div>
+          <div><h2>3. Condiciones comerciales</h2><p>Define la vigencia y los detalles de la operación.</p></div>
         </div>
         <div className="cot-condition-grid">
           <label className="cot-condition-field"><span><CalendarDays size={16} /> Vigencia</span><div className="cot-input-suffix"><input type="number" min="1" value={vigencia} onChange={(e) => setVigencia(e.target.value)} /><b>días</b></div></label>
@@ -269,19 +300,19 @@ export default function NuevaCotizacion() {
           ? <a className="cot-flete-tabulador" href="/cotizaciones/fletes" target="_blank" rel="noopener noreferrer">Configurar tabulador de flete ↗</a>
           : <p>El tabulador lo configura un usuario con permiso para editar cotizaciones.</p>}
       </div>
-      <div className="cot-fields compact">{!cotizacionRapida && <label>{carrito.length && carrito.every((item) => item.utilidad !== undefined && item.utilidad !== null) ? "Utilidad por producto" : "Margen real (%)"}<input type="number" min="0.01" max="95" value={margen} disabled={carrito.some((item) => item.utilidad !== undefined && item.utilidad !== null)} onChange={(e) => setMargen(e.target.value)} /></label>}<label>Descuento (%)<input type="number" min="0" max="100" value={descuento} onChange={(e) => setDescuento(e.target.value)} /></label><label>Flete (MXN)<input type="number" min="0" value={flete} onChange={(e) => { solicitudFlete.current += 1; setCalculandoFlete(false); setFlete(e.target.value); }} /></label><label>IVA (%)<input type="number" min="0" value={iva} onChange={(e) => setIva(e.target.value)} /></label></div>
-      <dl><div><dt>Costo de productos</dt><dd>{moneda(resumen.subtotalCostos)}</dd></div><div><dt>Subtotal venta</dt><dd>{moneda(resumen.subtotal)}</dd></div><div><dt>Descuento</dt><dd>-{moneda(resumen.montoDescuento)}</dd></div><div><dt>Flete</dt><dd>{moneda(flete)}</dd></div><div><dt>IVA</dt><dd>{moneda(resumen.montoIva)}</dd></div></dl>
+      <div className="cot-fields compact">{!cotizacionRapida && <label>{carrito.length && carrito.every((item) => item.utilidad !== undefined && item.utilidad !== null) ? "Utilidad por producto" : "Margen real (%)"}<input type="number" min="0.01" max="95" value={margen} disabled={carrito.some((item) => item.utilidad !== undefined && item.utilidad !== null)} onChange={(e) => setMargen(e.target.value)} /></label>}<label>Descuento (%)<input type="number" min="0" max="100" value={descuento} onChange={(e) => setDescuento(e.target.value)} /></label><label>Flete por unidad (MXN)<input type="number" min="0" step="0.01" value={flete} onChange={(e) => { solicitudFlete.current += 1; setCalculandoFlete(false); setFlete(e.target.value); }} /></label><label>Unidades para el flete<input type="number" min="1" step="1" value={unidadesFlete} onChange={(e) => setUnidadesFlete(e.target.value)} /></label><label>IVA (%)<input type="number" min="0" value={iva} onChange={(e) => setIva(e.target.value)} /></label></div>
+      <dl><div><dt>Costo de productos</dt><dd>{moneda(resumen.subtotalCostos)}</dd></div><div><dt>Subtotal venta</dt><dd>{moneda(resumen.subtotal)}</dd></div><div><dt>Descuento</dt><dd>-{moneda(resumen.montoDescuento)}</dd></div><div><dt>Flete ({unidadesFlete || 0} × {moneda(flete)})</dt><dd>{moneda(resumen.fleteTotal)}</dd></div><div><dt>IVA</dt><dd>{moneda(resumen.montoIva)}</dd></div></dl>
       <p className={resumen.margenReal <= 0 && carrito.length ? "cot-alert cot-alert-error" : "cot-cost-note"}>
         Margen real después del descuento: {resumen.margenReal.toFixed(2)}% (sin incluir flete ni IVA).
       </p>
       <div className="cot-grand-total"><span>Total</span><strong>{moneda(resumen.total)}</strong></div>
       <p className="cot-cost-note">El precio se calcula con margen real. El servidor volverá a validar todos los costos antes de guardar.</p>
-      <button className="cot-primary cot-full" disabled={guardando || resumen.margenReal <= 0} onClick={() => guardar("PENDIENTE")}>Finalizar cotización</button>
+      <button className="cot-primary cot-full" disabled={guardando || resumen.margenReal <= 0} onClick={() => guardar("PENDIENTE")}>{guardando ? "Guardando..." : flujoPedido ? "Generar pedido" : "Finalizar cotización"}</button>
     </aside></div>
     {mostrarCliente && <div className="cot-modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setMostrarCliente(false)}>
       <form className="cot-modal cot-client-modal" onSubmit={guardarClienteRapido}>
         <button type="button" className="cot-modal-close" aria-label="Cerrar" onClick={() => setMostrarCliente(false)}><X size={22} /></button>
-        <div className="cot-client-modal-heading"><span><UserPlus size={24} /></span><div><h2>Nuevo cliente</h2><p>Regístralo sin salir de la cotización.</p></div></div>
+        <div className="cot-client-modal-heading"><span><UserPlus size={24} /></span><div><h2>Nuevo cliente</h2><p>Regístralo sin salir del formulario.</p></div></div>
         {errorCliente && <div className="cot-alert cot-alert-error">{errorCliente}</div>}
         <div className="cot-client-form">
           <label>Tipo de persona<select name="tipoPersona" value={nuevoCliente.tipoPersona} onChange={cambiarCliente}><option value="MORAL">Persona moral</option><option value="FISICA">Persona física</option></select></label>

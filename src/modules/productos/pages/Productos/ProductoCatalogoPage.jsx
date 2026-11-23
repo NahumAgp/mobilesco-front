@@ -15,7 +15,7 @@ import {
   obtenerModelosCatalogoPublico,
   obtenerProductos
 } from "../../services/productos";
-import { organizarFamiliasCatalogo } from "../../utils/catalogoFamilias.js";
+import { agruparPaginasCatalogo, organizarFamiliasCatalogo } from "../../utils/catalogoFamilias.js";
 import { getColorHex, listarColoresModelo } from "../../utils/catalogoColores.js";
 import { prepararPaginasCatalogo } from "../../utils/catalogoPdf.js";
 import CatalogoImprimible from "./CatalogoImprimible.jsx";
@@ -204,8 +204,7 @@ const getSubfamiliaNombre = (producto) =>
     producto?.nombre_subfamilia,
     producto?.subfamilia?.nombre,
     producto?.modelo?.subfamilia?.nombre,
-    producto?.productoBase?.subfamilia?.nombre,
-    "Sin subfamilia"
+    producto?.productoBase?.subfamilia?.nombre
   );
 
 const getSubfamiliaKey = (producto) => {
@@ -215,7 +214,7 @@ const getSubfamiliaKey = (producto) => {
     producto?.subfamilia?.id ||
     producto?.modelo?.subfamilia?.id ||
     producto?.productoBase?.subfamilia?.id;
-  return subfamiliaId ? `subfamilia-${subfamiliaId}` : normalizar(getSubfamiliaNombre(producto));
+  return subfamiliaId ? `subfamilia-${subfamiliaId}` : normalizar(getSubfamiliaNombre(producto)) || "subfamilia-sin-asignar";
 };
 
 const getModeloInfo = (productos) => {
@@ -675,6 +674,8 @@ function CatalogoFamiliasPage() {
     return { ...pagina, familiaId: familia?.id };
   }), [familiasActivas]);
   const paginaCatalogo = paginas.find((pagina) => pagina.slug === familiaSlug) || (!familiaSlug ? paginas[0] : null);
+  const gruposCatalogo = agruparPaginasCatalogo(paginas);
+  const grupoActual = gruposCatalogo.find((grupo) => grupo.paginas.some((pagina) => pagina.slug === paginaCatalogo?.slug));
   const productosDePagina = String(familiaProductosId) === String(paginaCatalogo?.familiaId) ? productos : [];
   const paginaActual = paginaCatalogo ? { ...paginaCatalogo, productos: productosDePagina } : null;
   const cargandoPagina = loading || Boolean(paginaCatalogo?.familiaId
@@ -819,18 +820,19 @@ function CatalogoFamiliasPage() {
 
   return (
     <>
-      <PageHeader
-        title={paginaActual?.titulo || "Catálogo visual"}
-        subtitle={paginaActual ? `Página ${String(indicePaginaActual + 1).padStart(2, "0")} · Explora sus modelos` : "Explora nuestras familias de muebles"}
-        actions={<div className="producto-catalogo-header-actions">
-          <button type="button" className="btn productos-brand-outline" disabled={generandoPdf} onClick={descargarCatalogo}>
-            <i className="bi bi-printer me-2"></i>{generandoPdf ? "Preparando vista..." : "Vista previa para imprimir"}
-          </button>
-          <button type="button" className="btn productos-brand-outline" onClick={() => navigate("/productos")}>
-            <i className="bi bi-table me-2"></i>Vista tabla
-          </button>
-        </div>}
-      />
+      <div className="producto-catalogo-index-header">
+        <PageHeader
+          title="Catálogo"
+          actions={<div className="producto-catalogo-header-actions">
+            <button type="button" className="btn productos-brand-outline" disabled={generandoPdf} onClick={descargarCatalogo}>
+              <i className="bi bi-printer me-2"></i>{generandoPdf ? "Preparando vista..." : "Vista previa para imprimir"}
+            </button>
+            <button type="button" className="btn productos-brand-outline" onClick={() => navigate("/productos")}>
+              <i className="bi bi-table me-2"></i>Vista tabla
+            </button>
+          </div>}
+        />
+      </div>
       <div className="producto-catalogo-index-body">
         <section className="producto-catalogo-toolbar" aria-label="Búsqueda general e índice del catálogo">
           <div className="producto-catalogo-search">
@@ -860,23 +862,27 @@ function CatalogoFamiliasPage() {
             </div>}
           </div>
           <nav className="producto-catalogo-categories" aria-label="Categorías del catálogo">
-            {paginas.map((pagina) => <button
-              key={pagina.slug}
-              type="button"
-              className={`producto-catalogo-category${pagina.slug === paginaActual?.slug ? " is-active" : ""}`}
-              aria-current={pagina.slug === paginaActual?.slug ? "page" : undefined}
-              ref={pagina.slug === paginaActual?.slug ? categoriaActivaRef : undefined}
-              onClick={() => navigate(`/productos/catalogo/familias/${pagina.slug}`)}
-            >{pagina.titulo}</button>)}
+            <div className="producto-catalogo-category-groups">
+              {gruposCatalogo.map((grupo) => <button
+                key={grupo.clave}
+                type="button"
+                className={`producto-catalogo-category${grupo.clave === grupoActual?.clave ? " is-active" : ""}`}
+                aria-pressed={grupo.clave === grupoActual?.clave}
+                aria-current={grupo.paginas.length === 1 && grupo.paginas[0].slug === paginaActual?.slug ? "page" : undefined}
+                ref={grupo.clave === grupoActual?.clave ? categoriaActivaRef : undefined}
+                onClick={() => navigate(`/productos/catalogo/familias/${grupo.paginas[0].slug}`)}
+              >{grupo.titulo}</button>)}
+            </div>
+            {grupoActual?.paginas.length > 1 && <div className="producto-catalogo-category-variants" aria-label={`Opciones de ${grupoActual.titulo}`}>
+              {grupoActual.paginas.map((pagina) => <button
+                key={pagina.slug}
+                type="button"
+                className={`producto-catalogo-category-variant${pagina.slug === paginaActual?.slug ? " is-active" : ""}`}
+                aria-current={pagina.slug === paginaActual?.slug ? "page" : undefined}
+                onClick={() => navigate(`/productos/catalogo/familias/${pagina.slug}`)}
+              >{pagina.titulo}</button>)}
+            </div>}
           </nav>
-        </section>
-        <section className="producto-catalogo-editorial producto-catalogo-editorial-index">
-          <div>
-            <span>CATÁLOGO MOBILESCO / PÁGINA {String(Math.max(indicePaginaActual + 1, 1)).padStart(2, "0")}</span>
-            <h2>{paginaActual?.titulo || "Encuentra tu espacio"}</h2>
-            <p>{paginaActual ? "Explora los modelos de esta familia. Usa las flechas laterales para pasar de página." : "Sillas, mesas, pupitres y más. Una página para cada familia."}</p>
-          </div>
-          <img src="/logo-mobilesco-firmeza.svg" alt="Mobilesco" />
         </section>
         {mensajePdf && <div className="producto-catalogo-pdf-status" role="status">{mensajePdf}</div>}
         {vistaPrevia && <CatalogoImprimible paginas={vistaPrevia} onClose={() => setVistaPrevia(null)} />}
@@ -886,10 +892,10 @@ function CatalogoFamiliasPage() {
           <div className="producto-catalogo-empty">Esta familia no existe en el catálogo.</div>}
         {!cargandoPagina && !error && paginaActual && <>
           {subfamilias.map((subfamilia) => <section key={subfamilia.key} className="producto-catalogo-subfamily-section">
-            <div className="producto-catalogo-subfamily-heading">
+            {subfamilia.nombre && <div className="producto-catalogo-subfamily-heading">
               <div><span>SUBFAMILIA</span><h3>{subfamilia.nombre}</h3></div>
               <small>{subfamilia.modelos.length} modelos</small>
-            </div>
+            </div>}
             <div className="producto-catalogo-model-grid">
               {subfamilia.modelos.map((modelo) => {
                 const productoCarrito = modelo.productos[0];
@@ -1075,6 +1081,7 @@ function ProductoCatalogoDetalle() {
   const productosFamilia = useMemo(() => familiaActual?.productos || [], [familiaActual]);
   const modelosFamilia = useMemo(() => construirModelos(productosFamilia), [productosFamilia]);
   const subfamilias = useMemo(() => familiaActual?.subfamilias || [], [familiaActual]);
+  const totalSubfamilias = subfamilias.filter((subfamilia) => subfamilia.nombre).length;
 
   useEffect(() => {
     if (!subfamilias.length) {
@@ -1229,7 +1236,7 @@ function ProductoCatalogoDetalle() {
           />
         </div>
         <div className="producto-catalogo-count">
-          {familias.length} familias / {subfamilias.length} subfamilias / {modelos.length} modelos / {productosSubfamilia.length} productos
+          {familias.length} familias{totalSubfamilias > 0 ? ` / ${totalSubfamilias} subfamilias` : ""} / {modelos.length} modelos / {productosSubfamilia.length} productos
         </div>
       </section>
 
@@ -1296,7 +1303,7 @@ function ProductoCatalogoDetalle() {
             </div>
 
             <div className="producto-catalogo-nav-selectors">
-              <div className="producto-catalogo-nav-field">
+              {subfamilias.length > 1 && <div className="producto-catalogo-nav-field">
                 <label htmlFor="catalogo-subfamilia">Subfamilia</label>
                 <select
                   id="catalogo-subfamilia"
@@ -1305,11 +1312,11 @@ function ProductoCatalogoDetalle() {
                 >
                   {subfamilias.map((subfamilia) => (
                     <option key={subfamilia.key} value={subfamilia.key}>
-                      {subfamilia.nombre}
+                      {subfamilia.nombre || "Otros modelos"}
                     </option>
                   ))}
                 </select>
-              </div>
+              </div>}
 
               <div className="producto-catalogo-nav-field">
                 <label htmlFor="catalogo-modelo">Modelo</label>
@@ -1328,10 +1335,10 @@ function ProductoCatalogoDetalle() {
                 <span>Familias</span>
                 <strong>{familias.length}</strong>
               </div>
-              <div>
+              {totalSubfamilias > 0 && <div>
                 <span>Subfamilias</span>
-                <strong>{subfamilias.length}</strong>
-              </div>
+                <strong>{totalSubfamilias}</strong>
+              </div>}
               <div>
                 <span>Modelos</span>
                 <strong>{modelos.length}</strong>

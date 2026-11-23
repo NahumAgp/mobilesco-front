@@ -76,7 +76,7 @@ export async function crearPdfCotizacion(cotizacion) {
   };
   total("Subtotal", cotizacion.subtotalVenta);
   if (Number(cotizacion.montoDescuento) > 0) total("Descuento", -cotizacion.montoDescuento);
-  if (Number(cotizacion.flete) > 0) total("Flete", cotizacion.flete);
+  if (Number(cotizacion.flete) > 0) total(`Flete (${cotizacion.unidadesFlete || 1} unid.)`, cotizacion.flete);
   total(`IVA (${cotizacion.ivaPorcentaje}%)`, cotizacion.montoIva);
   pdf.setDrawColor(...verde);
   pdf.line(144, y - 4, 202, y - 4);
@@ -92,10 +92,14 @@ export async function crearPdfCotizacion(cotizacion) {
 
 export async function descargarPdfCotizacion(cotizacion) {
   const blob = await crearPdfCotizacion(cotizacion);
+  descargarBlobCotizacion(blob, cotizacion.folio);
+}
+
+function descargarBlobCotizacion(blob, folio) {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = `${cotizacion.folio}.pdf`;
+  anchor.download = `${folio}.pdf`;
   anchor.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
@@ -108,7 +112,7 @@ export async function compartirCotizacionWhatsApp(cotizacion) {
     await navigator.share({ title: cotizacion.folio, text, files: [file] });
     return "COMPARTIDO";
   }
-  await descargarPdfCotizacion(cotizacion);
+  descargarBlobCotizacion(blob, cotizacion.folio);
   const telefono = String(cotizacion.clienteWhatsapp || "").replace(/\D/g, "");
   window.open(`https://wa.me/${telefono}?text=${encodeURIComponent(`${text}\nEl PDF se descargó para adjuntarlo.`)}`, "_blank", "noopener");
   return "DESCARGADO";

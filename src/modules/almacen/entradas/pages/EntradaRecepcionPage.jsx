@@ -1,12 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import Toast from "../../../../components/ui/Toast.jsx";
 import { obtenerUnidadesMedida } from "../../../unidades-medida/services/unidadMedidas.js";
 import { crearInsumo } from "../../../insumos/services/insumos.js";
-import { actualizarCompra } from "../../../compras/services/compras.js";
+import { recibirCompra } from "../../../compras/services/compras.js";
 import { obtenerEntradaPorId, recepcionarDetalleCompra } from "../services/entradas.js";
-import { getUser } from "../../../auth/services/authService.js";
+import { getUser, hasPermission } from "../../../auth/services/authService.js";
 
 function formatoFecha(valor) {
   if (!valor) return "--";
@@ -19,13 +19,6 @@ function formatoFecha(valor) {
   });
 }
 
-function fechaLocalISO(date = new Date()) {
-  const anio = date.getFullYear();
-  const mes = String(date.getMonth() + 1).padStart(2, "0");
-  const dia = String(date.getDate()).padStart(2, "0");
-  return `${anio}-${mes}-${dia}`;
-}
-
 const RECEPCION_ACTION_BUTTON_STYLE = {
   width: "2rem",
   height: "2rem",
@@ -35,6 +28,11 @@ const RECEPCION_ACTION_BUTTON_STYLE = {
 export default function EntradaRecepcionPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const solicitudRecepcionRef = useRef(null);
+  const user = getUser();
+  const puedeCrearInsumo = hasPermission(user, "VIEW_INVENTORY")
+    && hasPermission(user, "ACTION_INVENTORY_CREATE")
+    && hasPermission(user, "VIEW_MEASURE_UNITS");
 
   const [compra, setCompra] = useState(null);
   const [unidades, setUnidades] = useState([]);
@@ -64,7 +62,7 @@ export default function EntradaRecepcionPage() {
       setLoading(true);
       const [compraData, unidadesData] = await Promise.all([
         obtenerEntradaPorId(id),
-        obtenerUnidadesMedida()
+        puedeCrearInsumo ? obtenerUnidadesMedida().catch(() => []) : Promise.resolve([])
       ]);
 
       setCompra(compraData);
@@ -89,6 +87,8 @@ export default function EntradaRecepcionPage() {
       setAjusteActivoId(null);
     } catch (error) {
       console.error(error);
+      setCompra(null);
+      setRecepciones([]);
       setToastType("danger");
       setToastMessage("No se pudo cargar la entrada");
     } finally {
@@ -214,11 +214,7 @@ export default function EntradaRecepcionPage() {
 
     try {
       setGuardando(true);
-      await actualizarCompra(id, {
-        entregadoPor: entregadoPor.trim() || null,
-        estado: "RECIBIDA",
-        fechaRecepcion: fechaLocalISO()
-      });
+      await recibirCompra(id);
 
       setToastType("success");
       setToastMessage("Entrada cerrada correctamente");
@@ -287,7 +283,11 @@ export default function EntradaRecepcionPage() {
 
     try {
       setGuardando(true);
-      const recepcionId = window.crypto.randomUUID();
+      const huella = JSON.stringify({ itemsARecibir, entregadoPor: entregadoPor.trim(), recibidoPor: recibidoPor.trim() });
+      if (solicitudRecepcionRef.current?.huella !== huella) {
+        solicitudRecepcionRef.current = { huella, id: window.crypto.randomUUID() };
+      }
+      const recepcionId = solicitudRecepcionRef.current.id;
       for (const item of itemsARecibir) {
         await recepcionarDetalleCompra(item.detalleId, {
           cantidadRecibida: item.cantidadRecibirAhora,
@@ -300,11 +300,13 @@ export default function EntradaRecepcionPage() {
 
       setToastType("success");
       setToastMessage("Recepcion registrada y stock actualizado");
+      solicitudRecepcionRef.current = null;
       await cargarDatos();
     } catch (error) {
       console.error(error);
+      await cargarDatos();
       setToastType("danger");
-      setToastMessage(error.message || "No se pudo registrar la recepcion");
+      setToastMessage(`${error.message || "No se pudo registrar la recepcion"}. Revisa el pendiente actualizado antes de reintentar.`);
     } finally {
       setGuardando(false);
     }
@@ -375,9 +377,11 @@ export default function EntradaRecepcionPage() {
           <button className="btn btn-outline-secondary" onClick={() => navigate("/almacen/entradas")}>
             Volver
           </button>
-          <button className="btn btn-outline-primary" onClick={() => setMostrarPopupInsumo(true)}>
-            Nuevo insumo
-          </button>
+          {puedeCrearInsumo && (
+            <button className="btn btn-outline-primary" onClick={() => setMostrarPopupInsumo(true)}>
+              Nuevo insumo
+            </button>
+          )}
         </div>
       </div>
 

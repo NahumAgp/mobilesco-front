@@ -1682,6 +1682,81 @@
   box-shadow: 0 14px 34px rgba(36, 70, 63, .12);
 }
 
+.producto-catalogo-index-header .page-header {
+  align-items: center;
+  margin: 0;
+  padding: 12px 0 18px;
+}
+
+.producto-catalogo-index-header .page-title {
+  color: #24463f;
+  font-family: var(--ms-font-sans);
+  font-size: clamp(1.65rem, 2.2vw, 2.15rem);
+  font-weight: 800;
+  letter-spacing: -.035em;
+}
+
+.producto-catalogo-index-header .producto-catalogo-header-actions {
+  margin-right: 0;
+}
+
+.producto-catalogo-index-body {
+  border-top: 1px solid rgba(36, 70, 63, .08);
+  border-radius: 22px;
+}
+
+.producto-catalogo-categories {
+  display: grid;
+  gap: 9px;
+  overflow: visible;
+  padding: 0;
+}
+
+.producto-catalogo-category-groups,
+.producto-catalogo-category-variants {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: #b7c8c0 transparent;
+}
+
+.producto-catalogo-category-groups .producto-catalogo-category {
+  min-height: 40px;
+  padding-inline: 18px;
+}
+
+.producto-catalogo-category-variants {
+  padding-top: 9px;
+  border-top: 1px solid #e7e6e1;
+}
+
+.producto-catalogo-category-variant {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 7px 13px;
+  border: 1px solid #d8e0d9;
+  border-radius: 10px;
+  background: #f8faf8;
+  color: #45635a;
+  font-size: .81rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.producto-catalogo-category-variant.is-active {
+  border-color: #bc7845;
+  background: #fff3e9;
+  color: #8b4a25;
+}
+
+.producto-catalogo-category-variant:hover,
+.producto-catalogo-category-variant:focus-visible {
+  outline: 2px solid #d3803f;
+  outline-offset: 2px;
+}
+
 .producto-catalogo-index-body .producto-catalogo-search {
   position: relative;
   z-index: 2;
@@ -1836,7 +1911,7 @@
 
   .producto-catalogo-index-body {
     padding: 18px 14px 94px;
-    border-radius: 0 0 18px 38px;
+    border-radius: 18px;
   }
 
   .producto-catalogo-section-heading {

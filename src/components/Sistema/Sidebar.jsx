@@ -171,7 +171,8 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
     JEFE_LOGISTICA: "Jefe de Logística",
     TECNICO: "Técnico",
     AYUDANTE_GENERAL: "Ayudante General",
-    EMPLOYEE: "Empleado"
+    EMPLOYEE: "Empleado",
+    RESPONSABLE_RH: "Responsable de RH"
   };
 
   const rol = rolMap[roles[0]] || roles[0] || "";
@@ -187,6 +188,8 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
     puedeGestionarUsuarios && { to: "/usuarios/accesos", label: "Usuarios y accesos", shortLabel: "Usuarios", icon: "bi-shield-check", section: "General" },
     puedeGestionarUsuarios && { to: "/configuracion/sistema", label: "Configuración del sistema", shortLabel: "Configuración", icon: "bi-sliders", section: "General" },
     can("VIEW_EMPLOYEES") && { to: "/empleados", label: "Empleados", icon: "bi-people", section: "General" },
+    can("VIEW_HR") && { to: "/rh", label: "Recursos Humanos", shortLabel: "RH", icon: "bi-person-vcard", section: "General" },
+    { to: "/rh/mi", label: "Mi RH", icon: "bi-person-check", section: "General" },
     can("VIEW_WORK_AREAS") && { to: "/areas-trabajo", label: "Areas de trabajo", shortLabel: "Areas", icon: "bi-columns-gap", section: "General" },
     can("VIEW_SUPPLIERS") && { to: "/proveedores", label: "Proveedores", shortLabel: "Prov.", icon: "bi-truck", section: "General" },
     can("VIEW_PRODUCT_LINES") && { to: "/lineas-producto", label: "Lineas", icon: "bi-collection", section: "Productos" },
@@ -209,6 +212,7 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
     can("VIEW_WORK_CENTERS") && { to: "/centros-trabajo", label: "Centros de Trabajo", shortLabel: "Centros", icon: "bi-building", section: "Produccion" },
     can("VIEW_OPERATIONS") && { to: "/operaciones", label: "Operaciones", shortLabel: "Operacion", icon: "bi-gear", section: "Produccion" },
     can("VIEW_PRODUCTION_ORDERS") && { to: "/ordenes-produccion", label: "Ordenes de produccion", shortLabel: "Ordenes", icon: "bi-clipboard2-check", section: "Produccion" },
+    can("VIEW_AREA_WORK") && { to: "/produccion/mi-area", label: "Trabajo de mi área", shortLabel: "Mi área", icon: "bi-list-task", section: "Produccion" },
     can("VIEW_CIF") && { to: "/cif", label: "CIF", icon: "bi-calculator", section: "Produccion" },
     can("VIEW_PURCHASES") && { to: "/compras", label: "Compras", icon: "bi-cart-check", section: "Compras" },
     can("VIEW_ASSISTED_PROCUREMENT") && { to: "/compras/abastecimiento", label: "Abastecimiento asistido", shortLabel: "Abasto", icon: "bi-stars", section: "Compras" },
@@ -411,6 +415,8 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
 
         {puedeGestionarUsuarios && <LinkItem to="/usuarios/accesos" label="Usuarios y accesos" icon="bi-shield-check" onClick={() => handleRouteNavigation("/usuarios/accesos")} />}
         {can("VIEW_EMPLOYEES") && <LinkItem to="/empleados" label="Empleados" icon="bi-people" onClick={() => handleRouteNavigation("/empleados")} />}
+        {can("VIEW_HR") && <LinkItem to="/rh" label="Recursos Humanos" icon="bi-person-vcard" onClick={() => handleRouteNavigation("/rh")} />}
+        <LinkItem to="/rh/mi" label="Mi RH" icon="bi-person-check" onClick={() => handleRouteNavigation("/rh/mi")} />
         {can("VIEW_WORK_AREAS") && <LinkItem to="/areas-trabajo" label="Areas de trabajo" icon="bi-columns-gap" onClick={() => handleRouteNavigation("/areas-trabajo")} />}
         {can("VIEW_SUPPLIERS") && <LinkItem to="/proveedores" label="Proveedores" icon="bi-truck" onClick={() => handleRouteNavigation("/proveedores")} />}
 
@@ -477,6 +483,7 @@ export default function Sidebar({ isOpen, toggleSidebar, closeSidebar }) {
         {can("VIEW_WORK_CENTERS") && <LinkItem to="/centros-trabajo" label="Centros de Trabajo" icon="bi-building" onClick={() => handleRouteNavigation("/centros-trabajo")} />}
         {can("VIEW_OPERATIONS") && <LinkItem to="/operaciones" label="Operaciones" icon="bi-gear" onClick={() => handleRouteNavigation("/operaciones")} />}
         {can("VIEW_PRODUCTION_ORDERS") && <LinkItem to="/ordenes-produccion" label="Órdenes de producción" icon="bi-clipboard2-check" onClick={() => handleRouteNavigation("/ordenes-produccion")} />}
+        {can("VIEW_AREA_WORK") && <LinkItem to="/produccion/mi-area" label="Trabajo de mi área" icon="bi-list-task" onClick={() => handleRouteNavigation("/produccion/mi-area")} />}
         {can("VIEW_CIF") && <LinkItem to="/cif" label="CIF" icon="bi-calculator" onClick={() => handleRouteNavigation("/cif")} />}
         {can("VIEW_PURCHASES") && <LinkItem to="/compras" label="Compras" icon="bi-cart-check" onClick={() => handleRouteNavigation("/compras")} />}
         {can("VIEW_ASSISTED_PROCUREMENT") && <LinkItem to="/compras/abastecimiento" label="Abastecimiento asistido" icon="bi-stars" onClick={() => handleRouteNavigation("/compras/abastecimiento")} />}

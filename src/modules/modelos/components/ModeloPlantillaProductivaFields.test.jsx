@@ -170,7 +170,10 @@ describe("ModeloPlantillaProductivaFields", () => {
 
     const categoria = await abrirCategoria(user);
     const material = within(categoria).getByRole("group", { name: "Material [P] Polipropileno" });
-    expect(within(material.querySelector("summary")).getByText("Costo inicial")).toBeInTheDocument();
+    const resumen = material.querySelector("summary");
+    expect(within(resumen).getByText("Costo inicial")).toBeInTheDocument();
+    expect(within(resumen).getByRole("checkbox", { name: "Costo inicial de insumos de [P] Polipropileno" })).toBeChecked();
+    expect(within(resumen).getByRole("checkbox", { name: "Costo inicial de operaciones de [P] Polipropileno" })).toBeChecked();
     await user.click(material.querySelector("summary"));
 
     expect(within(material).getByText("1 insumos")).toBeInTheDocument();
@@ -186,6 +189,10 @@ describe("ModeloPlantillaProductivaFields", () => {
     expect(within(material).getByRole("spinbutton", { name: "Minutos de Corte" })).toHaveValue(3);
     expect(within(material).getByRole("spinbutton", { name: "Costo por minuto de Corte" })).toHaveValue(0.833333);
     expect(within(material).getByRole("checkbox", { name: "Costo inicial de operaciones de [P] Polipropileno" })).toBeChecked();
+    await user.click(within(resumen).getByRole("checkbox", { name: "Costo inicial de insumos de [P] Polipropileno" }));
+    expect(material).toHaveAttribute("open");
+    expect(within(resumen).getByRole("checkbox", { name: "Costo inicial de insumos de [P] Polipropileno" })).not.toBeChecked();
+    expect(within(resumen).getByRole("checkbox", { name: "Costo inicial de operaciones de [P] Polipropileno" })).toBeChecked();
   });
 
   it("muestra el total de insumos de la seccion con desperdicio", async () => {

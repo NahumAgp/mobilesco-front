@@ -11,7 +11,8 @@ export default function CompraDetallePage() {
   const navigate = useNavigate();
   const user = getUser();
   const puedeEditarCompra = hasPermission(user, "ACTION_PURCHASES_EDIT");
-  const puedeRecibirCompra = hasPermission(user, "ACTION_PURCHASES_RECEIVE");
+  const puedeRecibirCompra = hasPermission(user, "ACTION_PURCHASES_RECEIVE")
+    || hasPermission(user, "ACTION_WAREHOUSE_RECEIPTS_RECEIVE");
   const [compra, setCompra] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");

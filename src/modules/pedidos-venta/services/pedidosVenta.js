@@ -13,5 +13,6 @@ const query = (params = {}) => {
 export const listarPedidosVenta = (params = {}) => request(`${API_PATHS.PEDIDOS_VENTA}${query(params)}`);
 export const obtenerPedidoVenta = (id) => request(`${API_PATHS.PEDIDOS_VENTA}/${id}`);
 export const crearPedidoDesdeCotizacion = (cotizacionId, data = {}) => request(`${API_PATHS.PEDIDOS_VENTA}/desde-cotizacion/${cotizacionId}`, { method: "POST", body: JSON.stringify(data) });
+export const crearPedidoDesdeCatalogo = (cotizacion) => request(`${API_PATHS.PEDIDOS_VENTA}/desde-catalogo`, { method: "POST", body: JSON.stringify(cotizacion) });
 export const confirmarPedidoVenta = (id) => request(`${API_PATHS.PEDIDOS_VENTA}/${id}/confirmar`, { method: "PATCH" });
 export const cancelarPedidoVenta = (id) => request(`${API_PATHS.PEDIDOS_VENTA}/${id}/cancelar`, { method: "PATCH" });

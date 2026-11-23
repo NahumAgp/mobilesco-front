@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ClipboardList, Download, Eye, MessageCircle, Pencil, Plus, Search, Truck } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import useDebouncedValue from "../../../hooks/useDebouncedValue.js";
@@ -34,6 +34,8 @@ export default function Cotizaciones() {
   const [detalle, setDetalle] = useState(null);
   const [estadoEditando, setEstadoEditando] = useState("");
   const [guardandoEstado, setGuardandoEstado] = useState(false);
+  const [creandoPedido, setCreandoPedido] = useState(false);
+  const creandoPedidoRef = useRef(false);
   const cotizacionInicial = searchParams.get("cotizacion");
 
   useEffect(() => {
@@ -66,12 +68,16 @@ export default function Cotizaciones() {
   };
   const conCotizacion = async (id, accion) => accion(await obtenerCotizacion(id));
   const crearPedido = async (cotizacionId) => {
+    if (creandoPedidoRef.current) return;
     if (!window.confirm("Se creará un pedido de venta en borrador y la cotización pasará a completada. ¿Continuar?")) return;
+    creandoPedidoRef.current = true;
+    setCreandoPedido(true);
     try {
       setError("");
       await crearPedidoDesdeCotizacion(cotizacionId, {});
       navigate("/pedidos-venta");
     } catch (e) { setError(e.message || "No fue posible crear el pedido de venta"); }
+    finally { creandoPedidoRef.current = false; setCreandoPedido(false); }
   };
   const guardarEstado = async () => {
     if (!detalle || !estadoEditando || estadoEditando === detalle.estado) return;
@@ -114,10 +120,10 @@ export default function Cotizaciones() {
                 <td><span className={`cot-status cot-status-${item.estado.toLowerCase()}`}>{estados[item.estado]}</span></td>
                 <td><div className="cot-actions">
                   <button title="Ver detalle" onClick={() => cargarDetalle(item.id)}><Eye size={17} /></button>
-                  {puedeEditar && !["COMPLETADA", "CANCELADA"].includes(item.estado) && <button title="Editar cotización" onClick={() => navigate(`/cotizaciones/${item.id}/editar`)}><Pencil size={17} /></button>}
+                  {puedeEditar && !["ACEPTADA", "COMPLETADA", "CANCELADA"].includes(item.estado) && <button title="Editar cotización" onClick={() => navigate(`/cotizaciones/${item.id}/editar`)}><Pencil size={17} /></button>}
                   <button title="Descargar PDF" onClick={() => conCotizacion(item.id, descargarPdfCotizacion)}><Download size={17} /></button>
                   <button title="Enviar por WhatsApp" onClick={() => conCotizacion(item.id, compartirCotizacionWhatsApp)}><MessageCircle size={17} /></button>
-                  {puedeCrearPedido && item.estado === "ACEPTADA" && <button title="Crear pedido de venta" onClick={() => crearPedido(item.id)}><ClipboardList size={17} /></button>}
+                  {puedeCrearPedido && item.estado === "ACEPTADA" && <button title="Crear pedido de venta" disabled={creandoPedido} onClick={() => crearPedido(item.id)}><ClipboardList size={17} /></button>}
                 </div></td>
               </tr>
             ))}
@@ -130,7 +136,7 @@ export default function Cotizaciones() {
           <button className="cot-modal-close" onClick={() => setDetalle(null)}>×</button>
           <span className={`cot-status cot-status-${detalle.estado.toLowerCase()}`}>{estados[detalle.estado]}</span>
           <h2>{detalle.folio}</h2><p>{detalle.clienteNombre}</p>
-          <div className="cot-status-editor"><label>Estatus<select value={estadoEditando} disabled={!puedeEditar || ["COMPLETADA", "CANCELADA"].includes(detalle.estado)} onChange={(e) => setEstadoEditando(e.target.value)}>{Object.entries(estados).filter(([value]) => value !== "COMPLETADA" || detalle.estado === "ACEPTADA" || value === detalle.estado).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><button disabled={!puedeEditar || guardandoEstado || estadoEditando === detalle.estado || ["COMPLETADA", "CANCELADA"].includes(detalle.estado)} onClick={guardarEstado}>Guardar estatus</button></div>
+          <div className="cot-status-editor"><label>Estatus<select value={estadoEditando} disabled={!puedeEditar || ["COMPLETADA", "CANCELADA"].includes(detalle.estado)} onChange={(e) => setEstadoEditando(e.target.value)}>{Object.entries(estados).filter(([value]) => value !== "COMPLETADA" || value === detalle.estado).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><button disabled={!puedeEditar || guardandoEstado || estadoEditando === detalle.estado || ["COMPLETADA", "CANCELADA"].includes(detalle.estado)} onClick={guardarEstado}>Guardar estatus</button></div>
           <div className="cot-detail-list">{detalle.detalles.map((d) => <div key={d.id}>
             <span>{d.cantidad} × {d.sku} · {d.nombre}
               {d.cifTarifaVersionId && <small className="d-block text-muted">
@@ -139,13 +145,14 @@ export default function Cotizaciones() {
               </small>}
             </span><strong>{moneda(d.importe)}</strong>
           </div>)}</div>
+          <p className="cot-cost-note">Flete: {detalle.unidadesFlete || 1} × {moneda(Number(detalle.flete || 0) / (detalle.unidadesFlete || 1))} = {moneda(detalle.flete)}</p>
           <p className="cot-cost-note">Margen real después del descuento: {Number(detalle.margenRealPorcentaje || 0).toFixed(2)}%</p>
           <div className="cot-modal-total"><span>Total</span><strong>{moneda(detalle.total)}</strong></div>
           <div className="cot-modal-buttons">
             <button onClick={() => descargarPdfCotizacion(detalle)}><Download size={17} /> PDF</button>
             <button className="cot-primary" onClick={() => compartirCotizacionWhatsApp(detalle)}><MessageCircle size={17} /> WhatsApp</button>
-            {puedeEditar && !["COMPLETADA", "CANCELADA"].includes(detalle.estado) && <button onClick={() => navigate(`/cotizaciones/${detalle.id}/editar`)}><Pencil size={17} /> Editar</button>}
-            {puedeCrearPedido && detalle.estado === "ACEPTADA" && <button className="cot-primary" onClick={() => crearPedido(detalle.id)}><ClipboardList size={17} /> Crear pedido</button>}
+            {puedeEditar && !["ACEPTADA", "COMPLETADA", "CANCELADA"].includes(detalle.estado) && <button onClick={() => navigate(`/cotizaciones/${detalle.id}/editar`)}><Pencil size={17} /> Editar</button>}
+            {puedeCrearPedido && detalle.estado === "ACEPTADA" && <button className="cot-primary" disabled={creandoPedido} onClick={() => crearPedido(detalle.id)}><ClipboardList size={17} /> Crear pedido</button>}
           </div>
         </article>
       </div>}

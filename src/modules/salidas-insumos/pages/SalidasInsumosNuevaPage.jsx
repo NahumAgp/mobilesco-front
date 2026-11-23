@@ -21,6 +21,7 @@ export default function SalidasInsumosNuevaPage() {
   const areaRef = useRef(null);
   const buscadorInsumoInputRef = useRef(null);
   const cantidadEntradaRef = useRef(null);
+  const solicitudSalidaRef = useRef(null);
 
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
@@ -558,7 +559,14 @@ export default function SalidasInsumosNuevaPage() {
         }))
       };
 
+      const huella = JSON.stringify(payload);
+      if (solicitudSalidaRef.current?.huella !== huella) {
+        solicitudSalidaRef.current = { huella, id: window.crypto.randomUUID() };
+      }
+      payload.solicitudId = solicitudSalidaRef.current.id;
+
       await crearSalidaInsumo(payload);
+      solicitudSalidaRef.current = null;
       setToastType("success");
       setToastMessage("Salida de insumos registrada con éxito");
       limpiarFormulario();

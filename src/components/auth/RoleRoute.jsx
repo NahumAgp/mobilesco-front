@@ -13,7 +13,7 @@ function hasAllowedRole(user, allowedRoles = []) {
   return userRoles.some((role) => allowedRoles.includes(role));
 }
 
-export default function RoleRoute({ children, allowedRoles = [], permission }) {
+export default function RoleRoute({ children, allowedRoles = [], permission, anyPermission = [] }) {
   const outletContext = useOutletContext();
   const [user, setUser] = useState(() => getUser());
   const [localRevision, setLocalRevision] = useState(0);
@@ -33,8 +33,9 @@ export default function RoleRoute({ children, allowedRoles = [], permission }) {
 
   const roleAllowed = hasAllowedRole(user, allowedRoles);
   const requiredPermissions = Array.isArray(permission) ? permission : permission ? [permission] : [];
-  const permissionAllowed = requiredPermissions.every((code) => hasPermission(user, code));
-  const canEnter = permission && allowedRoles.length
+  const permissionAllowed = requiredPermissions.every((code) => hasPermission(user, code))
+    && (!anyPermission.length || anyPermission.some((code) => hasPermission(user, code)));
+  const canEnter = (permission || anyPermission.length) && allowedRoles.length
     ? roleAllowed || permissionAllowed
     : roleAllowed && permissionAllowed;
 

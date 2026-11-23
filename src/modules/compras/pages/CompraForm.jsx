@@ -80,6 +80,7 @@ function normalizarCompraCargada(data) {
 
 export default function CompraForm({ 
   compraId,     // para la página
+  proveedorInicialId = "",
   compra,       // para el modal
   onSave,       // para el modal
   onCancel,     // para el modal
@@ -125,7 +126,7 @@ export default function CompraForm({
     folio: "",
     fechaCompra: new Date().toISOString().split('T')[0],
     fechaRecepcion: "",
-    proveedorId: "",
+    proveedorId: proveedorInicialId,
     metodoPago: "",
     subtotal: 0,
     impuesto: 0,
@@ -444,6 +445,10 @@ export default function CompraForm({
     const unidad = unidadesMedida.find(u => u.id === parseInt(nuevoDetalle.unidadCompraId));
     
     if (!insumo || !unidad) return;
+    if (detalles.some((detalle) => String(detalle.insumoId) === String(insumo.id))) {
+      setErroresBackend((prev) => ({ ...prev, detalles: "Este insumo ya está en la compra. Edita su partida o elimínala antes de agregarlo de nuevo." }));
+      return;
+    }
 
     const cantidadEnUnidadConsumo = cantidad * factorConversion;
     const costoPorUnidadConsumo = precioUnitario / factorConversion;
@@ -612,6 +617,7 @@ export default function CompraForm({
       const detalleFactorInvalido = detalles.find(
         (detalle) => Number(detalle.factorConversion || 1) <= 0
       );
+      const insumosUnicos = new Set(detalles.map((detalle) => String(detalle.insumoId)));
 
       if (detalleSinDatos) {
         erroresValidacion.detalles = "Todos los detalles necesitan insumo y unidad de compra";
@@ -621,6 +627,8 @@ export default function CompraForm({
         erroresValidacion.detalles = `Asigna un precio mayor a cero a ${detallePrecioInvalido.insumoNombre || "cada insumo"}`;
       } else if (detalleFactorInvalido) {
         erroresValidacion.detalles = `El factor de conversión de ${detalleFactorInvalido.insumoNombre || "cada insumo"} debe ser mayor a cero`;
+      } else if (insumosUnicos.size !== detalles.length) {
+        erroresValidacion.detalles = "Un insumo no puede repetirse en la misma compra";
       }
     }
 

@@ -257,6 +257,27 @@
   color: #214f3d;
 }
 
+.modelo-material-summary {
+  flex-wrap: wrap;
+}
+
+.modelo-material-costos {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  cursor: default;
+}
+
+.modelo-material-costo-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
 .modelo-panel-summary {
   display: flex;
   align-items: center;

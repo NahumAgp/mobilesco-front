@@ -21,3 +21,5 @@ export const cancelarOrdenProduccion = (id, motivo) => request(`${API_PATHS.ORDE
 export const surtirOrdenProduccion = (id, data) => request(`${API_PATHS.ORDENES_PRODUCCION}/${id}/surtidos`, { method: "POST", body: JSON.stringify(data) });
 export const cambiarOperacionProduccion = (id, operacionId, estado) => request(`${API_PATHS.ORDENES_PRODUCCION}/${id}/operaciones/${operacionId}`, { method: "PATCH", body: JSON.stringify({ estado }) });
 export const registrarAvanceProduccion = (id, partidaId, data) => request(`${API_PATHS.ORDENES_PRODUCCION}/${id}/partidas/${partidaId}/avances`, { method: "POST", body: JSON.stringify(data) });
+export const listarTrabajoMiArea = () => request(`${API_PATHS.ORDENES_PRODUCCION}/mi-area`);
+export const registrarAvanceMiArea = (ordenId, operacionId, data) => request(`${API_PATHS.ORDENES_PRODUCCION}/mi-area/${ordenId}/operaciones/${operacionId}/avances`, { method: "POST", body: JSON.stringify(data) });

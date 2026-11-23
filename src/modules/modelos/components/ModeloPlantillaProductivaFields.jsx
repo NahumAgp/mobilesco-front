@@ -1223,6 +1223,22 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
           <i className="bi bi-chevron-down modelo-chevron modelo-chevron-down" aria-hidden="true"></i>
           <i className="bi bi-chevron-up modelo-chevron modelo-chevron-up" aria-hidden="true"></i>
           <span className="fw-semibold">{titulo}</span>
+          <span className="modelo-material-costos" aria-label={`Costo inicial de ${titulo}`}>
+            <label className="modelo-material-costo-check" onClick={(event) => event.stopPropagation()}>
+              <input type="checkbox" className="form-check-input m-0"
+                checked={marcaCostoGrupo(categoria, "insumos", materialId, insumos)}
+                onChange={(event) => actualizarFlagCosto(categoriaIndex, "insumo", event.target.checked, materialId)}
+                aria-label={`Costo inicial de insumos de ${titulo}`} />
+              Costo inicial de Insumos
+            </label>
+            <label className="modelo-material-costo-check" onClick={(event) => event.stopPropagation()}>
+              <input type="checkbox" className="form-check-input m-0"
+                checked={marcaCostoGrupo(categoria, "operaciones", materialId, operaciones)}
+                onChange={(event) => actualizarFlagCosto(categoriaIndex, "operacion", event.target.checked, materialId)}
+                aria-label={`Costo inicial de operaciones de ${titulo}`} />
+              Costo inicial de Operaciones
+            </label>
+          </span>
           <span
             className={`modelo-material-costo-estado ${categoria.costoInicialPendiente ? "modelo-material-costo-estado-inicial" : ""}`}
             aria-label={`Estado del costo de ${titulo}: ${categoria.costoInicialPendiente ? "inicial" : "nuevo"}`}
@@ -1238,22 +1254,6 @@ export default function ModeloPlantillaProductivaFields({ modeloId, categorias =
           <span className="fw-semibold ms-auto">{formatCurrency(totalInsumosSeccion + operaciones.reduce((total, item) => total + calcularSubtotalOperacion(item), 0))}</span>
         </summary>
         <div className="modelo-material-body">
-        <div className="d-flex flex-wrap gap-4 border rounded-3 p-3 mb-3 bg-light" aria-label={`Costo inicial de ${titulo}`}>
-          <label className="d-inline-flex align-items-center gap-2 mb-0">
-            <input type="checkbox" className="form-check-input m-0"
-              checked={marcaCostoGrupo(categoria, "insumos", materialId, insumos)}
-              onChange={(event) => actualizarFlagCosto(categoriaIndex, "insumo", event.target.checked, materialId)}
-              aria-label={`Costo inicial de insumos de ${titulo}`} />
-            Costo inicial de Insumos
-          </label>
-          <label className="d-inline-flex align-items-center gap-2 mb-0">
-            <input type="checkbox" className="form-check-input m-0"
-              checked={marcaCostoGrupo(categoria, "operaciones", materialId, operaciones)}
-              onChange={(event) => actualizarFlagCosto(categoriaIndex, "operacion", event.target.checked, materialId)}
-              aria-label={`Costo inicial de operaciones de ${titulo}`} />
-            Costo inicial de Operaciones
-          </label>
-        </div>
         <div className="border rounded-3 p-3 mb-3 bg-light">
           <div className="d-flex justify-content-between align-items-center gap-2 mb-2 flex-wrap">
             <label className="form-label fw-semibold mb-0">Medidas y pesos</label>

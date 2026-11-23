@@ -89,11 +89,60 @@ describe("catálogo visual", () => {
     );
 
     expect(await screen.findByRole("heading", { name: "Concha uno" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Catálogo", level: 1 })).toBeInTheDocument();
+    expect(screen.queryByText(/CATÁLOGO MOBILESCO \/ PÁGINA/)).not.toBeInTheDocument();
     const categorias = screen.getByRole("navigation", { name: "Categorías del catálogo" });
-    expect(within(categorias).getAllByRole("button")).toHaveLength(2);
-    expect(within(categorias).getAllByRole("button")[0]).toHaveAttribute("aria-current", "page");
-    await user.click(within(categorias).getAllByRole("button")[1]);
+    expect(within(categorias).getByRole("button", { name: "Sillas" })).toHaveAttribute("aria-pressed", "true");
+    expect(within(categorias).getByRole("button", { name: "Sillas escolares" })).toHaveAttribute("aria-current", "page");
+    await user.click(within(categorias).getByRole("button", { name: "Sillas de oficina" }));
     expect(await screen.findByText("No hay modelos coincidentes en esta familia.")).toBeInTheDocument();
-    expect(within(categorias).getAllByRole("button")[1]).toHaveAttribute("aria-current", "page");
+    expect(within(categorias).getByRole("button", { name: "Sillas de oficina" })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("muestra directamente los modelos cuando la familia no tiene subfamilia", async () => {
+    obtenerFamiliasActivasCatalogo.mockResolvedValue([
+      { id: 2, nombre: "SILLAS", lineaNombre: "ESCOLAR" },
+    ]);
+    obtenerModelosCatalogoPublico.mockResolvedValue([{ modeloId: 11 }]);
+    obtenerFichaCatalogoPublico.mockResolvedValue({
+      modeloId: 11, nombre: "Concha uno", familiaId: 2, familiaNombre: "SILLAS",
+      variantes: [{ productoId: 1, sku: "SILLA-CONCHA", activo: true }],
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/productos/catalogo/familias/sillas-escolares"]}>
+        <Routes>
+          <Route path="/productos/catalogo/familias/:familiaSlug" element={<ProductoCatalogoPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByRole("heading", { name: "Concha uno" })).toBeInTheDocument();
+    expect(screen.queryByText("Sin subfamilia")).not.toBeInTheDocument();
+    expect(screen.queryByText("SUBFAMILIA")).not.toBeInTheDocument();
+  });
+
+  it("omite el selector de subfamilia en la ficha si no hay ninguna", async () => {
+    obtenerFamiliasActivasCatalogo.mockResolvedValue([
+      { id: 2, nombre: "SILLAS", lineaNombre: "ESCOLAR" },
+    ]);
+    obtenerProductos.mockResolvedValue({
+      content: [{ id: 41, sku: "SILLA-CONCHA", nombre: "Silla concha", activo: true,
+        lineaNombre: "ESCOLAR", familiaId: 2, familiaNombre: "SILLAS",
+        modeloId: 11, modeloNombre: "Concha uno" }],
+      totalPages: 1,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/productos/catalogo/41"]}>
+        <Routes>
+          <Route path="/productos/catalogo/:id" element={<ProductoCatalogoPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByRole("combobox", { name: "Modelo" })).toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Subfamilia" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Sin subfamilia")).not.toBeInTheDocument();
   });
 });

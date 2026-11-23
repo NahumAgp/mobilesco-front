@@ -125,6 +125,14 @@ describe("CompraForm en edición por compraId", () => {
     searchInputs.mockResolvedValue([]);
   });
 
+  it("preselecciona el proveedor al crear una compra desde su ficha", async () => {
+    uploadReceipt.mockResolvedValue({ id: "comprobante", nombre: "factura.pdf" });
+    render(<MemoryRouter><CompraForm proveedorInicialId="4" /></MemoryRouter>);
+    await userEvent.upload(screen.getByLabelText("Imagen o PDF del comprobante *"),
+      new File(["%PDF-1.4\n%%EOF"], "factura.pdf", { type: "application/pdf" }));
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "Proveedor" })).toHaveValue("4"));
+  });
+
   it("carga un BORRADOR editable, valida método y precio, y envía detalles limpios", async () => {
     const user = userEvent.setup();
     getPurchase.mockResolvedValue(draft);
@@ -297,5 +305,25 @@ describe("CompraForm en edición por compraId", () => {
     await user.upload(screen.getByLabelText("Imagen o PDF del comprobante *"),
       new File(["%PDF-1.4\n%%EOF"], "factura.pdf", { type: "application/pdf" }));
     expect(await screen.findByRole("button", { name: "Guardar Cambios" })).toBeInTheDocument();
+  });
+
+  it("impide agregar dos veces un insumo activo en la compra", async () => {
+    const user = userEvent.setup();
+    getPurchase.mockResolvedValue(draft);
+    searchInputs.mockResolvedValue([{
+      id: 8, nombre: "Tela exterior", unidadMedida: { id: 2, nombre: "Metro", simbolo: "m" },
+    }]);
+    render(<MemoryRouter><CompraForm compraId="10" /></MemoryRouter>);
+
+    expect(await screen.findByText("Tela exterior")).toBeInTheDocument();
+    await user.type(screen.getByPlaceholderText("Escribe para consultar el catálogo"), "Tela");
+    await waitFor(() => expect(searchInputs).toHaveBeenCalled());
+    await user.selectOptions(screen.getByRole("combobox", { name: "Buscar insumo" }), "8");
+    await user.type(screen.getByRole("textbox", { name: "Cantidad del nuevo detalle" }), "2");
+    await user.type(screen.getByRole("textbox", { name: "Precio unitario del nuevo detalle" }), "42");
+    await user.click(screen.getByRole("button", { name: "Agregar" }));
+
+    expect(screen.getByText(/Este insumo ya está en la compra/)).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Editar detalle de Tela exterior" })).toHaveLength(1);
   });
 });

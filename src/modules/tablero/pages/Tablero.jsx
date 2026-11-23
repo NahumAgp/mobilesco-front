@@ -19,6 +19,7 @@ import { useNavigate } from "react-router-dom";
 import { getUser, hasPermission } from "../../auth/services/authService";
 import { conectarEventosTablero, obtenerResumenTablero } from "../services/tablero";
 import AlmacenInicioPage from "../../almacen/pages/AlmacenInicioPage";
+import TrabajoAreaPage from "../../ordenes-produccion/pages/TrabajoAreaPage.jsx";
 import "./tablero.css";
 import "./tablero-analytics.css";
 import "./tablero-quick.css";
@@ -69,6 +70,9 @@ export default function Tablero() {
   const usuario = getUser();
   if (usuario?.roles?.some((rol) => String(rol).trim().toUpperCase().replaceAll(" ", "_").replace(/^ROLE_/, "") === "JEFE_ALMACEN")) {
     return <AlmacenInicioPage />;
+  }
+  if (hasPermission(usuario, "VIEW_AREA_WORK") && !hasPermission(usuario, "VIEW_PRODUCTION_ORDERS")) {
+    return <TrabajoAreaPage />;
   }
   return <TableroGeneral />;
 }

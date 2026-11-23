@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { obtenerCentroTrabajoPorId, crearCentroTrabajo, actualizarCentroTrabajo } from "../services/centrosTrabajo.js";
 import Toast from "../../../components/ui/Toast.jsx";
+import { obtenerAreasTrabajo } from "../../areas-trabajo/services/areasTrabajo.js";
 
 export default function CentroTrabajoForm({ 
   centroId,     // para la página
@@ -13,6 +14,7 @@ export default function CentroTrabajoForm({
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
   const [erroresBackend, setErroresBackend] = useState({});
+  const [areasTrabajo, setAreasTrabajo] = useState([]);
   
   const navigate = useNavigate();
   
@@ -23,6 +25,7 @@ export default function CentroTrabajoForm({
     codigo: "",
     nombre: "",
     descripcion: "",
+    areaTrabajoId: "",
     costoHora: "",
     costoMinuto: "",
     capacidadDiaria: "",
@@ -32,6 +35,12 @@ export default function CentroTrabajoForm({
     activo: true
   });
 
+  useEffect(() => {
+    obtenerAreasTrabajo({ activo: true }).then((data) =>
+      setAreasTrabajo(Array.isArray(data) ? data : data?.content || [])
+    ).catch(() => setAreasTrabajo([]));
+  }, []);
+
   // Cargar datos del centro si estamos editando
   useEffect(() => {
     const cargar = async () => {
@@ -40,6 +49,7 @@ export default function CentroTrabajoForm({
           codigo: centro.codigo || "",
           nombre: centro.nombre || "",
           descripcion: centro.descripcion || "",
+          areaTrabajoId: centro.areaTrabajoId || "",
           costoHora: centro.costoHora || "",
           costoMinuto: centro.costoMinuto || "",
           capacidadDiaria: centro.capacidadDiaria || "",
@@ -58,6 +68,7 @@ export default function CentroTrabajoForm({
             codigo: data.codigo || "",
             nombre: data.nombre || "",
             descripcion: data.descripcion || "",
+            areaTrabajoId: data.areaTrabajoId || "",
             costoHora: data.costoHora || "",
             costoMinuto: data.costoMinuto || "",
             capacidadDiaria: data.capacidadDiaria || "",
@@ -111,7 +122,8 @@ export default function CentroTrabajoForm({
       costoMinuto: formData.costoMinuto === "" ? null : formData.costoMinuto,
       capacidadDiaria: formData.capacidadDiaria === "" ? null : formData.capacidadDiaria,
       horasDisponiblesDia: formData.horasDisponiblesDia === "" ? null : formData.horasDisponiblesDia,
-      enlaceDriveReporte: formData.enlaceDriveReporte?.trim() || null
+      enlaceDriveReporte: formData.enlaceDriveReporte?.trim() || null,
+      areaTrabajoId: formData.areaTrabajoId ? Number(formData.areaTrabajoId) : null
     };
 
     try {
@@ -222,6 +234,15 @@ export default function CentroTrabajoForm({
                   placeholder="Descripción detallada del centro de trabajo..."
                 />
                 <div className="invalid-feedback">{erroresBackend.descripcion || erroresExternos.descripcion}</div>
+              </div>
+
+              <div className="col-md-6">
+                <label className="form-label fw-semibold">Área responsable</label>
+                <select name="areaTrabajoId" className={inputClass("areaTrabajoId")} value={formData.areaTrabajoId} onChange={handleChange}>
+                  <option value="">Sin asignar</option>
+                  {areasTrabajo.map((area) => <option key={area.id} value={area.id}>{area.nombre}</option>)}
+                </select>
+                <small className="text-muted">Asigna el área antes de liberar órdenes que usen este centro.</small>
               </div>
 
               <div className="col-md-4">

@@ -74,6 +74,18 @@ describe('guardas de rutas', () => {
     expect(screen.getByText('Sin permiso para esta vista')).toBeInTheDocument();
   });
 
+  it('permite una de las acciones de recepción junto con la vista de compras', () => {
+    auth.isAuthenticated.mockReturnValue(true);
+    auth.getUser.mockReturnValue({ roles: [], permisos: ['VIEW_PURCHASES', 'ACTION_WAREHOUSE_RECEIPTS_RECEIVE'] });
+    auth.hasPermission.mockImplementation((user, code) => user?.permisos?.includes(code));
+    renderRoute(
+      <RoleRoute permission="VIEW_PURCHASES" anyPermission={['ACTION_PURCHASES_RECEIVE', 'ACTION_WAREHOUSE_RECEIPTS_RECEIVE']}>
+        <div>Recepción permitida</div>
+      </RoleRoute>
+    );
+    expect(screen.getByText('Recepción permitida')).toBeInTheDocument();
+  });
+
   it('recalcula el acceso cuando cambia el usuario de la sesion activa', () => {
     auth.isAuthenticated.mockReturnValue(true);
     let currentUser = { roles: ['VENTAS'], permisos: [] };

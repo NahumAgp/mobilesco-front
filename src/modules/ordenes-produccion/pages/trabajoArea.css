@@ -1,0 +1,34 @@
+.trabajo-area{max-width:1200px;margin:0 auto;padding:24px 18px 80px;color:#21443c}
+.trabajo-area-header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:20px}
+.trabajo-area-header h1{display:flex;align-items:center;gap:10px;font-weight:750;margin:4px 0}
+.trabajo-area-header p{color:#60736f;margin:0}
+.trabajo-area-eyebrow{font-size:12px;font-weight:800;letter-spacing:.12em;color:#c76530}
+.trabajo-area-header button{display:flex;align-items:center;gap:7px}
+.trabajo-area-resumen{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:18px}
+.trabajo-area-resumen>div{background:#fff;border:1px solid #e1e9e5;border-radius:14px;padding:15px;display:flex;flex-direction:column}
+.trabajo-area-resumen strong{font-size:26px}.trabajo-area-resumen span{font-size:13px;color:#627772}
+.trabajo-area-filtros{display:flex;gap:6px;margin:18px 0}
+.trabajo-area-filtros button{border:1px solid #d7e3df;border-radius:999px;background:#fff;color:#21443c;padding:7px 15px;font-weight:650}
+.trabajo-area-filtros button.activo{background:#21443c;color:#fff}
+.trabajo-area-lista{display:grid;gap:16px}
+.trabajo-area-tarea,.trabajo-area-vacio{background:#fff;border:1px solid #dce6e1;border-radius:18px;padding:20px;box-shadow:0 8px 28px #163e3210}
+.trabajo-area-tarea-cabecera{display:flex;justify-content:space-between;gap:15px}
+.trabajo-area-tarea h2{font-size:20px;font-weight:750;margin:4px 0}
+.trabajo-area-tarea-cabecera p{margin:0;color:#5c716a}
+.trabajo-area-folio{font-size:12px;font-weight:750;color:#b45228;text-transform:uppercase;letter-spacing:.06em}
+.trabajo-area-estado{height:max-content;border-radius:999px;padding:5px 12px;font-size:12px;font-weight:750;background:#f4e9db;color:#8c561f}
+.trabajo-area-estado.en_proceso{background:#e4f2ee;color:#226b59}.trabajo-area-estado.terminada{background:#e4f0e7;color:#287243}
+.trabajo-area-metricas{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:20px 0 10px}
+.trabajo-area-metricas>div{background:#f6f8f6;border-radius:10px;padding:10px;display:flex;flex-direction:column}
+.trabajo-area-metricas span{font-size:12px;color:#647a72}.trabajo-area-metricas strong{font-size:18px}
+.trabajo-area-progreso{height:8px;background:#e4ece8;border-radius:999px;overflow:hidden}
+.trabajo-area-progreso>div{height:100%;background:#398473}
+.trabajo-area-receta{border-top:1px solid #e7eeeb;margin-top:17px;padding-top:13px}
+.trabajo-area-receta summary{cursor:pointer;font-weight:750}.trabajo-area-receta h3{font-size:15px;margin:17px 0 7px}
+.trabajo-area-instrucciones{white-space:pre-wrap;line-height:1.55}
+.trabajo-area-sin-receta{display:flex;align-items:center;gap:7px;color:#a35a24;background:#fff5e8;padding:10px;border-radius:8px}
+.trabajo-area-receta ul{margin-bottom:0}
+.trabajo-area-accion{display:grid;grid-template-columns:170px minmax(200px,1fr) auto;align-items:end;gap:10px;margin-top:16px}
+.trabajo-area-accion label{display:flex;flex-direction:column;gap:5px;font-size:13px;font-weight:650}
+.trabajo-area-accion input{border:1px solid #cfddd6;border-radius:8px;padding:9px;width:100%}
+@media(max-width:700px){.trabajo-area-header{flex-direction:column}.trabajo-area-resumen,.trabajo-area-metricas{grid-template-columns:repeat(2,minmax(0,1fr))}.trabajo-area-accion{grid-template-columns:1fr}.trabajo-area-tarea-cabecera{flex-direction:column}}

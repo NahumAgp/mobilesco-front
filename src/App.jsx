@@ -18,6 +18,8 @@ const ClientesPage = lazy(() => import("./modules/clientes/pages/ClientesPage.js
 const ClienteFormPage = lazy(() => import("./modules/clientes/pages/ClienteFormPage.jsx"));
 const EmpleadoFormPage = lazy(() => import("./modules/empleados/pages/EmpleadoFormPage.jsx"));
 const EmpleadosPage = lazy(() => import("./modules/empleados/pages/EmpleadoPage.jsx"));
+const RhPage = lazy(() => import("./modules/rh/pages/RhPage.jsx"));
+const MiRhPage = lazy(() => import("./modules/rh/pages/MiRhPage.jsx"));
 const AreasTrabajoPage = lazy(() => import("./modules/areas-trabajo/pages/AreasTrabajoPage.jsx"));
 const PerfilPage = lazy(() => import("./modules/perfil/pages/PerfilPage.jsx"));
 const UsuariosAccesoPage = lazy(() => import("./modules/usuarios/pages/UsuariosAccesoPage.jsx"));
@@ -55,6 +57,7 @@ const CentrosTrabajoFormPage = lazy(() => import("./modules/centros-trabajo/page
 const OperacionesPage = lazy(() => import("./modules/operaciones/pages/OperacionesPage.jsx"));
 const OperacionesFormPage = lazy(() => import("./modules/operaciones/pages/OperacionFormPage.jsx"));
 const OrdenesProduccionPage = lazy(() => import("./modules/ordenes-produccion/pages/OrdenesProduccionPage.jsx"));
+const TrabajoAreaPage = lazy(() => import("./modules/ordenes-produccion/pages/TrabajoAreaPage.jsx"));
 const OrdenProduccionFormPage = lazy(() => import("./modules/ordenes-produccion/pages/OrdenProduccionFormPage.jsx"));
 const OrdenProduccionDetallePage = lazy(() => import("./modules/ordenes-produccion/pages/OrdenProduccionDetallePage.jsx"));
 const PedidosVentaPage = lazy(() => import("./modules/pedidos-venta/pages/PedidosVentaPage.jsx"));
@@ -143,6 +146,8 @@ export default function App() {
         <Route path="/empleados/nuevo" element={withPermission(<EmpleadoFormPage />, ["VIEW_EMPLOYEES", "ACTION_EMPLOYEES_CREATE"])} />
         <Route path="/empleados/:id" element={withPermission(<EmpleadoFormPage />, ["VIEW_EMPLOYEES", "ACTION_EMPLOYEES_EDIT"])} />
         <Route path="/empleados" element={withPermission(<EmpleadosPage />, "VIEW_EMPLOYEES")} />
+        <Route path="/rh" element={withPermission(<RhPage />, "VIEW_HR")} />
+        <Route path="/rh/mi" element={<MiRhPage />} />
         <Route path="/areas-trabajo" element={withPermission(<AreasTrabajoPage />, "VIEW_WORK_AREAS")} />
 
         <Route path="/perfil" element={<PerfilPage />} />
@@ -227,7 +232,8 @@ export default function App() {
           path="/almacen/entradas/:id"
           element={
             <RoleRoute
-              permission={["VIEW_WAREHOUSE_RECEIPTS", "ACTION_WAREHOUSE_RECEIPTS_RECEIVE"]}
+              permission="VIEW_PURCHASES"
+              anyPermission={["ACTION_PURCHASES_RECEIVE", "ACTION_WAREHOUSE_RECEIPTS_RECEIVE"]}
             >
               <EntradaRecepcionPage />
             </RoleRoute>
@@ -244,6 +250,7 @@ export default function App() {
         <Route path="/operaciones/nuevo" element={withPermission(<OperacionesFormPage />, ["VIEW_OPERATIONS", "ACTION_OPERATIONS_CREATE"])} />
         <Route path="/operaciones/:id" element={withPermission(<OperacionesFormPage />, ["VIEW_OPERATIONS", "ACTION_OPERATIONS_EDIT"])} />
         <Route path="/ordenes-produccion" element={withPermission(<OrdenesProduccionPage />, "VIEW_PRODUCTION_ORDERS")} />
+        <Route path="/produccion/mi-area" element={withPermission(<TrabajoAreaPage />, "VIEW_AREA_WORK")} />
         <Route path="/ordenes-produccion/nueva" element={withPermission(<OrdenProduccionFormPage />, ["VIEW_PRODUCTION_ORDERS", "ACTION_PRODUCTION_ORDERS_CREATE"])} />
         <Route path="/ordenes-produccion/:id/editar" element={withPermission(<OrdenProduccionFormPage />, ["VIEW_PRODUCTION_ORDERS", "ACTION_PRODUCTION_ORDERS_EDIT"])} />
         <Route path="/ordenes-produccion/:id" element={withPermission(<OrdenProduccionDetallePage />, "VIEW_PRODUCTION_ORDERS")} />

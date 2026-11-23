@@ -53,10 +53,10 @@ export default function ProductoOperacionesBOMPage() {
   const [productoOrigenId, setProductoOrigenId] = useState("");
   const [copiandoBom, setCopiandoBom] = useState(false);
   const [editandoOperacionId, setEditandoOperacionId] = useState(null);
-  const [edicionOperacion, setEdicionOperacion] = useState({ cantidad: "", observaciones: "" });
+  const [edicionOperacion, setEdicionOperacion] = useState({ cantidad: "", observaciones: "", instruccionesTecnicas: "", indicacionesCorte: "", indicacionesDoblez: "", criteriosCalidad: "" });
   
   const [nuevasOperaciones, setNuevasOperaciones] = useState([
-    { operacionId: "", cantidad: 1, observaciones: "" }
+    { operacionId: "", cantidad: 1, observaciones: "", instruccionesTecnicas: "", indicacionesCorte: "", indicacionesDoblez: "", criteriosCalidad: "" }
   ]);
 
   const cargarDatos = useCallback(async () => {
@@ -126,6 +126,10 @@ export default function ProductoOperacionesBOMPage() {
           operacionId: Number(item.operacionId),
           cantidad: Number(item.cantidad || 1),
           observaciones: item.observaciones || "",
+          instruccionesTecnicas: item.instruccionesTecnicas || "",
+          indicacionesCorte: item.indicacionesCorte || "",
+          indicacionesDoblez: item.indicacionesDoblez || "",
+          criteriosCalidad: item.criteriosCalidad || "",
           orden: inicioOrden + index
         }));
 
@@ -157,7 +161,7 @@ export default function ProductoOperacionesBOMPage() {
   const agregarFila = () => {
     setNuevasOperaciones([
       ...nuevasOperaciones,
-      { operacionId: "", cantidad: 1, observaciones: "" }
+      { operacionId: "", cantidad: 1, observaciones: "", instruccionesTecnicas: "", indicacionesCorte: "", indicacionesDoblez: "", criteriosCalidad: "" }
     ]);
   };
 
@@ -179,6 +183,10 @@ export default function ProductoOperacionesBOMPage() {
       operacionId: parseInt(op.operacionId),
       cantidad: op.cantidad || 1,
       observaciones: op.observaciones || "",
+      instruccionesTecnicas: op.instruccionesTecnicas || "",
+      indicacionesCorte: op.indicacionesCorte || "",
+      indicacionesDoblez: op.indicacionesDoblez || "",
+      criteriosCalidad: op.criteriosCalidad || "",
       orden: operacionesProducto.length + idx
     }));
 
@@ -186,7 +194,7 @@ export default function ProductoOperacionesBOMPage() {
       await agregarOperacionesMasivo(id, operacionesConOrden);
       setToastType("success");
       setToastMessage("Operaciones agregadas correctamente");
-      setNuevasOperaciones([{ operacionId: "", cantidad: 1, observaciones: "" }]);
+      setNuevasOperaciones([{ operacionId: "", cantidad: 1, observaciones: "", instruccionesTecnicas: "", indicacionesCorte: "", indicacionesDoblez: "", criteriosCalidad: "" }]);
       cargarDatos();
     } catch {
       setToastType("danger");
@@ -211,7 +219,11 @@ export default function ProductoOperacionesBOMPage() {
     setEditandoOperacionId(operacion.operacionId);
     setEdicionOperacion({
       cantidad: operacion.cantidad ?? "",
-      observaciones: operacion.observaciones || ""
+      observaciones: operacion.observaciones || "",
+      instruccionesTecnicas: operacion.instruccionesTecnicas || "",
+      indicacionesCorte: operacion.indicacionesCorte || "",
+      indicacionesDoblez: operacion.indicacionesDoblez || "",
+      criteriosCalidad: operacion.criteriosCalidad || ""
     });
   };
 
@@ -227,6 +239,10 @@ export default function ProductoOperacionesBOMPage() {
         operacionId: operacion.operacionId,
         cantidad,
         observaciones: edicionOperacion.observaciones,
+        instruccionesTecnicas: edicionOperacion.instruccionesTecnicas,
+        indicacionesCorte: edicionOperacion.indicacionesCorte,
+        indicacionesDoblez: edicionOperacion.indicacionesDoblez,
+        criteriosCalidad: edicionOperacion.criteriosCalidad,
         orden: operacion.orden
       });
       setEditandoOperacionId(null);
@@ -287,6 +303,7 @@ export default function ProductoOperacionesBOMPage() {
                   <th className="text-end">Tiempo Total</th>
                   <th className="text-end">Costo/Minuto</th>
                   <th className="text-end">Costo/Actividad</th>
+                  <th>Ficha de fabricación</th>
                   <th></th>
                 </tr>
               </thead>
@@ -316,6 +333,15 @@ export default function ProductoOperacionesBOMPage() {
                     <td className="text-end fw-bold">{op.tiempoTotal} min</td> 
                     <td className="text-end fw-bold">{op.costoMinutoOperacion} min</td>
                     <td className="text-end text-success">{formatCurrency(op.importeActividad)}</td>
+                    <td>{editandoOperacionId === op.operacionId ? <div style={{minWidth:260}}>
+                      {[["instruccionesTecnicas","Procedimiento"],["indicacionesCorte","Cortes y medidas"],["indicacionesDoblez","Dobleces y medidas"],["criteriosCalidad","Revisión de calidad"]].map(([campo,etiqueta])=>
+                        <label className="d-block mb-2" key={campo}><small>{etiqueta}</small>
+                          <textarea className="form-control form-control-sm" rows="2" maxLength={10000}
+                            placeholder="Indica unidades, tolerancias y referencias cuando aplique"
+                            value={edicionOperacion[campo]}
+                            onChange={(event) => setEdicionOperacion((actual) => ({ ...actual, [campo]: event.target.value }))} />
+                        </label>)}
+                    </div> : <small className="text-muted">{[op.instruccionesTecnicas,op.indicacionesCorte,op.indicacionesDoblez,op.criteriosCalidad].filter(Boolean).join(" · ") || "Pendiente de documentar"}</small>}</td>
                     <td>
                       <div className="d-flex gap-1 justify-content-end">
                         {editandoOperacionId === op.operacionId ? (
@@ -396,6 +422,7 @@ export default function ProductoOperacionesBOMPage() {
         <tr>
           <th style={{ width: '400px' }}>Operación</th>
           <th className="text-end" style={{ width: '120px' }}>Cantidad</th>
+          <th>Instrucciones técnicas</th>
           <th>Observaciones</th>
           <th style={{ width: '60px' }}></th>
         </tr>
@@ -496,6 +523,15 @@ export default function ProductoOperacionesBOMPage() {
                   value={item.cantidad}
                   onChange={(e) => handleNuevaOperacionChange(index, "cantidad", e.target.value)}
                 />
+              </td>
+              <td style={{ padding: '12px 8px', minWidth: '300px' }}>
+                {[["instruccionesTecnicas","Procedimiento"],["indicacionesCorte","Cortes y medidas"],["indicacionesDoblez","Dobleces y medidas"],["criteriosCalidad","Revisión de calidad"]].map(([campo,etiqueta])=>
+                  <label className="d-block mb-2" key={campo}><small>{etiqueta}</small>
+                    <textarea className="form-control" rows="2" maxLength={10000}
+                      placeholder="Indica unidades y tolerancias cuando aplique"
+                      value={item[campo] || ""}
+                      onChange={(e) => handleNuevaOperacionChange(index, campo, e.target.value)} />
+                  </label>)}
               </td>
               <td style={{ padding: '12px 8px' }}>
                 <input
