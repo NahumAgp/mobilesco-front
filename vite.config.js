@@ -5,6 +5,7 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: 'jsdom',
+    maxWorkers: 2,
     setupFiles: './src/test/setup.js',
     exclude: ['e2e/**', 'node_modules/**', 'dist/**'],
     clearMocks: true,
