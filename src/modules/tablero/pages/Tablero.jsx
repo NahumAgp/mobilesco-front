@@ -285,7 +285,7 @@ function TableroGeneral() {
           </label>
           {puedeVerCotizaciones && (
             <>
-              <button className="tab-primary" onClick={() => navigate("/cotizaciones/nueva")} disabled={!puedeCrearCotizacion}>
+              <button className="tab-primary" onClick={() => navigate("/productos/catalogo")} disabled={!puedeCrearCotizacion}>
                 <Plus size={18} /> Nueva cotización
               </button>
             </>

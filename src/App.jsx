@@ -11,7 +11,6 @@ const Tablero = lazy(() => import("./modules/tablero/pages/Tablero"));
 const NotificacionesPage = lazy(() => import("./modules/notificaciones/pages/NotificacionesPage.jsx"));
 const UnidadMedida = lazy(() => import("./modules/unidades-medida/legacy/UnidadMedida.jsx"));
 const NuevaCotizacion = lazy(() => import("./modules/cotizaciones/pages/NuevaCotizacion.jsx"));
-const CotizacionRapida = lazy(() => import("./modules/cotizaciones/pages/CotizacionRapida.jsx"));
 const Cotizacion = lazy(() => import("./modules/cotizaciones/pages/Cotizaciones.jsx"));
 const TabuladorFlete = lazy(() => import("./modules/cotizaciones/pages/TabuladorFlete.jsx"));
 const ClientesPage = lazy(() => import("./modules/clientes/pages/ClientesPage.jsx"));
@@ -131,7 +130,7 @@ export default function App() {
 
         <Route path="/cotizaciones" element={withPermission(<Cotizacion />, "VIEW_QUOTES")} />
         <Route path="/cotizaciones/fletes" element={withPermission(<TabuladorFlete />, ["VIEW_QUOTES", "ACTION_QUOTES_EDIT"])} />
-        <Route path="/cotizaciones/nueva" element={withPermission(<CotizacionRapida />, ["VIEW_QUOTES", "ACTION_QUOTES_CREATE"])} />
+        <Route path="/cotizaciones/nueva" element={withPermission(<Navigate to="/productos/catalogo" replace />, ["VIEW_QUOTES", "ACTION_QUOTES_CREATE"])} />
         <Route path="/cotizaciones/formal" element={withPermission(<NuevaCotizacion />, ["VIEW_QUOTES", "ACTION_QUOTES_CREATE"])} />
         <Route path="/cotizaciones/:id/editar" element={withPermission(<NuevaCotizacion />, ["VIEW_QUOTES", "ACTION_QUOTES_EDIT"])} />
         <Route path="/cotizaciones/rapida" element={<Navigate to="/cotizaciones/nueva" replace />} />

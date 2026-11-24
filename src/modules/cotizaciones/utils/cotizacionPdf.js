@@ -1,4 +1,6 @@
 import { obtenerLogoDocumentoPng } from "../../../utils/documentLogo.js";
+import request from "../../../services/api";
+import { API_PATHS } from "../../../config/apiPaths";
 
 const moneda = (valor) =>
   new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(Number(valor || 0));
@@ -104,16 +106,11 @@ function descargarBlobCotizacion(blob, folio) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export async function compartirCotizacionWhatsApp(cotizacion) {
-  const blob = await crearPdfCotizacion(cotizacion);
-  const file = new File([blob], `${cotizacion.folio}.pdf`, { type: "application/pdf" });
-  const text = `Hola ${cotizacion.clienteNombre}, compartimos la cotización ${cotizacion.folio} por ${moneda(cotizacion.total)}.`;
-  if (navigator.canShare?.({ files: [file] })) {
-    await navigator.share({ title: cotizacion.folio, text, files: [file] });
-    return "COMPARTIDO";
-  }
-  descargarBlobCotizacion(blob, cotizacion.folio);
-  const telefono = String(cotizacion.clienteWhatsapp || "").replace(/\D/g, "");
-  window.open(`https://wa.me/${telefono}?text=${encodeURIComponent(`${text}\nEl PDF se descargó para adjuntarlo.`)}`, "_blank", "noopener");
-  return "DESCARGADO";
+export async function enviarCotizacionWhatsApp(cotizacion) {
+  if (!cotizacion.clienteId) throw new Error("Asocia un cliente a la cotización antes de enviarla.");
+  if (!cotizacion.clienteWhatsapp) throw new Error("El cliente no tiene número de WhatsApp registrado.");
+  const pdf = await crearPdfCotizacion(cotizacion);
+  const form = new FormData();
+  form.append("archivo", pdf, `${cotizacion.folio}.pdf`);
+  return request(`${API_PATHS.COTIZACIONES}/${cotizacion.id}/whatsapp`, { method: "POST", body: form });
 }

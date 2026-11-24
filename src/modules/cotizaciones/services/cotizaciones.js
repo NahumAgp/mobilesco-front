@@ -12,6 +12,9 @@ const query = (params = {}) => {
 export const listarCotizaciones = (params = {}) =>
   request(`${API_PATHS.COTIZACIONES}?${query(params)}`);
 
+export const exportarExcelCotizaciones = (params = {}) =>
+  request(`${API_PATHS.COTIZACIONES}/reporte/excel?${query(params)}`, { responseType: "blob" });
+
 export const obtenerCotizacion = (id) =>
   request(`${API_PATHS.COTIZACIONES}/${id}`);
 
@@ -29,6 +32,12 @@ export const actualizarCotizacion = (id, data) =>
 
 export const cambiarEstadoCotizacion = (id, estado) =>
   request(`${API_PATHS.COTIZACIONES}/${id}/estado?estado=${estado}`, { method: "PATCH" });
+
+export const eliminarCotizacion = (id) =>
+  request(`${API_PATHS.COTIZACIONES}/${id}`, { method: "DELETE" });
+
+export const asociarClienteParaPedido = (id, clienteId) =>
+  request(`${API_PATHS.COTIZACIONES}/${id}/cliente?clienteId=${encodeURIComponent(clienteId)}`, { method: "PATCH" });
 
 export const cotizarFlete = (destino) =>
   request(`${API_PATHS.COTIZACIONES}/flete/cotizar`, {

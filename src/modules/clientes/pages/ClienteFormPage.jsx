@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import {
   actualizarCliente,
@@ -36,6 +36,9 @@ const inicial = {
 export default function ClienteFormPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const cotizacionPedidoId = location.state?.cotizacionPedidoId
+    || new URLSearchParams(location.search).get("cotizacionPedidoId");
   const esEdicion = Boolean(id);
   const [form, setForm] = useState(inicial);
   const [codigo, setCodigo] = useState("");
@@ -66,6 +69,10 @@ export default function ClienteFormPage() {
 
   const guardar = async (event) => {
     event.preventDefault();
+    if (cotizacionPedidoId && !(form.tipoPersona === "MORAL" ? form.razonSocial?.trim() : form.nombre?.trim())) {
+      setError(form.tipoPersona === "MORAL" ? "La razón social es obligatoria para crear el pedido." : "El nombre es obligatorio para crear el pedido.");
+      return;
+    }
     try {
       setGuardando(true);
       setError("");
@@ -76,7 +83,13 @@ export default function ClienteFormPage() {
         rfc: form.rfc.trim() || null,
       };
       if (esEdicion) await actualizarCliente(id, payload);
-      else await crearCliente(payload);
+      else {
+        const creado = await crearCliente(payload);
+        if (cotizacionPedidoId) {
+          navigate(`/cotizaciones?cotizacion=${cotizacionPedidoId}&clienteCreado=${creado.id}`);
+          return;
+        }
+      }
       navigate("/clientes");
     } catch (err) {
       setError(err?.message || "No fue posible guardar el cliente");
@@ -103,11 +116,12 @@ export default function ClienteFormPage() {
     <div className="container-fluid py-4">
       <div className="d-flex justify-content-between align-items-start mb-4">
         <div>
-          <button className="btn btn-link px-0 text-decoration-none" onClick={() => navigate("/clientes")}>
-            <i className="bi bi-arrow-left me-2"></i>Volver a clientes
+          <button className="btn btn-link px-0 text-decoration-none" onClick={() => navigate(cotizacionPedidoId ? `/cotizaciones?cotizacion=${cotizacionPedidoId}` : "/clientes")}>
+            <i className="bi bi-arrow-left me-2"></i>{cotizacionPedidoId ? "Volver a cotización" : "Volver a clientes"}
           </button>
           <h2 className="mb-1">{esEdicion ? "Editar cliente" : "Nuevo cliente"}</h2>
           <p className="text-muted mb-0">{codigo || "El código se generará automáticamente al guardar."}</p>
+          {cotizacionPedidoId && <p className="text-success mb-0">Cliente para el pedido de la cotización {location.state?.cotizacionFolio || `#${cotizacionPedidoId}`}. Al guardar, continuaremos con ese pedido.</p>}
         </div>
       </div>
 
@@ -138,11 +152,11 @@ export default function ClienteFormPage() {
               </div>
               <div className="col-md-4">
                 <label className="form-label fw-semibold">Nombre</label>
-                <input className="form-control" name="nombre" value={form.nombre || ""} onChange={cambiar} maxLength="150" />
+                <input className="form-control" name="nombre" value={form.nombre || ""} onChange={cambiar} maxLength="150" required={Boolean(cotizacionPedidoId && form.tipoPersona === "FISICA")} />
               </div>
               <div className="col-md-4">
                 <label className="form-label fw-semibold">Razón social</label>
-                <input className="form-control" name="razonSocial" value={form.razonSocial || ""} onChange={cambiar} maxLength="180" />
+                <input className="form-control" name="razonSocial" value={form.razonSocial || ""} onChange={cambiar} maxLength="180" required={Boolean(cotizacionPedidoId && form.tipoPersona === "MORAL")} />
               </div>
               <div className="col-md-4">
                 <label className="form-label fw-semibold">Nombre comercial</label>
@@ -192,7 +206,7 @@ export default function ClienteFormPage() {
             {esEdicion ? <button type="button" className="btn btn-outline-danger" onClick={eliminar}>Eliminar</button> : null}
           </div>
           <div className="d-flex gap-2">
-            <button type="button" className="btn btn-light" onClick={() => navigate("/clientes")}>Cancelar</button>
+            <button type="button" className="btn btn-light" onClick={() => navigate(cotizacionPedidoId ? `/cotizaciones?cotizacion=${cotizacionPedidoId}` : "/clientes")}>Cancelar</button>
             <button type="submit" className="btn btn-primary px-4" disabled={guardando}>
               {guardando ? "Guardando..." : "Guardar cliente"}
             </button>

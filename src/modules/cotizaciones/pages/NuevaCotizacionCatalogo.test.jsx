@@ -20,14 +20,15 @@ function Destino() {
   return <div>Destino: {location.pathname}{location.search}</div>;
 }
 
-function renderFormulario(flujoCatalogo) {
+function renderFormulario(flujoCatalogo, carrito = carritoInicial) {
   return render(<MemoryRouter initialEntries={[{
     pathname: "/cotizaciones/formal",
-    state: { carritoInicial, cotizacionRapida: true, origenCatalogo: true, flujoCatalogo },
+    state: { carritoInicial: carrito, cotizacionRapida: true, origenCatalogo: true, flujoCatalogo },
   }]}>
     <Routes>
       <Route path="/cotizaciones/formal" element={<NuevaCotizacion />} />
       <Route path="/cotizaciones" element={<Destino />} />
+      <Route path="/productos/catalogo" element={<Destino />} />
       <Route path="/pedidos-venta" element={<Destino />} />
     </Routes>
   </MemoryRouter>);
@@ -76,5 +77,37 @@ describe("formulario del catálogo", () => {
 
     expect(crearCotizacion).toHaveBeenCalledWith(expect.objectContaining({ estado: "PENDIENTE" }));
     expect(await screen.findByText("Destino: /cotizaciones?cotizacion=7")).toBeInTheDocument();
+  });
+
+  it("regresa al catálogo sin perder la selección ni las condiciones", async () => {
+    const user = userEvent.setup();
+    renderFormulario("cotizacion");
+
+    await user.click(screen.getByRole("button", { name: "Agregar más productos" }));
+
+    expect(await screen.findByText("Destino: /productos/catalogo")).toBeInTheDocument();
+    expect(JSON.parse(localStorage.getItem("catalogo:carrito-cotizacion"))).toEqual([
+      expect.objectContaining({ id: 9, cantidad: 2, utilidad: 35 }),
+    ]);
+    expect(JSON.parse(sessionStorage.getItem("cotizacion:regreso-catalogo"))).toEqual(
+      expect.objectContaining({ ruta: "/cotizaciones/formal", flujoCatalogo: "cotizacion" }),
+    );
+  });
+
+  it("muestra la utilidad heredada como lectura y la habilita al pulsar Modificar utilidad", async () => {
+    crearCotizacion.mockResolvedValue({ id: 8, folio: "COT-2026-00008" });
+    const user = userEvent.setup();
+    renderFormulario("cotizacion", [{ ...carritoInicial[0], utilidad: null }]);
+
+    expect(screen.getByText("53.85%")).toBeInTheDocument();
+    expect(screen.queryByRole("spinbutton", { name: "Utilidad de Silla escolar" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Modificar utilidad" }));
+    expect(screen.getByRole("spinbutton", { name: "Utilidad de Silla escolar" })).toHaveValue(53.85);
+    await user.click(screen.getAllByRole("button", { name: "Finalizar cotización" })[0]);
+
+    expect(crearCotizacion).toHaveBeenCalledWith(expect.objectContaining({
+      margenPorcentaje: null,
+      detalles: [{ productoId: 9, cantidad: 2, utilidadPorcentaje: 53.85 }],
+    }));
   });
 });

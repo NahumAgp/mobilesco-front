@@ -50,20 +50,12 @@ test('inventario: muestra existencias aisladas y acciones de almacén', async ({
   await expect(page.getByText('INS-E2E-001')).toBeVisible();
 });
 
-test('cotizaciones: busca producto, calcula y guarda la propuesta', async ({ page }) => {
+test('cotizaciones: inicia desde el tablero en el catálogo visual', async ({ page }) => {
   await seedSession(page);
-  await page.goto('/cotizaciones/nueva');
-
-  await page.getByPlaceholder('Ej. Concha silla primaria').fill('mesa');
-  await page.getByRole('button', { name: 'Mesa escolar determinista' }).click();
-  await expect(page.getByRole('heading', { name: 'Mesa escolar determinista' })).toBeVisible();
-  await page.getByRole('button', { name: 'Agregar a borrador' }).first().click();
-  await page.getByRole('button', { name: /Mandar a cotización/ }).click();
-  await expect(page).toHaveURL(/\/cotizaciones\/formal$/);
-  await page.getByRole('button', { name: /Finalizar cotizaci/ }).first().click();
-
-  await expect(page.getByRole('heading', { name: /Cotizaci.n creada/ })).toBeVisible();
-  await expect(page.getByText('COT-E2E-001', { exact: false })).toBeVisible();
+  await page.goto('/tablero');
+  await page.getByRole('button', { name: 'Cerrar notificaciones' }).click();
+  await page.getByRole('button', { name: 'Nueva cotización' }).click();
+  await expect(page).toHaveURL(/\/productos\/catalogo$/);
 });
 
 test('cuentas por pagar: concilia total, pago y saldo pendientes', async ({ page }) => {

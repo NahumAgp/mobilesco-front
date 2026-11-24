@@ -6,6 +6,10 @@ import { CatalogoCotizacionContext } from "./catalogoCotizacionContext.js";
 import "./catalogo-cotizacion-cart.css";
 
 const STORAGE_KEY = "catalogo:carrito-cotizacion";
+function leerRegreso() {
+  try { return JSON.parse(sessionStorage.getItem("cotizacion:regreso-catalogo") || "null"); }
+  catch { return null; }
+}
 function leerCarritoGuardado() {
   try {
     const guardado = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
@@ -42,7 +46,7 @@ export default function CatalogoCotizacionProvider({ children, enabled }) {
   const [validandoCarrito, setValidandoCarrito] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [problemas, setProblemas] = useState({});
-  const [modo, setModo] = useState("cotizacion");
+  const [modo, setModo] = useState(() => leerRegreso()?.flujoCatalogo || "cotizacion");
   const puedeCrearPedido = hasPermission(getUser(), "VIEW_SALES_ORDERS")
     && hasPermission(getUser(), "ACTION_SALES_ORDERS_CREATE");
 
@@ -163,9 +167,12 @@ export default function CatalogoCotizacionProvider({ children, enabled }) {
       cantidad: item.cantidad,
       utilidad: item.utilidad ?? null,
     }));
+    const regreso = leerRegreso();
+    sessionStorage.removeItem("cotizacion:regreso-catalogo");
     setAbierto(false);
-    navigate("/cotizaciones/formal", {
-      state: { carritoInicial, cotizacionRapida: true, origenCatalogo: true, flujoCatalogo: modo },
+    navigate(regreso?.ruta || "/cotizaciones/formal", {
+      state: { carritoInicial, cotizacionRapida: true, origenCatalogo: true, flujoCatalogo: modo,
+        borradorFormulario: regreso?.borradorFormulario },
     });
   };
 
